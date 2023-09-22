@@ -1404,6 +1404,109 @@ func validatePVCSnapshot(
 	validateRBDImageCount(f, 0, defaultRBDPool)
 }
 
+//nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
+func validatePVCSnapshotDeletion(
+	totalCount int,
+	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
+	kms, restoreKMS kmsConfig, restoreSCName,
+	dataPool string, f *framework.Framework,
+	isEncryptedPVC validateFunc,
+) {
+	var wg sync.WaitGroup
+	wgErrs := make([]error, totalCount)
+	err := createRBDSnapshotClass(f)
+	if err != nil {
+		framework.Failf("failed to create storageclass: %v", err)
+	}
+	defer func() {
+		err = deleteRBDSnapshotClass()
+		if err != nil {
+			framework.Failf("failed to delete VolumeSnapshotClass: %v", err)
+		}
+	}()
+
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		framework.Failf("failed to load PVC: %v", err)
+	}
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		framework.Failf("failed to create PVC: %v", err)
+	}
+	validateRBDImageCount(f, 1, defaultRBDPool)
+	snap := getSnapshot(snapshotPath)
+	snap.Namespace = f.UniqueName
+	snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+
+	pvcClone, err := loadPVC(pvcClonePath)
+	if err != nil {
+		framework.Failf("failed to load PVC: %v", err)
+	}
+	pvcClone.Namespace = f.UniqueName
+	if restoreSCName != "" {
+		pvcClone.Spec.StorageClassName = &restoreSCName
+	}
+
+	// create snapshot, restore to PVC, delete snapshot
+	for i := 0; i < totalCount; i++ {
+		snap.Name = fmt.Sprintf("%s%d", f.UniqueName, i)
+		err = createSnapshot(&snap, deployTimeout)
+		if err != nil {
+			framework.Failf("failed to create snapshot: %v", err)
+		}
+
+		pvcClone.Name = fmt.Sprintf("restore-%s", snap.Name)
+		pvcClone.Spec.DataSource.Name = snap.Name
+		err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+		if err != nil {
+			framework.Failf("failed to create PVC: %v", err)
+		}
+
+		err = deleteSnapshot(&snap, deployTimeout)
+		if err != nil {
+			framework.Failf("failed to delete snapshot: %v", err)
+		}
+	}
+
+	// total images in cluster is 1 parent rbd image+ total clones
+	validateRBDImageCount(f, totalCount+1, defaultRBDPool)
+	wg.Add(totalCount)
+	// delete clones
+	for i := 0; i < totalCount; i++ {
+		go func(n int, p v1.PersistentVolumeClaim) {
+			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			p.Spec.DataSource.Name = name
+			wgErrs[n] = deletePVCAndValidatePV(f.ClientSet, &p, deployTimeout)
+			wg.Done()
+		}(i, *pvcClone)
+	}
+	wg.Wait()
+
+	failed := 0
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			framework.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		framework.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+	}
+
+	// total images in cluster is 1 parent rbd image
+	validateRBDImageCount(f, totalCount+1, defaultRBDPool)
+	// delete parent pvc
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		framework.Failf("failed to delete PVC: %v", err)
+	}
+
+	// validate created backend rbd images
+	validateRBDImageCount(f, 0, defaultRBDPool)
+}
+
 // validateController simulates the required operations to validate the
 // controller.
 // Controller will generates the omap data when the PV is created.

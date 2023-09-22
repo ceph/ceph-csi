@@ -86,7 +86,8 @@ var (
 	snapshotPath           = rbdExamplePath + "snapshot.yaml"
 	deployFSAppPath        = e2eTemplatesPath + "rbd-fs-deployment.yaml"
 	deployBlockAppPath     = e2eTemplatesPath + "rbd-block-deployment.yaml"
-	defaultCloneCount      = 3 // TODO: set to 10 once issues#2327 is fixed
+	defaultCloneCount      = 3
+	higherCloneCount       = 10
 
 	nbdMapOptions             = "nbd:debug-rbd=20"
 	e2eDefaultCephLogStrategy = "preserve"
@@ -450,6 +451,21 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					framework.Failf("failed to verify mount options: %v", err)
 				}
+			})
+
+			By("create multiple PVC clone immediately followed by snapshot deletion", func() {
+				validatePVCSnapshotDeletion(
+					higherCloneCount,
+					pvcPath,
+					appPath,
+					snapshotPath,
+					pvcClonePath,
+					appClonePath,
+					noKMS, noKMS,
+					defaultSCName,
+					noDataPool,
+					f,
+					noPVCValidation)
 			})
 
 			By("create a PVC and check PVC/PV metadata on RBD image", func() {
@@ -2412,7 +2428,7 @@ var _ = Describe("RBD", func() {
 
 			By("create a PVC clone and bind it to an app", func() {
 				validatePVCSnapshot(
-					defaultCloneCount,
+					higherCloneCount,
 					pvcPath,
 					appPath,
 					snapshotPath,
@@ -2427,7 +2443,7 @@ var _ = Describe("RBD", func() {
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
 				validatePVCClone(
-					defaultCloneCount,
+					higherCloneCount,
 					pvcPath,
 					appPath,
 					pvcSmartClonePath,
