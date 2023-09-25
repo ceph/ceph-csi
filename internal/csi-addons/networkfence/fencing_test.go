@@ -54,3 +54,43 @@ func TestGetIPRange(t *testing.T) {
 		})
 	}
 }
+
+func TestFetchIP(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		clientInfo  string
+		expectedIP  string
+		expectedErr bool
+	}{
+		{
+			clientInfo:  "client.4305 172.21.9.34:0/422650892",
+			expectedIP:  "172.21.9.34",
+			expectedErr: false,
+		},
+		{
+			clientInfo:  "",
+			expectedIP:  "",
+			expectedErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		ts := tt
+
+		t.Run(ts.clientInfo, func(t *testing.T) {
+			t.Parallel()
+
+			client := activeClient{Inst: ts.clientInfo}
+			ip, actualErr := client.fetchIP()
+
+			if (actualErr != nil) != ts.expectedErr {
+				t.Errorf("expected error %v but got %v", ts.expectedErr, actualErr)
+			}
+
+			if ip != ts.expectedIP {
+				t.Errorf("expected IP %s but got %s", ts.expectedIP, ip)
+			}
+		})
+	}
+}
