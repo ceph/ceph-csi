@@ -224,7 +224,6 @@ func (ac *activeClient) fetchID() (int, error) {
 	}
 
 	return 0, fmt.Errorf("failed to extract client ID, incorrect format: %s", clientInfo)
-
 }
 
 // AddClientEviction blocks access for all the IPs in the CIDR block
