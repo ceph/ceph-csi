@@ -94,3 +94,41 @@ func TestFetchIP(t *testing.T) {
 		})
 	}
 }
+
+func TestFetchID(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		clientInfo  string
+		expectedID  int
+		expectedErr bool
+	}{
+		{
+			clientInfo:  "client.4305 172.21.9.34:0/422650892",
+			expectedID:  4305,
+			expectedErr: false,
+		},
+		{
+			clientInfo:  "",
+			expectedID:  0,
+			expectedErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		ts := tt
+		t.Run(ts.clientInfo, func(t *testing.T) {
+			t.Parallel()
+			ac := &activeClient{Inst: ts.clientInfo}
+			actualID, actualErr := ac.fetchID()
+
+			if (actualErr != nil) != ts.expectedErr {
+				t.Errorf("expected error %v but got %v", ts.expectedErr, actualErr)
+			}
+
+			if actualID != ts.expectedID {
+				t.Errorf("expected ID %d but got %d", ts.expectedID, actualID)
+			}
+		})
+	}
+}
