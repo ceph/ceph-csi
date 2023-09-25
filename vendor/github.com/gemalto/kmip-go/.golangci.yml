@@ -35,15 +35,59 @@ linters-settings:
     # minimal occurrences count to trigger, 3 by default
     min-occurrences: 3
   depguard:
-    list-type: blacklist
-    include-go-root: false
-    packages:
-      - github.com/magiconair/properties/assert
-      - gopkg.in/go-playground/assert.v1
-      - github.com/pborman/uuid #replace with github.com/google/uuid
-    inTests:
-      - github.com/davecgh/go-spew/spew
-      - github.com/stretchr/testify
+    # Rules to apply.
+    #
+    # Variables:
+    # - File Variables
+    #   you can still use and exclamation mark ! in front of a variable to say not to use it.
+    #   Example !$test will match any file that is not a go test file.
+    #
+    #   `$all` - matches all go files
+    #   `$test` - matches all go test files
+    #
+    # - Package Variables
+    #
+    #  `$gostd` - matches all of go's standard library (Pulled from `GOROOT`)
+    #
+    # Default: Only allow $gostd in all files.
+    rules:
+      # Name of a rule.
+      all:
+        # List of file globs that will match this list of settings to compare against.
+        # Default: $all
+        files:
+          - $all
+        # List of allowed packages.
+        # allow:
+        #  - $gostd
+        # Packages that are not allowed where the value is a suggestion.
+        deny:
+          - pkg: github.com/magiconair/properties/assert
+            desc: Use testify/assert package instead
+          - pkg: gopkg.in/go-playground/assert.v1
+            desc: Use testify/assert package instead
+          - pkg: github.com/pborman/uuid
+            desc: Use google/uuid package instead
+      main:
+        files:
+          - "!$test"
+          # todo need to check the usage
+          - "!**authorization/conditions.go"
+          - "!**yugotest/assertions.go"
+          - "!**yugometrics/backendtesting/compliance.go"
+          - "!**scopes/auth_scope.go"
+        deny:
+          - pkg: github.com/davecgh/go-spew/spew
+            desc: spew is usually only used in tests
+          - pkg: github.com/stretchr/testify
+            desc: testify is usually only used in tests
+  gomodguard:
+    blocked:
+      modules:
+        - gopkg.in/go-playground/assert.v1:
+            recommendations:
+              - github.com/stretchr/testify
+            reason: "testify is the test assertion framework we use"
   misspell:
     # Correct spellings using locale preferences for US or UK.
     # Default is to use a neutral variety of English.
@@ -70,15 +114,11 @@ linters:
   enable:
     # default linters
     - staticcheck
-    - deadcode
     - errcheck
     - gosimple
     - govet
     - ineffassign
-    - structcheck
     - unused
-    - varcheck
-
     # additional linters
     - asciicheck
     - bidichk
@@ -115,7 +155,7 @@ linters:
 ##    - goimports           # checks import order.  We're not using goimports
 #    - gomnd                # too aggressive
     - gomoddirectives
-#    - gomodguard
+    - gomodguard
     - goprintffuncname
     - gosec
     - grouper
