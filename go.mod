@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/IBM/keyprotect-go-client v0.12.2
-	github.com/aws/aws-sdk-go v1.45.12
+	github.com/aws/aws-sdk-go v1.45.16
 	github.com/aws/aws-sdk-go-v2/service/sts v1.22.0
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	// TODO: API for managing subvolume metadata and snapshot metadata requires `ceph_ci_untested` build-tag
@@ -12,7 +12,7 @@ require (
 	github.com/container-storage-interface/spec v1.8.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
 	github.com/csi-addons/spec v0.2.1-0.20230606140122-d20966d2e444
-	github.com/gemalto/kmip-go v0.0.9
+	github.com/gemalto/kmip-go v0.0.10
 	github.com/golang/protobuf v1.5.3
 	github.com/google/fscrypt v0.3.4
 	github.com/google/uuid v1.3.1
@@ -22,7 +22,7 @@ require (
 	github.com/kubernetes-csi/csi-lib-utils v0.14.0
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.3.0
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
-	github.com/onsi/ginkgo/v2 v2.12.0
+	github.com/onsi/ginkgo/v2 v2.12.1
 	github.com/onsi/gomega v1.27.10
 	github.com/pkg/xattr v0.4.9
 	github.com/prometheus/client_golang v1.16.0
