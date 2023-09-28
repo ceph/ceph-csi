@@ -36,7 +36,7 @@ const (
 	blocklistTime     = "157784760"
 	invalidCommandStr = "invalid command"
 	// we can always use mds rank 0, since all the clients have a session with rank-0.
-	mdsRank = "0"
+	mdsRank = 0
 )
 
 // NetworkFence contains the CIDR blocks to be blocked.
@@ -145,9 +145,15 @@ func (nf *NetworkFence) AddNetworkFence(ctx context.Context) error {
 	return nil
 }
 
-func listActiveClients(ctx context.Context) ([]activeClient, error) {
+func (nf *NetworkFence) listActiveClients(ctx context.Context) ([]activeClient, error) {
+	arg := []string{
+		"--id", nf.cr.ID,
+		"--keyfile=" + nf.cr.KeyFile,
+		"-m", nf.Monitors,
+	}
 	// FIXME: replace the ceph command with go-ceph API in future
-	cmd := []string{"tell", fmt.Sprintf("mds.%s", mdsRank), "client", "ls"}
+	cmd := []string{"tell", fmt.Sprintf("mds.%d", mdsRank), "client", "ls"}
+	cmd = append(cmd, arg...)
 	stdout, stdErr, err := util.ExecCommandWithTimeout(ctx, 2*time.Minute, "ceph", cmd...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list active clients: %w, stderr: %q", err, stdErr)
@@ -161,9 +167,15 @@ func listActiveClients(ctx context.Context) ([]activeClient, error) {
 	return activeClients, nil
 }
 
-func evictCephFSClient(ctx context.Context, clientID int) error {
+func (nf *NetworkFence) evictCephFSClient(ctx context.Context, clientID int) error {
+	arg := []string{
+		"--id", nf.cr.ID,
+		"--keyfile=" + nf.cr.KeyFile,
+		"-m", nf.Monitors,
+	}
 	// FIXME: replace the ceph command with go-ceph API in future
-	cmd := []string{"tell", fmt.Sprintf("mds.%s", mdsRank), "client", "evict", fmt.Sprintf("id=%d", clientID)}
+	cmd := []string{"tell", fmt.Sprintf("mds.%d", mdsRank), "client", "evict", fmt.Sprintf("id=%d", clientID)}
+	cmd = append(cmd, arg...)
 	_, stdErr, err := util.ExecCommandWithTimeout(ctx, 2*time.Minute, "ceph", cmd...)
 	if err != nil {
 		return fmt.Errorf("failed to evict client %d: %w, stderr: %q", clientID, err, stdErr)
@@ -233,7 +245,7 @@ func (ac *activeClient) fetchID() (int, error) {
 func (nf *NetworkFence) AddClientEviction(ctx context.Context) error {
 	evictedIPs := make(map[string]bool)
 	// fetch active clients
-	activeClients, err := listActiveClients(ctx)
+	activeClients, err := nf.listActiveClients(ctx)
 	if err != nil {
 		return err
 	}
@@ -251,7 +263,7 @@ func (nf *NetworkFence) AddClientEviction(ctx context.Context) error {
 					return fmt.Errorf("error fetching client ID: %w", err)
 				}
 				// evict the client
-				err = evictCephFSClient(ctx, clientID)
+				err = nf.evictCephFSClient(ctx, clientID)
 				if err != nil {
 					return fmt.Errorf("error evicting client %d: %w", clientID, err)
 				}
@@ -353,6 +365,13 @@ func (nf *NetworkFence) removeCephBlocklist(ctx context.Context, ip string, useR
 
 // RemoveNetworkFence unblocks access for all the IPs in the IP range mentioned via the CIDR block
 // using a network fence.
+// Unfencing one of the protocols(CephFS or RBD) suggests the node is expected to be recovered, so
+// both CephFS and RBD are expected to work again too.
+// example:
+// Create RBD NetworkFence CR for one IP 10.10.10.10
+// Created CephFS NetworkFence CR for IP range but above IP comes in the Range
+// Delete the CephFS Network Fence CR to unblocklist the IP
+// So now the IP (10.10.10.10) is (un)blocklisted and can be used by both protocols.
 func (nf *NetworkFence) RemoveNetworkFence(ctx context.Context) error {
 	hasBlocklistRangeSupport := true
 	// for each CIDR block, convert it into a range of IPs so as to undo blocklisting operation.
