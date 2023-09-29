@@ -42,3 +42,19 @@ func TestFenceClusterNetwork(t *testing.T) {
 	_, err := controller.FenceClusterNetwork(context.TODO(), req)
 	assert.Error(t, err)
 }
+
+// TestUnfenceClusterNetwork is a minimal test for the UnfenceClusterNetwork()
+// procedure. During unit-testing, there is no Ceph cluster available, so actual
+// operations can not be performed.
+func TestUnfenceClusterNetwork(t *testing.T) {
+	t.Parallel()
+	controller := NewFenceControllerServer()
+
+	req := &fence.UnfenceClusterNetworkRequest{
+		Parameters: map[string]string{},
+		Secrets:    nil,
+		Cidrs:      nil,
+	}
+	_, err := controller.UnfenceClusterNetwork(context.TODO(), req)
+	assert.Error(t, err)
+}
