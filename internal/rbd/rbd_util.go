@@ -1411,6 +1411,7 @@ func (ri *rbdImage) hasSnapshotFeature() bool {
 }
 
 func (ri *rbdImage) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
+	pOpts.RbdImageName = ri.RbdImageName
 	log.DebugLog(ctx, "rbd: snap create %s using mon %s", pOpts, pOpts.Monitors)
 	image, err := ri.open()
 	if err != nil {

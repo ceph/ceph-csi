@@ -1340,8 +1340,6 @@ func (cs *ControllerServer) doSnapshotClone(
 		return nil, err
 	}
 
-	// update rbd image name
-	rbdSnap.RbdImageName = cloneRbd.RbdImageName
 	err = cloneRbd.createSnapshot(ctx, rbdSnap)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, err)
