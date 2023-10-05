@@ -197,6 +197,11 @@ func (fs *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	is := casceph.NewIdentityServer(conf)
 	fs.cas.RegisterService(is)
 
+	if conf.IsControllerServer {
+		fcs := casceph.NewFenceControllerServer()
+		fs.cas.RegisterService(fcs)
+	}
+
 	// start the server, this does not block, it runs a new go-routine
 	err = fs.cas.Start()
 	if err != nil {
