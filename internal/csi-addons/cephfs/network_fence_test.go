@@ -20,9 +20,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/csi-addons/spec/lib/go/fence"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestFenceClusterNetwork is a minimal test for the FenceClusterNetwork()
