@@ -1,6 +1,6 @@
 #!/bin/bash -E
 
-ROOK_VERSION=${ROOK_VERSION:-"v1.6.2"}
+ROOK_VERSION=${ROOK_VERSION:-"v1.12.5"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/deploy/examples"
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
