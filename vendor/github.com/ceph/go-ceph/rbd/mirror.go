@@ -717,7 +717,7 @@ func mirrorImageGlobalStatusList(
 	}
 	for i := 0; i < int(length); i++ {
 		results[i].ID = C.GoString(ids[i])
-		results[i].Status = newGlobalMirrorImageStatus(&images[0])
+		results[i].Status = newGlobalMirrorImageStatus(&images[i])
 	}
 	C.rbd_mirror_image_global_status_list_cleanup(
 		&ids[0],
