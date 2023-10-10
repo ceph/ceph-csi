@@ -215,6 +215,9 @@ type localClusterState struct {
 	// set true once a subvolumegroup is created
 	// for corresponding filesystem in a cluster.
 	subVolumeGroupsCreated map[string]bool
+	// subVolumeGroupsRWMutex is used to protect subVolumeGroupsCreated map
+	//  against concurrent writes while allowing multiple readers.
+	subVolumeGroupsRWMutex sync.RWMutex
 }
 
 func newLocalClusterState(clusterID string) {
@@ -224,7 +227,6 @@ func newLocalClusterState(clusterID string) {
 	defer clusterAdditionalInfoMutex.Unlock()
 	if _, keyPresent := clusterAdditionalInfo[clusterID]; !keyPresent {
 		clusterAdditionalInfo[clusterID] = &localClusterState{}
-		clusterAdditionalInfo[clusterID].subVolumeGroupsCreated = make(map[string]bool)
 	}
 }
 
@@ -240,7 +242,7 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 	}
 
 	// create subvolumegroup if not already created for the cluster.
-	if !clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] {
+	if !s.isSubVolumeGroupCreated() {
 		opts := fsAdmin.SubVolumeGroupOptions{}
 		err = ca.CreateSubVolumeGroup(s.FsName, s.SubvolumeGroup, &opts)
 		if err != nil {
@@ -254,7 +256,7 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 			return err
 		}
 		log.DebugLog(ctx, "cephfs: created subvolume group %s", s.SubvolumeGroup)
-		clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] = true
+		s.updateSubVolumeGroupCreated(true)
 	}
 
 	opts := fsAdmin.SubVolumeOptions{
@@ -272,7 +274,7 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 		if errors.Is(err, rados.ErrNotFound) {
 			// Reset the subVolumeGroupsCreated so that we can try again to create the
 			// subvolumegroup in next request if the error is Not Found.
-			clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] = false
+			s.updateSubVolumeGroupCreated(false)
 		}
 
 		return err

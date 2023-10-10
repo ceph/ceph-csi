@@ -51,6 +51,32 @@ func (s *subVolumeClient) isUnsupportedSubVolMetadata(err error) bool {
 	return true
 }
 
+// isSubVolumeGroupCreated returns true if subvolume group is created.
+func (s *subVolumeClient) isSubVolumeGroupCreated() bool {
+	newLocalClusterState(s.clusterID)
+	clusterAdditionalInfo[s.clusterID].subVolumeGroupsRWMutex.RLock()
+	defer clusterAdditionalInfo[s.clusterID].subVolumeGroupsRWMutex.RUnlock()
+
+	if clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated == nil {
+		return false
+	}
+
+	return clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.SubvolumeGroup]
+}
+
+// updateSubVolumeGroupCreated updates subvolume group created map.
+// If the map is nil, it creates a new map and updates it.
+func (s *subVolumeClient) updateSubVolumeGroupCreated(state bool) {
+	clusterAdditionalInfo[s.clusterID].subVolumeGroupsRWMutex.Lock()
+	defer clusterAdditionalInfo[s.clusterID].subVolumeGroupsRWMutex.Unlock()
+
+	if clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated == nil {
+		clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated = make(map[string]bool)
+	}
+
+	clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.SubvolumeGroup] = state
+}
+
 // setMetadata sets custom metadata on the subvolume in a volume as a
 // key-value pair.
 func (s *subVolumeClient) setMetadata(key, value string) error {
