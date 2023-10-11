@@ -67,9 +67,9 @@ func RoundOffCephFSVolSize(bytes int64) int64 {
 		return 4 * helpers.MiB
 	}
 
-	floatbytes := float64(bytes) / helpers.MiB
+	bytesInFloat := float64(bytes) / helpers.MiB
 
-	bytes = int64(math.Ceil(floatbytes/4) * 4)
+	bytes = int64(math.Ceil(bytesInFloat/4) * 4)
 
 	return RoundOffBytes(bytes * helpers.MiB)
 }
