@@ -20,6 +20,7 @@ updates:
         patterns:
           - "github.com*"
         exclude-patterns:
+          - "github.com/ceph/*"
           - "github.com/golang*"
           - "github.com/container-storage-interface/spec"
     labels:
