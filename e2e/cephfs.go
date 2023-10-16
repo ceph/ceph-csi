@@ -215,6 +215,11 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			framework.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, cephFSDeploymentName, err)
 		}
+
+		err = createSubvolumegroup(f, fileSystemName, subvolumegroup)
+		if err != nil {
+			framework.Failf("%v", err)
+		}
 	})
 
 	AfterEach(func() {
@@ -254,10 +259,15 @@ var _ = Describe(cephfsType, func() {
 		}
 		deleteVault()
 
+		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
+		if err != nil {
+			framework.Failf("%v", err)
+		}
+
 		if deployCephFS {
 			deleteCephfsPlugin()
 			if cephCSINamespace != defaultNs {
-				err := deleteNamespace(c, cephCSINamespace)
+				err = deleteNamespace(c, cephCSINamespace)
 				if err != nil {
 					framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
 				}
@@ -939,14 +949,24 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				// re-define configmap with information of multiple clusters.
+				subvolgrp1 := "subvolgrp1"
+				subvolgrp2 := "subvolgrp2"
 				clusterInfo := map[string]map[string]string{}
 				clusterID1 := "clusterID-1"
 				clusterID2 := "clusterID-2"
 				clusterInfo[clusterID1] = map[string]string{}
-				clusterInfo[clusterID1]["subvolumeGroup"] = "subvolgrp1"
+				clusterInfo[clusterID1]["subvolumeGroup"] = subvolgrp1
 				clusterInfo[clusterID2] = map[string]string{}
-				clusterInfo[clusterID2]["subvolumeGroup"] = "subvolgrp2"
+				clusterInfo[clusterID2]["subvolumeGroup"] = subvolgrp2
 
+				err = createSubvolumegroup(f, fileSystemName, subvolgrp1)
+				if err != nil {
+					framework.Failf("%v", err)
+				}
+				err = createSubvolumegroup(f, fileSystemName, subvolgrp2)
+				if err != nil {
+					framework.Failf("%v", err)
+				}
 				err = createCustomConfigMap(f.ClientSet, cephFSDirPath, clusterInfo)
 				if err != nil {
 					framework.Failf("failed to create configmap: %v", err)
@@ -967,7 +987,7 @@ var _ = Describe(cephfsType, func() {
 					framework.Failf("failed to delete storageclass: %v", err)
 				}
 				// verify subvolume group creation.
-				err = validateSubvolumegroup(f, "subvolgrp1")
+				err = validateSubvolumegroup(f, subvolgrp1)
 				if err != nil {
 					framework.Failf("failed to validate subvolume group: %v", err)
 				}
@@ -987,9 +1007,17 @@ var _ = Describe(cephfsType, func() {
 				if err != nil {
 					framework.Failf("failed to delete storageclass: %v", err)
 				}
-				err = validateSubvolumegroup(f, "subvolgrp2")
+				err = validateSubvolumegroup(f, subvolgrp2)
 				if err != nil {
 					framework.Failf("failed to validate subvolume group: %v", err)
+				}
+				err = deleteSubvolumegroup(f, fileSystemName, subvolgrp1)
+				if err != nil {
+					framework.Failf("%v", err)
+				}
+				err = deleteSubvolumegroup(f, fileSystemName, subvolgrp2)
+				if err != nil {
+					framework.Failf("%v", err)
 				}
 				err = deleteConfigMap(cephFSDirPath)
 				if err != nil {
