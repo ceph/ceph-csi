@@ -276,6 +276,11 @@ var _ = Describe("nfs", func() {
 		if err != nil {
 			framework.Failf("failed to create node secret: %v", err)
 		}
+
+		err = createSubvolumegroup(f, fileSystemName, subvolumegroup)
+		if err != nil {
+			framework.Failf("%v", err)
+		}
 	})
 
 	AfterEach(func() {
@@ -313,10 +318,15 @@ var _ = Describe("nfs", func() {
 		if err != nil {
 			framework.Failf("failed to delete storageclass: %v", err)
 		}
+		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
+		if err != nil {
+			framework.Failf("%v", err)
+		}
+
 		if deployNFS {
 			deleteNFSPlugin()
 			if cephCSINamespace != defaultNs {
-				err := deleteNamespace(c, cephCSINamespace)
+				err = deleteNamespace(c, cephCSINamespace)
 				if err != nil {
 					framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
 				}

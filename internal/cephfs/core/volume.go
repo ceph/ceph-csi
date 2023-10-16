@@ -210,14 +210,6 @@ type localClusterState struct {
 	resizeState                 operationState
 	subVolMetadataState         operationState
 	subVolSnapshotMetadataState operationState
-	// A cluster can have multiple filesystem for that we need to have a map of
-	// subvolumegroups to check filesystem is created nor not.
-	// set true once a subvolumegroup is created
-	// for corresponding filesystem in a cluster.
-	subVolumeGroupsCreated map[string]bool
-	// subVolumeGroupsRWMutex is used to protect subVolumeGroupsCreated map
-	//  against concurrent writes while allowing multiple readers.
-	subVolumeGroupsRWMutex sync.RWMutex
 }
 
 func newLocalClusterState(clusterID string) {
@@ -241,24 +233,6 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 		return err
 	}
 
-	// create subvolumegroup if not already created for the cluster.
-	if !s.isSubVolumeGroupCreated() {
-		opts := fsAdmin.SubVolumeGroupOptions{}
-		err = ca.CreateSubVolumeGroup(s.FsName, s.SubvolumeGroup, &opts)
-		if err != nil {
-			log.ErrorLog(
-				ctx,
-				"failed to create subvolume group %s, for the vol %s: %s",
-				s.SubvolumeGroup,
-				s.VolID,
-				err)
-
-			return err
-		}
-		log.DebugLog(ctx, "cephfs: created subvolume group %s", s.SubvolumeGroup)
-		s.updateSubVolumeGroupCreated(true)
-	}
-
 	opts := fsAdmin.SubVolumeOptions{
 		Size: fsAdmin.ByteCount(s.Size),
 	}
@@ -270,12 +244,6 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 	err = ca.CreateSubVolume(s.FsName, s.SubvolumeGroup, s.VolID, &opts)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create subvolume %s in fs %s: %s", s.VolID, s.FsName, err)
-
-		if errors.Is(err, rados.ErrNotFound) {
-			// Reset the subVolumeGroupsCreated so that we can try again to create the
-			// subvolumegroup in next request if the error is Not Found.
-			s.updateSubVolumeGroupCreated(false)
-		}
 
 		return err
 	}
