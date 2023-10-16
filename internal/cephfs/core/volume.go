@@ -231,24 +231,6 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 		return err
 	}
 
-	// create subvolumegroup if not already created for the cluster.
-	if !clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] {
-		opts := fsAdmin.SubVolumeGroupOptions{}
-		err = ca.CreateSubVolumeGroup(s.FsName, s.SubvolumeGroup, &opts)
-		if err != nil {
-			log.ErrorLog(
-				ctx,
-				"failed to create subvolume group %s, for the vol %s: %s",
-				s.SubvolumeGroup,
-				s.VolID,
-				err)
-
-			return err
-		}
-		log.DebugLog(ctx, "cephfs: created subvolume group %s", s.SubvolumeGroup)
-		clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] = true
-	}
-
 	opts := fsAdmin.SubVolumeOptions{
 		Size: fsAdmin.ByteCount(s.Size),
 	}
