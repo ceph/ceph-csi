@@ -38049,18 +38049,42 @@ var awsusgovPartition = partition{
 				}: endpoint{},
 				endpointKey{
 					Region:  "us-gov-east-1",
+					Variant: dualStackVariant,
+				}: endpoint{
+					Hostname: "lakeformation.us-gov-east-1.api.aws",
+				},
+				endpointKey{
+					Region:  "us-gov-east-1",
 					Variant: fipsVariant,
 				}: endpoint{
 					Hostname: "lakeformation-fips.us-gov-east-1.amazonaws.com",
+				},
+				endpointKey{
+					Region:  "us-gov-east-1",
+					Variant: fipsVariant | dualStackVariant,
+				}: endpoint{
+					Hostname: "lakeformation-fips.us-gov-east-1.api.aws",
 				},
 				endpointKey{
 					Region: "us-gov-west-1",
 				}: endpoint{},
 				endpointKey{
 					Region:  "us-gov-west-1",
+					Variant: dualStackVariant,
+				}: endpoint{
+					Hostname: "lakeformation.us-gov-west-1.api.aws",
+				},
+				endpointKey{
+					Region:  "us-gov-west-1",
 					Variant: fipsVariant,
 				}: endpoint{
 					Hostname: "lakeformation-fips.us-gov-west-1.amazonaws.com",
+				},
+				endpointKey{
+					Region:  "us-gov-west-1",
+					Variant: fipsVariant | dualStackVariant,
+				}: endpoint{
+					Hostname: "lakeformation-fips.us-gov-west-1.api.aws",
 				},
 			},
 		},
@@ -39831,10 +39855,20 @@ var awsusgovPartition = partition{
 			Endpoints: serviceEndpoints{
 				endpointKey{
 					Region: "us-gov-east-1",
-				}: endpoint{},
+				}: endpoint{
+					Hostname: "simspaceweaver.us-gov-east-1.amazonaws.com",
+					CredentialScope: credentialScope{
+						Region: "us-gov-east-1",
+					},
+				},
 				endpointKey{
 					Region: "us-gov-west-1",
-				}: endpoint{},
+				}: endpoint{
+					Hostname: "simspaceweaver.us-gov-west-1.amazonaws.com",
+					CredentialScope: credentialScope{
+						Region: "us-gov-west-1",
+					},
+				},
 			},
 		},
 		"sms": service{
