@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault/api"
 	"github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/vault/utils"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -28,6 +29,8 @@ const (
 	AuthKubernetesRole      = utils.AuthKubernetesRole
 	AuthKubernetesTokenPath = utils.AuthKubernetesTokenPath
 	AuthKubernetesMountPath = utils.AuthKubernetesMountPath
+	AuthAppRoleRoleID       = utils.AuthAppRoleRoleID
+	AuthAppRoleSecretID     = utils.AuthAppRoleSecretID
 )
 
 func init() {
@@ -100,6 +103,14 @@ func New(
 	}
 	client.SetToken(token)
 
+	authMethod := "token"
+	method := utils.GetVaultParam(secretConfig, AuthMethod)
+	if method != "" && utils.GetVaultParam(secretConfig, api.EnvVaultToken) == "" {
+		authMethod = method
+	}
+
+	logrus.Infof("Authenticated to Vault with %v\n", authMethod)
+
 	backendPath := utils.GetVaultParam(secretConfig, VaultBackendPathKey)
 	if backendPath == "" {
 		backendPath = DefaultBackendPath
@@ -164,25 +175,29 @@ func (v *vaultSecrets) keyPath(secretID string, keyContext map[string]string) ke
 func (v *vaultSecrets) GetSecret(
 	secretID string,
 	keyContext map[string]string,
-) (map[string]interface{}, error) {
+) (map[string]interface{}, secrets.Version, error) {
 	key := v.keyPath(secretID, keyContext)
 	secretValue, err := v.read(key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get secret: %s: %s", key, err)
+		return nil, secrets.NoVersion, fmt.Errorf("failed to get secret: %s: %s", key, err)
 	}
 	if secretValue == nil {
-		return nil, secrets.ErrInvalidSecretId
+		return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
 	}
 
 	if v.isKvBackendV2 {
 		if data, exists := secretValue.Data[kvDataKey]; exists && data != nil {
 			if data, ok := data.(map[string]interface{}); ok {
-				return data, nil
+				// TODO: Vault does support versioned secrets with KV Backend 2
+				// However it requires clients to invoke a different metadata API call
+				// to fetch the version. Once there is a need for versions from Vault
+				// we can add support for it.
+				return data, secrets.NoVersion, nil
 			}
 		}
-		return nil, secrets.ErrInvalidSecretId
+		return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
 	} else {
-		return secretValue.Data, nil
+		return secretValue.Data, secrets.NoVersion, nil
 	}
 }
 
@@ -190,7 +205,7 @@ func (v *vaultSecrets) PutSecret(
 	secretID string,
 	secretData map[string]interface{},
 	keyContext map[string]string,
-) error {
+) (secrets.Version, error) {
 	if v.isKvBackendV2 {
 		secretData = map[string]interface{}{
 			kvDataKey: secretData,
@@ -199,9 +214,9 @@ func (v *vaultSecrets) PutSecret(
 
 	key := v.keyPath(secretID, keyContext)
 	if _, err := v.write(key, secretData); err != nil {
-		return fmt.Errorf("failed to put secret: %s: %s", key, err)
+		return secrets.NoVersion, fmt.Errorf("failed to put secret: %s: %s", key, err)
 	}
-	return nil
+	return secrets.NoVersion, nil
 }
 
 func (v *vaultSecrets) DeleteSecret(

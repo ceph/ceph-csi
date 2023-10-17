@@ -396,7 +396,8 @@ func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 // FetchDEK returns passphrase from Vault. The passphrase is stored in a
 // data.data.passphrase structure.
 func (kms *vaultKMS) FetchDEK(key string) (string, error) {
-	s, err := kms.secrets.GetSecret(filepath.Join(kms.vaultPassphrasePath, key), kms.keyContext)
+	// Since the second return variable loss.Version is not used, there it is ignored.
+	s, _, err := kms.secrets.GetSecret(filepath.Join(kms.vaultPassphrasePath, key), kms.keyContext)
 	if err != nil {
 		return "", err
 	}
@@ -422,7 +423,8 @@ func (kms *vaultKMS) StoreDEK(key, value string) error {
 	}
 
 	pathKey := filepath.Join(kms.vaultPassphrasePath, key)
-	err := kms.secrets.PutSecret(pathKey, data, kms.keyContext)
+	// Since the first return variable loss.Version is not used, there it is ignored.
+	_, err := kms.secrets.PutSecret(pathKey, data, kms.keyContext)
 	if err != nil {
 		return fmt.Errorf("saving passphrase at %s request to vault failed: %w", pathKey, err)
 	}

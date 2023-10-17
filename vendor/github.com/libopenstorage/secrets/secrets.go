@@ -42,16 +42,17 @@ const (
 )
 
 const (
-	TypeAWS          = "aws-kms"
-	TypeAzure        = "azure-kv"
-	TypeDCOS         = "dcos"
-	TypeDocker       = "docker"
-	TypeGCloud       = "gcloud-kms"
-	TypeIBM          = "ibm-kp"
-	TypeK8s          = "k8s"
-	TypeKVDB         = "kvdb"
-	TypeVault        = "vault"
-	TypeVaultTransit = "vault-transit"
+	TypeAWSKMS            = "aws-kms"
+	TypeAzure             = "azure-kv"
+	TypeDCOS              = "dcos"
+	TypeDocker            = "docker"
+	TypeGCloud            = "gcloud-kms"
+	TypeIBM               = "ibm-kp"
+	TypeK8s               = "k8s"
+	TypeKVDB              = "kvdb"
+	TypeVault             = "vault"
+	TypeVaultTransit      = "vault-transit"
+	TypeAWSSecretsManager = "aws-secrets-manager"
 )
 
 const (
@@ -62,6 +63,14 @@ const (
 	// This is only valid when Vault's KV Secret Engine is running on version 2 since by default keys are versioned and soft-deleted
 	// Activating this will PERMANENTLY delete all metadata and versions for a key
 	DestroySecret = "destroy-all-secret-versions"
+)
+
+// Version represents the unique identifier associated with the version of the new secret.
+type Version string
+
+const (
+	// NoVersion indicates that the provider does not support versions for secrets
+	NoVersion Version = "noversion"
 )
 
 // Secrets interface implemented by backend Key Management Systems (KMS)
@@ -76,15 +85,17 @@ type Secrets interface {
 	GetSecret(
 		secretId string,
 		keyContext map[string]string,
-	) (map[string]interface{}, error)
+	) (map[string]interface{}, Version, error)
 
 	// PutSecret will associate an secretId to its secret data
 	// provided in the arguments and store it into the secret backend
+	// The caller should ensure they use unique secretIDs so that they won't
+	// unknowingly overwrite an existing secret.
 	PutSecret(
 		secretId string,
 		plainText map[string]interface{},
 		keyContext map[string]string,
-	) error
+	) (Version, error)
 
 	// DeleteSecret deletes the secret data associated with the
 	// supplied secretId.
@@ -139,6 +150,17 @@ type ErrInvalidKeyContext struct {
 
 func (e *ErrInvalidKeyContext) Error() string {
 	return fmt.Sprintf("invalid key context: %v", e.Reason)
+}
+
+// ErrProviderInternal is returned when an error is received from the secrets provider which
+// is not known to this library
+type ErrProviderInternal struct {
+	Provider string
+	Reason   string
+}
+
+func (e *ErrProviderInternal) Error() string {
+	return fmt.Sprintf("%v returned error: %v", e.Provider, e.Reason)
 }
 
 // KeyContextChecks performs a series of checks on the keys and values
