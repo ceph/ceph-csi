@@ -44,7 +44,7 @@ parameters:
    #
    # The default options depend on the csi.storage.k8s.io/fstype setting:
    # - ext4: "-m0 -Enodiscard,lazy_itable_init=1,lazy_journal_init=1"
-   # - xfs: "-onouuid -K"
+   # - xfs: "-K"
    #
    # mkfsOptions: "-m0 -Ediscard -i1024"
 
@@ -163,5 +163,7 @@ parameters:
    # objectSize: <>
 reclaimPolicy: Delete
 allowVolumeExpansion: true
+
+# If filesystem is xfs, nouuid will be automatically added to mountOptions
 mountOptions:
    - discard
