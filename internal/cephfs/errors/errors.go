@@ -46,9 +46,6 @@ var (
 	// statically provisioned.
 	ErrNonStaticVolume = coreError.New("volume not static")
 
-	// ErrSnapProtectionExist is returned when the snapshot is already protected.
-	ErrSnapProtectionExist = coreError.New("snapshot  protection already exists")
-
 	// ErrSnapNotFound is returned when snap name passed is not found in the list
 	// of snapshots for the given image.
 	ErrSnapNotFound = coreError.New("snapshot not found")

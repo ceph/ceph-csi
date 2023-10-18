@@ -30,12 +30,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-// autoProtect points to the snapshot auto-protect feature of
-// the subvolume.
-const (
-	autoProtect = "snapshot-autoprotect"
-)
-
 // SnapshotClient is the interface that holds the signature of snapshot methods
 // that interacts with CephFS snapshot API's.
 type SnapshotClient interface {
@@ -45,10 +39,6 @@ type SnapshotClient interface {
 	DeleteSnapshot(ctx context.Context) error
 	// GetSnapshotInfo returns the snapshot info of the subvolume.
 	GetSnapshotInfo(ctx context.Context) (SnapshotInfo, error)
-	// ProtectSnapshot protects the snapshot of the subvolume.
-	ProtectSnapshot(ctx context.Context) error
-	// UnprotectSnapshot unprotects the snapshot of the subvolume.
-	UnprotectSnapshot(ctx context.Context) error
 	// CloneSnapshot clones the snapshot of the subvolume.
 	CloneSnapshot(ctx context.Context, cloneVolOptions *SubVolume) error
 	// SetAllSnapshotMetadata set all the metadata from arg parameters on
@@ -139,7 +129,6 @@ type SnapshotInfo struct {
 	CreatedAt        time.Time
 	CreationTime     *timestamp.Timestamp
 	HasPendingClones string
-	Protected        string
 }
 
 // GetSnapshotInfo returns the snapshot info of the subvolume.
@@ -169,78 +158,8 @@ func (s *snapshotClient) GetSnapshotInfo(ctx context.Context) (SnapshotInfo, err
 	}
 	snap.CreatedAt = info.CreatedAt.Time
 	snap.HasPendingClones = info.HasPendingClones
-	snap.Protected = info.Protected
 
 	return snap, nil
-}
-
-// ProtectSnapshot protects the snapshot of the subvolume.
-func (s *snapshotClient) ProtectSnapshot(ctx context.Context) error {
-	// If "snapshot-autoprotect" feature is present, The ProtectSnapshot
-	// call should be treated as a no-op.
-	if checkSubvolumeHasFeature(autoProtect, s.Features) {
-		return nil
-	}
-	fsa, err := s.conn.GetFSAdmin()
-	if err != nil {
-		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-
-		return err
-	}
-
-	err = fsa.ProtectSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID)
-	if err != nil {
-		if errors.Is(err, rados.ErrObjectExists) {
-			return nil
-		}
-		log.ErrorLog(
-			ctx,
-			"failed to protect subvolume snapshot %s %s in fs %s with error: %s",
-			s.VolID,
-			s.SnapshotID,
-			s.FsName,
-			err)
-
-		return err
-	}
-
-	return nil
-}
-
-// UnprotectSnapshot unprotects the snapshot of the subvolume.
-func (s *snapshotClient) UnprotectSnapshot(ctx context.Context) error {
-	// If "snapshot-autoprotect" feature is present, The UnprotectSnapshot
-	// call should be treated as a no-op.
-	if checkSubvolumeHasFeature(autoProtect, s.Features) {
-		return nil
-	}
-	fsa, err := s.conn.GetFSAdmin()
-	if err != nil {
-		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-
-		return err
-	}
-
-	err = fsa.UnprotectSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID,
-		s.SnapshotID)
-	if err != nil {
-		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
-		// in that case we are safe and we could discard this error.
-		if errors.Is(err, rados.ErrObjectExists) {
-			return nil
-		}
-		log.ErrorLog(
-			ctx,
-			"failed to unprotect subvolume snapshot %s %s in fs %s with error: %s",
-			s.VolID,
-			s.SnapshotID,
-			s.FsName,
-			err)
-
-		return err
-	}
-
-	return nil
 }
 
 // CloneSnapshot clones the snapshot of the subvolume.
