@@ -18,7 +18,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
@@ -33,11 +32,6 @@ type cephFSCloneState struct {
 	errno    string
 	errorMsg string
 }
-
-const (
-	// SnapshotIsProtected string indicates that the snapshot is currently protected.
-	SnapshotIsProtected = "yes"
-)
 
 // CephFSCloneError indicates that fetching the clone state returned an error.
 var CephFSCloneError = cephFSCloneState{}
@@ -73,43 +67,20 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 
 		return err
 	}
-	var (
-		// if protectErr is not nil we will delete the snapshot as the protect fails
-		protectErr error
-		// if cloneErr is not nil we will unprotect the snapshot and delete the snapshot
-		cloneErr error
-	)
-	defer func() {
-		if protectErr != nil {
-			err = snapClient.DeleteSnapshot(ctx)
-			if err != nil {
-				log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
-			}
-		}
 
+	// if cloneErr is not nil we will delete the snapshot
+	var cloneErr error
+
+	defer func() {
 		if cloneErr != nil {
 			if err = s.PurgeVolume(ctx, true); err != nil {
 				log.ErrorLog(ctx, "failed to delete volume %s: %v", s.VolID, err)
-			}
-			if err = snapClient.UnprotectSnapshot(ctx); err != nil {
-				// In case the snap is already unprotected we get ErrSnapProtectionExist error code
-				// in that case we are safe and we could discard this error and we are good to go
-				// ahead with deletion
-				if !errors.Is(err, cerrors.ErrSnapProtectionExist) {
-					log.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
-				}
 			}
 			if err = snapClient.DeleteSnapshot(ctx); err != nil {
 				log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 			}
 		}
 	}()
-	protectErr = snapClient.ProtectSnapshot(ctx)
-	if protectErr != nil {
-		log.ErrorLog(ctx, "failed to protect snapshot %s %v", snapshotID, protectErr)
-
-		return protectErr
-	}
 	cloneErr = snapClient.CloneSnapshot(ctx, s.SubVolume)
 	if cloneErr != nil {
 		log.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", parentvolOpt.VolID, snapshotID, s.VolID, cloneErr)
@@ -139,16 +110,6 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 	}
 
 	// As we completed clone, remove the intermediate snap
-	if err = snapClient.UnprotectSnapshot(ctx); err != nil {
-		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
-		// in that case we are safe and we could discard this error and we are good to go
-		// ahead with deletion
-		if !errors.Is(err, cerrors.ErrSnapProtectionExist) {
-			log.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
-
-			return err
-		}
-	}
 	if err = snapClient.DeleteSnapshot(ctx); err != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 
@@ -166,24 +127,8 @@ func (s *subVolumeClient) CleanupSnapshotFromSubvolume(
 	// identified during PVC-PVC cloning.
 	snapShotID := s.VolID
 	snapClient := NewSnapshot(s.conn, snapShotID, s.clusterID, s.clusterName, s.enableMetadata, parentVol)
-	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
-	if err != nil {
-		if errors.Is(err, cerrors.ErrSnapNotFound) {
-			return nil
-		}
 
-		return err
-	}
-
-	if snapInfo.Protected == SnapshotIsProtected {
-		err = snapClient.UnprotectSnapshot(ctx)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapShotID, err)
-
-			return err
-		}
-	}
-	err = snapClient.DeleteSnapshot(ctx)
+	err := snapClient.DeleteSnapshot(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapShotID, err)
 
