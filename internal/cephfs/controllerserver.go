@@ -750,7 +750,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
 //
-//nolint:gocognit,gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
+//nolint:gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest,
@@ -830,29 +830,15 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 	defer cs.VolumeLocks.Release(sourceVolID)
 	snapName := req.GetName()
-	sid, snapInfo, err := store.CheckSnapExists(ctx, parentVolOptions, cephfsSnap, cs.ClusterName, cs.SetMetadata, cr)
+	sid, _, err := store.CheckSnapExists(ctx, parentVolOptions, cephfsSnap, cs.ClusterName, cs.SetMetadata, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// check are we able to retrieve the size of parent
-	// ceph fs subvolume info command got added in 14.2.10 and 15.+
-	// as we are not able to retrieve the parent size we are rejecting the
-	// request to create snapshot.
-	// TODO: For this purpose we could make use of cached clusterAdditionalInfo
-	// too.
 	volClient := core.NewSubVolume(parentVolOptions.GetConnection(), &parentVolOptions.SubVolume,
 		parentVolOptions.ClusterID, cs.ClusterName, cs.SetMetadata)
 	info, err := volClient.GetSubVolumeInfo(ctx)
 	if err != nil {
-		// Check error code value against ErrInvalidCommand to understand the cluster
-		// support it or not, It's safe to evaluate as the filtering
-		// is already done from GetSubVolumeInfo() and send out the error here.
-		if errors.Is(err, cerrors.ErrInvalidCommand) {
-			return nil, status.Error(
-				codes.FailedPrecondition,
-				"subvolume info command not supported in current ceph cluster")
-		}
 		if sid != nil {
 			errDefer := store.UndoSnapReservation(ctx, parentVolOptions, *sid, snapName, cr)
 			if errDefer != nil {
@@ -866,22 +852,11 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	metadata := k8s.GetSnapshotMetadata(req.GetParameters())
 	if sid != nil {
-		// check snapshot is protected
-		protected := true
-		snapClient := core.NewSnapshot(parentVolOptions.GetConnection(), sid.FsSnapshotName,
-			parentVolOptions.ClusterID, cs.ClusterName, cs.SetMetadata, &parentVolOptions.SubVolume)
-		if !(snapInfo.Protected == core.SnapshotIsProtected) {
-			err = snapClient.ProtectSnapshot(ctx)
-			if err != nil {
-				protected = false
-				log.WarningLog(ctx, "failed to protect snapshot of snapshot: %s (%s)",
-					sid.FsSnapshotName, err)
-			}
-		}
-
 		// Update snapshot-name/snapshot-namespace/snapshotcontent-name details on
 		// subvolume snapshot as metadata in case snapshot already exist
 		if len(metadata) != 0 {
+			snapClient := core.NewSnapshot(parentVolOptions.GetConnection(), sid.FsSnapshotName,
+				parentVolOptions.ClusterID, cs.ClusterName, cs.SetMetadata, &parentVolOptions.SubVolume)
 			err = snapClient.SetAllSnapshotMetadata(metadata)
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -894,7 +869,7 @@ func (cs *ControllerServer) CreateSnapshot(
 				SnapshotId:     sid.SnapshotID,
 				SourceVolumeId: req.GetSourceVolumeId(),
 				CreationTime:   sid.CreationTime,
-				ReadyToUse:     protected,
+				ReadyToUse:     true,
 			},
 		}, nil
 	}
@@ -968,10 +943,6 @@ func (cs *ControllerServer) doSnapshot(
 		return snap, fmt.Errorf("failed to get snapshot info for snapshot:%s", snapID)
 	}
 	snap.CreationTime = timestamppb.New(snap.CreatedAt)
-	err = snapClient.ProtectSnapshot(ctx)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to protect snapshot %s %v", snapID, err)
-	}
 
 	// Set snapshot-name/snapshot-namespace/snapshotcontent-name details
 	// on subvolume snapshot as metadata on create
@@ -1006,8 +977,6 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
 // snapshot metadata from store.
-//
-//nolint:gocyclo,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) DeleteSnapshot(
 	ctx context.Context,
 	req *csi.DeleteSnapshotRequest,
@@ -1100,14 +1069,6 @@ func (cs *ControllerServer) DeleteSnapshot(
 	if snapInfo.HasPendingClones == "yes" {
 		return nil, status.Errorf(codes.FailedPrecondition, "snapshot %s has pending clones", snapshotID)
 	}
-	snapClient := core.NewSnapshot(volOpt.GetConnection(), sid.FsSnapshotName,
-		volOpt.ClusterID, cs.ClusterName, cs.SetMetadata, &volOpt.SubVolume)
-	if snapInfo.Protected == core.SnapshotIsProtected {
-		err = snapClient.UnprotectSnapshot(ctx)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
 
 	needsDelete, err := store.UnrefSelfInSnapshotBackedVolumes(ctx, volOpt, sid.SnapshotID)
 	if err != nil {
@@ -1119,6 +1080,8 @@ func (cs *ControllerServer) DeleteSnapshot(
 	}
 
 	if needsDelete {
+		snapClient := core.NewSnapshot(volOpt.GetConnection(), sid.FsSnapshotName,
+			volOpt.ClusterID, cs.ClusterName, cs.SetMetadata, &volOpt.SubVolume)
 		err = deleteSnapshotAndUndoReservation(
 			ctx,
 			snapClient,
