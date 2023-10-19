@@ -29,6 +29,7 @@ import (
 // DefaultControllerServer points to default driver.
 type DefaultControllerServer struct {
 	Driver *CSIDriver
+	csi.UnimplementedControllerServer
 }
 
 // ControllerPublishVolume publish volume on node.
