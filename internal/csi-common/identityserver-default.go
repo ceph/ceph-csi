@@ -28,8 +28,8 @@ import (
 
 // DefaultIdentityServer stores driver object.
 type DefaultIdentityServer struct {
-	Driver *CSIDriver
 	csi.UnimplementedControllerServer
+	Driver *CSIDriver
 }
 
 // GetPluginInfo returns plugin information.
