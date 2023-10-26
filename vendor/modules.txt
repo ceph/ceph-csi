@@ -17,7 +17,7 @@ github.com/antlr/antlr4/runtime/Go/antlr/v4
 # github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 ## explicit
 github.com/asaskevich/govalidator
-# github.com/aws/aws-sdk-go v1.46.3
+# github.com/aws/aws-sdk-go v1.46.4
 ## explicit; go 1.11
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/auth/bearer
@@ -456,7 +456,7 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.28.1
+# github.com/onsi/gomega v1.29.0
 ## explicit; go 1.18
 github.com/onsi/gomega
 github.com/onsi/gomega/format
