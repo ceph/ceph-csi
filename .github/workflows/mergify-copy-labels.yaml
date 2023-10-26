@@ -11,8 +11,13 @@ jobs:
   mergify-merge-queue-labels-copier:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
+        with:
+          egress-policy: audit
+
       - name: Copying labels
-        uses: Mergifyio/gha-mergify-merge-queue-labels-copier@main
+        uses: Mergifyio/gha-mergify-merge-queue-labels-copier@f5f13edf0500d529e0514aeef3a359d336e946d6 # main
         with:
           additional-labels: 'ok-to-test'
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}

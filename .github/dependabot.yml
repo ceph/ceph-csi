@@ -99,3 +99,23 @@ updates:
       - ci/skip/e2e
     commit-message:
       prefix: "rebase"
+
+  - package-ecosystem: docker
+    directory: /actions/retest
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /deploy/cephcsi/image
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /vendor/github.com/gemalto/flume
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directory: /vendor/github.com/gemalto/kmip-go
+    schedule:
+      interval: daily

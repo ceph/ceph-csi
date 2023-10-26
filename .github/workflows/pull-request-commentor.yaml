@@ -37,11 +37,16 @@ jobs:
       github.event.pull_request.merged != true)
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
+        with:
+          egress-policy: audit
+
       - name: >
           Add comment to trigger external storage tests for Kubernetes
           ${{ matrix.k8s }}
         if: ${{ github.base_ref == matrix.branch }}
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@23ff15729ef2fc348714a3bb66d2f655ca9066f2 # v3.1.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -52,7 +57,7 @@ jobs:
           Add comment to trigger helm E2E tests for Kubernetes
           ${{ matrix.k8s }}
         if: ${{ github.base_ref == matrix.branch }}
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@23ff15729ef2fc348714a3bb66d2f655ca9066f2 # v3.1.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -60,7 +65,7 @@ jobs:
             /test ci/centos/mini-e2e-helm/k8s-${{ matrix.k8s }}
 
       - name: Add comment to trigger E2E tests for Kubernetes ${{ matrix.k8s }}
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@23ff15729ef2fc348714a3bb66d2f655ca9066f2 # v3.1.0
         if: ${{ github.base_ref == matrix.branch }}
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
@@ -76,8 +81,13 @@ jobs:
       github.event.pull_request.merged != true)
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
+        with:
+          egress-policy: audit
+
       - name: Add comment to trigger cephfs upgrade tests
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@23ff15729ef2fc348714a3bb66d2f655ca9066f2 # v3.1.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -85,7 +95,7 @@ jobs:
             /test ci/centos/upgrade-tests-cephfs
 
       - name: Add comment to trigger rbd upgrade tests
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@23ff15729ef2fc348714a3bb66d2f655ca9066f2 # v3.1.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -105,8 +115,13 @@ jobs:
       github.event.pull_request.merged != true)
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1b05615854632b887b69ae1be8cbefe72d3ae423 # v2.6.0
+        with:
+          egress-policy: audit
+
       - name: remove ok-to-test-label after commenting
-        uses: actions/github-script@v6
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6.4.1
         with:
           github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           script: |
