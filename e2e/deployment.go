@@ -231,15 +231,19 @@ func (yr *yamlResource) Do(action kubectlAction) error {
 // replaceNamespaceInTemplate() on it. There are several options for adjusting
 // templates, each has their own comment.
 type yamlResourceNamespaced struct {
-	filename  string
-	namespace string
+	filename            string
+	namespace           string
+	domainLabel         string
+	crushLocationLabels string
 
 	// set the number of replicas in a Deployment to 1.
 	oneReplica bool
 
 	// enable topology support (for RBD)
 	enableTopology bool
-	domainLabel    string
+
+	// enable read affinity support (for RBD)
+	enableReadAffinity bool
 }
 
 func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
@@ -258,6 +262,14 @@ func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
 
 	if yrn.domainLabel != "" {
 		data = addTopologyDomainsToDSYaml(data, yrn.domainLabel)
+	}
+
+	if yrn.enableReadAffinity {
+		data = enableReadAffinityInTemplate(data)
+	}
+
+	if yrn.crushLocationLabels != "" {
+		data = addCrsuhLocationLabels(data, yrn.crushLocationLabels)
 	}
 
 	err = retryKubectlInput(yrn.namespace, action, data, deployTimeout)

@@ -151,6 +151,11 @@ for more information.
 kubectl create -f ../../ceph-conf.yaml
 ```
 
+**Deploy prerequisites for CSI Snapshot:**
+
+If you intend to use the snapshot functionality in Kubernetes cluster,
+please refer to [snap-clone.md](./snap-clone.md#prerequisite)
+
 **Deploy CSI sidecar containers:**
 
 ```bash

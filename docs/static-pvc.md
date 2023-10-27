@@ -257,6 +257,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
+  storageClassName: ""
   volumeMode: Filesystem
   # volumeName should be same as PV name
   volumeName: cephfs-static-pv

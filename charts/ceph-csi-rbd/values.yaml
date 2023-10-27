@@ -115,7 +115,7 @@ nodeplugin:
   registrar:
     image:
       repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-      tag: v2.8.0
+      tag: v2.9.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -217,7 +217,7 @@ provisioner:
   provisioner:
     image:
       repository: registry.k8s.io/sig-storage/csi-provisioner
-      tag: v3.5.0
+      tag: v3.6.0
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -232,7 +232,7 @@ provisioner:
     enabled: true
     image:
       repository: registry.k8s.io/sig-storage/csi-attacher
-      tag: v4.3.0
+      tag: v4.4.0
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -244,7 +244,7 @@ provisioner:
     enabled: true
     image:
       repository: gcr.io/k8s-staging-sig-storage/csi-resizer
-      tag: canary
+      tag: v1.9.0
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -254,7 +254,7 @@ provisioner:
   snapshotter:
     image:
       repository: registry.k8s.io/sig-storage/csi-snapshotter
-      tag: v6.2.2
+      tag: v6.3.0
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -278,6 +278,17 @@ topology:
   domainLabels:
     - failure-domain/region
     - failure-domain/zone
+
+# readAffinity:
+# Enable read affinity for RBD volumes. Recommended to
+# set to true if running kernel 5.8 or newer.
+# enabled: false
+# Define which node labels to use as CRUSH location.
+# This should correspond to the values set in the CRUSH map.
+# NOTE: the value here serves as an example
+# crushLocationLabels:
+#   - topology.kubernetes.io/region
+#   - topology.kubernetes.io/zone
 
 storageClass:
   # Specifies whether the storageclass should be created

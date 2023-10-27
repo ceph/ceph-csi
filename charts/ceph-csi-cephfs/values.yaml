@@ -92,7 +92,7 @@ nodeplugin:
   registrar:
     image:
       repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-      tag: v2.8.0
+      tag: v2.9.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -184,7 +184,7 @@ provisioner:
   provisioner:
     image:
       repository: registry.k8s.io/sig-storage/csi-provisioner
-      tag: v3.5.0
+      tag: v3.6.0
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -199,7 +199,7 @@ provisioner:
     enabled: true
     image:
       repository: gcr.io/k8s-staging-sig-storage/csi-resizer
-      tag: canary
+      tag: v1.9.0
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -209,7 +209,7 @@ provisioner:
   snapshotter:
     image:
       repository: registry.k8s.io/sig-storage/csi-snapshotter
-      tag: v6.2.2
+      tag: v6.3.0
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check

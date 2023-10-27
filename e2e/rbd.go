@@ -65,6 +65,12 @@ var (
 	rbdTopologyPool     = "newrbdpool"
 	rbdTopologyDataPool = "replicapool" // NOTE: should be different than rbdTopologyPool for test to be effective
 
+	// CRUSH location node labels & values.
+	crushLocationRegionLabel = "topology.kubernetes.io/region"
+	crushLocationRegionValue = "east"
+	crushLocationZoneLabel   = "topology.kubernetes.io/zone"
+	crushLocationZoneValue   = "east-zone1"
+
 	// yaml files required for deployment.
 	pvcPath                = rbdExamplePath + "pvc.yaml"
 	appPath                = rbdExamplePath + "pod.yaml"
@@ -161,9 +167,11 @@ func createORDeleteRbdResources(action kubectlAction) {
 		},
 		// the node-plugin itself
 		&yamlResourceNamespaced{
-			filename:    rbdDirPath + rbdNodePlugin,
-			namespace:   cephCSINamespace,
-			domainLabel: nodeRegionLabel + "," + nodeZoneLabel,
+			filename:            rbdDirPath + rbdNodePlugin,
+			namespace:           cephCSINamespace,
+			domainLabel:         nodeRegionLabel + "," + nodeZoneLabel,
+			enableReadAffinity:  true,
+			crushLocationLabels: crushLocationRegionLabel + "," + crushLocationZoneLabel,
 		},
 	}
 
@@ -272,6 +280,14 @@ var _ = Describe("RBD", func() {
 				framework.Failf("failed to create node label: %v", err)
 			}
 			err = createNodeLabel(f, nodeZoneLabel, zoneValue)
+			if err != nil {
+				framework.Failf("failed to create node label: %v", err)
+			}
+			err = createNodeLabel(f, crushLocationRegionLabel, crushLocationRegionValue)
+			if err != nil {
+				framework.Failf("failed to create node label: %v", err)
+			}
+			err = createNodeLabel(f, crushLocationZoneLabel, crushLocationZoneValue)
 			if err != nil {
 				framework.Failf("failed to create node label: %v", err)
 			}
@@ -409,6 +425,15 @@ var _ = Describe("RBD", func() {
 		if err != nil {
 			framework.Failf("failed to delete node label: %v", err)
 		}
+		// Remove the CRUSH Location labels
+		err = deleteNodeLabel(c, crushLocationRegionLabel)
+		if err != nil {
+			framework.Failf("failed to delete node label: %v", err)
+		}
+		err = deleteNodeLabel(c, crushLocationZoneLabel)
+		if err != nil {
+			framework.Failf("failed to delete node label: %v", err)
+		}
 	})
 
 	Context("Test RBD CSI", func() {
@@ -443,6 +468,14 @@ var _ = Describe("RBD", func() {
 					}
 				})
 			}
+
+			By("verify readAffinity support", func() {
+				err := verifyReadAffinity(f, pvcPath, appPath,
+					rbdDaemonsetName, rbdContainerName, cephCSINamespace)
+				if err != nil {
+					framework.Failf("failed to verify readAffinity: %v", err)
+				}
+			})
 
 			By("verify mountOptions support", func() {
 				err := verifySeLinuxMountOption(f, pvcPath, appPath,

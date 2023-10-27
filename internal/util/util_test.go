@@ -376,6 +376,16 @@ func TestRoundOffCephFSVolSize(t *testing.T) {
 			4194304, // 4 MiB
 		},
 		{
+			"101MB conversion",
+			101000000,
+			104857600, // 100MiB
+		},
+		{
+			"500MB conversion",
+			500000000,
+			503316480, // 480MiB
+		},
+		{
 			"1023MiB conversion",
 			1072693248,
 			1073741824, // 1024 MiB

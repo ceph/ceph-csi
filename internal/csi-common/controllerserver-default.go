@@ -28,39 +28,8 @@ import (
 
 // DefaultControllerServer points to default driver.
 type DefaultControllerServer struct {
+	csi.UnimplementedControllerServer
 	Driver *CSIDriver
-}
-
-// ControllerPublishVolume publish volume on node.
-func (cs *DefaultControllerServer) ControllerPublishVolume(
-	ctx context.Context,
-	req *csi.ControllerPublishVolumeRequest,
-) (*csi.ControllerPublishVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// ControllerUnpublishVolume unpublish on node.
-func (cs *DefaultControllerServer) ControllerUnpublishVolume(
-	ctx context.Context,
-	req *csi.ControllerUnpublishVolumeRequest,
-) (*csi.ControllerUnpublishVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// ListVolumes lists volumes.
-func (cs *DefaultControllerServer) ListVolumes(
-	ctx context.Context,
-	req *csi.ListVolumesRequest,
-) (*csi.ListVolumesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// GetCapacity get volume capacity.
-func (cs *DefaultControllerServer) GetCapacity(
-	ctx context.Context,
-	req *csi.GetCapacityRequest,
-) (*csi.GetCapacityResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ControllerGetCapabilities implements the default GRPC callout.
@@ -77,20 +46,4 @@ func (cs *DefaultControllerServer) ControllerGetCapabilities(
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.capabilities,
 	}, nil
-}
-
-// ListSnapshots lists snapshots.
-func (cs *DefaultControllerServer) ListSnapshots(
-	ctx context.Context,
-	req *csi.ListSnapshotsRequest,
-) (*csi.ListSnapshotsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// ControllerGetVolume fetch volume information.
-func (cs *DefaultControllerServer) ControllerGetVolume(
-	ctx context.Context,
-	req *csi.ControllerGetVolumeRequest,
-) (*csi.ControllerGetVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
 }

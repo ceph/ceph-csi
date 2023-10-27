@@ -827,6 +827,15 @@ func enableTopologyInTemplate(data string) string {
 	return strings.ReplaceAll(data, "--feature-gates=Topology=false", "--feature-gates=Topology=true")
 }
 
+func enableReadAffinityInTemplate(template string) string {
+	return strings.ReplaceAll(template, "# - \"--enable-read-affinity=true\"", "- \"--enable-read-affinity=true\"")
+}
+
+func addCrsuhLocationLabels(template, labels string) string {
+	return strings.ReplaceAll(template, "# - \"--crush-location-labels=topology.io/zone,topology.io/rack\"",
+		"- \"--crush-location-labels="+labels+"\"")
+}
+
 func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.Framework) (string, error) {
 	filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 	// write data in PVC

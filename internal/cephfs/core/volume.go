@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
@@ -32,12 +33,17 @@ import (
 	"github.com/ceph/go-ceph/rados"
 )
 
-// clusterAdditionalInfo contains information regarding if resize is
-// supported in the particular cluster and subvolumegroup is
-// created or not.
-// Subvolumegroup creation and volume resize decisions are
-// taken through this additional cluster information.
-var clusterAdditionalInfo = make(map[string]*localClusterState)
+var (
+	// clusterAdditionalInfo contains information regarding if resize is
+	// supported in the particular cluster and subvolumegroup is
+	// created or not.
+	// Subvolumegroup creation and volume resize decisions are
+	// taken through this additional cluster information.
+	clusterAdditionalInfo = make(map[string]*localClusterState)
+	// clusterAdditionalInfoMutex is used to protect against
+	// concurrent writes.
+	clusterAdditionalInfoMutex = sync.Mutex{}
+)
 
 // Subvolume holds subvolume information. This includes only the needed members
 // from fsAdmin.SubVolumeInfo.
@@ -209,14 +215,18 @@ type localClusterState struct {
 	// set true once a subvolumegroup is created
 	// for corresponding filesystem in a cluster.
 	subVolumeGroupsCreated map[string]bool
+	// subVolumeGroupsRWMutex is used to protect subVolumeGroupsCreated map
+	//  against concurrent writes while allowing multiple readers.
+	subVolumeGroupsRWMutex sync.RWMutex
 }
 
 func newLocalClusterState(clusterID string) {
 	// verify if corresponding clusterID key is present in the map,
 	// and if not, initialize with default values(false).
+	clusterAdditionalInfoMutex.Lock()
+	defer clusterAdditionalInfoMutex.Unlock()
 	if _, keyPresent := clusterAdditionalInfo[clusterID]; !keyPresent {
 		clusterAdditionalInfo[clusterID] = &localClusterState{}
-		clusterAdditionalInfo[clusterID].subVolumeGroupsCreated = make(map[string]bool)
 	}
 }
 
@@ -232,7 +242,7 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 	}
 
 	// create subvolumegroup if not already created for the cluster.
-	if !clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] {
+	if !s.isSubVolumeGroupCreated() {
 		opts := fsAdmin.SubVolumeGroupOptions{}
 		err = ca.CreateSubVolumeGroup(s.FsName, s.SubvolumeGroup, &opts)
 		if err != nil {
@@ -246,7 +256,7 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 			return err
 		}
 		log.DebugLog(ctx, "cephfs: created subvolume group %s", s.SubvolumeGroup)
-		clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] = true
+		s.updateSubVolumeGroupCreated(true)
 	}
 
 	opts := fsAdmin.SubVolumeOptions{
@@ -264,7 +274,7 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 		if errors.Is(err, rados.ErrNotFound) {
 			// Reset the subVolumeGroupsCreated so that we can try again to create the
 			// subvolumegroup in next request if the error is Not Found.
-			clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] = false
+			s.updateSubVolumeGroupCreated(false)
 		}
 
 		return err

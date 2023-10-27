@@ -255,8 +255,6 @@ up)
         install_podman_wrapper
     fi
 
-    disable_storage_addons
-
     #  get kubernetes version we are operating on and accordingly enable feature gates
     KUBE_MAJOR=$(kube_version 1)
     KUBE_MINOR=$(kube_version 2)
@@ -283,6 +281,7 @@ up)
     if [[ "${VM_DRIVER}" = "podman" ]]; then
         ${minikube} ssh "sudo mount -oremount,rw /sys"
     fi
+    disable_storage_addons
     ${minikube} kubectl -- cluster-info
     ;;
 down)

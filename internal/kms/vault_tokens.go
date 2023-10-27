@@ -460,7 +460,8 @@ func (vtc *vaultTenantConnection) getK8sClient() (*kubernetes.Clientset, error) 
 // FetchDEK returns passphrase from Vault. The passphrase is stored in a
 // data.data.passphrase structure.
 func (vtc *vaultTenantConnection) FetchDEK(key string) (string, error) {
-	s, err := vtc.secrets.GetSecret(key, vtc.keyContext)
+	// Since the second return variable loss.Version is not used, there it is ignored.
+	s, _, err := vtc.secrets.GetSecret(key, vtc.keyContext)
 	if err != nil {
 		return "", err
 	}
@@ -485,7 +486,8 @@ func (vtc *vaultTenantConnection) StoreDEK(key, value string) error {
 		},
 	}
 
-	err := vtc.secrets.PutSecret(key, data, vtc.keyContext)
+	// Since the first return variable loss.Version is not used, there it is ignored.
+	_, err := vtc.secrets.PutSecret(key, data, vtc.keyContext)
 	if err != nil {
 		return fmt.Errorf("saving passphrase at %s request to vault failed: %w", key, err)
 	}

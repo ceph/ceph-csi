@@ -1411,6 +1411,7 @@ func (ri *rbdImage) hasSnapshotFeature() bool {
 }
 
 func (ri *rbdImage) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
+	pOpts.RbdImageName = ri.RbdImageName
 	log.DebugLog(ctx, "rbd: snap create %s using mon %s", pOpts, pOpts.Monitors)
 	image, err := ri.open()
 	if err != nil {
@@ -1556,6 +1557,19 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 	log.DebugLog(ctx, logMsg)
 
 	return nil
+}
+
+// GetImageCreationTime returns the creation time of the image. if the image
+// creation time is not set, it queries the image info and returns the creation time.
+func (ri *rbdImage) GetImageCreationTime() (*timestamppb.Timestamp, error) {
+	if ri.CreatedAt != nil {
+		return ri.CreatedAt, nil
+	}
+	if err := ri.getImageInfo(); err != nil {
+		return nil, err
+	}
+
+	return ri.CreatedAt, nil
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns

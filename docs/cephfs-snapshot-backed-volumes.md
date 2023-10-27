@@ -18,16 +18,17 @@ information.
 ### Provisioning a snapshot-backed volume from a volume snapshot
 
 For provisioning new snapshot-backed volumes, following configuration must be
-set for storage class(es) and their PVCs respectively:
+set for PVCs:
 
-* StorageClass:
-   * Specify `backingSnapshot: "true"` parameter.
 * PersistentVolumeClaim:
-   * Set `storageClassName` to point to your storage class with backing
-    snapshots enabled.
+   * Set `storageClassName` to point to your existing cephFS storage class.
    * Define `spec.dataSource` for your desired source volume snapshot.
    * Set `spec.accessModes` to `ReadOnlyMany`. This is the only access mode that
     is supported by this feature.
+
+Note:- We can also disable shallowVolume by setting `backingSnapshot: "false"
+in cephFS storageclass. If the value is set in the storageclass when requested
+for `ReadOnlyMany` PVC a clone will get created in ceph cluster.
 
 ### Mounting snapshots from pre-provisioned volumes
 

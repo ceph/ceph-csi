@@ -922,7 +922,11 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 
 	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
 	}
@@ -1078,7 +1082,11 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	// Fetch source volume information
 	rbdVol, err := GenVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrImageNotFound):
@@ -1334,8 +1342,6 @@ func (cs *ControllerServer) doSnapshotClone(
 
 	err = cloneRbd.createSnapshot(ctx, rbdSnap)
 	if err != nil {
-		// update rbd image name for logging
-		rbdSnap.RbdImageName = cloneRbd.RbdImageName
 		log.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, err)
 
 		return cloneRbd, err

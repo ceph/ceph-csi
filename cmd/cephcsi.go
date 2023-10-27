@@ -232,7 +232,7 @@ func main() {
 	switch conf.Vtype {
 	case rbdType:
 		validateCloneDepthFlag(&conf)
-		validateMaxSnaphostFlag(&conf)
+		validateMaxSnapshotFlag(&conf)
 		driver := rbddriver.NewDriver()
 		driver.Run(&conf)
 
@@ -304,7 +304,7 @@ func validateCloneDepthFlag(conf *util.Config) {
 	}
 }
 
-func validateMaxSnaphostFlag(conf *util.Config) {
+func validateMaxSnapshotFlag(conf *util.Config) {
 	// maximum number of snapshots on an image are 510 [1] and 16 images in
 	// a parent/child chain [2],keeping snapshot limit to 500 to avoid issues.
 	// [1] https://github.com/torvalds/linux/blob/master/drivers/block/rbd.c#L98

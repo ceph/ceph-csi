@@ -24,6 +24,10 @@ NODE_LABEL_REGION="test.failure-domain/region"
 NODE_LABEL_ZONE="test.failure-domain/zone"
 REGION_VALUE="testregion"
 ZONE_VALUE="testzone"
+CRUSH_LOCATION_REGION_LABEL="topology.kubernetes.io/region"
+CRUSH_LOCATION_ZONE_LABEL="topology.kubernetes.io/zone"
+CRUSH_LOCATION_REGION_VALUE="east"
+CRUSH_LOCATION_ZONE_VALUE="east-zone1"
 
 example() {
     echo "examples:" >&2
@@ -154,6 +158,8 @@ install_cephcsi_helm_charts() {
     for node in $(kubectl_retry get node -o jsonpath='{.items[*].metadata.name}'); do
         kubectl_retry label node/"${node}" ${NODE_LABEL_REGION}=${REGION_VALUE}
         kubectl_retry label node/"${node}" ${NODE_LABEL_ZONE}=${ZONE_VALUE}
+        kubectl_retry label node/"${node}" ${CRUSH_LOCATION_REGION_LABEL}=${CRUSH_LOCATION_REGION_VALUE}
+        kubectl_retry label node/"${node}" ${CRUSH_LOCATION_ZONE_LABEL}=${CRUSH_LOCATION_ZONE_VALUE}
     done
 
     # deploy storageclass if DEPLOY_SC flag is set
@@ -179,7 +185,7 @@ install_cephcsi_helm_charts() {
     kubectl_retry delete cm ceph-config --namespace "${NAMESPACE}"
 
     # shellcheck disable=SC2086
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-rbd", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2
+    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-rbd", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2 --set readAffinity.enabled=true --set readAffinity.crushLocationLabels="{${CRUSH_LOCATION_REGION_LABEL},${CRUSH_LOCATION_ZONE_LABEL}}"
 
     check_deployment_status app=ceph-csi-rbd "${NAMESPACE}"
     check_daemonset_status app=ceph-csi-rbd "${NAMESPACE}"
@@ -191,6 +197,8 @@ cleanup_cephcsi_helm_charts() {
     for node in $(kubectl_retry get node --no-headers | cut -f 1 -d ' '); do
         kubectl_retry label node/"$node" test.failure-domain/region-
         kubectl_retry label node/"$node" test.failure-domain/zone-
+        kubectl_retry label node/"$node" "${CRUSH_LOCATION_REGION_LABEL}"-
+        kubectl_retry label node/"$node" "${CRUSH_LOCATION_ZONE_LABEL}"-
     done
     # TODO/LATER we could remove the CSI labels that would have been set as well
     NAMESPACE=$1
