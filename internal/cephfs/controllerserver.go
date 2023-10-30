@@ -830,7 +830,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 	defer cs.VolumeLocks.Release(sourceVolID)
 	snapName := req.GetName()
-	sid, _, err := store.CheckSnapExists(ctx, parentVolOptions, cephfsSnap, cs.ClusterName, cs.SetMetadata, cr)
+	sid, err := store.CheckSnapExists(ctx, parentVolOptions, cephfsSnap, cs.ClusterName, cs.SetMetadata, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
