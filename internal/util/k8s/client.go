@@ -25,8 +25,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+var kubeclient *kubernetes.Clientset
+
 // NewK8sClient create kubernetes client.
 func NewK8sClient() (*kubernetes.Clientset, error) {
+	if kubeclient != nil {
+		return kubeclient, nil
+	}
+
 	var cfg *rest.Config
 	var err error
 	cPath := os.Getenv("KUBERNETES_CONFIG_PATH")
@@ -45,6 +51,8 @@ func NewK8sClient() (*kubernetes.Clientset, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
+
+	kubeclient = client
 
 	return client, nil
 }
