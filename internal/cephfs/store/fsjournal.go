@@ -398,11 +398,11 @@ func CheckSnapExists(
 	clusterName string,
 	setMetadata bool,
 	cr *util.Credentials,
-) (*SnapshotIdentifier, *core.SnapshotInfo, error) {
+) (*SnapshotIdentifier, error) {
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer j.Destroy()
 
@@ -411,10 +411,10 @@ func CheckSnapExists(
 	snapData, err := j.CheckReservation(
 		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, volOptions.VolID, kmsID, encryptionType)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if snapData == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 	sid := &SnapshotIdentifier{}
 	snapUUID := snapData.ImageUUID
@@ -428,10 +428,10 @@ func CheckSnapExists(
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, snapID, snap.RequestName)
 
-			return nil, nil, err
+			return nil, err
 		}
 
-		return nil, nil, err
+		return nil, err
 	}
 
 	defer func() {
@@ -455,10 +455,10 @@ func CheckSnapExists(
 	sid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
 		"", volOptions.ClusterID, snapUUID, fsutil.VolIDVersion)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	log.DebugLog(ctx, "Found existing snapshot (%s) with subvolume name (%s) for request (%s)",
 		snapData.ImageAttributes.RequestName, volOptions.VolID, sid.FsSnapshotName)
 
-	return sid, &snapInfo, nil
+	return sid, nil
 }
