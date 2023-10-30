@@ -17,37 +17,20 @@ limitations under the License.
 package util
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	keySeparator   rune   = '/'
 	labelSeparator string = ","
 )
-
-func k8sGetNodeLabels(nodeName string) (map[string]string, error) {
-	client, err := k8s.NewK8sClient()
-	if err != nil {
-		return nil, fmt.Errorf("can not get node %q information, failed "+
-			"to connect to Kubernetes: %w", nodeName, err)
-	}
-
-	node, err := client.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get node %q information: %w", nodeName, err)
-	}
-
-	return node.GetLabels(), nil
-}
 
 // GetTopologyFromDomainLabels returns the CSI topology map, determined from
 // the domain labels and their values from the CO system
@@ -82,7 +65,7 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 		labelCount++
 	}
 
-	nodeLabels, err := k8sGetNodeLabels(nodeName)
+	nodeLabels, err := k8s.GetNodeLabels(nodeName)
 	if err != nil {
 		return nil, err
 	}
