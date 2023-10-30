@@ -15,7 +15,7 @@ require (
 	github.com/gemalto/kmip-go v0.0.10
 	github.com/golang/protobuf v1.5.3
 	github.com/google/fscrypt v0.3.4
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/vault/api v1.10.0
