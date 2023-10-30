@@ -26,6 +26,7 @@ import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -68,14 +69,14 @@ func NewControllerServer(d *csicommon.CSIDriver) *rbd.ControllerServer {
 func NewNodeServer(
 	d *csicommon.CSIDriver,
 	t string,
-	topology map[string]string,
-	crushLocationMap map[string]string,
+	nodeLabels, topology, crushLocationMap map[string]string,
 ) (*rbd.NodeServer, error) {
 	ns := rbd.NodeServer{
-		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
-		VolumeLocks:       util.NewVolumeLocks(),
+		DefaultNodeServer:         csicommon.NewDefaultNodeServer(d, t, topology),
+		VolumeLocks:               util.NewVolumeLocks(),
+		NodeLabels:                nodeLabels,
+		CLIReadAffinityMapOptions: util.ConstructReadAffinityMapOption(crushLocationMap),
 	}
-	ns.SetReadAffinityMapOptions(crushLocationMap)
 
 	return &ns, nil
 }
@@ -87,8 +88,8 @@ func NewNodeServer(
 // setupCSIAddonsServer().
 func (r *Driver) Run(conf *util.Config) {
 	var (
-		err                        error
-		topology, crushLocationMap map[string]string
+		err                                    error
+		nodeLabels, topology, crushLocationMap map[string]string
 	)
 	// update clone soft and hard limit
 	rbd.SetGlobalInt("rbdHardMaxCloneDepth", conf.RbdHardMaxCloneDepth)
@@ -125,11 +126,15 @@ func (r *Driver) Run(conf *util.Config) {
 			})
 	}
 
-	if conf.EnableReadAffinity {
-		crushLocationMap, err = util.GetCrushLocationMap(conf.CrushLocationLabels, conf.NodeID)
+	if k8s.RunsOnKubernetes() {
+		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
+	}
+
+	if conf.EnableReadAffinity {
+		crushLocationMap = util.GetCrushLocationMap(conf.CrushLocationLabels, nodeLabels)
 	}
 
 	// Create GRPC servers
@@ -140,7 +145,7 @@ func (r *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology, crushLocationMap)
+		r.ns, err = NewNodeServer(r.cd, conf.Vtype, nodeLabels, topology, crushLocationMap)
 		if err != nil {
 			log.FatalLogMsg("failed to start node server, err %v\n", err)
 		}

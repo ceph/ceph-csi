@@ -27,6 +27,11 @@ serviceAccounts:
 #       - "<MONValue2>"
 #     rbd:
 #       netNamespaceFilePath: "{{ .kubeletDir }}/plugins/{{ .driverName }}/net"
+#     readAffinity:
+#       enabled: true
+#       crushLocationLabels:
+#         - topology.kubernetes.io/region
+#         - topology.kubernetes.io/zone
 csiConfig: []
 
 # Configuration details of clusterID,PoolID and FscID mapping
