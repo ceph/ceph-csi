@@ -365,3 +365,116 @@ func TestGetNFSNetNamespaceFilePath(t *testing.T) {
 		})
 	}
 }
+
+func TestGetReadAffinityOptions(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		clusterID string
+		want      struct {
+			enabled bool
+			labels  string
+		}
+	}{
+		{
+			name:      "ReadAffinity enabled set to true for cluster-1",
+			clusterID: "cluster-1",
+			want: struct {
+				enabled bool
+				labels  string
+			}{true, "topology.kubernetes.io/region,topology.kubernetes.io/zone,topology.io/rack"},
+		},
+		{
+			name:      "ReadAffinity enabled set to true for cluster-2",
+			clusterID: "cluster-2",
+			want: struct {
+				enabled bool
+				labels  string
+			}{true, "topology.kubernetes.io/region"},
+		},
+		{
+			name:      "ReadAffinity enabled set to false for cluster-3",
+			clusterID: "cluster-3",
+			want: struct {
+				enabled bool
+				labels  string
+			}{false, ""},
+		},
+		{
+			name:      "ReadAffinity option not set in cluster-4",
+			clusterID: "cluster-4",
+			want: struct {
+				enabled bool
+				labels  string
+			}{false, ""},
+		},
+	}
+
+	csiConfig := []ClusterInfo{
+		{
+			ClusterID: "cluster-1",
+			ReadAffinity: struct {
+				Enabled             bool     `json:"enabled"`
+				CrushLocationLabels []string `json:"crushLocationLabels"`
+			}{
+				Enabled: true,
+				CrushLocationLabels: []string{
+					"topology.kubernetes.io/region",
+					"topology.kubernetes.io/zone",
+					"topology.io/rack",
+				},
+			},
+		},
+		{
+			ClusterID: "cluster-2",
+			ReadAffinity: struct {
+				Enabled             bool     `json:"enabled"`
+				CrushLocationLabels []string `json:"crushLocationLabels"`
+			}{
+				Enabled: true,
+				CrushLocationLabels: []string{
+					"topology.kubernetes.io/region",
+				},
+			},
+		},
+		{
+			ClusterID: "cluster-3",
+			ReadAffinity: struct {
+				Enabled             bool     `json:"enabled"`
+				CrushLocationLabels []string `json:"crushLocationLabels"`
+			}{
+				Enabled: false,
+				CrushLocationLabels: []string{
+					"topology.io/rack",
+				},
+			},
+		},
+		{
+			ClusterID: "cluster-4",
+		},
+	}
+	csiConfigFileContent, err := json.Marshal(csiConfig)
+	if err != nil {
+		t.Errorf("failed to marshal csi config info %v", err)
+	}
+	tmpConfPath := t.TempDir() + "/ceph-csi.json"
+	err = os.WriteFile(tmpConfPath, csiConfigFileContent, 0o600)
+	if err != nil {
+		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
+	}
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			enabled, labels, err := GetCrushLocationLabels(tmpConfPath, tc.clusterID)
+			if err != nil {
+				t.Errorf("GetCrushLocationLabels() error = %v", err)
+
+				return
+			}
+			if enabled != tc.want.enabled || labels != tc.want.labels {
+				t.Errorf("GetCrushLocationLabels() = {%v %v} want %v", enabled, labels, tc.want)
+			}
+		})
+	}
+}

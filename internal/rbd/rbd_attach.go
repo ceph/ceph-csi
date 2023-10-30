@@ -295,7 +295,7 @@ func parseMapOptions(mapOptions string) (string, string, error) {
 
 // getMapOptions is a wrapper func, calls parse map/unmap funcs and feeds the
 // rbdVolume object.
-func getMapOptions(req *csi.NodeStageVolumeRequest, rv *rbdVolume) error {
+func (ns *NodeServer) getMapOptions(req *csi.NodeStageVolumeRequest, rv *rbdVolume) error {
 	krbdMapOptions, nbdMapOptions, err := parseMapOptions(req.GetVolumeContext()["mapOptions"])
 	if err != nil {
 		return err
@@ -311,6 +311,14 @@ func getMapOptions(req *csi.NodeStageVolumeRequest, rv *rbdVolume) error {
 		rv.MapOptions = nbdMapOptions
 		rv.UnmapOptions = nbdUnmapOptions
 	}
+
+	readAffinityMapOptions, err := util.GetReadAffinityMapOptions(
+		rv.ClusterID, ns.CLIReadAffinityMapOptions, ns.NodeLabels,
+	)
+	if err != nil {
+		return err
+	}
+	rv.appendReadAffinityMapOptions(readAffinityMapOptions)
 
 	return nil
 }

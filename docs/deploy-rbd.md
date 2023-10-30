@@ -47,7 +47,7 @@ make image-cephcsi
 | `--maxsnapshotsonimage`  | `450`                         | Maximum number of snapshots allowed on rbd image without flattening                                                                                                                                                                                                                  |
 | `--setmetadata`          | `false`                       | Set metadata on volume                                                                                                                                                                                                                                                               |
 | `--enable-read-affinity` | `false`                       | enable read affinity                                                                                                                                                                                                                                                                 |
-| `--crush-location-labels`| _empty_                       | Kubernetes node labels that determine the CRUSH location the node belongs to, separated by ','                                                                                                                                                                                       |
+| `--crush-location-labels`| _empty_                       | Kubernetes node labels that determine the CRUSH location the node belongs to, separated by ','.<br>`Note: These labels will be replaced if crush location labels are defined in the ceph-csi-config ConfigMap for the specific cluster.`                                                                                                                                                                                       |
 
 **Available volume parameters:**
 
@@ -221,6 +221,12 @@ krbd options during rbd map operation.
 If enabled, this option will be added to all RBD volumes mapped by Ceph CSI.
 Well known labels can be found
 [here](https://kubernetes.io/docs/reference/labels-annotations-taints/).
+
+Read affinity can be configured for individual clusters within the
+`ceph-csi-config` ConfigMap. This allows configuring the crush location labels
+for each ceph cluster separately. The crush location labels specified in the
+ConfigMap will supersede  those provided via command line argument
+`--crush-location-labels`.
 
 >Note: Label values will have all its dots `"."` normalized with dashes `"-"`
 in order for it to work with ceph CRUSH map.

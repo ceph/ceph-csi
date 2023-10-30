@@ -62,6 +62,11 @@ type ClusterInfo struct {
 		// symlink filepath for the network namespace where we need to execute commands.
 		NetNamespaceFilePath string `json:"netNamespaceFilePath"`
 	} `json:"nfs"`
+	// Read affinity map options
+	ReadAffinity struct {
+		Enabled             bool     `json:"enabled"`
+		CrushLocationLabels []string `json:"crushLocationLabels"`
+	} `json:"readAffinity"`
 }
 
 // Expected JSON structure in the passed in config file is,
@@ -202,4 +207,22 @@ func GetNFSNetNamespaceFilePath(pathToConfig, clusterID string) (string, error) 
 	}
 
 	return cluster.NFS.NetNamespaceFilePath, nil
+}
+
+// GetCrushLocationLabels returns the `readAffinity.enabled` and `readAffinity.crushLocationLabels`
+// values from the CSI config for the given `clusterID`. If `readAffinity.enabled` is set to true
+// it returns `true` and `crushLocationLabels`, else returns `false` and an empty string.
+func GetCrushLocationLabels(pathToConfig, clusterID string) (bool, string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return false, "", err
+	}
+
+	if !cluster.ReadAffinity.Enabled {
+		return false, "", nil
+	}
+
+	crushLocationLabels := strings.Join(cluster.ReadAffinity.CrushLocationLabels, ",")
+
+	return true, crushLocationLabels, nil
 }

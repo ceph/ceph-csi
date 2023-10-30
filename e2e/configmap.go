@@ -63,6 +63,16 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 		}{
 			RadosNamespace: radosNamespace,
 		},
+		ReadAffinity: struct {
+			Enabled             bool     `json:"enabled"`
+			CrushLocationLabels []string `json:"crushLocationLabels"`
+		}{
+			Enabled: true,
+			CrushLocationLabels: []string{
+				crushLocationRegionLabel,
+				crushLocationZoneLabel,
+			},
+		},
 	}}
 	if upgradeTesting {
 		subvolumegroup = "csi"

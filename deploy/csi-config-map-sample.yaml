@@ -32,6 +32,10 @@ kind: ConfigMap
 # path for the Ceph cluster identified by the <cluster-id>, This will be used
 # by the RBD CSI plugin to execute the rbd map/unmap in the
 # network namespace specified by the "rbd.netNamespaceFilePath".
+# The "readAffinity" fields are used to enable read affinity and pass the crush
+# location map for the Ceph cluster identified by the cluster <cluster-id>,
+# enabling this will add
+# "read_from_replica=localize,crush_location=<label:value>" to the map option.
 # If a CSI plugin is using more than one Ceph cluster, repeat the section for
 # each such cluster in use.
 # NOTE: Changes to the configmap is automatically updated in the running pods,
@@ -66,6 +70,15 @@ data:
         }
         "nfs": {
           "netNamespaceFilePath": "<kubeletRootPath>/plugins/nfs.csi.ceph.com/net",
+        },
+        "readAffinity": {
+          "enabled": "false",
+          "crushLocationLabels": [
+            "<Label1>",
+            "<Label2>"
+            ...
+            "<Label3>"
+          ]
         }
       }
     ]
