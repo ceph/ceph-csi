@@ -1,4 +1,20 @@
-# In-tree storage plugin to CSI Driver Migration
+# In-tree storage plugin to CSI Driver Migration  [DEPRECATED]
+
+:warning: **The functionality mentioned, regarding the migration of
+PVCs (Persistent Volume Claims) from the in-tree provisioner of Kubernetes to
+Ceph CSI Volumes, has been deprecated as of
+[Kubernetes v1.28](https://kubernetes.io/docs/concepts/storage/volumes/#rbd-csi-migration)
+This means that the below suggested method of migration of volumes
+provisioned by `kubernetes.io/rbd` provisioner to Ceph CSI provisioner
+approach is no longer recommended. To assist in converting volumes from the
+old provisioner to Ceph CSI Volumes, a utility is available. You can access
+this utility by visiting
+[this](https://github.com/ceph/persistent-volume-migrator). This utility has
+been developed to facilitate the migration process and ensure a smoother
+transition from in-tree and flex provisioner volumes to Ceph CSI provisioner
+Volumes. It's essential to follow the updated recommendations and utilize
+the provided utility for a successful migration due to the deprecation of
+the method described in this document.**
 
 This document covers the example usage of in-tree RBD storage plugin to CSI
 migration feature which can be enabled in a Kubernetes cluster. At present, this
