@@ -239,3 +239,9 @@ However, not all KMS are supported in order to be compatible with
 [fscrypt](https://github.com/google/fscrypt). In general KMS that
 either store secrets to use directly (Vault), or allow access to the
 plain password (Kubernetes Secrets) work.
+
+## CephFS PVC Provisioning
+
+Requires subvolumegroup to be created before provisioning the PVC.
+If the subvolumegroup provided in `ceph-csi-config` ConfigMap is missing
+in the ceph cluster, the PVC creation will fail and will stay in `Pending` state.
