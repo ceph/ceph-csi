@@ -157,7 +157,9 @@ func (s *subVolumeClient) CreateCloneFromSnapshot(
 			}
 		}
 	}()
-	cloneState, err := s.GetCloneState(ctx)
+	var cloneState cephFSCloneState
+	// avoid err variable shadowing
+	cloneState, err = s.GetCloneState(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get clone state: %v", err)
 
