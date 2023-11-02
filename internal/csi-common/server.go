@@ -19,16 +19,12 @@ package csicommon
 import (
 	"net"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/replication"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
 )
@@ -36,7 +32,7 @@ import (
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces.
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
-	Start(endpoint, hstOptions string, srv Servers, metrics bool)
+	Start(endpoint string, srv Servers)
 	// Waits for the service to stop
 	Wait()
 	// Stops the service gracefully
@@ -65,9 +61,9 @@ type nonBlockingGRPCServer struct {
 }
 
 // Start start service on endpoint.
-func (s *nonBlockingGRPCServer) Start(endpoint, hstOptions string, srv Servers, metrics bool) {
+func (s *nonBlockingGRPCServer) Start(endpoint string, srv Servers) {
 	s.wg.Add(1)
-	go s.serve(endpoint, hstOptions, srv, metrics)
+	go s.serve(endpoint, srv)
 }
 
 // Wait blocks until the WaitGroup counter.
@@ -85,7 +81,7 @@ func (s *nonBlockingGRPCServer) ForceStop() {
 	s.server.Stop()
 }
 
-func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, metrics bool) {
+func (s *nonBlockingGRPCServer) serve(endpoint string, srv Servers) {
 	proto, addr, err := parseEndpoint(endpoint)
 	if err != nil {
 		klog.Fatal(err.Error())
@@ -103,11 +99,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 		klog.Fatalf("Failed to listen: %v", err)
 	}
 
-	opts := []grpc.ServerOption{
-		NewMiddlewareServerOption(metrics),
-	}
-
-	server := grpc.NewServer(opts...)
+	server := grpc.NewServer()
 	s.server = server
 
 	if srv.IS != nil {
@@ -124,29 +116,6 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 	}
 
 	log.DefaultLog("Listening for connections on address: %#v", listener.Addr())
-	if metrics {
-		ho := strings.Split(hstOptions, ",")
-		const expectedHo = 3
-		if len(ho) != expectedHo {
-			klog.Fatalf("invalid histogram options provided: %v", hstOptions)
-		}
-		start, e := strconv.ParseFloat(ho[0], 32)
-		if e != nil {
-			klog.Fatalf("failed to parse histogram start value: %v", e)
-		}
-		factor, e := strconv.ParseFloat(ho[1], 32)
-		if err != nil {
-			klog.Fatalf("failed to parse histogram factor value: %v", e)
-		}
-		count, e := strconv.Atoi(ho[2])
-		if err != nil {
-			klog.Fatalf("failed to parse histogram count value: %v", e)
-		}
-		buckets := prometheus.ExponentialBuckets(start, factor, count)
-		bktOptions := grpc_prometheus.WithHistogramBuckets(buckets)
-		grpc_prometheus.EnableHandlingTimeHistogram(bktOptions)
-		grpc_prometheus.Register(server)
-	}
 	err = server.Serve(listener)
 	if err != nil {
 		klog.Fatalf("Failed to server: %v", err)
