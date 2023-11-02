@@ -68,11 +68,10 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 		return err
 	}
 
-	// if cloneErr is not nil we will delete the snapshot
-	var cloneErr error
-
 	defer func() {
-		if cloneErr != nil {
+		// if any error occurs while cloning, resizing or deleting the snapshot
+		// fails then we need to delete the clone and snapshot.
+		if err != nil && !cerrors.IsCloneRetryError(err) {
 			if err = s.PurgeVolume(ctx, true); err != nil {
 				log.ErrorLog(ctx, "failed to delete volume %s: %v", s.VolID, err)
 			}
@@ -81,18 +80,19 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 			}
 		}
 	}()
-	cloneErr = snapClient.CloneSnapshot(ctx, s.SubVolume)
-	if cloneErr != nil {
-		log.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", parentvolOpt.VolID, snapshotID, s.VolID, cloneErr)
+	err = snapClient.CloneSnapshot(ctx, s.SubVolume)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", parentvolOpt.VolID, snapshotID, s.VolID, err)
 
-		return cloneErr
+		return err
 	}
 
-	cloneState, cloneErr := s.GetCloneState(ctx)
-	if cloneErr != nil {
-		log.ErrorLog(ctx, "failed to get clone state: %v", cloneErr)
+	var cloneState cephFSCloneState
+	cloneState, err = s.GetCloneState(ctx)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get clone state: %v", err)
 
-		return cloneErr
+		return err
 	}
 
 	err = cloneState.ToError()
@@ -157,7 +157,6 @@ func (s *subVolumeClient) CreateCloneFromSnapshot(
 			}
 		}
 	}()
-
 	cloneState, err := s.GetCloneState(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get clone state: %v", err)
