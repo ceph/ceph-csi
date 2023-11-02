@@ -93,33 +93,19 @@ type Config struct {
 	PluginPath      string // location of cephcsi plugin
 	StagingPath     string // location of cephcsi staging path
 	DomainLabels    string // list of domain labels to read from the node
-
 	// metrics related flags
 	MetricsPath string // path of prometheus endpoint where metrics will be available
 	MetricsIP   string // TCP port for liveness/ metrics requests
 
+	// CSI-Addons endpoint
+	CSIAddonsEndpoint string
+
+	// Cluster name
+	ClusterName string
+
 	// mount option related flags
 	KernelMountOptions string // Comma separated string of mount options accepted by cephfs kernel mounter
 	FuseMountOptions   string // Comma separated string of mount options accepted by ceph-fuse mounter
-
-	PidLimit    int           // PID limit to configure through cgroups")
-	MetricsPort int           // TCP port for liveness/grpc metrics requests
-	PollTime    time.Duration // time interval in seconds between each poll
-	PoolTimeout time.Duration // probe timeout in seconds
-
-	EnableProfiling    bool // flag to enable profiling
-	IsControllerServer bool // if set to true start provisioner server
-	IsNodeServer       bool // if set to true start node server
-	Version            bool // cephcsi version
-
-	// SkipForceFlatten is set to false if the kernel supports mounting of
-	// rbd image or the image chain has the deep-flatten feature.
-	SkipForceFlatten bool
-
-	// cephfs related flags
-	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
-
-	SetMetadata bool // set metadata on the volume
 
 	// RbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten
 	// occurs
@@ -139,11 +125,24 @@ type Config struct {
 	// reached cephcsi will start flattening the older rbd images.
 	MinSnapshotsOnImage uint
 
-	// CSI-Addons endpoint
-	CSIAddonsEndpoint string
+	PidLimit    int           // PID limit to configure through cgroups")
+	MetricsPort int           // TCP port for liveness/grpc metrics requests
+	PollTime    time.Duration // time interval in seconds between each poll
+	PoolTimeout time.Duration // probe timeout in seconds
 
-	// Cluster name
-	ClusterName string
+	EnableProfiling    bool // flag to enable profiling
+	IsControllerServer bool // if set to true start provisioner server
+	IsNodeServer       bool // if set to true start node server
+	Version            bool // cephcsi version
+
+	// SkipForceFlatten is set to false if the kernel supports mounting of
+	// rbd image or the image chain has the deep-flatten feature.
+	SkipForceFlatten bool
+
+	// cephfs related flags
+	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
+
+	SetMetadata bool // set metadata on the volume
 
 	// Read affinity related options
 	EnableReadAffinity  bool   // enable OSD read affinity.
