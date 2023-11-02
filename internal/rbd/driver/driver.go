@@ -177,11 +177,7 @@ func (r *Driver) Run(conf *util.Config) {
 		CS: r.cs,
 		NS: r.ns,
 	}
-	s.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
-	if conf.EnableGRPCMetrics {
-		log.WarningLogMsg("EnableGRPCMetrics is deprecated")
-		go util.StartMetricsServer(conf)
-	}
+	s.Start(conf.Endpoint, srv)
 
 	r.startProfiling(conf)
 
@@ -241,9 +237,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 // starts the required profiling services.
 func (r *Driver) startProfiling(conf *util.Config) {
 	if conf.EnableProfiling {
-		if !conf.EnableGRPCMetrics {
-			go util.StartMetricsServer(conf)
-		}
+		go util.StartMetricsServer(conf)
 		log.DebugLogMsg("Registering profiling handler")
 		go util.EnableProfiling()
 	}

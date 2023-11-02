@@ -167,15 +167,10 @@ func (fs *Driver) Run(conf *util.Config) {
 		// passing nil for replication server as cephFS does not support mirroring.
 		RS: nil,
 	}
-	server.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
-	if conf.EnableGRPCMetrics {
-		log.WarningLogMsg("EnableGRPCMetrics is deprecated")
-		go util.StartMetricsServer(conf)
-	}
+	server.Start(conf.Endpoint, srv)
+
 	if conf.EnableProfiling {
-		if !conf.EnableGRPCMetrics {
-			go util.StartMetricsServer(conf)
-		}
+		go util.StartMetricsServer(conf)
 		log.DebugLogMsg("Registering profiling handler")
 		go util.EnableProfiling()
 	}
