@@ -106,8 +106,8 @@ func init() {
 		"",
 		"Comma separated string of mount options accepted by ceph-fuse mounter")
 
-	// liveness/grpc metrics related flags
-	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
+	// liveness/profile metrics related flags
+	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/profile metrics requests")
 	flag.StringVar(
 		&conf.MetricsPath,
 		"metricspath",
@@ -115,14 +115,6 @@ func init() {
 		"path of prometheus endpoint where metrics will be available")
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
-
-	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
-	flag.StringVar(
-		&conf.HistogramOption,
-		"histogramoption",
-		"0.5,2,6",
-		"[DEPRECATED] Histogram option for grpc metrics, should be comma separated value, "+
-			"ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
 
 	flag.UintVar(
 		&conf.RbdHardMaxCloneDepth,
@@ -210,7 +202,7 @@ func main() {
 
 	setPIDLimit(&conf)
 
-	if conf.EnableGRPCMetrics || conf.Vtype == livenessType {
+	if conf.EnableProfiling || conf.Vtype == livenessType {
 		// validate metrics endpoint
 		conf.MetricsIP = os.Getenv("POD_IP")
 
