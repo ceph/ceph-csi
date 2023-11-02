@@ -56,3 +56,11 @@ func NewK8sClient() (*kubernetes.Clientset, error) {
 
 	return client, nil
 }
+
+// RunsOnKubernetes checks if the application is running within a Kubernetes cluster
+// by inspecting the presence of the KUBERNETES_SERVICE_HOST environment variable.
+func RunsOnKubernetes() bool {
+	kubernetesServiceHost := os.Getenv("KUBERNETES_SERVICE_HOST")
+
+	return kubernetesServiceHost != ""
+}
