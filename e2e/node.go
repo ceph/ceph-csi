@@ -45,13 +45,19 @@ func addLabelsToNodes(f *framework.Framework, labels map[string]string) error {
 	return nil
 }
 
-func deleteNodeLabel(c kubernetes.Interface, labelKey string) error {
+func deleteNodeLabels(c kubernetes.Interface, labelKeys []string) error {
 	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list node: %w", err)
 	}
 	for i := range nodes.Items {
-		e2enode.RemoveLabelOffNode(c, nodes.Items[i].Name, labelKey)
+		if err := testutils.RemoveLabelOffNode(c, nodes.Items[i].Name, labelKeys); err != nil {
+			return fmt.Errorf("failed to remove label off node: %w", err)
+		}
+
+		if err := testutils.VerifyLabelsRemoved(c, nodes.Items[i].Name, labelKeys); err != nil {
+			return fmt.Errorf("failed to verify label removed from node: %w", err)
+		}
 	}
 
 	return nil

@@ -401,31 +401,16 @@ var _ = Describe("RBD", func() {
 				}
 			}
 		}
-		err = deleteNodeLabel(c, nodeRegionLabel)
+		err = deleteNodeLabels(c, []string{
+			nodeRegionLabel,
+			nodeZoneLabel,
+			nodeCSIRegionLabel,
+			nodeCSIZoneLabel,
+			crushLocationRegionLabel,
+			crushLocationZoneLabel,
+		})
 		if err != nil {
-			framework.Failf("failed to delete node label: %v", err)
-		}
-		err = deleteNodeLabel(c, nodeZoneLabel)
-		if err != nil {
-			framework.Failf("failed to delete node label: %v", err)
-		}
-		// Remove the CSI labels that get added
-		err = deleteNodeLabel(c, nodeCSIRegionLabel)
-		if err != nil {
-			framework.Failf("failed to delete node label: %v", err)
-		}
-		err = deleteNodeLabel(c, nodeCSIZoneLabel)
-		if err != nil {
-			framework.Failf("failed to delete node label: %v", err)
-		}
-		// Remove the CRUSH Location labels
-		err = deleteNodeLabel(c, crushLocationRegionLabel)
-		if err != nil {
-			framework.Failf("failed to delete node label: %v", err)
-		}
-		err = deleteNodeLabel(c, crushLocationZoneLabel)
-		if err != nil {
-			framework.Failf("failed to delete node label: %v", err)
+			framework.Failf("failed to delete node labels: %v", err)
 		}
 	})
 
