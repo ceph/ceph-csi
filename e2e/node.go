@@ -26,9 +26,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
+	testutils "k8s.io/kubernetes/test/utils"
 )
 
-func createNodeLabel(f *framework.Framework, labelKey, labelValue string) error {
+func addLabelsToNodes(f *framework.Framework, labels map[string]string) error {
 	// NOTE: This makes all nodes (in a multi-node setup) in the test take
 	//       the same label values, which is fine for the test
 	nodes, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
@@ -36,7 +37,9 @@ func createNodeLabel(f *framework.Framework, labelKey, labelValue string) error 
 		return fmt.Errorf("failed to list node: %w", err)
 	}
 	for i := range nodes.Items {
-		e2enode.AddOrUpdateLabelOnNode(f.ClientSet, nodes.Items[i].Name, labelKey, labelValue)
+		if err := testutils.AddLabelsToNode(f.ClientSet, nodes.Items[i].Name, labels); err != nil {
+			return fmt.Errorf("failed to add labels to node: %w", err)
+		}
 	}
 
 	return nil
