@@ -48,12 +48,6 @@ const (
 	// with cryptsetup before updating the state to `rbdImageEncrypted`.
 	rbdImageEncryptionPrepared = rbdEncryptionState("encryptionPrepared")
 
-	// rbdImageRequiresEncryption has been deprecated, it is used only for
-	// volumes that have been created with an old provisioner, were never
-	// attached/mounted and now get staged by a new node-plugin
-	// TODO: remove this backwards compatibility support.
-	rbdImageRequiresEncryption = rbdEncryptionState("requiresEncryption")
-
 	// image metadata key for encryption.
 	encryptionMetaKey    = "rbd.csi.ceph.com/encrypted"
 	oldEncryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
