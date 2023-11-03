@@ -16,11 +16,11 @@ baseimg=$(awk -F = '/^BASE_IMAGE=/ {print $NF}' "${build_env}")
 # get image digest per architecture
 # {
 #   "arch": "amd64",
-#   "digest": "sha256:XXX"
+#   "digest": "sha256:XYZ"
 # }
 # {
 #   "arch": "arm64",
-#   "digest": "sha256:YYY"
+#   "digest": "sha256:ZYX"
 # }
 manifests=$(docker manifest inspect "${baseimg}" | jq '.manifests[] | {arch: .platform.architecture, digest: .digest}')
 # qemu-user-static is to enable an execution of different multi-architecture containers by QEMU
