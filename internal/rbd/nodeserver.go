@@ -1234,23 +1234,6 @@ func (ns *NodeServer) processEncryptedDevice(
 	}
 
 	switch {
-	case encrypted == rbdImageRequiresEncryption:
-		// If we get here, it means the image was created with a
-		// ceph-csi version that creates a passphrase for the encrypted
-		// device in NodeStage. New versions moved that to
-		// CreateVolume.
-		// Use the same setupEncryption() as CreateVolume does, and
-		// continue with the common process to crypt-format the device.
-		err = volOptions.setupBlockEncryption(ctx)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to setup encryption for rbd"+
-				"image %s: %v", imageSpec, err)
-
-			return "", err
-		}
-
-		// make sure we continue with the encrypting of the device
-		fallthrough
 	case encrypted == rbdImageEncryptionPrepared:
 		diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
 		// TODO: update this when adding support for static (pre-provisioned) PVs
