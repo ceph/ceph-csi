@@ -7,7 +7,6 @@ require (
 	github.com/aws/aws-sdk-go v1.46.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.23.2
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
-	// TODO: API for managing subvolume metadata and snapshot metadata requires `ceph_ci_untested` build-tag
 	github.com/ceph/go-ceph v0.24.0
 	github.com/container-storage-interface/spec v1.9.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
