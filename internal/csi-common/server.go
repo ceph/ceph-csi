@@ -24,7 +24,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/csi-addons/spec/lib/go/replication"
 	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
 )
@@ -46,7 +45,6 @@ type Servers struct {
 	IS csi.IdentityServer
 	CS csi.ControllerServer
 	NS csi.NodeServer
-	RS replication.ControllerServer
 }
 
 // NewNonBlockingGRPCServer return non-blocking GRPC.
@@ -110,9 +108,6 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, srv Servers) {
 	}
 	if srv.NS != nil {
 		csi.RegisterNodeServer(server, srv.NS)
-	}
-	if srv.RS != nil {
-		replication.RegisterControllerServer(server, srv.RS)
 	}
 
 	log.DefaultLog("Listening for connections on address: %#v", listener.Addr())
