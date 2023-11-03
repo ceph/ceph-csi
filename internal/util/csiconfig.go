@@ -40,8 +40,6 @@ const (
 type ClusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
-	// RadosNamespace is a rados namespace in the pool
-	RadosNamespace string `json:"radosNamespace"` // For backward compatibility. TODO: Remove this in 3.7.0
 	// Monitors is monitor list for corresponding cluster ID
 	Monitors []string `json:"monitors"`
 	// CephFS contains CephFS specific options
@@ -130,11 +128,7 @@ func GetRadosNamespace(pathToConfig, clusterID string) (string, error) {
 		return "", err
 	}
 
-	if cluster.RBD.RadosNamespace != "" {
-		return cluster.RBD.RadosNamespace, nil
-	}
-
-	return cluster.RadosNamespace, nil
+	return cluster.RBD.RadosNamespace, nil
 }
 
 // CephFSSubvolumeGroup returns the subvolumeGroup for CephFS volumes. If not set, it returns the default value "csi".
