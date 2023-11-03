@@ -25,6 +25,7 @@ import (
 	casceph "github.com/ceph/ceph-csi/internal/csi-addons/cephfs"
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -82,6 +83,7 @@ func NewNodeServer(
 		VolumeLocks:        util.NewVolumeLocks(),
 		kernelMountOptions: kernelMountOptions,
 		fuseMountOptions:   fuseMountOptions,
+		healthChecker:      hc.NewHealthCheckManager(),
 	}
 }
 

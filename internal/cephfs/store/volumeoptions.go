@@ -71,6 +71,12 @@ type VolumeOptions struct {
 
 	ProvisionVolume bool `json:"provisionVolume"`
 	BackingSnapshot bool `json:"backingSnapshot"`
+
+	// DataRoot is set to the directory that is bind-mounted into the
+	// container. The parent directory of the DataRoot is not available for
+	// the end-user, but Ceph-CSI can use it for storing state, doing
+	// health-checks and the like.
+	DataRoot string `json:dataRoot`
 }
 
 // Connect a CephFS volume to the Ceph cluster.
@@ -263,6 +269,10 @@ func NewVolumeOptions(
 	}
 
 	if err = extractOptionalOption(&backingSnapshotBool, "backingSnapshot", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err = extractOptionalOption(&opts.DataRoot, "dataRoot", volOptions); err != nil {
 		return nil, err
 	}
 
