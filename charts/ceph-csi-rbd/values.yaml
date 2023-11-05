@@ -424,6 +424,22 @@ storageClass:
   # unmapOptions: "krbd:force;nbd:force"
   unmapOptions: ""
 
+  # (optional) stripe unit in bytes
+  # If set, stripeCount must also be specified
+  # For defaults, refer to
+  # https://docs.ceph.com/en/latest/man/8/rbd/#striping
+  stripeUnit: ""
+
+  # (optional) number of objects to stripe over before looping
+  # If set, stripeUnit must also be specified
+  # For defaults, refer to
+  # https://docs.ceph.com/en/latest/man/8/rbd/#striping
+  stripeCount: ""
+
+  # (optional) object size in bytes
+  # If set, must be a power of 2
+  objectSize: ""
+
   # The secrets have to contain Ceph credentials with required access
   # to the 'pool'.
   provisionerSecret: csi-rbd-secret
