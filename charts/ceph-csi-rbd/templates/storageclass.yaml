@@ -52,6 +52,15 @@ parameters:
 {{- if .Values.storageClass.unmapOptions }}
   unmapOptions: {{ .Values.storageClass.unmapOptions }}
 {{- end }}
+{{- if .Values.storageClass.stripeUnit }}
+  stripeUnit: {{ .Values.storageClass.stripeUnit | quote }}
+{{- end }}
+{{- if .Values.storageClass.stripeCount }}
+  stripeCount: {{ .Values.storageClass.stripeCount | quote }}
+{{- end }}
+{{- if .Values.storageClass.objectSize }}
+  objectSize: {{ .Values.storageClass.objectSize | quote }}
+{{- end }}
   csi.storage.k8s.io/provisioner-secret-name: {{ .Values.storageClass.provisionerSecret }}
 {{- if .Values.storageClass.provisionerSecretNamespace }}
   csi.storage.k8s.io/provisioner-secret-namespace: {{ .Values.storageClass.provisionerSecretNamespace }}
