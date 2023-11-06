@@ -206,7 +206,7 @@ node('cico-workspace') {
 				} else if ("${test_type}" == "nfs"){
 					test_type = "--test-nfs=true --test-cephfs=false --test-rbd=false"
 				}
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE='${namespace}' E2E_ARGS='--delete-namespace-on-failure=false --deploy-cephfs=false --deploy-rbd=false --helm-test=true ${test_type}'"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE='${namespace}' E2E_ARGS=\"--delete-namespace-on-failure=false --deploy-cephfs=false --deploy-rbd=false --helm-test=true ${test_type}\""
 			}
 		}
 		stage('cleanup ceph-csi deployment') {
