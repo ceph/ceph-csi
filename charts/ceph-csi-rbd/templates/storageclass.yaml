@@ -21,6 +21,9 @@ parameters:
 {{- if .Values.storageClass.tryOtherMounters }}
   tryOtherMounters: {{ .Values.storageClass.tryOtherMounters | quote}}
 {{- end }}
+{{- if .Values.storageClass.mkfsOptions }}
+  mkfsOptions: {{ .Values.storageClass.mkfsOptions }}
+{{- end }}
 {{- if .Values.storageClass.mounter }}
   mounter: {{ .Values.storageClass.mounter }}
 {{- end }}
