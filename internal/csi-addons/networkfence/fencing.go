@@ -212,9 +212,12 @@ func (ac *activeClient) fetchIP() (string, error) {
 	clientInfo := ac.Inst
 	parts := strings.Fields(clientInfo)
 	if len(parts) >= 2 {
-		ip := strings.Split(parts[1], ":")[0]
-
-		return ip, nil
+		lastColonIndex := strings.LastIndex(parts[1], ":")
+		firstPart := parts[1][:lastColonIndex]
+		ip := net.ParseIP(firstPart)
+		if ip != nil {
+			return ip.String(), nil
+		}
 	}
 
 	return "", fmt.Errorf("failed to extract IP address, incorrect format: %s", clientInfo)
