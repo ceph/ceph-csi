@@ -5,6 +5,7 @@ ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/deploy/examples"
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 ROOK_BLOCK_EC_POOL_NAME=${ROOK_BLOCK_EC_POOL_NAME:-"ec-pool"}
+ROOK_SUBVOLUMEGROUP_NAME=${ROOK_SUBVOLUMEGROUP_NAME:-"csi"}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # shellcheck disable=SC1091
@@ -53,11 +54,14 @@ function deploy_rook() {
 		cat "${TEMP_DIR}"/cluster-test.yaml
 		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
 	fi
+
 	rm -rf "${TEMP_DIR}"
 
 	kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
 	kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl_retry create -f "${ROOK_URL}/pool-test.yaml"
+	
+	create_or_delete_subvolumegroup "create"
 
 	# Check if CephCluster is empty
 	if ! kubectl_retry -n rook-ceph get cephclusters -oyaml | grep 'items: \[\]' &>/dev/null; then
@@ -79,6 +83,7 @@ function deploy_rook() {
 }
 
 function teardown_rook() {
+	create_or_delete_subvolumegroup "delete"
 	kubectl delete -f "${ROOK_URL}/pool-test.yaml"
 	kubectl delete -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl delete -f "${ROOK_URL}/toolbox.yaml"
@@ -86,6 +91,21 @@ function teardown_rook() {
 	kubectl delete -f "${ROOK_URL}/operator.yaml"
 	kubectl delete -f "${ROOK_URL}/common.yaml"
 	kubectl delete -f "${ROOK_URL}/crds.yaml"
+}
+
+# TODO: to be removed once issue is closed - https://github.com/rook/rook/issues/13040
+function create_or_delete_subvolumegroup() {
+	local action="$1"
+	curl -o "subvolumegroup.yaml" "${ROOK_URL}/subvolumegroup.yaml"
+	sed -i "s|name:.*|name: $ROOK_SUBVOLUMEGROUP_NAME|g" subvolumegroup.yaml
+
+	if [ "$action" == "create" ]; then
+		kubectl_retry create -f subvolumegroup.yaml
+	else
+		kubectl delete -f subvolumegroup.yaml
+	fi
+
+	rm -f "subvolumegroup.yaml"
 }
 
 function create_block_pool() {
