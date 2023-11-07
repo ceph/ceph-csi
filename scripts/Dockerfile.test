@@ -56,6 +56,7 @@ RUN source /build.env \
     && npm install @commitlint/cli@"${COMMITLINT_VERSION}" \
     && popd \
     && git config --global --add safe.directory ${CEPHCSIPATH} \
+    && go install github.com/augmentable-dev/tickgit/cmd/tickgit@latest \
     && true
 
 WORKDIR ${CEPHCSIPATH}
