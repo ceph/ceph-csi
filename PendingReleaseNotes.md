@@ -9,7 +9,7 @@
 
 ## Features
 
-RBD
-
 - Support for configuring read affinity for individuals cluster within the ceph-csi-config
   ConfigMap in [PR](https://github.com/ceph/ceph-csi/pull/4165)
+
+- Support for CephFS kernel and fuse mount options per cluster in [PR](https://github.com/ceph/ceph-csi/pull/4245)

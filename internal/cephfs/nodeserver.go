@@ -311,34 +311,11 @@ func (ns *NodeServer) mount(
 
 	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, mnt.Name())
 
-	var mountOptions []string
-	if m := volCap.GetMount(); m != nil {
-		mountOptions = m.GetMountFlags()
-	}
+	err = ns.setMountOptions(mnt, volOptions, volCap, util.CsiConfigFile)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to set mount options for volume %s: %v", volID, err)
 
-	switch mnt.(type) {
-	case *mounter.FuseMounter:
-		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, ns.fuseMountOptions)
-		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, mountOptions...)
-	case *mounter.KernelMounter:
-		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, ns.kernelMountOptions)
-		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, mountOptions...)
-	}
-
-	const readOnly = "ro"
-
-	if volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
-		volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
-		switch mnt.(type) {
-		case *mounter.FuseMounter:
-			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
-				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
-			}
-		case *mounter.KernelMounter:
-			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
-				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
-			}
-		}
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	if err = mnt.Mount(ctx, stagingTargetPath, cr, volOptions); err != nil {
@@ -778,4 +755,68 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	}
 
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
+}
+
+// setMountOptions updates the kernel/fuse mount options from CSI config file if it exists.
+// If not, it falls back to returning the kernelMountOptions/fuseMountOptions from the command line.
+func (ns *NodeServer) setMountOptions(
+	mnt mounter.VolumeMounter,
+	volOptions *store.VolumeOptions,
+	volCap *csi.VolumeCapability,
+	csiConfigFile string,
+) error {
+	var (
+		configuredMountOptions string
+		kernelMountOptions     string
+		fuseMountOptions       string
+		mountOptions           []string
+		err                    error
+	)
+	if m := volCap.GetMount(); m != nil {
+		mountOptions = m.GetMountFlags()
+	}
+
+	if volOptions.ClusterID != "" {
+		kernelMountOptions, fuseMountOptions, err = util.GetCephFSMountOptions(csiConfigFile, volOptions.ClusterID)
+		if err != nil {
+			return err
+		}
+	}
+
+	switch mnt.(type) {
+	case *mounter.FuseMounter:
+		configuredMountOptions = ns.fuseMountOptions
+		// override if fuseMountOptions are set
+		if fuseMountOptions != "" {
+			configuredMountOptions = fuseMountOptions
+		}
+		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, configuredMountOptions)
+		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, mountOptions...)
+	case *mounter.KernelMounter:
+		configuredMountOptions = ns.kernelMountOptions
+		// override of kernelMountOptions are set
+		if kernelMountOptions != "" {
+			configuredMountOptions = kernelMountOptions
+		}
+		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, configuredMountOptions)
+		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, mountOptions...)
+	}
+
+	const readOnly = "ro"
+
+	if volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+		volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+		switch mnt.(type) {
+		case *mounter.FuseMounter:
+			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
+				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
+			}
+		case *mounter.KernelMounter:
+			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
+				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
+			}
+		}
+	}
+
+	return nil
 }

@@ -25,7 +25,7 @@ kind: ConfigMap
 # path for the Ceph cluster identified by the <cluster-id>, This will be used
 # by the CephFS CSI plugin to execute the mount -t in the
 # The "cephFS.kernelMountOptions" fields are comma separated mount options
-# for `Ceph kernel client`. Setting this will override the kernelmountoptions
+# for `Ceph Kernel client`. Setting this will override the kernelmountoptions
 # command line flag.
 # The "cephFS.fuseMountOptions" fields are common separated mount options
 # for `Ceph FUSE driver`. Setting this will override the fusemountoptions
