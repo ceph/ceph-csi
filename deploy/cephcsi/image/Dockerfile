@@ -11,6 +11,7 @@ RUN dnf config-manager --disable \
     tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true
 
 RUN dnf -y update --nobest \
+       && dnf -y install nfs-utils \
        && dnf clean all \
        && rm -rf /var/cache/yum
 
