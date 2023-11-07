@@ -168,20 +168,14 @@ func TestGetRBDNetNamespaceFilePath(t *testing.T) {
 		{
 			ClusterID: "cluster-1",
 			Monitors:  []string{"ip-1", "ip-2"},
-			RBD: struct {
-				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-				RadosNamespace       string `json:"radosNamespace"`
-			}{
+			RBD: RBD{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster1-net",
 			},
 		},
 		{
 			ClusterID: "cluster-2",
 			Monitors:  []string{"ip-3", "ip-4"},
-			RBD: struct {
-				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-				RadosNamespace       string `json:"radosNamespace"`
-			}{
+			RBD: RBD{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster2-net",
 			},
 		},
@@ -244,20 +238,14 @@ func TestGetCephFSNetNamespaceFilePath(t *testing.T) {
 		{
 			ClusterID: "cluster-1",
 			Monitors:  []string{"ip-1", "ip-2"},
-			CephFS: struct {
-				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-				SubvolumeGroup       string `json:"subvolumeGroup"`
-			}{
+			CephFS: CephFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/cephfs.ceph.csi.com/cluster1-net",
 			},
 		},
 		{
 			ClusterID: "cluster-2",
 			Monitors:  []string{"ip-3", "ip-4"},
-			CephFS: struct {
-				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-				SubvolumeGroup       string `json:"subvolumeGroup"`
-			}{
+			CephFS: CephFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/cephfs.ceph.csi.com/cluster2-net",
 			},
 		},
@@ -320,18 +308,14 @@ func TestGetNFSNetNamespaceFilePath(t *testing.T) {
 		{
 			ClusterID: "cluster-1",
 			Monitors:  []string{"ip-1", "ip-2"},
-			NFS: struct {
-				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-			}{
+			NFS: NFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/nfs.ceph.csi.com/cluster1-net",
 			},
 		},
 		{
 			ClusterID: "cluster-2",
 			Monitors:  []string{"ip-3", "ip-4"},
-			NFS: struct {
-				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-			}{
+			NFS: NFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/nfs.ceph.csi.com/cluster2-net",
 			},
 		},
@@ -413,10 +397,7 @@ func TestGetReadAffinityOptions(t *testing.T) {
 	csiConfig := []ClusterInfo{
 		{
 			ClusterID: "cluster-1",
-			ReadAffinity: struct {
-				Enabled             bool     `json:"enabled"`
-				CrushLocationLabels []string `json:"crushLocationLabels"`
-			}{
+			ReadAffinity: ReadAffinity{
 				Enabled: true,
 				CrushLocationLabels: []string{
 					"topology.kubernetes.io/region",
@@ -427,10 +408,7 @@ func TestGetReadAffinityOptions(t *testing.T) {
 		},
 		{
 			ClusterID: "cluster-2",
-			ReadAffinity: struct {
-				Enabled             bool     `json:"enabled"`
-				CrushLocationLabels []string `json:"crushLocationLabels"`
-			}{
+			ReadAffinity: ReadAffinity{
 				Enabled: true,
 				CrushLocationLabels: []string{
 					"topology.kubernetes.io/region",
@@ -439,10 +417,7 @@ func TestGetReadAffinityOptions(t *testing.T) {
 		},
 		{
 			ClusterID: "cluster-3",
-			ReadAffinity: struct {
-				Enabled             bool     `json:"enabled"`
-				CrushLocationLabels []string `json:"crushLocationLabels"`
-			}{
+			ReadAffinity: ReadAffinity{
 				Enabled: false,
 				CrushLocationLabels: []string{
 					"topology.io/rack",
@@ -474,6 +449,81 @@ func TestGetReadAffinityOptions(t *testing.T) {
 			}
 			if enabled != tc.want.enabled || labels != tc.want.labels {
 				t.Errorf("GetCrushLocationLabels() = {%v %v} want %v", enabled, labels, tc.want)
+			}
+		})
+	}
+}
+
+func TestGetCephFSMountOptions(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                 string
+		clusterID            string
+		wantKernelMntOptions string
+		wantFuseMntOptions   string
+	}{
+		{
+			name:                 "cluster-1 with non-empty mount options",
+			clusterID:            "cluster-1",
+			wantKernelMntOptions: "crc",
+			wantFuseMntOptions:   "ro",
+		},
+		{
+			name:                 "cluster-2 with empty mount options",
+			clusterID:            "cluster-2",
+			wantKernelMntOptions: "",
+			wantFuseMntOptions:   "",
+		},
+		{
+			name:                 "cluster-3 with no mount options",
+			clusterID:            "cluster-3",
+			wantKernelMntOptions: "",
+			wantFuseMntOptions:   "",
+		},
+	}
+
+	csiConfig := []ClusterInfo{
+		{
+			ClusterID: "cluster-1",
+			CephFS: CephFS{
+				KernelMountOptions: "crc",
+				FuseMountOptions:   "ro",
+			},
+		},
+		{
+			ClusterID: "cluster-2",
+			CephFS: CephFS{
+				KernelMountOptions: "",
+				FuseMountOptions:   "",
+			},
+		},
+		{
+			ClusterID: "cluster-3",
+			CephFS:    CephFS{},
+		},
+	}
+	csiConfigFileContent, err := json.Marshal(csiConfig)
+	if err != nil {
+		t.Errorf("failed to marshal csi config info %v", err)
+	}
+	tmpConfPath := t.TempDir() + "/ceph-csi.json"
+	err = os.WriteFile(tmpConfPath, csiConfigFileContent, 0o600)
+	if err != nil {
+		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			kernelMntOptions, fuseMntOptions, err := GetCephFSMountOptions(tmpConfPath, tc.clusterID)
+			if err != nil {
+				t.Errorf("GetCephFSMountOptions() error = %v", err)
+			}
+			if kernelMntOptions != tc.wantKernelMntOptions || fuseMntOptions != tc.wantFuseMntOptions {
+				t.Errorf("GetCephFSMountOptions() = (%v, %v), want (%v, %v)",
+					kernelMntOptions, fuseMntOptions, tc.wantKernelMntOptions, tc.wantFuseMntOptions,
+				)
 			}
 		})
 	}

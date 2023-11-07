@@ -43,30 +43,40 @@ type ClusterInfo struct {
 	// Monitors is monitor list for corresponding cluster ID
 	Monitors []string `json:"monitors"`
 	// CephFS contains CephFS specific options
-	CephFS struct {
-		// symlink filepath for the network namespace where we need to execute commands.
-		NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-		// SubvolumeGroup contains the name of the SubvolumeGroup for CSI volumes
-		SubvolumeGroup string `json:"subvolumeGroup"`
-	} `json:"cephFS"`
-
+	CephFS CephFS `json:"cephFS"`
 	// RBD Contains RBD specific options
-	RBD struct {
-		// symlink filepath for the network namespace where we need to execute commands.
-		NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-		// RadosNamespace is a rados namespace in the pool
-		RadosNamespace string `json:"radosNamespace"`
-	} `json:"rbd"`
+	RBD RBD `json:"rbd"`
 	// NFS contains NFS specific options
-	NFS struct {
-		// symlink filepath for the network namespace where we need to execute commands.
-		NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-	} `json:"nfs"`
+	NFS NFS `json:"nfs"`
 	// Read affinity map options
-	ReadAffinity struct {
-		Enabled             bool     `json:"enabled"`
-		CrushLocationLabels []string `json:"crushLocationLabels"`
-	} `json:"readAffinity"`
+	ReadAffinity ReadAffinity `json:"readAffinity"`
+}
+
+type CephFS struct {
+	// symlink filepath for the network namespace where we need to execute commands.
+	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+	// SubvolumeGroup contains the name of the SubvolumeGroup for CSI volumes
+	SubvolumeGroup string `json:"subvolumeGroup"`
+	// KernelMountOptions contains the kernel mount options for CephFS volumes
+	KernelMountOptions string `json:"kernelMountOptions"`
+	// FuseMountOptions contains the fuse mount options for CephFS volumes
+	FuseMountOptions string `json:"fuseMountOptions"`
+}
+type RBD struct {
+	// symlink filepath for the network namespace where we need to execute commands.
+	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+	// RadosNamespace is a rados namespace in the pool
+	RadosNamespace string `json:"radosNamespace"`
+}
+
+type NFS struct {
+	// symlink filepath for the network namespace where we need to execute commands.
+	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+}
+
+type ReadAffinity struct {
+	Enabled             bool     `json:"enabled"`
+	CrushLocationLabels []string `json:"crushLocationLabels"`
 }
 
 // Expected JSON structure in the passed in config file is,
@@ -225,4 +235,14 @@ func GetCrushLocationLabels(pathToConfig, clusterID string) (bool, string, error
 	crushLocationLabels := strings.Join(cluster.ReadAffinity.CrushLocationLabels, ",")
 
 	return true, crushLocationLabels, nil
+}
+
+// GetCephFSMountOptions returns the `kernelMountOptions` and `fuseMountOptions` for CephFS volumes.
+func GetCephFSMountOptions(pathToConfig, clusterID string) (string, string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", "", err
+	}
+
+	return cluster.CephFS.KernelMountOptions, cluster.CephFS.FuseMountOptions, nil
 }
