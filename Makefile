@@ -143,6 +143,10 @@ check-env:
 
 codespell:
 	codespell --config scripts/codespell.conf
+
+tickgit:
+	tickgit $(CURDIR)
+
 #
 # commitlint will do a rebase on top of GIT_SINCE when REBASE=1 is passed.
 #
