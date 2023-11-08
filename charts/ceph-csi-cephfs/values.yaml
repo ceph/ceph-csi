@@ -288,6 +288,7 @@ secret:
   # Specifies whether the secret should be created
   create: false
   name: csi-cephfs-secret
+  annotations: {}
   # Key values correspond to a user name and its key, as defined in the
   # ceph cluster. User ID should have required access to the 'pool'
   # specified in the storage class
