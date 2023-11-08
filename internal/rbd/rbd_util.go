@@ -832,7 +832,7 @@ func (ri *rbdImage) flattenRbdImage(
 	if rbdCephMgrSupported {
 		if err != nil {
 			// discard flattening error if the image does not have any parent
-			rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", ri.Pool, ri.RbdImageName)
+			rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not exist", ri.Pool, ri.RbdImageName)
 			if strings.Contains(err.Error(), rbdFlattenNoParent) {
 				return nil
 			}
