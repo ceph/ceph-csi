@@ -68,9 +68,9 @@ func (ns *NodeServer) getMountState(path string) (mountState, error) {
 	return msNotMounted, nil
 }
 
-func findMountinfo(mountpoint string, mis []mountutil.MountInfo) int {
-	for i := range mis {
-		if mis[i].MountPoint == mountpoint {
+func findMountinfo(mountpoint string, minfo []mountutil.MountInfo) int {
+	for i := range minfo {
+		if minfo[i].MountPoint == mountpoint {
 			return i
 		}
 	}
@@ -80,9 +80,9 @@ func findMountinfo(mountpoint string, mis []mountutil.MountInfo) int {
 
 // Ensures that given mountpoint is of specified fstype.
 // Returns true if fstype matches, or if no such mountpoint exists.
-func validateFsType(mountpoint, fsType string, mis []mountutil.MountInfo) bool {
-	if idx := findMountinfo(mountpoint, mis); idx > 0 {
-		mi := mis[idx]
+func validateFsType(mountpoint, fsType string, minfo []mountutil.MountInfo) bool {
+	if idx := findMountinfo(mountpoint, minfo); idx > 0 {
+		mi := minfo[idx]
 
 		if mi.FsType != fsType {
 			return false

@@ -1226,7 +1226,7 @@ func validatePVCSnapshot(
 				checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
 				framework.Logf("checksum value for the clone is %s with pod name %s", checkSumClone, name)
 				if chErrs[n] != nil {
-					framework.Logf("failed to calculte checksum for clone: %s", chErrs[n])
+					framework.Logf("failed to calculate checksum for clone: %s", chErrs[n])
 				}
 				if checkSumClone != checkSum {
 					framework.Logf(

@@ -155,7 +155,7 @@ func (fs *Driver) Run(conf *util.Config) {
 		fs.cs = NewControllerServer(fs.cd)
 	}
 
-	// configre CSI-Addons server and components
+	// configure CSI-Addons server and components
 	err = fs.setupCSIAddonsServer(conf)
 	if err != nil {
 		log.FatalLogMsg(err.Error())
