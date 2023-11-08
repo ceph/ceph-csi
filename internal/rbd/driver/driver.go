@@ -165,7 +165,7 @@ func (r *Driver) Run(conf *util.Config) {
 		r.cs.SetMetadata = conf.SetMetadata
 	}
 
-	// configre CSI-Addons server and components
+	// configure CSI-Addons server and components
 	err = r.setupCSIAddonsServer(conf)
 	if err != nil {
 		log.FatalLogMsg(err.Error())

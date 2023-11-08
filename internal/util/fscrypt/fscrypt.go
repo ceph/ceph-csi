@@ -337,7 +337,7 @@ func InitializeNode(ctx context.Context) error {
 	return nil
 }
 
-// FscryptUnlock unlocks possilby creating fresh fscrypt metadata
+// FscryptUnlock unlocks possibly creating fresh fscrypt metadata
 // iff a volume is encrypted. Otherwise return immediately Calling
 // this function requires that InitializeFscrypt ran once on this node.
 func Unlock(
