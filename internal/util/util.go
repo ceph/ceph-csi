@@ -326,12 +326,27 @@ func checkDirExists(p string) bool {
 
 // IsMountPoint checks if the given path is mountpoint or not.
 func IsMountPoint(mounter mount.Interface, p string) (bool, error) {
-	notMnt, err := mounter.IsLikelyNotMountPoint(p)
+	// mounter.IsLikelyNotMountPoint(p) is fast but unreliable. Check
+	// if we have a mountpoint, otherwise parse /proc/self/mountinfo
+	// to be sure.
+
+	notMnt, statErr := mounter.IsLikelyNotMountPoint(p)
+	if statErr == nil && !notMnt {
+		return true, nil
+	}
+
+	procMountInfo, err := ReadMountInfoForProc("self")
 	if err != nil {
 		return false, err
 	}
 
-	return !notMnt, nil
+	for i := range procMountInfo {
+		if procMountInfo[i].MountPoint == p {
+			return true, nil
+		}
+	}
+
+	return false, statErr
 }
 
 // IsCorruptedMountError checks if the given error is a result of a corrupted
