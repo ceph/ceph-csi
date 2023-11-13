@@ -106,7 +106,7 @@ jobs:
 
     steps:
       - name: remove ok-to-test-label after commenting
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           script: |
