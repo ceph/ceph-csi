@@ -41,7 +41,7 @@ type SecurityContextConstraintsValues struct {
 }
 
 // SecurityContextConstraintsDefaults can be used for generating deployment
-// artifacts with defails values.
+// artifacts with details values.
 var SecurityContextConstraintsDefaults = SecurityContextConstraintsValues{
 	Namespace: "ceph-csi",
 	Deployer:  "",
