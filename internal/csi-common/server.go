@@ -97,7 +97,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, srv Servers) {
 		klog.Fatalf("Failed to listen: %v", err)
 	}
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(NewMiddlewareServerOption(false))
 	s.server = server
 
 	if srv.IS != nil {
