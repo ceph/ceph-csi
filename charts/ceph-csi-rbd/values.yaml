@@ -501,6 +501,9 @@ cephconf: |
     auth_service_required = cephx
     auth_client_required = cephx
 
+# Array of extra objects to deploy with the release
+extraDeploy: []
+
 #########################################################
 # Variables for 'internal' use please use with caution! #
 #########################################################
