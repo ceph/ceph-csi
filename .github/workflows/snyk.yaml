@@ -1,0 +1,30 @@
+---
+name: Security scanning
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    # Run weekly on every Monday
+    - cron: '0 0 * * 1'
+  push:
+    tags:
+      - v*
+    branches:
+      - release-*
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    if: github.repository == 'ceph/ceph-csi'
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: run Snyk to check for code vulnerabilities
+        uses: snyk/actions/golang@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
