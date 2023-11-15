@@ -323,6 +323,9 @@ cephconf: |
     # see https://github.com/ceph/ceph-csi/issues/1928
     fuse_big_writes = true
 
+# Array of extra objects to deploy with the release
+extraDeploy: []
+
 #########################################################
 # Variables for 'internal' use please use with caution! #
 #########################################################
