@@ -29,7 +29,6 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -93,12 +92,8 @@ func NewControllerServiceCapability(ctrlCap csi.ControllerServiceCapability_RPC_
 
 // NewMiddlewareServerOption creates a new grpc.ServerOption that configures a
 // common format for log messages and other gRPC related handlers.
-func NewMiddlewareServerOption(withMetrics bool) grpc.ServerOption {
+func NewMiddlewareServerOption() grpc.ServerOption {
 	middleWare := []grpc.UnaryServerInterceptor{contextIDInjector, logGRPC, panicHandler}
-
-	if withMetrics {
-		middleWare = append(middleWare, grpc_prometheus.UnaryServerInterceptor)
-	}
 
 	return grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(middleWare...))
 }
