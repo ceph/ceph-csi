@@ -87,7 +87,7 @@ func (cas *CSIAddonsServer) RegisterService(svc CSIAddonsService) {
 // returned.
 func (cas *CSIAddonsServer) Start() error {
 	// create the gRPC server and register services
-	cas.server = grpc.NewServer(csicommon.NewMiddlewareServerOption(false))
+	cas.server = grpc.NewServer(csicommon.NewMiddlewareServerOption())
 
 	for _, svc := range cas.services {
 		svc.RegisterService(cas.server)
