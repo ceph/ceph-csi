@@ -222,6 +222,17 @@ provisioner:
 
   affinity: {}
 
+# readAffinity:
+# Enable read affinity for CephFS subvolumes. Recommended to
+# set to true if running kernel 5.8 or newer.
+# enabled: false
+# Define which node labels to use as CRUSH location.
+# This should correspond to the values set in the CRUSH map.
+# NOTE: the value here serves as an example
+# crushLocationLabels:
+#   - topology.kubernetes.io/region
+#   - topology.kubernetes.io/zone
+
 # Mount the host /etc/selinux inside pods to support
 # selinux-enabled filesystems
 selinuxMount: true
