@@ -1173,6 +1173,7 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	// Update the metadata on snapshot not on the original image
 	rbdVol.RbdImageName = rbdSnap.RbdSnapName
+	rbdVol.ImageID = vol.ImageID
 	rbdVol.ClusterName = cs.ClusterName
 
 	defer func() {
