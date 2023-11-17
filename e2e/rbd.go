@@ -2852,14 +2852,9 @@ var _ = Describe("RBD", func() {
 					framework.Failf("failed to create storageclass: %v", err)
 				}
 				// set up PVC
-				pvc, err := loadPVC(pvcPath)
+				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, 0)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
-				}
-				pvc.Namespace = f.UniqueName
-				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					framework.Failf("failed to create PVC and application: %v", err)
 				}
 
 				// validate created backend rbd images
@@ -2881,9 +2876,9 @@ var _ = Describe("RBD", func() {
 				}
 
 				// clean up after ourselves
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to  delete PVC: %v", err)
+					framework.Failf("failed to delete PVC and application: %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
@@ -3116,6 +3111,64 @@ var _ = Describe("RBD", func() {
 				}
 				validateRBDImageCount(f, 0, defaultRBDPool)
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
+			By("creating an app with a PVC, using a topology constrained StorageClass with volumenameprefix", func() {
+				By("checking node has required CSI topology labels set", func() {
+					err := checkNodeHasLabel(f.ClientSet, nodeCSIRegionLabel, regionValue)
+					if err != nil {
+						framework.Failf("failed to check node label: %v", err)
+					}
+					err = checkNodeHasLabel(f.ClientSet, nodeCSIZoneLabel, zoneValue)
+					if err != nil {
+						framework.Failf("failed to check node label: %v", err)
+					}
+				})
+
+				By("creating a StorageClass with delayed binding mode and CSI topology parameter")
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+				topologyConstraint := "[{\"poolName\":\"" + rbdTopologyPool + "\",\"domainSegments\":" +
+					"[{\"domainLabel\":\"region\",\"value\":\"" + regionValue + "\"}," +
+					"{\"domainLabel\":\"zone\",\"value\":\"" + zoneValue + "\"}]}]"
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName,
+					map[string]string{"volumeBindingMode": "WaitForFirstConsumer"},
+					map[string]string{
+						"topologyConstrainedPools": topologyConstraint,
+						"volumeNamePrefix":         "foo-bar-",
+					}, deletePolicy)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
+
+				By("creating an app using a PV from the delayed binding mode StorageClass")
+				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, 0)
+				if err != nil {
+					framework.Failf("failed to create PVC and application: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				// cleanup and undo changes made by the test
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					framework.Failf("failed to delete PVC and application: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
 			})
 
 			// Mount pvc to pod with invalid mount option,expected that

@@ -176,6 +176,11 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	volOp := req.GetParameters()
+	if namePrefix, ok := volOp["volumeNamePrefix"]; ok {
+		rbdVol.NamePrefix = namePrefix
+	}
+
 	// set cluster name on volume
 	rbdVol.ClusterName = cs.ClusterName
 	// set metadata on volume
@@ -211,13 +216,17 @@ func (cs *ControllerServer) parseVolCreateRequest(
 
 	// start with pool the same as journal pool, in case there is a topology
 	// based split, pool for the image will be updated subsequently
-	rbdVol.JournalPool = rbdVol.Pool
 
 	// store topology information from the request
 	rbdVol.TopologyPools, rbdVol.TopologyRequirement, err = util.GetTopologyFromRequest(req)
+	if namePrefix, ok := volOp["volumeNamePrefix"]; ok {
+		rbdVol.NamePrefix = namePrefix
+	}
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
+	rbdVol.JournalPool = rbdVol.Pool
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
 	// else is populated post create request parsing
@@ -317,6 +326,10 @@ func (cs *ControllerServer) CreateVolume(
 	}
 	defer cr.DeleteCredentials()
 	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
+	volOp := req.GetParameters()
+	if namePrefix, ok := volOp["volumeNamePrefix"]; ok {
+		rbdVol.NamePrefix = namePrefix
+	}
 	if err != nil {
 		return nil, err
 	}
