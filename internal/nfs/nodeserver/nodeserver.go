@@ -54,7 +54,7 @@ func NewNodeServer(
 	t string,
 ) *NodeServer {
 	return &NodeServer{
-		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, map[string]string{}),
+		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
 	}
 }
 

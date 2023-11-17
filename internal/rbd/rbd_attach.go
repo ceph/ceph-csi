@@ -313,7 +313,7 @@ func (ns *NodeServer) getMapOptions(req *csi.NodeStageVolumeRequest, rv *rbdVolu
 	}
 
 	readAffinityMapOptions, err := util.GetReadAffinityMapOptions(
-		rv.ClusterID, ns.CLIReadAffinityMapOptions, ns.NodeLabels,
+		util.CsiConfigFile, rv.ClusterID, ns.CLIReadAffinityOptions, ns.NodeLabels,
 	)
 	if err != nil {
 		return err

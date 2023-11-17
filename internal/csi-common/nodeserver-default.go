@@ -31,6 +31,10 @@ type DefaultNodeServer struct {
 	Driver  *CSIDriver
 	Type    string
 	Mounter mount.Interface
+	// NodeLabels stores the node labels
+	NodeLabels map[string]string
+	// CLIReadAffinityOptions contains map options passed through command line to enable read affinity.
+	CLIReadAffinityOptions string
 }
 
 // NodeGetInfo returns node ID.

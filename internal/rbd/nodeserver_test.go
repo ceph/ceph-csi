@@ -22,6 +22,7 @@ import (
 	"os"
 	"testing"
 
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -206,6 +207,7 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 		"topology.kubernetes.io/zone":   "east-1",
 		"topology.kubernetes.io/region": "east",
 	}
+	topology := map[string]string{}
 
 	csiConfig := []util.ClusterInfo{
 		{
@@ -304,11 +306,16 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			crushLocationMap := util.GetCrushLocationMap(tc.CLICrushLocationLabels, nodeLabels)
+			cliReadAffinityMapOptions := util.ConstructReadAffinityMapOption(crushLocationMap)
+			driver := &csicommon.CSIDriver{}
+
 			ns := &NodeServer{
-				CLIReadAffinityMapOptions: util.ConstructReadAffinityMapOption(crushLocationMap),
+				DefaultNodeServer: csicommon.NewDefaultNodeServer(
+					driver, "rbd", cliReadAffinityMapOptions, topology, nodeLabels,
+				),
 			}
 			readAffinityMapOptions, err := util.GetReadAffinityMapOptions(
-				tc.clusterID, ns.CLIReadAffinityMapOptions, nodeLabels,
+				tmpConfPath, tc.clusterID, ns.CLIReadAffinityOptions, nodeLabels,
 			)
 			if err != nil {
 				assert.Fail(t, err.Error())

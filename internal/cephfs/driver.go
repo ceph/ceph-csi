@@ -28,6 +28,7 @@ import (
 	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -74,24 +75,29 @@ func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 func NewNodeServer(
 	d *csicommon.CSIDriver,
 	t string,
-	topology map[string]string,
 	kernelMountOptions string,
 	fuseMountOptions string,
+	nodeLabels, topology, crushLocationMap map[string]string,
 ) *NodeServer {
-	return &NodeServer{
-		DefaultNodeServer:  csicommon.NewDefaultNodeServer(d, t, topology),
+	cliReadAffinityMapOptions := util.ConstructReadAffinityMapOption(crushLocationMap)
+	ns := &NodeServer{
+		DefaultNodeServer:  csicommon.NewDefaultNodeServer(d, t, cliReadAffinityMapOptions, topology, nodeLabels),
 		VolumeLocks:        util.NewVolumeLocks(),
 		kernelMountOptions: kernelMountOptions,
 		fuseMountOptions:   fuseMountOptions,
 		healthChecker:      hc.NewHealthCheckManager(),
 	}
+
+	return ns
 }
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests.
 func (fs *Driver) Run(conf *util.Config) {
-	var err error
-	var topology map[string]string
+	var (
+		err                                    error
+		nodeLabels, topology, crushLocationMap map[string]string
+	)
 
 	// Configuration
 	if err = mounter.LoadAvailableMounters(conf); err != nil {
@@ -102,6 +108,18 @@ func (fs *Driver) Run(conf *util.Config) {
 	if conf.InstanceID != "" {
 		CSIInstanceID = conf.InstanceID
 	}
+
+	if conf.IsNodeServer && k8s.RunsOnKubernetes() {
+		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
+		if err != nil {
+			log.FatalLogMsg(err.Error())
+		}
+	}
+
+	if conf.EnableReadAffinity {
+		crushLocationMap = util.GetCrushLocationMap(conf.CrushLocationLabels, nodeLabels)
+	}
+
 	// Create an instance of the volume journal
 	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
 
@@ -138,7 +156,11 @@ func (fs *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology, conf.KernelMountOptions, conf.FuseMountOptions)
+		fs.ns = NewNodeServer(
+			fs.cd, conf.Vtype,
+			conf.KernelMountOptions, conf.FuseMountOptions,
+			nodeLabels, topology, crushLocationMap,
+		)
 	}
 
 	if conf.IsControllerServer {
@@ -151,7 +173,11 @@ func (fs *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology, conf.KernelMountOptions, conf.FuseMountOptions)
+		fs.ns = NewNodeServer(
+			fs.cd, conf.Vtype,
+			conf.KernelMountOptions, conf.FuseMountOptions,
+			nodeLabels, topology, crushLocationMap,
+		)
 		fs.cs = NewControllerServer(fs.cd)
 	}
 
