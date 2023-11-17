@@ -123,6 +123,8 @@ type rbdImage struct {
 	NamePrefix  string
 	// ParentName represents the parent image name of the image.
 	ParentName string
+	// ParentID represents the parent image ID of the image.
+	ParentID string
 	// Parent Pool is the pool that contains the parent image.
 	ParentPool string
 	// Cluster name
@@ -793,6 +795,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.Pool = ri.Pool
 	vol.Monitors = ri.Monitors
 	vol.RbdImageName = ri.RbdImageName
+	vol.ImageID = ri.ImageID
 	vol.RadosNamespace = ri.RadosNamespace
 	vol.conn = ri.conn.Copy()
 
@@ -825,6 +828,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 			depth++
 		}
 		vol.RbdImageName = vol.ParentName
+		vol.ImageID = vol.ParentID
 		vol.Pool = vol.ParentPool
 	}
 }
@@ -946,6 +950,9 @@ func (ri *rbdImage) getParentName() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	ri.ParentName = parentInfo.Image.ImageName
+	ri.ParentID = parentInfo.Image.ImageID
 
 	return parentInfo.Image.ImageName, nil
 }
@@ -1717,6 +1724,11 @@ func (ri *rbdImage) getImageInfo() error {
 	// TODO: can rv.VolSize not be a uint64? Or initialize it to -1?
 	ri.VolSize = int64(imageInfo.Size)
 
+	ri.ImageID, err = image.GetId()
+	if err != nil {
+		return err
+	}
+
 	features, err := image.GetFeatures()
 	if err != nil {
 		return err
@@ -1730,11 +1742,13 @@ func (ri *rbdImage) getImageInfo() error {
 		// the parent is an error or not.
 		if errors.Is(err, librbd.ErrNotFound) {
 			ri.ParentName = ""
+			ri.ParentID = ""
 		} else {
 			return err
 		}
 	} else {
 		ri.ParentName = parentInfo.Image.ImageName
+		ri.ParentID = parentInfo.Image.ImageID
 		ri.ParentPool = parentInfo.Image.PoolName
 		ri.ParentInTrash = parentInfo.Image.Trash
 	}
@@ -1769,6 +1783,7 @@ func (ri *rbdImage) getParent() (*rbdImage, error) {
 	parentImage.Pool = ri.ParentPool
 	parentImage.RadosNamespace = ri.RadosNamespace
 	parentImage.RbdImageName = ri.ParentName
+	parentImage.ImageID = ri.ParentID
 
 	err = parentImage.getImageInfo()
 	if err != nil {
@@ -1826,6 +1841,7 @@ type rbdImageMetadataStash struct {
 	Pool           string `json:"pool"`
 	RadosNamespace string `json:"radosNamespace"`
 	ImageName      string `json:"image"`
+	ImageID        string `json:"imageID"`
 	UnmapOptions   string `json:"unmapOptions"`
 	NbdAccess      bool   `json:"accessType"`
 	Encrypted      bool   `json:"encrypted"`
@@ -1855,6 +1871,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 		Pool:           volOptions.Pool,
 		RadosNamespace: volOptions.RadosNamespace,
 		ImageName:      volOptions.RbdImageName,
+		ImageID:        volOptions.ImageID,
 		Encrypted:      volOptions.isBlockEncrypted(),
 		UnmapOptions:   volOptions.UnmapOptions,
 	}
