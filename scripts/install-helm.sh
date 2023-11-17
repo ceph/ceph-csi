@@ -175,7 +175,7 @@ install_cephcsi_helm_charts() {
     fi
     # install ceph-csi-cephfs and ceph-csi-rbd charts
     # shellcheck disable=SC2086
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-cephfs", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${CEPHFS_SECRET_TEMPLATE_VALUES} ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs
+    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-cephfs", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${CEPHFS_SECRET_TEMPLATE_VALUES} ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs --set readAffinity.enabled=true --set readAffinity.crushLocationLabels="{${CRUSH_LOCATION_REGION_LABEL},${CRUSH_LOCATION_ZONE_LABEL}}"
     check_deployment_status app=ceph-csi-cephfs "${NAMESPACE}"
     check_daemonset_status app=ceph-csi-cephfs "${NAMESPACE}"
 
