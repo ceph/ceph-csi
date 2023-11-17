@@ -47,6 +47,8 @@ make image-cephcsi
 | `--kernelmountoptions`    | _empty_                     | Comma separated string of mount options accepted by cephfs kernel mounter.<br>`Note: These options will be replaced if kernelMountOptions are defined in the ceph-csi-config ConfigMap for the specific cluster.`                                                                                                                                                                                                               |
 | `--fusemountoptions`      | _empty_                     | Comma separated string of mount options accepted by ceph-fuse mounter.<br>`Note: These options will be replaced if fuseMountOptions are defined in the ceph-csi-config ConfigMap for the specific cluster.`                                                                                                                                                                                                               |
 | `--domainlabels`          | _empty_                     | Kubernetes node labels to use as CSI domain labels for topology aware provisioning, should be a comma separated value (ex:= "failure-domain/region,failure-domain/zone")                                                                                                             |
+| `--enable-read-affinity` | `false`                       | enable read affinity                                                                                                                                                                                                                                                                 |
+| `--crush-location-labels`| _empty_                       | Kubernetes node labels that determine the CRUSH location the node belongs to, separated by ','.<br>`Note: These labels will be replaced if crush location labels are defined in the ceph-csi-config ConfigMap for the specific cluster.`                                                                                                                                                                                       |
 
 **NOTE:** The parameter `-forcecephkernelclient` enables the Kernel
 CephFS mounter on kernels < 4.17.
@@ -222,6 +224,27 @@ The Helm chart is located in `charts/ceph-csi-cephfs`.
 **Deploy Helm Chart:**
 
 [See the Helm chart readme for installation instructions.](../charts/ceph-csi-cephfs/README.md)
+
+## Read Affinity using crush locations for CephFS subvolumes
+
+Ceph CSI supports mounting CephFS subvolumes with kernel mount options
+`"read_from_replica=localize,crush_location=type1:value1|type2:value2"` to
+allow serving reads from the most local OSD (according to OSD locations as
+defined in the CRUSH map).
+
+This can be enabled by adding labels to Kubernetes nodes like
+`"topology.io/region=east"` and `"topology.io/zone=east-zone1"` and
+passing command line arguments `"--enable-read-affinity=true"` and
+`"--crush-location-labels=topology.io/zone,topology.io/region"` to Ceph CSI
+CephFS daemonset pod "csi-cephfsplugin" container, resulting in Ceph CSI adding
+`"--options read_from_replica=localize,crush_location=zone:east-zone1|region:east"`
+kernel mount options during cephfs mount operation.
+If enabled, this option will be added to all CephFS subvolumes mapped by Ceph CSI.
+Well known labels can be found
+[here](https://kubernetes.io/docs/reference/labels-annotations-taints/).
+
+>Note: Label values will have all its dots `"."` normalized with dashes `"-"`
+in order for it to work with ceph CRUSH map.
 
 ## CephFS Volume Encryption
 
