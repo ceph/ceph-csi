@@ -766,11 +766,12 @@ func (ns *NodeServer) setMountOptions(
 	csiConfigFile string,
 ) error {
 	var (
-		configuredMountOptions string
-		kernelMountOptions     string
-		fuseMountOptions       string
-		mountOptions           []string
-		err                    error
+		configuredMountOptions   string
+		readAffinityMountOptions string
+		kernelMountOptions       string
+		fuseMountOptions         string
+		mountOptions             []string
+		err                      error
 	)
 	if m := volCap.GetMount(); m != nil {
 		mountOptions = m.GetMountFlags()
@@ -778,6 +779,14 @@ func (ns *NodeServer) setMountOptions(
 
 	if volOptions.ClusterID != "" {
 		kernelMountOptions, fuseMountOptions, err = util.GetCephFSMountOptions(csiConfigFile, volOptions.ClusterID)
+		if err != nil {
+			return err
+		}
+
+		// read affinity mount options
+		readAffinityMountOptions, err = util.GetReadAffinityMapOptions(
+			csiConfigFile, volOptions.ClusterID, ns.CLIReadAffinityOptions, ns.NodeLabels,
+		)
 		if err != nil {
 			return err
 		}
@@ -799,6 +808,7 @@ func (ns *NodeServer) setMountOptions(
 			configuredMountOptions = kernelMountOptions
 		}
 		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, configuredMountOptions)
+		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readAffinityMountOptions)
 		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, mountOptions...)
 	}
 

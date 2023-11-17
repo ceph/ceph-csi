@@ -48,7 +48,8 @@ func ConstructReadAffinityMapOption(crushLocationMap map[string]string) string {
 // If not, it falls back to returning the `cliReadAffinityMapOptions` from the command line.
 // If neither of these options is available, it returns an empty string.
 func GetReadAffinityMapOptions(
-	clusterID, cliReadAffinityMapOptions string, nodeLabels map[string]string,
+	csiConfigFile, clusterID, cliReadAffinityMapOptions string,
+	nodeLabels map[string]string,
 ) (string, error) {
 	var (
 		err                       error
@@ -56,7 +57,7 @@ func GetReadAffinityMapOptions(
 		configCrushLocationLabels string
 	)
 
-	configReadAffinityEnabled, configCrushLocationLabels, err = GetCrushLocationLabels(CsiConfigFile, clusterID)
+	configReadAffinityEnabled, configCrushLocationLabels, err = GetCrushLocationLabels(csiConfigFile, clusterID)
 	if err != nil {
 		return "", err
 	}

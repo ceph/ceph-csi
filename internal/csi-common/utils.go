@@ -55,13 +55,18 @@ func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *c
 }
 
 // NewDefaultNodeServer initializes default node server.
-func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *DefaultNodeServer {
+func NewDefaultNodeServer(
+	d *CSIDriver, t, cliReadAffinityMapOptions string,
+	topology, nodeLabels map[string]string,
+) *DefaultNodeServer {
 	d.topology = topology
 
 	return &DefaultNodeServer{
-		Driver:  d,
-		Type:    t,
-		Mounter: mount.NewWithoutSystemd(""),
+		Driver:                 d,
+		Type:                   t,
+		Mounter:                mount.NewWithoutSystemd(""),
+		NodeLabels:             nodeLabels,
+		CLIReadAffinityOptions: cliReadAffinityMapOptions,
 	}
 }
 

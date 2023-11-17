@@ -45,10 +45,6 @@ type NodeServer struct {
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
 	VolumeLocks *util.VolumeLocks
-	// NodeLabels stores the node labels
-	NodeLabels map[string]string
-	// CLIReadAffinityMapOptions contains map options passed through command line to enable read affinity.
-	CLIReadAffinityMapOptions string
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed

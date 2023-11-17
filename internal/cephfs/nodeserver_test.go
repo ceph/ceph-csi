@@ -26,6 +26,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
@@ -63,19 +64,19 @@ func Test_setMountOptions(t *testing.T) {
 	t.Logf("path = %s", tmpConfPath)
 	err = os.WriteFile(tmpConfPath, csiConfigFileContent, 0o600)
 	if err != nil {
-		t.Errorf("failed to write %s file content: %v", util.CsiConfigFile, err)
+		t.Errorf("failed to write %s file content: %v", tmpConfPath, err)
 	}
 
 	tests := []struct {
 		name       string
-		ns         NodeServer
+		ns         *NodeServer
 		mnt        mounter.VolumeMounter
 		volOptions *store.VolumeOptions
 		want       string
 	}{
 		{
 			name: "KernelMountOptions set in cluster-1 config and not set in CLI",
-			ns:   NodeServer{},
+			ns:   &NodeServer{},
 			mnt:  mounter.VolumeMounter(&mounter.KernelMounter{}),
 			volOptions: &store.VolumeOptions{
 				ClusterID: "cluster-1",
@@ -84,7 +85,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "FuseMountOptions set in cluster-1 config and not set in CLI",
-			ns:   NodeServer{},
+			ns:   &NodeServer{},
 			mnt:  mounter.VolumeMounter(&mounter.FuseMounter{}),
 			volOptions: &store.VolumeOptions{
 				ClusterID: "cluster-1",
@@ -93,7 +94,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "KernelMountOptions set in cluster-1 config and set in CLI",
-			ns: NodeServer{
+			ns: &NodeServer{
 				kernelMountOptions: cliKernelMountOptions,
 			},
 			mnt: mounter.VolumeMounter(&mounter.KernelMounter{}),
@@ -104,7 +105,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "FuseMountOptions not set in cluster-2 config and set in CLI",
-			ns: NodeServer{
+			ns: &NodeServer{
 				fuseMountOptions: cliFuseMountOptions,
 			},
 			mnt: mounter.VolumeMounter(&mounter.FuseMounter{}),
@@ -115,7 +116,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "KernelMountOptions not set in cluster-2 config and set in CLI",
-			ns: NodeServer{
+			ns: &NodeServer{
 				kernelMountOptions: cliKernelMountOptions,
 			},
 			mnt: mounter.VolumeMounter(&mounter.KernelMounter{}),
@@ -126,7 +127,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "FuseMountOptions not set in cluster-1 config and set in CLI",
-			ns: NodeServer{
+			ns: &NodeServer{
 				fuseMountOptions: cliFuseMountOptions,
 			},
 			mnt: mounter.VolumeMounter(&mounter.FuseMounter{}),
@@ -145,6 +146,11 @@ func Test_setMountOptions(t *testing.T) {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			driver := &csicommon.CSIDriver{}
+			tc.ns.DefaultNodeServer = csicommon.NewDefaultNodeServer(
+				driver, "cephfs", "", map[string]string{}, map[string]string{},
+			)
 
 			err := tc.ns.setMountOptions(tc.mnt, tc.volOptions, volCap, tmpConfPath)
 			if err != nil {

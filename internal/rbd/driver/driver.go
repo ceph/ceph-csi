@@ -71,11 +71,10 @@ func NewNodeServer(
 	t string,
 	nodeLabels, topology, crushLocationMap map[string]string,
 ) (*rbd.NodeServer, error) {
+	cliReadAffinityMapOptions := util.ConstructReadAffinityMapOption(crushLocationMap)
 	ns := rbd.NodeServer{
-		DefaultNodeServer:         csicommon.NewDefaultNodeServer(d, t, topology),
-		VolumeLocks:               util.NewVolumeLocks(),
-		NodeLabels:                nodeLabels,
-		CLIReadAffinityMapOptions: util.ConstructReadAffinityMapOption(crushLocationMap),
+		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, cliReadAffinityMapOptions, topology, nodeLabels),
+		VolumeLocks:       util.NewVolumeLocks(),
 	}
 
 	return &ns, nil
