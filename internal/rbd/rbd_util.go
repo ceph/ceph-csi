@@ -2143,15 +2143,13 @@ func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
 func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
 	for _, key := range keys {
 		err := rv.RemoveMetadata(key)
-		// TODO: replace string comparison with errno.
-		if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+		if err != nil && !errors.Is(err, librbd.ErrNotExist) {
 			return fmt.Errorf("failed to unset metadata key %q on %q: %w", key, rv, err)
 		}
 	}
 
 	err := rv.RemoveMetadata(clusterNameKey)
-	// TODO: replace string comparison with errno.
-	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+	if err != nil && !errors.Is(err, librbd.ErrNotExist) {
 		return fmt.Errorf("failed to unset metadata key %q on %q: %w", clusterNameKey, rv, err)
 	}
 

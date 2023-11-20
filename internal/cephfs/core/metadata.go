@@ -19,8 +19,8 @@ package core
 import (
 	"errors"
 	"fmt"
-	"strings"
 
+	libcephfs "github.com/ceph/go-ceph/cephfs"
 	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
 )
 
@@ -133,8 +133,7 @@ func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
 		if errors.Is(err, ErrSubVolMetadataNotSupported) {
 			return nil
 		}
-		// TODO: replace string comparison with errno.
-		if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+		if err != nil && !errors.Is(err, libcephfs.ErrNotExist) {
 			return fmt.Errorf("failed to unset metadata key %q on subvolume %v: %w", key, s, err)
 		}
 	}
@@ -144,8 +143,7 @@ func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
 	if errors.Is(err, ErrSubVolMetadataNotSupported) {
 		return nil
 	}
-	// TODO: replace string comparison with errno.
-	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+	if err != nil && !errors.Is(err, libcephfs.ErrNotExist) {
 		return fmt.Errorf("failed to unset metadata key %q on subvolume %v: %w", clusterNameKey, s, err)
 	}
 

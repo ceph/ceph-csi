@@ -19,8 +19,8 @@ package core
 import (
 	"errors"
 	"fmt"
-	"strings"
 
+	libcephfs "github.com/ceph/go-ceph/cephfs"
 	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
 )
 
@@ -121,16 +121,14 @@ func (s *snapshotClient) UnsetAllSnapshotMetadata(keys []string) error {
 
 	for _, key := range keys {
 		err := s.removeSnapshotMetadata(key)
-		// TODO: replace string comparison with errno.
-		if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+		if err != nil && !errors.Is(err, libcephfs.ErrNotExist) {
 			return fmt.Errorf("failed to unset metadata key %q on subvolume snapshot %s %s in fs %s: %w",
 				key, s.SnapshotID, s.VolID, s.FsName, err)
 		}
 	}
 
 	err := s.removeSnapshotMetadata(clusterNameKey)
-	// TODO: replace string comparison with errno.
-	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+	if err != nil && !errors.Is(err, libcephfs.ErrNotExist) {
 		return fmt.Errorf("failed to unset metadata key %q on subvolume snapshot %s %s in fs %s: %w",
 			clusterNameKey, s.SnapshotID, s.VolID, s.FsName, err)
 	}
