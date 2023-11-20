@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/IBM/keyprotect-go-client v0.12.2
-	github.com/aws/aws-sdk-go v1.47.10
-	github.com/aws/aws-sdk-go-v2/service/sts v1.25.1
+	github.com/aws/aws-sdk-go v1.48.0
+	github.com/aws/aws-sdk-go-v2/service/sts v1.25.3
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.24.0
 	github.com/container-storage-interface/spec v1.9.0
@@ -15,7 +15,7 @@ require (
 	github.com/google/fscrypt v0.3.4
 	github.com/google/uuid v1.4.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/kubernetes-csi/csi-lib-utils v0.14.0
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.3.0
@@ -38,7 +38,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.28.3
 	k8s.io/klog/v2 v2.110.1
-	k8s.io/kubernetes v1.28.3
+	k8s.io/kubernetes v1.28.4
 	k8s.io/mount-utils v0.28.3
 	k8s.io/pod-security-admission v0.0.0
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
@@ -51,11 +51,12 @@ require (
 	github.com/ansel1/merry/v2 v2.0.1 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
-	github.com/aws/aws-sdk-go-v2 v1.22.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.2 // indirect
-	github.com/aws/smithy-go v1.16.0 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.23.0 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.3 // indirect
+	github.com/aws/smithy-go v1.17.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
