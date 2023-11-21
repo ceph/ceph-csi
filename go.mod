@@ -15,7 +15,7 @@ require (
 	github.com/google/fscrypt v0.3.4
 	github.com/google/uuid v1.4.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/kubernetes-csi/csi-lib-utils v0.14.0
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.3.0
@@ -33,8 +33,8 @@ require (
 	//
 	// when updating k8s.io/kubernetes, make sure to update the replace section too
 	//
-	k8s.io/api v0.28.3
-	k8s.io/apimachinery v0.28.3
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.28.3
 	k8s.io/klog/v2 v2.110.1
