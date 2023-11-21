@@ -32,6 +32,7 @@ RUN source /build.env \
 	gcc \
 	findutils \
 	librados-devel \
+        libcephfs-devel \
 	librbd-devel \
 	openssl \
 	rubygems \

@@ -37,7 +37,7 @@ RUN source /build.env && \
 RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 
 RUN dnf -y install --nodocs \
-	librados-devel librbd-devel \
+	librados-devel librbd-devel libcephfs-devel \
 	/usr/bin/cc \
 	make \
 	git \
