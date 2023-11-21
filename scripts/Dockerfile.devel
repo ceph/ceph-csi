@@ -28,6 +28,7 @@ RUN dnf -y install \
 	make \
 	gcc \
 	librados-devel \
+        libcephfs-devel \
 	librbd-devel \
     && dnf -y update \
     && dnf clean all \
