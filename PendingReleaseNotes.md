@@ -13,3 +13,8 @@
   ConfigMap in [PR](https://github.com/ceph/ceph-csi/pull/4165)
 
 - Support for CephFS kernel and fuse mount options per cluster in [PR](https://github.com/ceph/ceph-csi/pull/4245)
+
+## NOTE
+
+- Support is limited to only the active Ceph releases. Support for EOLed Ceph
+  releases are removed [PR](https://github.com/ceph/ceph-csi/pull/4262)
