@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"text/template"
 
+	"github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 )
@@ -30,11 +31,13 @@ import (
 var csiConfigMap string
 
 type CSIConfigMapValues struct {
-	Name string
+	Name        string
+	ClusterInfo []kubernetes.ClusterInfo
 }
 
 var CSIConfigMapDefaults = CSIConfigMapValues{
-	Name: "ceph-csi-config",
+	Name:        "ceph-csi-config",
+	ClusterInfo: []kubernetes.ClusterInfo{},
 }
 
 // NewCSIConfigMap takes a name from the CSIConfigMapValues struct and relaces
