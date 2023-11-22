@@ -5,4 +5,4 @@ metadata:
   name: "{{ .Name }}"
 data:
   config.json: |-
-    []
+    {{ .ClusterInfo }}
