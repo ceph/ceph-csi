@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"syscall"
 
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
@@ -134,6 +135,11 @@ func (cs *ControllerServer) createBackingVolumeFromSnapshotSource(
 	})
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create clone from snapshot %s: %v", sID.FsSnapshotName, err)
+		// TODO: Add error handle for EAGAIN in go-ceph and replace the
+		// syscall.EAGAIN check with the go-ceph compatible error.
+		if errors.Is(err, syscall.EAGAIN) {
+			return status.Error(codes.ResourceExhausted, err.Error())
+		}
 
 		return err
 	}
@@ -156,6 +162,11 @@ func (cs *ControllerServer) createBackingVolumeFromVolumeSource(
 
 	if err := volClient.CreateCloneFromSubvolume(ctx, &parentVolOpt.SubVolume); err != nil {
 		log.ErrorLog(ctx, "failed to create clone from subvolume %s: %v", fsutil.VolumeID(pvID.FsSubvolName), err)
+		// TODO: Add error handle for EAGAIN in go-ceph and replace the
+		// syscall.EAGAIN check with the go-ceph compatible error.
+		if errors.Is(err, syscall.EAGAIN) {
+			return status.Error(codes.ResourceExhausted, err.Error())
+		}
 
 		return err
 	}
