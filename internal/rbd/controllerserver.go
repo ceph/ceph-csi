@@ -1099,9 +1099,10 @@ func cleanupRBDImage(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Deleting rbd image
+	// Deleting rbd image, it isn't a failure if the image was deleted already.
 	log.DebugLog(ctx, "deleting image %s", rbdVol.RbdImageName)
-	if err = rbdVol.Delete(ctx); err != nil {
+	err = rbdVol.Delete(ctx)
+	if err != nil && !errors.Is(err, librbd.ErrNotFound) {
 		log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v",
 			rbdVol, err)
 
