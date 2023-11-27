@@ -4,7 +4,7 @@
    - [Pre-upgrade considerations](#pre-upgrade-considerations)
       - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
    - [Upgrading from previous releases](#upgrading-from-previous-releases)
-   - [Upgrading from v3.8 to v3.9](#upgrading-from-v38-to-v39)
+   - [Upgrading from v3.9 to v3.10](#upgrading-from-v39-to-v310)
       - [Upgrading CephFS](#upgrading-cephfs)
          - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
             - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -49,7 +49,7 @@ To avoid this issue in future upgrades, we recommend that you do not use the
 fuse client as of now.
 
 This guide will walk you through the steps to upgrade the software in a cluster
-from v3.8 to v3.9
+from v3.9 to v3.10
 
 ### Snapshot-controller and snapshot crd
 
@@ -75,8 +75,10 @@ To upgrade from previous releases, refer to the following:
   to upgrade from cephcsi v3.6 to v3.7
 - [upgrade-from-v3.7-v3.8](https://github.com/ceph/ceph-csi/blob/v3.8.0/docs/ceph-csi-upgrade.md)
   to upgrade from cephcsi v3.7 to v3.8
+- [upgrade-from-v3.8-v3.9](https://github.com/ceph/ceph-csi/blob/v3.9.0/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.8 to v3.9
 
-## Upgrading from v3.8 to v3.9
+## Upgrading from v3.9 to v3.10
 
 **Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
@@ -86,15 +88,19 @@ that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-**Also, we do not recommend any direct upgrades to 3.9 except from 3.8 to 3.9.**
-For example, upgrading from 3.7 to 3.9 is not recommended.
+**Also, we do not recommend any direct upgrades to 3.10 except from 3.9 to 3.10.**
+For example, upgrading from 3.8 to 3.10 is not recommended.
 
-git checkout v3.9.0 tag
+**Refer to the Breaking Changes Section in the
+[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.10.0) before
+proceeding further.**
+
+git checkout v3.10.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.9.0
+git checkout v3.10.0
 ```
 
 ```console
@@ -216,7 +222,7 @@ For each node:
    - The pod deletion causes the pods to be restarted and updated automatically
      on the node.
 
-we have successfully upgraded cephfs csi from v3.8 to v3.9
+we have successfully upgraded cephfs csi from v3.9 to v3.10
 
 ### Upgrading RBD
 
@@ -280,7 +286,7 @@ daemonset.apps/csi-rbdplugin configured
 service/csi-metrics-rbdplugin configured
 ```
 
-we have successfully upgraded RBD csi from v3.8 to v3.9
+we have successfully upgraded RBD csi from v3.9 to v3.10
 
 ### Upgrading NFS
 
@@ -342,7 +348,7 @@ daemonset.apps/csi-nfsplugin configured
 service/csi-metrics-nfsplugin configured
 ```
 
-we have successfully upgraded nfs csi from v3.8 to v3.9
+we have successfully upgraded nfs csi from v3.9 to v3.10
 
 ### CSI Sidecar containers consideration
 
