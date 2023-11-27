@@ -841,7 +841,9 @@ func (ri *rbdImage) flattenRbdImage(
 	_, err = ta.AddFlatten(admin.NewImageSpec(ri.Pool, ri.RadosNamespace, ri.RbdImageName))
 	rbdCephMgrSupported := isCephMgrSupported(ctx, ri.ClusterID, err)
 	if rbdCephMgrSupported {
-		if err != nil {
+		// it is not possible to flatten an image that is in trash (ErrNotFoun)
+		switch {
+		case err != nil && !errors.Is(err, librbd.ErrNotFound):
 			// discard flattening error if the image does not have any parent
 			rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", ri.Pool, ri.RbdImageName)
 			if strings.Contains(err.Error(), rbdFlattenNoParent) {
@@ -850,11 +852,11 @@ func (ri *rbdImage) flattenRbdImage(
 			log.ErrorLog(ctx, "failed to add task flatten for %s : %v", ri, err)
 
 			return err
-		}
-		if forceFlatten || depth >= hardlimit {
+		case forceFlatten || depth >= hardlimit:
 			return fmt.Errorf("%w: flatten is in progress for image %s", ErrFlattenInProgress, ri.RbdImageName)
+		default:
+			log.DebugLog(ctx, "successfully added task to flatten image %q", ri)
 		}
-		log.DebugLog(ctx, "successfully added task to flatten image %q", ri)
 	}
 	if !rbdCephMgrSupported {
 		log.ErrorLog(
