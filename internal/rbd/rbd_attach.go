@@ -143,10 +143,22 @@ type detachRBDImageArgs struct {
 // getDeviceList queries rbd about mapped devices and returns a list of deviceInfo
 // It will selectively list devices mapped using krbd or nbd as specified by accessType.
 func getDeviceList(ctx context.Context, accessType string) ([]deviceInfo, error) {
-	// rbd device list --format json --device-type [krbd|nbd]
-	stdout, _, err := util.ExecCommand(ctx, rbd, "device", "list", "--format="+"json", "--device-type", accessType)
-	if err != nil {
-		return nil, fmt.Errorf("error getting device list from rbd for devices of type (%s): %w", accessType, err)
+	var (
+		stdout string
+		err    error
+	)
+
+	if accessType == accessTypeKRbd {
+		// rbd device list --format json --device-type [krbd|nbd]
+		stdout, _, err = util.ExecCommand(ctx, rbd, "device", "list", "--format=json", "--device-type", accessType)
+		if err != nil {
+			return nil, fmt.Errorf("error getting device list from rbd for devices of type (%s): %w", accessType, err)
+		}
+	} else {
+		stdout, _, err = util.ExecCommand(ctx, "rbd-nbd", "list-mapped", "--format=json")
+		if err != nil {
+			return nil, fmt.Errorf("error getting device list from rbd-nbd for devices of type (%s): %w", accessType, err)
+		}
 	}
 
 	var devices []*rbdDeviceInfo
@@ -352,29 +364,27 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, c
 }
 
 func appendNbdDeviceTypeAndOptions(cmdArgs []string, userOptions, cookie string) []string {
-	cmdArgs = append(cmdArgs, "--device-type", accessTypeNbd)
-
 	isUnmap := CheckSliceContains(cmdArgs, "unmap")
 	if !isUnmap {
 		if !strings.Contains(userOptions, useNbdNetlink) {
-			cmdArgs = append(cmdArgs, "--options", useNbdNetlink)
+			cmdArgs = append(cmdArgs, "--"+useNbdNetlink)
 		}
 		if !strings.Contains(userOptions, setNbdReattach) {
-			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("%s=%d", setNbdReattach, defaultNbdReAttachTimeout))
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdReattach, defaultNbdReAttachTimeout))
 		}
 		if !strings.Contains(userOptions, setNbdIOTimeout) {
-			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
 		}
 
 		if hasNBDCookieSupport {
-			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("cookie=%s", cookie))
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--cookie=%s", cookie))
 		}
 	}
 
 	if userOptions != "" {
 		// userOptions is appended after, possibly overriding the above
 		// default options.
-		cmdArgs = append(cmdArgs, "--options", userOptions)
+		cmdArgs = append(cmdArgs, "--"+userOptions)
 	}
 
 	return cmdArgs
@@ -436,13 +446,13 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	if volOpt.Mounter == rbdTonbd && hasNBD {
 		isNbd = true
 	}
-
+	cli := rbd
 	if isNbd {
+		cli = rbdNbdMounter
 		mapArgs = append(mapArgs, "--log-file",
 			getCephClientLogFileName(volOpt.VolID, volOpt.LogDir, "rbd-nbd"))
 	}
 
-	cli := rbd
 	if device != "" {
 		// TODO: use rbd cli for attach/detach in the future
 		cli = rbdNbdMounter
@@ -576,7 +586,13 @@ func detachRBDImageOrDeviceSpec(
 		unmapArgs = appendKRbdDeviceTypeAndOptions(unmapArgs, dArgs.unmapOptions)
 	}
 
-	_, stderr, err := util.ExecCommand(ctx, rbd, unmapArgs...)
+	var err error
+	var stderr string
+	if dArgs.isNbd {
+		_, stderr, err = util.ExecCommand(ctx, rbdTonbd, unmapArgs...)
+	} else {
+		_, stderr, err = util.ExecCommand(ctx, rbd, unmapArgs...)
+	}
 	if err != nil {
 		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
 		// This is not applicable when a device path is passed in
