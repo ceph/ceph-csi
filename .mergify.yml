@@ -284,15 +284,6 @@ pull_request_rules:
         name: default
       delete_head_branch: {}
 
-  - name: backport patches to release-v3.8 branch
-    conditions:
-      - base=devel
-      - label=backport-to-release-v3.8
-    actions:
-      backport:
-        branches:
-          - release-v3.8
-
   - name: backport patches to release-v3.9 branch
     conditions:
       - base=devel
@@ -301,6 +292,15 @@ pull_request_rules:
       backport:
         branches:
           - release-v3.9
+
+  - name: backport patches to release-v3.10 branch
+    conditions:
+      - base=devel
+      - label=backport-to-release-v3.10
+    actions:
+      backport:
+        branches:
+          - release-v3.10
 
   - name: remove outdated approvals on ci/centos
     conditions:
