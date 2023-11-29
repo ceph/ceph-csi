@@ -18,16 +18,16 @@ jobs:
 
     strategy:
       matrix:
-        branch: [release-v3.8, release-v3.9, devel]
+        branch: [release-v3.9, release-v3.10, devel]
         k8s: ["1.25", "1.26", "1.27", "1.28"]
         exclude:
           # the next Ceph-CSI version will not be tested with old Kubernetes
           - k8s: "1.25"
             branch: "devel"
+          - k8s: "1.25"
+            branch: "release-v3.10"
 
           # Ceph-CSI <= 3.9 was released before Kubernetes 1.28
-          - k8s: "1.28"
-            branch: "release-v3.8"
           - k8s: "1.28"
             branch: "release-v3.9"
 
