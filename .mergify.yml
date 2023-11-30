@@ -16,6 +16,11 @@ defaults:
       # Use ceph-csi-bot for rebasing, not the account of the PR owner.
       # bot_account: ceph-csi-bot
 
+      # by default Mergify requires manual merging of PRs that modify its own
+      # configuration (this file), allowing this makes it easier to prepare for
+      # releases (new branches added here)
+      allow_merging_configuration_change: true
+
 queue_rules:
   - name: default
     conditions:
