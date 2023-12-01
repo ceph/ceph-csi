@@ -636,7 +636,9 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			rbdVol.Monitors,
 			rbdVol.RbdImageName,
 			cr)
-		if err != nil {
+		if errors.Is(err, rbderrors.ErrFlattenInProgress) {
+			return status.Error(codes.Aborted, err.Error())
+		} else if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
 
@@ -1087,7 +1089,7 @@ func cleanupRBDImage(ctx context.Context,
 	if inUse {
 		log.ErrorLog(ctx, "rbd %s is still being used", rbdVol)
 
-		return nil, status.Errorf(codes.Aborted, "rbd %s is still being used", rbdVol.RbdImageName)
+		return nil, status.Errorf(codes.FailedPrecondition, "rbd %s is still being used", rbdVol.RbdImageName)
 	}
 
 	// delete the temporary rbd image created as part of volume clone during
@@ -1250,7 +1252,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}()
 
 	vol, err := cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
-	if err != nil {
+	if err != nil && !errors.Is(err, rbderrors.ErrFlattenInProgress) {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
