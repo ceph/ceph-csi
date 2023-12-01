@@ -559,7 +559,9 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			rbdVol.Monitors,
 			rbdVol.RbdImageName,
 			cr)
-		if err != nil {
+		if errors.Is(err, ErrFlattenInProgress) {
+			return status.Error(codes.Aborted, err.Error())
+		} else if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
 
@@ -995,7 +997,7 @@ func cleanupRBDImage(ctx context.Context,
 	if inUse {
 		log.ErrorLog(ctx, "rbd %s is still being used", rbdVol)
 
-		return nil, status.Errorf(codes.Internal, "rbd %s is still being used", rbdVol.RbdImageName)
+		return nil, status.Errorf(codes.FailedPrecondition, "rbd %s is still being used", rbdVol.RbdImageName)
 	}
 
 	// delete the temporary rbd image created as part of volume clone during
@@ -1167,8 +1169,12 @@ func (cs *ControllerServer) CreateSnapshot(
 		}
 	}()
 
+	readyToUse := true
+
 	vol, err := cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
-	if err != nil {
+	if errors.Is(err, ErrFlattenInProgress) {
+		readyToUse = false
+	} else if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -1205,7 +1211,7 @@ func (cs *ControllerServer) CreateSnapshot(
 			SnapshotId:     vol.VolID,
 			SourceVolumeId: req.GetSourceVolumeId(),
 			CreationTime:   vol.CreatedAt,
-			ReadyToUse:     true,
+			ReadyToUse:     readyToUse,
 		},
 	}, nil
 }
@@ -1236,10 +1242,12 @@ func cloneFromSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	readyToUse := true
+
 	err = vol.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if errors.Is(err, ErrFlattenInProgress) {
 		// if flattening is in progress, return error and do not cleanup
-		return nil, status.Errorf(codes.Internal, err.Error())
+		readyToUse = false
 	} else if err != nil {
 		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 		if uErr != nil {
@@ -1265,7 +1273,7 @@ func cloneFromSnapshot(
 			SnapshotId:     rbdSnap.VolID,
 			SourceVolumeId: rbdSnap.SourceVolumeID,
 			CreationTime:   rbdSnap.CreatedAt,
-			ReadyToUse:     true,
+			ReadyToUse:     readyToUse,
 		},
 	}, nil
 }
