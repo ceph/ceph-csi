@@ -27,7 +27,7 @@ queue_rules:
       # Conditions to get out of the queue (= merged)
       - or:
           - and:
-              - base=release-v*
+              - base~=^(release-.+)$
               - "status-success=codespell"
               - "status-success=multi-arch-build"
               - "status-success=go-test"
@@ -129,7 +129,7 @@ pull_request_rules:
           - and:
               - author=dependabot[bot]
               - label!=DNM
-              - base=release-v*
+              - base~=^(release-.+)$
               - "#approved-reviews-by>=2"
               - "#changes-requested-reviews-by=0"
               - "approved-reviews-by=@ceph/ceph-csi-contributors"
@@ -195,7 +195,7 @@ pull_request_rules:
       - or:
           - and:
               - label!=DNM
-              - base=release-v*
+              - base~=^(release-.+)$
               - "#approved-reviews-by>=2"
               - "#changes-requested-reviews-by=0"
               - "approved-reviews-by=@ceph/ceph-csi-contributors"
@@ -254,7 +254,7 @@ pull_request_rules:
     conditions:
       - or:
           - and:
-              - base=release-v*
+              - base~=^(release-.+)$
               - label!=DNM
               - label=ready-to-merge
               - "approved-reviews-by=@ceph/ceph-csi-maintainers"
