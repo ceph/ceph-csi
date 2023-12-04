@@ -18,6 +18,7 @@ RBD_CHART_NAME="ceph-csi-rbd"
 DEPLOY_TIMEOUT=600
 DEPLOY_SC=0
 DEPLOY_SECRET=0
+ENABLE_READ_AFFINITY=1
 
 # ceph-csi specific variables
 NODE_LABEL_REGION="test.failure-domain/region"
@@ -173,9 +174,13 @@ install_cephcsi_helm_charts() {
         RBD_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=admin --set secret.userKey=${ADMIN_KEY}"
         CEPHFS_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.adminID=admin --set secret.adminKey=${ADMIN_KEY}"
     fi
+    # enable read affinity
+    if [ "${ENABLE_READ_AFFINITY}" -eq 1 ]; then
+        READ_AFFINITY_VALUES="--set readAffinity.enabled=true --set readAffinity.crushLocationLabels={${CRUSH_LOCATION_REGION_LABEL},${CRUSH_LOCATION_ZONE_LABEL}}"
+    fi
     # install ceph-csi-cephfs and ceph-csi-rbd charts
     # shellcheck disable=SC2086
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-cephfs", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${CEPHFS_SECRET_TEMPLATE_VALUES} ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs --set readAffinity.enabled=true --set readAffinity.crushLocationLabels="{${CRUSH_LOCATION_REGION_LABEL},${CRUSH_LOCATION_ZONE_LABEL}}"
+    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-cephfs", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${CEPHFS_SECRET_TEMPLATE_VALUES} ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs ${READ_AFFINITY_VALUES}
     check_deployment_status app=ceph-csi-cephfs "${NAMESPACE}"
     check_daemonset_status app=ceph-csi-cephfs "${NAMESPACE}"
 
@@ -185,7 +190,7 @@ install_cephcsi_helm_charts() {
     kubectl_retry delete cm ceph-config --namespace "${NAMESPACE}"
 
     # shellcheck disable=SC2086
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-rbd", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2 --set readAffinity.enabled=true --set readAffinity.crushLocationLabels="{${CRUSH_LOCATION_REGION_LABEL},${CRUSH_LOCATION_ZONE_LABEL}}"
+    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-rbd", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2 ${READ_AFFINITY_VALUES}
 
     check_deployment_status app=ceph-csi-rbd "${NAMESPACE}"
     check_daemonset_status app=ceph-csi-rbd "${NAMESPACE}"
