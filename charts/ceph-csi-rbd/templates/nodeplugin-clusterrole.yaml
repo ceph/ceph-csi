@@ -11,11 +11,9 @@ metadata:
     heritage: {{ .Release.Service }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
-{{- if .Values.topology.enabled }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get"]
-{{- end }}
   # allow to read Vault Token and connection options from the Tenants namespace
   - apiGroups: [""]
     resources: ["secrets"]
