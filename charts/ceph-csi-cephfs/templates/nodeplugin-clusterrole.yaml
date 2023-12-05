@@ -11,9 +11,7 @@ metadata:
     heritage: {{ .Release.Service }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
-{{- if and .Values.readAffinity .Values.readAffinity.enabled }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get"]
-{{- end }}
 {{- end -}}
