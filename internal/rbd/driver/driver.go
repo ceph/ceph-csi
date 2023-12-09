@@ -125,7 +125,7 @@ func (r *Driver) Run(conf *util.Config) {
 			})
 	}
 
-	if k8s.RunsOnKubernetes() {
+	if k8s.RunsOnKubernetes() && conf.IsNodeServer {
 		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
 		if err != nil {
 			log.FatalLogMsg(err.Error())
