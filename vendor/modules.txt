@@ -17,7 +17,7 @@ github.com/antlr/antlr4/runtime/Go/antlr/v4
 # github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 ## explicit
 github.com/asaskevich/govalidator
-# github.com/aws/aws-sdk-go v1.48.12
+# github.com/aws/aws-sdk-go v1.49.0
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/auth/bearer
@@ -62,7 +62,7 @@ github.com/aws/aws-sdk-go/service/sso/ssoiface
 github.com/aws/aws-sdk-go/service/ssooidc
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
-# github.com/aws/aws-sdk-go-v2 v1.23.5
+# github.com/aws/aws-sdk-go-v2 v1.24.0
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/aws
 github.com/aws/aws-sdk-go-v2/aws/defaults
@@ -84,24 +84,24 @@ github.com/aws/aws-sdk-go-v2/internal/sdk
 github.com/aws/aws-sdk-go-v2/internal/strings
 github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
 github.com/aws/aws-sdk-go-v2/internal/timeconv
-# github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.8
+# github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.9
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/internal/configsources
-# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.8
+# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.9
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
-# github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.3
+# github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.4
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding
-# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.8
+# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.9
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-# github.com/aws/aws-sdk-go-v2/service/sts v1.26.2
+# github.com/aws/aws-sdk-go-v2/service/sts v1.26.5
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.18.1
+# github.com/aws/smithy-go v1.19.0
 ## explicit; go 1.19
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
