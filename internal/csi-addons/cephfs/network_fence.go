@@ -71,7 +71,7 @@ func (fcs *FenceControllerServer) FenceClusterNetwork(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	cr, err := util.NewUserCredentials(req.GetSecrets())
+	cr, err := util.NewAdminCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -100,7 +100,7 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	cr, err := util.NewUserCredentials(req.GetSecrets())
+	cr, err := util.NewAdminCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
