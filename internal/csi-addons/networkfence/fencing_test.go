@@ -74,6 +74,11 @@ func TestFetchIP(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			clientInfo:  "client.24152 v1:100.64.0.7:0/3658550259",
+			expectedIP:  "100.64.0.7",
+			expectedErr: false,
+		},
+		{
 			clientInfo:  "",
 			expectedIP:  "",
 			expectedErr: true,
