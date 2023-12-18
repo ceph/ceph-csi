@@ -22,6 +22,7 @@ import (
 	"os"
 	"testing"
 
+	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -209,13 +210,10 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 	}
 	topology := map[string]string{}
 
-	csiConfig := []util.ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
-			ReadAffinity: struct {
-				Enabled             bool     `json:"enabled"`
-				CrushLocationLabels []string `json:"crushLocationLabels"`
-			}{
+			ReadAffinity: cephcsi.ReadAffinity{
 				Enabled: true,
 				CrushLocationLabels: []string{
 					"topology.kubernetes.io/region",
@@ -224,10 +222,7 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 		},
 		{
 			ClusterID: "cluster-2",
-			ReadAffinity: struct {
-				Enabled             bool     `json:"enabled"`
-				CrushLocationLabels []string `json:"crushLocationLabels"`
-			}{
+			ReadAffinity: cephcsi.ReadAffinity{
 				Enabled: false,
 				CrushLocationLabels: []string{
 					"topology.kubernetes.io/region",
@@ -236,10 +231,7 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 		},
 		{
 			ClusterID: "cluster-3",
-			ReadAffinity: struct {
-				Enabled             bool     `json:"enabled"`
-				CrushLocationLabels []string `json:"crushLocationLabels"`
-			}{
+			ReadAffinity: cephcsi.ReadAffinity{
 				Enabled:             true,
 				CrushLocationLabels: []string{},
 			},

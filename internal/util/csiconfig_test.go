@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 )
 
 var (
@@ -164,18 +166,18 @@ func TestGetRBDNetNamespaceFilePath(t *testing.T) {
 		},
 	}
 
-	csiConfig := []ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
 			Monitors:  []string{"ip-1", "ip-2"},
-			RBD: RBD{
+			RBD: cephcsi.RBD{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster1-net",
 			},
 		},
 		{
 			ClusterID: "cluster-2",
 			Monitors:  []string{"ip-3", "ip-4"},
-			RBD: RBD{
+			RBD: cephcsi.RBD{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster2-net",
 			},
 		},
@@ -234,18 +236,18 @@ func TestGetCephFSNetNamespaceFilePath(t *testing.T) {
 		},
 	}
 
-	csiConfig := []ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
 			Monitors:  []string{"ip-1", "ip-2"},
-			CephFS: CephFS{
+			CephFS: cephcsi.CephFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/cephfs.ceph.csi.com/cluster1-net",
 			},
 		},
 		{
 			ClusterID: "cluster-2",
 			Monitors:  []string{"ip-3", "ip-4"},
-			CephFS: CephFS{
+			CephFS: cephcsi.CephFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/cephfs.ceph.csi.com/cluster2-net",
 			},
 		},
@@ -304,18 +306,18 @@ func TestGetNFSNetNamespaceFilePath(t *testing.T) {
 		},
 	}
 
-	csiConfig := []ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
 			Monitors:  []string{"ip-1", "ip-2"},
-			NFS: NFS{
+			NFS: cephcsi.NFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/nfs.ceph.csi.com/cluster1-net",
 			},
 		},
 		{
 			ClusterID: "cluster-2",
 			Monitors:  []string{"ip-3", "ip-4"},
-			NFS: NFS{
+			NFS: cephcsi.NFS{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/nfs.ceph.csi.com/cluster2-net",
 			},
 		},
@@ -394,10 +396,10 @@ func TestGetReadAffinityOptions(t *testing.T) {
 		},
 	}
 
-	csiConfig := []ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
-			ReadAffinity: ReadAffinity{
+			ReadAffinity: cephcsi.ReadAffinity{
 				Enabled: true,
 				CrushLocationLabels: []string{
 					"topology.kubernetes.io/region",
@@ -408,7 +410,7 @@ func TestGetReadAffinityOptions(t *testing.T) {
 		},
 		{
 			ClusterID: "cluster-2",
-			ReadAffinity: ReadAffinity{
+			ReadAffinity: cephcsi.ReadAffinity{
 				Enabled: true,
 				CrushLocationLabels: []string{
 					"topology.kubernetes.io/region",
@@ -417,7 +419,7 @@ func TestGetReadAffinityOptions(t *testing.T) {
 		},
 		{
 			ClusterID: "cluster-3",
-			ReadAffinity: ReadAffinity{
+			ReadAffinity: cephcsi.ReadAffinity{
 				Enabled: false,
 				CrushLocationLabels: []string{
 					"topology.io/rack",
@@ -482,24 +484,24 @@ func TestGetCephFSMountOptions(t *testing.T) {
 		},
 	}
 
-	csiConfig := []ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
-			CephFS: CephFS{
+			CephFS: cephcsi.CephFS{
 				KernelMountOptions: "crc",
 				FuseMountOptions:   "ro",
 			},
 		},
 		{
 			ClusterID: "cluster-2",
-			CephFS: CephFS{
+			CephFS: cephcsi.CephFS{
 				KernelMountOptions: "",
 				FuseMountOptions:   "",
 			},
 		},
 		{
 			ClusterID: "cluster-3",
-			CephFS:    CephFS{},
+			CephFS:    cephcsi.CephFS{},
 		},
 	}
 	csiConfigFileContent, err := json.Marshal(csiConfig)

@@ -24,6 +24,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 )
 
 func TestGetClusterMappingInfo(t *testing.T) {
@@ -304,7 +306,7 @@ func TestFetchMappedClusterIDAndMons(t *testing.T) {
 	mappingBasePath := t.TempDir()
 	csiConfigFile := mappingBasePath + "/config.json"
 	clusterMappingConfigFile := mappingBasePath + "/cluster-mapping.json"
-	csiConfig := []ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
 			Monitors:  []string{"ip-1", "ip-2"},

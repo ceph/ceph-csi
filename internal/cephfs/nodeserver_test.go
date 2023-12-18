@@ -24,10 +24,10 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
+	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-	"github.com/ceph/ceph-csi/internal/util"
 )
 
 func Test_setMountOptions(t *testing.T) {
@@ -39,17 +39,17 @@ func Test_setMountOptions(t *testing.T) {
 	configKernelMountOptions := "crc"
 	configFuseMountOptions := "allow_other"
 
-	csiConfig := []util.ClusterInfo{
+	csiConfig := []cephcsi.ClusterInfo{
 		{
 			ClusterID: "cluster-1",
-			CephFS: util.CephFS{
+			CephFS: cephcsi.CephFS{
 				KernelMountOptions: configKernelMountOptions,
 				FuseMountOptions:   configFuseMountOptions,
 			},
 		},
 		{
 			ClusterID: "cluster-2",
-			CephFS: util.CephFS{
+			CephFS: cephcsi.CephFS{
 				KernelMountOptions: "",
 				FuseMountOptions:   "",
 			},
