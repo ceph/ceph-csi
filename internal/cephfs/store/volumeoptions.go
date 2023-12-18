@@ -26,6 +26,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
+	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
@@ -164,7 +165,7 @@ func extractMounter(dest *string, options map[string]string) error {
 	return nil
 }
 
-func GetClusterInformation(options map[string]string) (*util.ClusterInfo, error) {
+func GetClusterInformation(options map[string]string) (*cephcsi.ClusterInfo, error) {
 	clusterID, ok := options["clusterID"]
 	if !ok {
 		err := fmt.Errorf("clusterID must be set")
@@ -189,7 +190,7 @@ func GetClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 
 		return nil, err
 	}
-	clusterData := &util.ClusterInfo{
+	clusterData := &cephcsi.ClusterInfo{
 		ClusterID: clusterID,
 		Monitors:  strings.Split(monitors, ","),
 	}

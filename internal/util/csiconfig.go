@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/ceph/ceph-csi/api/deploy/kubernetes"
 )
 
 const (
@@ -35,49 +37,6 @@ const (
 	// ClusterIDKey is the name of the key containing clusterID.
 	ClusterIDKey = "clusterID"
 )
-
-// ClusterInfo strongly typed JSON spec for the below JSON structure.
-type ClusterInfo struct {
-	// ClusterID is used for unique identification
-	ClusterID string `json:"clusterID"`
-	// Monitors is monitor list for corresponding cluster ID
-	Monitors []string `json:"monitors"`
-	// CephFS contains CephFS specific options
-	CephFS CephFS `json:"cephFS"`
-	// RBD Contains RBD specific options
-	RBD RBD `json:"rbd"`
-	// NFS contains NFS specific options
-	NFS NFS `json:"nfs"`
-	// Read affinity map options
-	ReadAffinity ReadAffinity `json:"readAffinity"`
-}
-
-type CephFS struct {
-	// symlink filepath for the network namespace where we need to execute commands.
-	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-	// SubvolumeGroup contains the name of the SubvolumeGroup for CSI volumes
-	SubvolumeGroup string `json:"subvolumeGroup"`
-	// KernelMountOptions contains the kernel mount options for CephFS volumes
-	KernelMountOptions string `json:"kernelMountOptions"`
-	// FuseMountOptions contains the fuse mount options for CephFS volumes
-	FuseMountOptions string `json:"fuseMountOptions"`
-}
-type RBD struct {
-	// symlink filepath for the network namespace where we need to execute commands.
-	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-	// RadosNamespace is a rados namespace in the pool
-	RadosNamespace string `json:"radosNamespace"`
-}
-
-type NFS struct {
-	// symlink filepath for the network namespace where we need to execute commands.
-	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
-}
-
-type ReadAffinity struct {
-	Enabled             bool     `json:"enabled"`
-	CrushLocationLabels []string `json:"crushLocationLabels"`
-}
 
 // Expected JSON structure in the passed in config file is,
 //nolint:godot // example json content should not contain unwanted dot.
@@ -96,8 +55,8 @@ type ReadAffinity struct {
 	}
 }]
 */
-func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
-	var config []ClusterInfo
+func readClusterInfo(pathToConfig, clusterID string) (*kubernetes.ClusterInfo, error) {
+	var config []kubernetes.ClusterInfo
 
 	// #nosec
 	content, err := os.ReadFile(pathToConfig)
