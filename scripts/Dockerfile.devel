@@ -23,6 +23,8 @@ RUN source /build.env \
 RUN dnf config-manager --disable \
     tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true
 
+RUN mkdir /etc/selinux || true && touch /etc/selinux/config
+
 RUN dnf -y install \
 	git \
 	make \
