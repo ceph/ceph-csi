@@ -10,6 +10,8 @@ FROM ${BASE_IMAGE} as updated_base
 RUN dnf config-manager --disable \
     tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true
 
+RUN mkdir /etc/selinux || true && touch /etc/selinux/config
+
 RUN dnf -y update --nobest \
        && dnf -y install nfs-utils \
        && dnf clean all \
