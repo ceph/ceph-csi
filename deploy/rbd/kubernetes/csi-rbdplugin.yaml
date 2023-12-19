@@ -50,7 +50,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/cephcsi:v3.10-canary
+          image: quay.io/cephcsi/cephcsi:v3.10.1
           args:
             - "--nodeid=$(NODE_ID)"
             - "--pluginpath=/var/lib/kubelet/plugins"
@@ -134,7 +134,7 @@ spec:
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/cephcsi:v3.10-canary
+          image: quay.io/cephcsi/cephcsi:v3.10.1
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
