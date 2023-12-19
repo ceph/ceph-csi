@@ -88,7 +88,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-nfsplugin
-          image: quay.io/cephcsi/cephcsi:v3.10-canary
+          image: quay.io/cephcsi/cephcsi:v3.10.1
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=nfs"
@@ -120,7 +120,7 @@ spec:
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
         - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:v3.10-canary
+          image: quay.io/cephcsi/cephcsi:v3.10.1
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
