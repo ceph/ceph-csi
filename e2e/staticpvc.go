@@ -93,7 +93,7 @@ func getStaticPVC(name, pvName, size, ns, sc string, blockPVC bool) *v1.Persiste
 			Namespace: ns,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceStorage: resource.MustParse(size),
 				},
