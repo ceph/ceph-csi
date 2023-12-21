@@ -52,7 +52,7 @@ func resize2Callback(
 //
 // Implements:
 //
-//	int rbd_resize(rbd_image_t image, uint64_t size, allow_shrink bool, librbd_progress_fn_t cb, void *cbdata);
+//	int rbd_resize2(rbd_image_t image, uint64_t size, allow_shrink bool, librbd_progress_fn_t cb, void *cbdata);
 func (image *Image) Resize2(size uint64, allowShrink bool, cb Resize2ProgressCallback, data interface{}) error {
 	// the provided callback must be a real function
 	if cb == nil {
