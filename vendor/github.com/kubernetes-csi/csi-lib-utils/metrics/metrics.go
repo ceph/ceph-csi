@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"sort"
 	"strings"
 	"time"
@@ -99,6 +100,12 @@ type CSIMetricsManager interface {
 	// RegisterToServer registers an HTTP handler for this metrics manager to the
 	// given server at the specified address/path.
 	RegisterToServer(s Server, metricsPath string)
+
+	// RegisterPprofToServer registers the HTTP handlers necessary to enable pprof
+	// for this metrics manager to the given server at the usual path.
+	// This function is not needed when using DefaultServeMux as the Server since
+	// the handlers will automatically be registered when importing pprof.
+	RegisterPprofToServer(s Server)
 }
 
 // Server represents any type that could serve HTTP requests for the metrics
@@ -386,6 +393,20 @@ func (cmm *csiMetricsManager) RegisterToServer(s Server, metricsPath string) {
 		cmm.GetRegistry(),
 		metrics.HandlerOpts{
 			ErrorHandling: metrics.ContinueOnError}))
+}
+
+// RegisterPprofToServer registers the HTTP handlers necessary to enable pprof
+// for this metrics manager to the given server at the usual path.
+// This function is not needed when using DefaultServeMux as the Server since
+// the handlers will automatically be registered when importing pprof.
+func (cmm *csiMetricsManager) RegisterPprofToServer(s Server) {
+	// Needed handlers can be seen here:
+	// https://github.com/golang/go/blob/master/src/net/http/pprof/pprof.go#L27
+	s.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	s.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	s.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	s.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	s.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 }
 
 // VerifyMetricsMatch is a helper function that verifies that the expected and
