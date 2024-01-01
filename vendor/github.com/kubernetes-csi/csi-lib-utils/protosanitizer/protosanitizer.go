@@ -26,7 +26,6 @@ import (
 
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
-	protobuf "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	protobufdescriptor "github.com/golang/protobuf/protoc-gen-go/descriptor"
 )
 
@@ -56,7 +55,7 @@ func StripSecretsCSI03(msg interface{}) fmt.Stringer {
 type stripSecrets struct {
 	msg interface{}
 
-	isSecretField func(field *protobuf.FieldDescriptorProto) bool
+	isSecretField func(field *protobufdescriptor.FieldDescriptorProto) bool
 }
 
 func (s *stripSecrets) String() string {
@@ -110,7 +109,7 @@ func (s *stripSecrets) strip(parsed interface{}, msg interface{}) {
 				if _, ok := parsedFields[field.GetName()]; ok {
 					parsedFields[field.GetName()] = "***stripped***"
 				}
-			} else if field.GetType() == protobuf.FieldDescriptorProto_TYPE_MESSAGE {
+			} else if field.GetType() == protobufdescriptor.FieldDescriptorProto_TYPE_MESSAGE {
 				// When we get here,
 				// the type name is something like ".csi.v1.CapacityRange" (leading dot!)
 				// and looking up "csi.v1.CapacityRange"
@@ -150,7 +149,7 @@ func (s *stripSecrets) strip(parsed interface{}, msg interface{}) {
 
 // isCSI1Secret uses the csi.E_CsiSecret extension from CSI 1.0 to
 // determine whether a field contains secrets.
-func isCSI1Secret(field *protobuf.FieldDescriptorProto) bool {
+func isCSI1Secret(field *protobufdescriptor.FieldDescriptorProto) bool {
 	ex, err := proto.GetExtension(field.Options, e_CsiSecret)
 	return err == nil && ex != nil && *ex.(*bool)
 }
@@ -172,6 +171,6 @@ var e_CsiSecret = &proto.ExtensionDesc{
 
 // isCSI03Secret relies on the naming convention in CSI <= 0.3
 // to determine whether a field contains secrets.
-func isCSI03Secret(field *protobuf.FieldDescriptorProto) bool {
+func isCSI03Secret(field *protobufdescriptor.FieldDescriptorProto) bool {
 	return strings.HasSuffix(field.GetName(), "_secrets")
 }
