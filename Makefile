@@ -159,7 +159,7 @@ commitlint:
 .PHONY: cephcsi
 cephcsi: check-env
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
-	GOOS=linux go build $(GO_TAGS) -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
+	GOOS=linux go build $(GO_TAGS) -mod vendor -a -ldflags '-linkmode=external -extldflags=-static' -o _output/cephcsi ./cmd/
 
 e2e.test: check-env
 	go test $(GO_TAGS) -mod=vendor -c ./e2e

@@ -4,10 +4,6 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE} as updated_base
 
-RUN dnf -y update \
-       && dnf clean all \
-       && rm -rf /var/cache/yum
-
 FROM updated_base as builder
 
 LABEL stage="build"
@@ -21,6 +17,7 @@ ARG GOROOT=/usr/local/go
 
 COPY build.env /
 
+SHELL ["/bin/bash", "-c"]
 RUN source /build.env && \
     ( test -n "${GO_ARCH}" && exit 0; echo -e "\n\nMissing GO_ARCH argument for building image, install Golang or run: make image-cephcsi GOARCH=amd64\n\n"; exit 1 ) && \
     mkdir -p ${GOROOT} && \
@@ -31,21 +28,19 @@ RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 
 # TODO: remove the following cmd, when issue
 # https://github.com/ceph/ceph-container/issues/2034 is fixed.
-RUN dnf config-manager --disable \
-    tcmu-runner,tcmu-runner-source,tcmu-runner-noarch || true
 
-RUN dnf -y install --nodocs \
-	librados-devel librbd-devel \
-	/usr/bin/cc \
+RUN apt-get install -y \
+        gcc-11 \
 	make \
 	git \
-	&& dnf clean all \
-	&& rm -rf /var/cache/yum \
     && true
 
+RUN cp /usr/lib/x86_64-linux-gnu/librados.so /usr/lib/.
 ENV GOROOT=${GOROOT} \
     GOPATH=/go \
     CGO_ENABLED=1 \
+    GOEXPERIMENT=boringcrypto \
+    -ldflags="-linkmode=external -extldflags=-static" \
     GIT_COMMIT="${GIT_COMMIT}" \
     ENV_CSI_IMAGE_VERSION="${CSI_IMAGE_VERSION}" \
     ENV_CSI_IMAGE_NAME="${CSI_IMAGE_NAME}" \
@@ -75,4 +70,4 @@ COPY --from=builder ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
 # verify that all dynamically linked libraries are available
 RUN [ $(ldd /usr/local/bin/cephcsi | grep -c '=> not found') = '0' ]
 
-ENTRYPOINT ["/usr/local/bin/cephcsi"]
+# ENTRYPOINT ["/usr/local/bin/cephcsi"]
