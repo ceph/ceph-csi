@@ -10,6 +10,8 @@
           only_run_on_request: true
       - '1.28':
           only_run_on_request: true
+      - '1.29':
+          only_run_on_request: true
     test_type:
       - 'cephfs'
       - 'rbd'
