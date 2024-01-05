@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -91,25 +90,43 @@ var (
 	}
 )
 
+type deviceInfo interface {
+	GetName() string
+	GetPool() string
+	GetRadosNamespace() string
+	GetDevice() string
+}
+
 // rbdDeviceInfo strongly typed JSON spec for rbd device list output (of type krbd).
 type rbdDeviceInfo struct {
-	ID             string `json:"id"`
+	// Name will only be set for krbd devices (NBD uses Image)
+	Name string `json:"name"`
+	// Image will only be set for NBD devices (krbd uses Name)
+	Image string `json:"image"`
+
 	Pool           string `json:"pool"`
 	RadosNamespace string `json:"namespace"`
-	Name           string `json:"name"`
 	Device         string `json:"device"`
 }
 
-// nbdDeviceInfo strongly typed JSON spec for rbd-nbd device list output (of type nbd)
-// NOTE: There is a bug in rbd output that returns id as number for nbd, and string for krbd, thus
-// requiring 2 different JSON structures to unmarshal the output.
-// NOTE: image key is "name" in krbd output and "image" in nbd output, which is another difference.
-type nbdDeviceInfo struct {
-	ID             int64  `json:"id"`
-	Pool           string `json:"pool"`
-	RadosNamespace string `json:"namespace"`
-	Name           string `json:"image"`
-	Device         string `json:"device"`
+func (rdi *rbdDeviceInfo) GetName() string {
+	if rdi.Name != "" {
+		return rdi.Name
+	}
+
+	return rdi.Image
+}
+
+func (rdi *rbdDeviceInfo) GetPool() string {
+	return rdi.Pool
+}
+
+func (rdi *rbdDeviceInfo) GetRadosNamespace() string {
+	return rdi.RadosNamespace
+}
+
+func (rdi *rbdDeviceInfo) GetDevice() string {
+	return rdi.Device
 }
 
 type detachRBDImageArgs struct {
@@ -123,25 +140,17 @@ type detachRBDImageArgs struct {
 	logStrategy       string
 }
 
-// rbdGetDeviceList queries rbd about mapped devices and returns a list of rbdDeviceInfo
+// getDeviceList queries rbd about mapped devices and returns a list of deviceInfo
 // It will selectively list devices mapped using krbd or nbd as specified by accessType.
-func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, error) {
+func getDeviceList(ctx context.Context, accessType string) ([]deviceInfo, error) {
 	// rbd device list --format json --device-type [krbd|nbd]
-	var (
-		rbdDeviceList []rbdDeviceInfo
-		nbdDeviceList []nbdDeviceInfo
-	)
-
 	stdout, _, err := util.ExecCommand(ctx, rbd, "device", "list", "--format="+"json", "--device-type", accessType)
 	if err != nil {
 		return nil, fmt.Errorf("error getting device list from rbd for devices of type (%s): %w", accessType, err)
 	}
 
-	if accessType == accessTypeKRbd {
-		err = json.Unmarshal([]byte(stdout), &rbdDeviceList)
-	} else {
-		err = json.Unmarshal([]byte(stdout), &nbdDeviceList)
-	}
+	var devices []*rbdDeviceInfo
+	err = json.Unmarshal([]byte(stdout), &devices)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error to parse JSON output of device list for devices of type (%s): %w",
@@ -149,22 +158,13 @@ func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, 
 			err)
 	}
 
-	// convert output to a rbdDeviceInfo list for consumers
-	if accessType == accessTypeNbd {
-		for _, device := range nbdDeviceList {
-			rbdDeviceList = append(
-				rbdDeviceList,
-				rbdDeviceInfo{
-					ID:             strconv.FormatInt(device.ID, 10),
-					Pool:           device.Pool,
-					RadosNamespace: device.RadosNamespace,
-					Name:           device.Name,
-					Device:         device.Device,
-				})
-		}
+	// convert []rbdDeviceInfo to []deviceInfo
+	deviceList := make([]deviceInfo, len(devices))
+	for i := range devices {
+		deviceList[i] = devices[i]
 	}
 
-	return rbdDeviceList, nil
+	return deviceList, nil
 }
 
 // findDeviceMappingImage finds a devicePath, if available, based on image spec (pool/{namespace/}image) on the node.
@@ -179,16 +179,16 @@ func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, 
 		imageSpec = fmt.Sprintf("%s/%s/%s", pool, namespace, image)
 	}
 
-	rbdDeviceList, err := rbdGetDeviceList(ctx, accessType)
+	deviceList, err := getDeviceList(ctx, accessType)
 	if err != nil {
 		log.WarningLog(ctx, "failed to determine if image (%s) is mapped to a device (%v)", imageSpec, err)
 
 		return "", false
 	}
 
-	for _, device := range rbdDeviceList {
-		if device.Name == image && device.Pool == pool && device.RadosNamespace == namespace {
-			return device.Device, true
+	for _, device := range deviceList {
+		if device.GetName() == image && device.GetPool() == pool && device.GetRadosNamespace() == namespace {
+			return device.GetDevice(), true
 		}
 	}
 
