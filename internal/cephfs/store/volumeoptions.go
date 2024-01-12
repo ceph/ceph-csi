@@ -697,7 +697,7 @@ func NewVolumeOptionsFromStaticVolume(
 		return nil, nil, err
 	}
 
-	if err = extractOption(&opts.FsName, "fsName", options); err != nil {
+	if err = extractOptionalOption(&opts.FsName, "fsName", options); err != nil {
 		return nil, nil, err
 	}
 
