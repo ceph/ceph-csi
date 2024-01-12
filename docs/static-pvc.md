@@ -202,9 +202,10 @@ spec:
       # node stage secret namespace where above secret is created
       namespace: default
     volumeAttributes:
+      # optional file system to be mounted
+      "fsName": "myfs"
       # Required options from storageclass parameters need to be added in volumeAttributes
       "clusterID": "ba68226a-672f-4ba5-97bc-22840318b2ec"
-      "fsName": "myfs"
       "staticVolume": "true"
       "rootPath": /volumes/testGroup/testSubVolume
     # volumeHandle can be anything, need not to be same
@@ -228,7 +229,7 @@ static CephFS PV
 |  Attributes  |                                                                     Description                                                                      | Required |
 | :----------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: | :------: |
 |  clusterID   | The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment) |   Yes    |
-|    fsName    |                                      CephFS filesystem name into which the subvolume should be created/present                                       |   Yes    |
+|    fsName    |                                      CephFS filesystem name to be mounted. Not passing this option mounts the default file system.                                       |   No    |
 | staticVolume |                                           Value must be set to `true` to mount and unmount static cephFS PVC                                         |   Yes    |
 |   rootPath   |                     Actual path of the subvolume in ceph cluster, can be retrieved by issuing getpath command as described above                     |   Yes    |
 
