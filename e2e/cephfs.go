@@ -474,11 +474,19 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
-			By("check static PVC", func() {
+			By("check static PVC with FsName", func() {
 				scPath := cephFSExamplePath + "secret.yaml"
-				err := validateCephFsStaticPV(f, appPath, scPath)
+				err := validateCephFsStaticPV(f, appPath, scPath, fileSystemName)
 				if err != nil {
-					framework.Failf("failed to validate CephFS static pv: %v", err)
+					framework.Failf("failed to validate CephFS static pv with filesystem name: %v", err)
+				}
+			})
+
+			By("check static PVC with without FsName", func() {
+				scPath := cephFSExamplePath + "secret.yaml"
+				err := validateCephFsStaticPV(f, appPath, scPath, "")
+				if err != nil {
+					framework.Failf("failed to validate CephFS static pv without filesystem name: %v", err)
 				}
 			})
 
