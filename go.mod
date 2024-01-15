@@ -39,7 +39,7 @@ require (
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.29.0
-	k8s.io/klog/v2 v2.110.1
+	k8s.io/klog/v2 v2.120.0
 	k8s.io/kubernetes v1.29.0
 	k8s.io/mount-utils v0.29.0
 	k8s.io/pod-security-admission v0.0.0
@@ -76,7 +76,7 @@ require (
 	github.com/gemalto/flume v0.13.0 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
-	github.com/go-logr/logr v1.3.0 // indirect
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
