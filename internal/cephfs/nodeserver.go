@@ -801,7 +801,7 @@ func (ns *NodeServer) setMountOptions(
 		}
 		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, configuredMountOptions)
 		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, mountOptions...)
-	case *mounter.KernelMounter:
+	case mounter.KernelMounter:
 		configuredMountOptions = ns.kernelMountOptions
 		// override of kernelMountOptions are set
 		if kernelMountOptions != "" {
@@ -821,7 +821,7 @@ func (ns *NodeServer) setMountOptions(
 			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
 				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
 			}
-		case *mounter.KernelMounter:
+		case mounter.KernelMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
 				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
 			}
