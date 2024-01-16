@@ -77,7 +77,7 @@ func Test_setMountOptions(t *testing.T) {
 		{
 			name: "KernelMountOptions set in cluster-1 config and not set in CLI",
 			ns:   &NodeServer{},
-			mnt:  mounter.VolumeMounter(&mounter.KernelMounter{}),
+			mnt:  mounter.VolumeMounter(mounter.NewKernelMounter()),
 			volOptions: &store.VolumeOptions{
 				ClusterID: "cluster-1",
 			},
@@ -97,7 +97,7 @@ func Test_setMountOptions(t *testing.T) {
 			ns: &NodeServer{
 				kernelMountOptions: cliKernelMountOptions,
 			},
-			mnt: mounter.VolumeMounter(&mounter.KernelMounter{}),
+			mnt: mounter.VolumeMounter(mounter.NewKernelMounter()),
 			volOptions: &store.VolumeOptions{
 				ClusterID: "cluster-1",
 			},
@@ -119,7 +119,7 @@ func Test_setMountOptions(t *testing.T) {
 			ns: &NodeServer{
 				kernelMountOptions: cliKernelMountOptions,
 			},
-			mnt: mounter.VolumeMounter(&mounter.KernelMounter{}),
+			mnt: mounter.VolumeMounter(mounter.NewKernelMounter()),
 			volOptions: &store.VolumeOptions{
 				ClusterID: "cluster-2",
 			},
@@ -162,7 +162,7 @@ func Test_setMountOptions(t *testing.T) {
 				if !strings.Contains(tc.volOptions.FuseMountOptions, tc.want) {
 					t.Errorf("Set FuseMountOptions = %v Required FuseMountOptions = %v", tc.volOptions.FuseMountOptions, tc.want)
 				}
-			case *mounter.KernelMounter:
+			case mounter.KernelMounter:
 				if !strings.Contains(tc.volOptions.KernelMountOptions, tc.want) {
 					t.Errorf("Set KernelMountOptions = %v Required KernelMountOptions = %v", tc.volOptions.KernelMountOptions, tc.want)
 				}
