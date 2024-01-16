@@ -19,6 +19,8 @@ package mounter
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -27,13 +29,47 @@ import (
 const (
 	volumeMounterKernel = "kernel"
 	netDev              = "_netdev"
+	kernelModule        = "ceph"
 )
 
-type KernelMounter struct{}
+// testErrorf can be set by unit test for enhanced error reporting.
+var testErrorf = func(fmt string, args ...any) { /* do nothing */ }
 
-func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *store.VolumeOptions) error {
-	if err := execCommandErr(ctx, "modprobe", "ceph"); err != nil {
-		return err
+type KernelMounter interface {
+	Mount(
+		ctx context.Context,
+		mountPoint string,
+		cr *util.Credentials,
+		volOptions *store.VolumeOptions,
+	) error
+
+	Name() string
+}
+
+type kernelMounter struct {
+	// needsModprobe indicates that the ceph kernel module is not loaded in
+	// the kernel yet (or compiled into it)
+	needsModprobe bool
+}
+
+func NewKernelMounter() KernelMounter {
+	return &kernelMounter{
+		needsModprobe: !filesystemSupported(kernelModule),
+	}
+}
+
+func (m *kernelMounter) mountKernel(
+	ctx context.Context,
+	mountPoint string,
+	cr *util.Credentials,
+	volOptions *store.VolumeOptions,
+) error {
+	if m.needsModprobe {
+		if err := execCommandErr(ctx, "modprobe", kernelModule); err != nil {
+			return err
+		}
+
+		m.needsModprobe = false
 	}
 
 	args := []string{
@@ -68,7 +104,7 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 	return err
 }
 
-func (m *KernelMounter) Mount(
+func (m *kernelMounter) Mount(
 	ctx context.Context,
 	mountPoint string,
 	cr *util.Credentials,
@@ -78,7 +114,26 @@ func (m *KernelMounter) Mount(
 		return err
 	}
 
-	return mountKernel(ctx, mountPoint, cr, volOptions)
+	return m.mountKernel(ctx, mountPoint, cr, volOptions)
 }
 
-func (m *KernelMounter) Name() string { return "Ceph kernel client" }
+func (m *kernelMounter) Name() string { return "Ceph kernel client" }
+
+// filesystemSupported checks if the passed name of the filesystem is included
+// in /proc/filesystems.
+func filesystemSupported(fs string) bool {
+	// /proc/filesystems contains a list of all supported filesystems,
+	// either compiled into the kernel, or as loadable module.
+	data, err := os.ReadFile("/proc/filesystems")
+	if err != nil {
+		testErrorf("failed to read /proc/filesystems: %v", err)
+
+		return false
+	}
+
+	// The format of /proc/filesystems is one filesystem per line, an
+	// optional keyword ("nodev") followed by a tab and the name of the
+	// filesystem. Matching <tab>ceph<eol> for the ceph kernel module that
+	// supports CephFS.
+	return strings.Contains(string(data), "\t"+fs+"\n")
+}
