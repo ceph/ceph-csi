@@ -1,10 +1,12 @@
 module github.com/ceph/ceph-csi/api
 
-go 1.18
+go 1.21
+
+toolchain go1.21.5
 
 require (
 	github.com/ghodss/yaml v1.0.0
-	github.com/openshift/api v0.0.0-20230320192226-1fc631efd341
+	github.com/openshift/api v0.0.0-20240115183315-0793e918179d
 	github.com/stretchr/testify v1.8.4
 	k8s.io/api v0.29.0
 )
