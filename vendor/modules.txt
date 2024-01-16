@@ -134,7 +134,7 @@ github.com/cenkalti/backoff/v3
 ## explicit; go 1.18
 github.com/cenkalti/backoff/v4
 # github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000 => ./api
-## explicit; go 1.18
+## explicit; go 1.21
 github.com/ceph/ceph-csi/api/deploy/kubernetes
 github.com/ceph/ceph-csi/api/deploy/kubernetes/cephfs
 github.com/ceph/ceph-csi/api/deploy/kubernetes/nfs
@@ -490,8 +490,8 @@ github.com/opencontainers/go-digest
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
 github.com/opencontainers/selinux/pkg/pwalkdir
-# github.com/openshift/api v0.0.0-20230320192226-1fc631efd341
-## explicit; go 1.19
+# github.com/openshift/api v0.0.0-20240115183315-0793e918179d
+## explicit; go 1.21
 github.com/openshift/api/security/v1
 # github.com/pkg/errors v0.9.1
 ## explicit
