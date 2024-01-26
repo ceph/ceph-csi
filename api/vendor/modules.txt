@@ -59,6 +59,7 @@ gopkg.in/yaml.v3
 # k8s.io/api v0.29.2
 ## explicit; go 1.21
 k8s.io/api/core/v1
+k8s.io/api/rbac/v1
 k8s.io/api/storage/v1
 # k8s.io/apimachinery v0.29.2
 ## explicit; go 1.21
