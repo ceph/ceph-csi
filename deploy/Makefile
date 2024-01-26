@@ -19,6 +19,7 @@ all: \
 	cephfs/kubernetes/csi-config-map.yaml \
 	nfs/kubernetes/csidriver.yaml \
 	nfs/kubernetes/csi-config-map.yaml \
+	nfs/kubernetes/csi-provisioner-rbac.yaml \
 	rbd/kubernetes/csidriver.yaml \
 	rbd/kubernetes/csi-config-map.yaml
 
@@ -35,6 +36,9 @@ nfs/kubernetes/csidriver.yaml: ../api/deploy/kubernetes/nfs/csidriver.yaml ../ap
 	$(MAKE) -C ../tools generate-deploy
 
 nfs/kubernetes/csi-config-map.yaml: ../api/deploy/kubernetes/nfs/csi-config-map.*
+	$(MAKE) -C ../tools generate-deploy
+
+nfs/kubernetes/csi-provisioner-rbac.yaml: ../api/deploy/kubernetes/nfs/csi-provisioner-rbac*
 	$(MAKE) -C ../tools generate-deploy
 
 rbd/kubernetes/csidriver.yaml: ../api/deploy/kubernetes/rbd/csidriver.yaml ../api/deploy/kubernetes/rbd/csidriver.go
