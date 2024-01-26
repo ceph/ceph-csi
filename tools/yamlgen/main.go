@@ -70,6 +70,11 @@ var yamlArtifacts = []deploymentArtifact{
 		reflect.ValueOf(nfs.CSIConfigMapDefaults),
 	},
 	{
+		"../deploy/nfs/kubernetes/csi-provisioner-rbac.yaml",
+		reflect.ValueOf(nfs.NewCSIProvisionerRBACYAML),
+		reflect.ValueOf(nfs.CSIProvisionerRBACDefaults),
+	},
+	{
 		"../deploy/rbd/kubernetes/csidriver.yaml",
 		reflect.ValueOf(rbd.NewCSIDriverYAML),
 		reflect.ValueOf(rbd.CSIDriverDefaults),
