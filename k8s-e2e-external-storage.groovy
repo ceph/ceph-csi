@@ -44,7 +44,7 @@ def create_duffy_config() {
 def podman_pull(source, destination, image) {
 	def failed = null
 
-	for (i in 0..9) {
+	for (int i in 0..9) {
 		try {
 			ssh "podman pull --authfile=~/.podman-auth.json ${source}/${image} && podman tag ${source}/${image} ${image} ${destination}/${image}"
 			failed = null
