@@ -10,37 +10,14 @@
       - build-discarder:
           days-to-keep: 7
           artifact-days-to-keep: 7
-    # yamllint disable rule:line-length
-    dsl: |
-      def GIT_REPO = 'http://github.com/ceph/ceph-csi'
-      def GIT_BRANCH = 'devel'
-      node {
-        stage('checkout repository') {
-          git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
-        }
-        stage('build images') {
-          def base_image = sh(script: 'source ${WORKSPACE}/build.env && echo ${BASE_IMAGE}',
-                              returnStdout: true).trim()
-          parallel canary: {
-            sh "oc start-build --follow \
-                  --build-arg=BASE_IMAGE='${base_image}' \
-                  --build-arg=GO_ARCH=amd64 \
-                  ceph-csi-canary"
-          },
-          test: {
-            sh 'oc start-build --follow \
-                  --build-arg=GOARCH=amd64 \
-                  ceph-csi-test'
-          },
-          devel: {
-            sh "oc start-build --follow \
-                  --build-arg=BASE_IMAGE='${base_image}' \
-                  --build-arg=GOARCH=amd64 \
-                  ceph-csi-devel"
-          }
-        }
-      }
-    # yamllint enable rule:line-length
+    pipeline-scm:
+      scm:
+        git:
+          url: https://github.com/ceph/ceph-csi
+          branches:
+            - ci/devel
+      script-path: build-images.groovy
+      lightweight-checkout: true
     scm:
       - git:
           name: origin
