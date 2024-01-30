@@ -2,7 +2,7 @@ WORKDIR ?= $(CURDIR)/../
 OUTPUT ?= $(WORKDIR)/_output/
 
 test:
-	cd $(WORKDIR) && jenkins-jobs test --allow-empty-variables -o $(OUTPUT) jobs
+	cd $(WORKDIR) && jenkins-jobs --allow-empty-variables test -o $(OUTPUT) jobs
 
 deploy:
-	cd $(WORKDIR) && jenkins-jobs update --allow-empty-variables --delete-old jobs
+	cd $(WORKDIR) && jenkins-jobs --allow-empty-variables update --delete-old jobs
