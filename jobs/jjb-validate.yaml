@@ -18,22 +18,14 @@
       - build-discarder:
           days-to-keep: 7
           artifact-days-to-keep: 7
-    dsl: |
-      if (params.ghprbPullId != null) {
-          GIT_BRANCH = "pull/${ghprbPullId}/merge"
-      }
-
-      node {
-        stage('checkout ci repository') {
-          checkout([$class: 'GitSCM', branches: [[name: 'FETCH_HEAD']],
-            userRemoteConfigs: [[url: "${GIT_REPO}",
-              refspec: "${GIT_BRANCH}"]]])
-        }
-        stage('validation') {
-          sh "./deploy/jjb.sh --cmd validate \
-              --GIT_REF ${GIT_BRANCH} --GIT_REPO ${GIT_REPO}"
-        }
-      }
+    pipeline-scm:
+      scm:
+        git:
+          url: https://github.com/ceph/ceph-csi
+          branches:
+            - ci/centos
+      script-path: jjb-validate.groovy
+      lightweight-checkout: false
     triggers:
       - github-pull-request:
           status-url: ${RUN_DISPLAY_URL}
