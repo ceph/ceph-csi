@@ -20,10 +20,10 @@
           artifact-days-to-keep: 7
     pipeline-scm:
       scm:
-        git:
-          url: https://github.com/ceph/ceph-csi
-          branches:
-            - ci/centos
+        - git:
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
       script-path: jjb-validate.groovy
       lightweight-checkout: false
     triggers:

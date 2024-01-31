@@ -12,10 +12,10 @@
           artifact-days-to-keep: 7
     pipeline-scm:
       scm:
-        git:
-          url: https://github.com/ceph/ceph-csi
-          branches:
-            - ci/centos
+        - git:
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
       script-path: build-images.groovy
       lightweight-checkout: false
     scm:
