@@ -38,28 +38,8 @@ def create_duffy_config() {
 // pulling from the destination registry.
 //
 // Images need to be pre-pushed into the source registry, though.
-//
-// On occasion pulling images is not stable due to a broken proxy in the CI
-// environment. For that, try pulling the image up to 10x.
 def podman_pull(source, destination, image) {
-	def failed = null
-
-	for (int i in 0..9) {
-		try {
-			ssh "podman pull --authfile=~/.podman-auth.json ${source}/${image} && podman tag ${source}/${image} ${image} ${destination}/${image}"
-			failed = null
-			break
-		}
-		catch (err) {
-			failed = err
-			// failed to pull image, but try again
-		}
-	}
-
-	// if the last pull failed, throw the error
-	if (failed != null) {
-		throw failed
-	}
+	ssh "podman pull --authfile=~/.podman-auth.json ${source}/${image} && podman tag ${source}/${image} ${image} ${destination}/${image}"
 }
 
 node('cico-workspace') {
