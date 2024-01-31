@@ -199,8 +199,10 @@ welcome and encouraged to join.
 
 Please use the following to reach members of the community:
 
-- Slack: Join the [#ceph-csi](https://ceph-storage.slack.com/archives/C05522L7P60) channel on the [ceph Slack](https://ceph-storage.slack.com) to discuss
-  anything related to this project. You can join the Slack by this [invite
-  link](https://join.slack.com/t/ceph-storage/shared_invite/zt-2bly4isgz-mSxwgheAYlcK~s1HjYeLzA)
+- Slack: Join the
+  [#ceph-csi](https://ceph-storage.slack.com/archives/C05522L7P60) channel 
+  on the [ceph Slack](https://ceph-storage.slack.com) to discuss anything
+  related to this project. You can join the Slack by this
+  [invite link](bit.ly/ceph-slack-invite)
 - Forums: [ceph-csi](https://groups.google.com/forum/#!forum/ceph-csi)
 - Twitter: [@CephCsi](https://twitter.com/CephCsi)
