@@ -95,12 +95,12 @@ For example, upgrading from 3.8 to 3.10 is not recommended.
 [release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.10.0) before
 proceeding further.**
 
-git checkout v3.10.0 tag
+git checkout v3.10.2 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.10.0
+git checkout v3.10.2
 ```
 
 ```console
