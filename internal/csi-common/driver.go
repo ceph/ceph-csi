@@ -130,3 +130,21 @@ func (d *CSIDriver) AddGroupControllerServiceCapabilities(cl []csi.GroupControll
 
 	d.groupCapabilities = csc
 }
+
+// ValidateGroupControllerServiceRequest validates the group controller
+// plugin capabilities.
+//
+//nolint:interfacer // c can be of type fmt.Stringer, but that does not make the API clearer
+func (d *CSIDriver) ValidateGroupControllerServiceRequest(c csi.GroupControllerServiceCapability_RPC_Type) error {
+	if c == csi.GroupControllerServiceCapability_RPC_UNKNOWN {
+		return nil
+	}
+
+	for _, capability := range d.groupCapabilities {
+		if c == capability.GetRpc().GetType() {
+			return nil
+		}
+	}
+
+	return status.Error(codes.InvalidArgument, c.String())
+}
