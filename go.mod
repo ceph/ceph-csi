@@ -6,7 +6,7 @@ toolchain go1.21.5
 
 require (
 	github.com/IBM/keyprotect-go-client v0.12.2
-	github.com/aws/aws-sdk-go v1.50.6
+	github.com/aws/aws-sdk-go v1.50.11
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.7
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.25.0
