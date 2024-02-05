@@ -145,6 +145,13 @@ func getReqID(req interface{}) string {
 
 	case *csi.NodeExpandVolumeRequest:
 		reqID = r.VolumeId
+
+	case *csi.CreateVolumeGroupSnapshotRequest:
+		reqID = r.Name
+	case *csi.DeleteVolumeGroupSnapshotRequest:
+		reqID = r.GroupSnapshotId
+	case *csi.GetVolumeGroupSnapshotRequest:
+		reqID = r.GroupSnapshotId
 	}
 
 	return reqID
