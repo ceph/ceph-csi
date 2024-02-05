@@ -124,6 +124,10 @@ func (fs *Driver) Run(conf *util.Config) {
 	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
 
 	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
+
+	store.VolumeGroupJournal = journal.NewCSIVolumeGroupJournalWithNamespace(
+		CSIInstanceID,
+		fsutil.RadosNamespace)
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)

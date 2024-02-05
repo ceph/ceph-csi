@@ -40,6 +40,10 @@ var (
 	// SnapJournal is used to maintain RADOS based journals for CO generated.
 	// SnapshotName to backing CephFS subvolumes.
 	SnapJournal *journal.Config
+
+	// VolumeGroupJournal is used to maintain RADOS based journals for CO
+	// generate request name to CephFS snapshot group attributes.
+	VolumeGroupJournal journal.VolumeGroupJournalConfig
 )
 
 // VolumeIdentifier structure contains an association between the CSI VolumeID to its subvolume
