@@ -31,9 +31,10 @@ type CSIDriver struct {
 	nodeID  string
 	version string
 	// topology constraints that this nodeserver will advertise
-	topology     map[string]string
-	capabilities []*csi.ControllerServiceCapability
-	vc           []*csi.VolumeCapability_AccessMode
+	topology          map[string]string
+	capabilities      []*csi.ControllerServiceCapability
+	groupCapabilities []*csi.GroupControllerServiceCapability
+	vc                []*csi.VolumeCapability_AccessMode
 }
 
 // NewCSIDriver Creates a NewCSIDriver object. Assumes vendor
@@ -115,4 +116,17 @@ func (d *CSIDriver) AddVolumeCapabilityAccessModes(
 // GetVolumeCapabilityAccessModes returns access modes.
 func (d *CSIDriver) GetVolumeCapabilityAccessModes() []*csi.VolumeCapability_AccessMode {
 	return d.vc
+}
+
+// AddControllerServiceCapabilities stores the group controller capabilities
+// in driver object.
+func (d *CSIDriver) AddGroupControllerServiceCapabilities(cl []csi.GroupControllerServiceCapability_RPC_Type) {
+	csc := make([]*csi.GroupControllerServiceCapability, 0, len(cl))
+
+	for _, c := range cl {
+		log.DefaultLog("Enabling group controller service capability: %v", c.String())
+		csc = append(csc, NewGroupControllerServiceCapability(c))
+	}
+
+	d.groupCapabilities = csc
 }
