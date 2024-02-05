@@ -146,6 +146,10 @@ func (fs *Driver) Run(conf *util.Config) {
 			csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
 			csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
 		})
+
+		fs.cd.AddGroupControllerServiceCapabilities([]csi.GroupControllerServiceCapability_RPC_Type{
+			csi.GroupControllerServiceCapability_RPC_CREATE_DELETE_GET_VOLUME_GROUP_SNAPSHOT,
+		})
 	}
 	// Create gRPC servers
 
