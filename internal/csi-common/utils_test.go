@@ -65,6 +65,16 @@ func TestGetReqID(t *testing.T) {
 		&csi.NodeExpandVolumeRequest{
 			VolumeId: fakeID,
 		},
+
+		&csi.CreateVolumeGroupSnapshotRequest{
+			Name: fakeID,
+		},
+		&csi.DeleteVolumeGroupSnapshotRequest{
+			GroupSnapshotId: fakeID,
+		},
+		&csi.GetVolumeGroupSnapshotRequest{
+			GroupSnapshotId: fakeID,
+		},
 	}
 	for _, r := range req {
 		if got := getReqID(r); got != fakeID {
