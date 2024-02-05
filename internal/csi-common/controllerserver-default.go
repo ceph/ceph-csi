@@ -47,3 +47,19 @@ func (cs *DefaultControllerServer) ControllerGetCapabilities(
 		Capabilities: cs.Driver.capabilities,
 	}, nil
 }
+
+// GroupControllerGetCapabilities implements the default
+// GroupControllerGetCapabilities GRPC callout.
+func (cs *DefaultControllerServer) GroupControllerGetCapabilities(
+	ctx context.Context,
+	req *csi.GroupControllerGetCapabilitiesRequest,
+) (*csi.GroupControllerGetCapabilitiesResponse, error) {
+	log.TraceLog(ctx, "Using default GroupControllerGetCapabilities")
+	if cs.Driver == nil {
+		return nil, status.Error(codes.Unimplemented, "Group controller server is not enabled")
+	}
+
+	return &csi.GroupControllerGetCapabilitiesResponse{
+		Capabilities: cs.Driver.groupCapabilities,
+	}, nil
+}
