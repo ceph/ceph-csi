@@ -95,6 +95,18 @@ func NewControllerServiceCapability(ctrlCap csi.ControllerServiceCapability_RPC_
 	}
 }
 
+// NewGroupControllerServiceCapability returns group controller capabilities.
+func NewGroupControllerServiceCapability(ctrlCap csi.GroupControllerServiceCapability_RPC_Type,
+) *csi.GroupControllerServiceCapability {
+	return &csi.GroupControllerServiceCapability{
+		Type: &csi.GroupControllerServiceCapability_Rpc{
+			Rpc: &csi.GroupControllerServiceCapability_RPC{
+				Type: ctrlCap,
+			},
+		},
+	}
+}
+
 // NewMiddlewareServerOption creates a new grpc.ServerOption that configures a
 // common format for log messages and other gRPC related handlers.
 func NewMiddlewareServerOption() grpc.ServerOption {
