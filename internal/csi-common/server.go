@@ -45,6 +45,7 @@ type Servers struct {
 	IS csi.IdentityServer
 	CS csi.ControllerServer
 	NS csi.NodeServer
+	GS csi.GroupControllerServer
 }
 
 // NewNonBlockingGRPCServer return non-blocking GRPC.
@@ -108,6 +109,9 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, srv Servers) {
 	}
 	if srv.NS != nil {
 		csi.RegisterNodeServer(server, srv.NS)
+	}
+	if srv.GS != nil {
+		csi.RegisterGroupControllerServer(server, srv.GS)
 	}
 
 	log.DefaultLog("Listening for connections on address: %#v", listener.Addr())
