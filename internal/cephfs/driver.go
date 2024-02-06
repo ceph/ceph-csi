@@ -200,6 +200,7 @@ func (fs *Driver) Run(conf *util.Config) {
 		IS: fs.is,
 		CS: fs.cs,
 		NS: fs.ns,
+		GS: fs.cs,
 	}
 	server.Start(conf.Endpoint, srv)
 
