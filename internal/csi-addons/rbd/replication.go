@@ -718,7 +718,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 
 	if !ready {
-		err = checkVolumeResyncStatus(localStatus)
+		err = checkVolumeResyncStatus(ctx, localStatus)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -862,7 +862,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	remoteStatus, err := RemoteStatus(mirrorStatus)
+	remoteStatus, err := RemoteStatus(ctx, mirrorStatus)
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
 
@@ -870,7 +870,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	}
 
 	description := remoteStatus.Description
-	resp, err := getLastSyncInfo(description)
+	resp, err := getLastSyncInfo(ctx, description)
 	if err != nil {
 		if errors.Is(err, corerbd.ErrLastSyncTimeNotFound) {
 			return nil, status.Errorf(codes.NotFound, "failed to get last sync info: %v", err)
@@ -886,12 +886,22 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 // RemoteStatus returns one SiteMirrorImageStatus item from the SiteStatuses
 // slice that corresponds to the remote site's status. If the remote status
 // is not found than the error ErrNotExist will be returned.
-func RemoteStatus(gmis *librbd.GlobalMirrorImageStatus) (librbd.SiteMirrorImageStatus, error) {
+func RemoteStatus(ctx context.Context, gmis *librbd.GlobalMirrorImageStatus) (librbd.SiteMirrorImageStatus, error) {
 	var (
 		ss  librbd.SiteMirrorImageStatus
 		err error = librbd.ErrNotExist
 	)
+
 	for i := range gmis.SiteStatuses {
+		log.DebugLog(
+			ctx,
+			"Site status of MirrorUUID: %s, state: %s, description: %s, lastUpdate: %v, up: %t",
+			gmis.SiteStatuses[i].MirrorUUID,
+			gmis.SiteStatuses[i].State,
+			gmis.SiteStatuses[i].Description,
+			gmis.SiteStatuses[i].LastUpdate,
+			gmis.SiteStatuses[i].Up)
+
 		if gmis.SiteStatuses[i].MirrorUUID != "" {
 			ss = gmis.SiteStatuses[i]
 			err = nil
@@ -906,7 +916,7 @@ func RemoteStatus(gmis *librbd.GlobalMirrorImageStatus) (librbd.SiteMirrorImageS
 // This function gets the local snapshot time, last sync snapshot seconds
 // and last sync bytes from the description of localStatus and convert
 // it into required types.
-func getLastSyncInfo(description string) (*replication.GetVolumeReplicationInfoResponse, error) {
+func getLastSyncInfo(ctx context.Context, description string) (*replication.GetVolumeReplicationInfoResponse, error) {
 	// Format of the description will be as followed:
 	// description = `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,
 	// "last_snapshot_bytes":81920,"last_snapshot_sync_seconds":0,
@@ -924,6 +934,7 @@ func getLastSyncInfo(description string) (*replication.GetVolumeReplicationInfoR
 	if description == "" {
 		return nil, fmt.Errorf("empty description: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
+	log.DebugLog(ctx, "description: %s", description)
 	splittedString := strings.SplitN(description, ",", 2)
 	if len(splittedString) == 1 {
 		return nil, fmt.Errorf("no snapshot details: %w", corerbd.ErrLastSyncTimeNotFound)
@@ -968,13 +979,13 @@ func getLastSyncInfo(description string) (*replication.GetVolumeReplicationInfoR
 	return &response, nil
 }
 
-func checkVolumeResyncStatus(localStatus librbd.SiteMirrorImageStatus) error {
+func checkVolumeResyncStatus(ctx context.Context, localStatus librbd.SiteMirrorImageStatus) error {
 	// we are considering local snapshot timestamp to check if the resync is
 	// started or not, if we dont see local_snapshot_timestamp in the
 	// description of localStatus, we are returning error. if we see the local
 	// snapshot timestamp in the description we return resyncing started.
 	description := localStatus.Description
-	resp, err := getLastSyncInfo(description)
+	resp, err := getLastSyncInfo(ctx, description)
 	if err != nil {
 		return fmt.Errorf("failed to get last sync info: %w", err)
 	}
