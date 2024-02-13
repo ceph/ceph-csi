@@ -58,6 +58,9 @@ var (
 
 	// ErrVolumeHasSnapshots is returned when a subvolume has snapshots.
 	ErrVolumeHasSnapshots = coreError.New("volume has snapshots")
+
+	// ErrQuiesceInProgress is returned when quiesce operation is in progress.
+	ErrQuiesceInProgress = coreError.New("quiesce operation is in progress")
 )
 
 // IsCloneRetryError returns true if the clone error is pending,in-progress
