@@ -28,6 +28,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/csi-addons/spec/lib/go/replication"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
@@ -132,6 +133,20 @@ func getReqID(req interface{}) string {
 		reqID = r.VolumeId
 
 	case *csi.NodeExpandVolumeRequest:
+		reqID = r.VolumeId
+
+	// Replication
+	case *replication.EnableVolumeReplicationRequest:
+		reqID = r.VolumeId
+	case *replication.DisableVolumeReplicationRequest:
+		reqID = r.VolumeId
+	case *replication.PromoteVolumeRequest:
+		reqID = r.VolumeId
+	case *replication.DemoteVolumeRequest:
+		reqID = r.VolumeId
+	case *replication.ResyncVolumeRequest:
+		reqID = r.VolumeId
+	case *replication.GetVolumeReplicationInfoRequest:
 		reqID = r.VolumeId
 	}
 
