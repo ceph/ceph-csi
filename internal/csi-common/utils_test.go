@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/csi-addons/spec/lib/go/replication"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	mount "k8s.io/mount-utils"
@@ -74,6 +75,25 @@ func TestGetReqID(t *testing.T) {
 		},
 		&csi.GetVolumeGroupSnapshotRequest{
 			GroupSnapshotId: fakeID,
+		},
+
+		&replication.EnableVolumeReplicationRequest{
+			VolumeId: fakeID,
+		},
+		&replication.DisableVolumeReplicationRequest{
+			VolumeId: fakeID,
+		},
+		&replication.PromoteVolumeRequest{
+			VolumeId: fakeID,
+		},
+		&replication.DemoteVolumeRequest{
+			VolumeId: fakeID,
+		},
+		&replication.ResyncVolumeRequest{
+			VolumeId: fakeID,
+		},
+		&replication.GetVolumeReplicationInfoRequest{
+			VolumeId: fakeID,
 		},
 	}
 	for _, r := range req {
