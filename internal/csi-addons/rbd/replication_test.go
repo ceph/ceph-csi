@@ -218,6 +218,7 @@ func TestGetSchedulingDetails(t *testing.T) {
 }
 
 func TestCheckVolumeResyncStatus(t *testing.T) {
+	ctx := context.TODO()
 	t.Parallel()
 	tests := []struct {
 		name    string
@@ -253,7 +254,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 		ts := tt
 		t.Run(ts.name, func(t *testing.T) {
 			t.Parallel()
-			if err := checkVolumeResyncStatus(ts.args); (err != nil) != ts.wantErr {
+			if err := checkVolumeResyncStatus(ctx, ts.args); (err != nil) != ts.wantErr {
 				t.Errorf("checkVolumeResyncStatus() error = %v, expect error = %v", err, ts.wantErr)
 			}
 		})
@@ -399,6 +400,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 
 func TestValidateLastSyncInfo(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	duration, err := time.ParseDuration(strconv.Itoa(int(56743)) + "s")
 	if err != nil {
 		t.Errorf("failed to parse duration)")
@@ -502,7 +504,7 @@ func TestValidateLastSyncInfo(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			teststruct, err := getLastSyncInfo(tt.description)
+			teststruct, err := getLastSyncInfo(ctx, tt.description)
 			if err != nil && !strings.Contains(err.Error(), tt.expectedErr) {
 				// returned error
 				t.Errorf("getLastSyncInfo() returned error, expected: %v, got: %v",
