@@ -42,31 +42,6 @@ spec:
 {{ toYaml .Values.nodeplugin.imagePullSecrets | indent 8 -}}
 {{- end }}
       containers:
-        - name: driver-registrar
-          # This is necessary only for systems with SELinux, where
-          # non-privileged sidecar containers cannot access unix domain socket
-          # created by privileged CSI driver container.
-          securityContext:
-            privileged: true
-            allowPrivilegeEscalation: true
-          image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
-          imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
-          args:
-            - "--v={{ .Values.logLevel }}"
-            - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
-            - "--kubelet-registration-path={{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}/{{ .Values.pluginSocketFile }}"
-          env:
-            - name: KUBE_NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-            - name: registration-dir
-              mountPath: /registration
-          resources:
-{{ toYaml .Values.nodeplugin.registrar.resources | indent 12 }}
         - name: csi-cephfsplugin
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
           imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
@@ -141,6 +116,31 @@ spec:
               mountPath: /csi/mountinfo
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+        - name: driver-registrar
+          # This is necessary only for systems with SELinux, where
+          # non-privileged sidecar containers cannot access unix domain socket
+          # created by privileged CSI driver container.
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+          image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
+          args:
+            - "--v={{ .Values.logLevel }}"
+            - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
+            - "--kubelet-registration-path={{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}/{{ .Values.pluginSocketFile }}"
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+          resources:
+{{ toYaml .Values.nodeplugin.registrar.resources | indent 12 }}
 {{- if .Values.nodeplugin.httpMetrics.enabled }}
         - name: liveness-prometheus
           securityContext:

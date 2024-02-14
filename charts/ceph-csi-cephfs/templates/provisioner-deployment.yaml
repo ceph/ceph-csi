@@ -67,6 +67,55 @@ spec:
 {{ toYaml .Values.provisioner.imagePullSecrets | indent 8 -}}
 {{- end }}
       containers:
+        - name: csi-cephfsplugin
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=cephfs"
+            - "--controllerserver=true"
+            - "--pidlimit=-1"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--v={{ .Values.logLevel }}"
+            - "--drivername=$(DRIVER_NAME)"
+{{- if .Values.provisioner.profiling.enabled }}
+            - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
+{{- end }}
+{{- if .Values.provisioner.clustername }}
+            - "--clustername={{ .Values.provisioner.clustername }}"
+{{- end }}
+            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName }}
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: host-sys
+              mountPath: /sys
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+            - name: host-dev
+              mountPath: /dev
+            - name: ceph-config
+              mountPath: /etc/ceph/
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
         - name: csi-provisioner
           image: "{{ .Values.provisioner.provisioner.image.repository }}:{{ .Values.provisioner.provisioner.image.tag }}"
           imagePullPolicy: {{ .Values.provisioner.provisioner.image.pullPolicy }}
@@ -134,55 +183,6 @@ spec:
           resources:
 {{ toYaml .Values.provisioner.resizer.resources | indent 12 }}
 {{- end }}
-        - name: csi-cephfsplugin
-          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
-          args:
-            - "--nodeid=$(NODE_ID)"
-            - "--type=cephfs"
-            - "--controllerserver=true"
-            - "--pidlimit=-1"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--v={{ .Values.logLevel }}"
-            - "--drivername=$(DRIVER_NAME)"
-{{- if .Values.provisioner.profiling.enabled }}
-            - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
-{{- end }}
-{{- if .Values.provisioner.clustername }}
-            - "--clustername={{ .Values.provisioner.clustername }}"
-{{- end }}
-            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: DRIVER_NAME
-              value: {{ .Values.driverName }}
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: CSI_ENDPOINT
-              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-            - name: host-sys
-              mountPath: /sys
-            - name: lib-modules
-              mountPath: /lib/modules
-              readOnly: true
-            - name: host-dev
-              mountPath: /dev
-            - name: ceph-config
-              mountPath: /etc/ceph/
-            - name: ceph-csi-config
-              mountPath: /etc/ceph-csi-config/
-            - name: keys-tmp-dir
-              mountPath: /tmp/csi/keys
-          resources:
-{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- if .Values.provisioner.httpMetrics.enabled }}
         - name: liveness-prometheus
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"

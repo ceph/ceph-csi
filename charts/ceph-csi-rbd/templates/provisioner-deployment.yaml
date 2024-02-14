@@ -67,6 +67,70 @@ spec:
 {{ toYaml .Values.provisioner.imagePullSecrets | indent 8 -}}
 {{- end }}
       containers:
+        - name: csi-rbdplugin
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=rbd"
+            - "--controllerserver=true"
+            - "--pidlimit=-1"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
+            - "--v={{ .Values.logLevel }}"
+            - "--drivername=$(DRIVER_NAME)"
+            - "--rbdhardmaxclonedepth={{ .Values.provisioner.hardMaxCloneDepth }}"
+            - "--rbdsoftmaxclonedepth={{ .Values.provisioner.softMaxCloneDepth }}"
+            - "--maxsnapshotsonimage={{ .Values.provisioner.maxSnapshotsOnImage }}"
+            - "--minsnapshotsonimage={{ .Values.provisioner.minSnapshotsOnImage }}"
+            {{- if .Values.provisioner.skipForceFlatten }}
+            - "--skipforceflatten={{ .Values.provisioner.skipForceFlatten }}"
+            {{- end }}
+            {{- if .Values.provisioner.profiling.enabled }}
+            - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
+            {{- end }}
+            {{- if .Values.provisioner.clustername }}
+            - "--clustername={{ .Values.provisioner.clustername }}"
+            {{- end }}
+            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName }}
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+            - name: CSI_ADDONS_ENDPOINT
+              value: "unix:///csi/csi-addons.sock"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - mountPath: /dev
+              name: host-dev
+            - mountPath: /sys
+              name: host-sys
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: ceph-config
+              mountPath: /etc/ceph/
+            - name: ceph-csi-encryption-kms-config
+              mountPath: /etc/ceph-csi-encryption-kms-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+            - name: oidc-token
+              mountPath: /run/secrets/tokens
+              readOnly: true
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
         - name: csi-provisioner
           image: "{{ .Values.provisioner.provisioner.image.repository }}:{{ .Values.provisioner.provisioner.image.tag }}"
           imagePullPolicy: {{ .Values.provisioner.provisioner.image.pullPolicy }}
@@ -160,70 +224,6 @@ spec:
           resources:
 {{ toYaml .Values.provisioner.attacher.resources | indent 12 }}
 {{- end }}
-        - name: csi-rbdplugin
-          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
-          args:
-            - "--nodeid=$(NODE_ID)"
-            - "--type=rbd"
-            - "--controllerserver=true"
-            - "--pidlimit=-1"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
-            - "--v={{ .Values.logLevel }}"
-            - "--drivername=$(DRIVER_NAME)"
-            - "--rbdhardmaxclonedepth={{ .Values.provisioner.hardMaxCloneDepth }}"
-            - "--rbdsoftmaxclonedepth={{ .Values.provisioner.softMaxCloneDepth }}"
-            - "--maxsnapshotsonimage={{ .Values.provisioner.maxSnapshotsOnImage }}"
-            - "--minsnapshotsonimage={{ .Values.provisioner.minSnapshotsOnImage }}"
-            {{- if .Values.provisioner.skipForceFlatten }}
-            - "--skipforceflatten={{ .Values.provisioner.skipForceFlatten }}"
-            {{- end }}
-            {{- if .Values.provisioner.profiling.enabled }}
-            - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
-            {{- end }}
-            {{- if .Values.provisioner.clustername }}
-            - "--clustername={{ .Values.provisioner.clustername }}"
-            {{- end }}
-            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: DRIVER_NAME
-              value: {{ .Values.driverName }}
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: CSI_ENDPOINT
-              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
-            - name: CSI_ADDONS_ENDPOINT
-              value: "unix:///csi/csi-addons.sock"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-            - mountPath: /dev
-              name: host-dev
-            - mountPath: /sys
-              name: host-sys
-            - mountPath: /lib/modules
-              name: lib-modules
-              readOnly: true
-            - name: ceph-csi-config
-              mountPath: /etc/ceph-csi-config/
-            - name: ceph-config
-              mountPath: /etc/ceph/
-            - name: ceph-csi-encryption-kms-config
-              mountPath: /etc/ceph-csi-encryption-kms-config/
-            - name: keys-tmp-dir
-              mountPath: /tmp/csi/keys
-            - name: oidc-token
-              mountPath: /run/secrets/tokens
-              readOnly: true
-          resources:
-{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- if .Values.provisioner.deployController }}
         - name: csi-rbdplugin-controller
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
