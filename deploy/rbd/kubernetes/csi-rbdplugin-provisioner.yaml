@@ -46,6 +46,63 @@ spec:
       serviceAccountName: rbd-csi-provisioner
       priorityClassName: system-cluster-critical
       containers:
+        - name: csi-rbdplugin
+          # for stable functionality replace canary with latest release version
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=rbd"
+            - "--controllerserver=true"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
+            - "--v=5"
+            - "--drivername=rbd.csi.ceph.com"
+            - "--pidlimit=-1"
+            - "--rbdhardmaxclonedepth=8"
+            - "--rbdsoftmaxclonedepth=4"
+            - "--enableprofiling=false"
+            - "--setmetadata=true"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            # - name: KMS_CONFIGMAP_NAME
+            #   value: encryptionConfig
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi-provisioner.sock
+            - name: CSI_ADDONS_ENDPOINT
+              value: unix:///csi/csi-addons.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - mountPath: /dev
+              name: host-dev
+            - mountPath: /sys
+              name: host-sys
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: ceph-csi-encryption-kms-config
+              mountPath: /etc/ceph-csi-encryption-kms-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+            - name: ceph-config
+              mountPath: /etc/ceph/
+            - name: oidc-token
+              mountPath: /run/secrets/tokens
+              readOnly: true
         - name: csi-provisioner
           image: registry.k8s.io/sig-storage/csi-provisioner:v4.0.0
           args:
@@ -115,63 +172,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        - name: csi-rbdplugin
-          # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:canary
-          args:
-            - "--nodeid=$(NODE_ID)"
-            - "--type=rbd"
-            - "--controllerserver=true"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
-            - "--v=5"
-            - "--drivername=rbd.csi.ceph.com"
-            - "--pidlimit=-1"
-            - "--rbdhardmaxclonedepth=8"
-            - "--rbdsoftmaxclonedepth=4"
-            - "--enableprofiling=false"
-            - "--setmetadata=true"
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            # - name: KMS_CONFIGMAP_NAME
-            #   value: encryptionConfig
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi-provisioner.sock
-            - name: CSI_ADDONS_ENDPOINT
-              value: unix:///csi/csi-addons.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-            - mountPath: /dev
-              name: host-dev
-            - mountPath: /sys
-              name: host-sys
-            - mountPath: /lib/modules
-              name: lib-modules
-              readOnly: true
-            - name: ceph-csi-config
-              mountPath: /etc/ceph-csi-config/
-            - name: ceph-csi-encryption-kms-config
-              mountPath: /etc/ceph-csi-encryption-kms-config/
-            - name: keys-tmp-dir
-              mountPath: /tmp/csi/keys
-            - name: ceph-config
-              mountPath: /etc/ceph/
-            - name: oidc-token
-              mountPath: /run/secrets/tokens
-              readOnly: true
         - name: csi-rbdplugin-controller
           # for stable functionality replace canary with latest release version
           image: quay.io/cephcsi/cephcsi:canary
