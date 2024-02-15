@@ -21,6 +21,11 @@ SNAPSHOTCLASS="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_volu
 VOLUME_SNAPSHOT_CONTENT="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml"
 VOLUME_SNAPSHOT="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml"
 
+# volumegroupsnapshot CRD
+VOLUME_GROUP_SNAPSHOTCLASS="${SNAPSHOTTER_URL}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotclasses.yaml"
+VOLUME_GROUP_SNAPSHOT_CONTENT="${SNAPSHOTTER_URL}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotcontents.yaml"
+VOLUME_GROUP_SNAPSHOT="${SNAPSHOTTER_URL}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshots.yaml"
+
 function install_snapshot_controller() {
     local namespace=$1
     if [ -z "${namespace}" ]; then
@@ -68,6 +73,24 @@ function create_or_delete_resource() {
     sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_snap_controller}"
     sed -i "s/canary/${SNAPSHOT_VERSION}/g" "${temp_snap_controller}"
 
+    if [ "${operation}" == "create" ]; then
+        # Argument to add/update
+        ARGUMENT="--enable-volume-group-snapshots=true"
+        # Check if the argument is already present and set to false
+        if grep -q -E "^\s+-\s+--enable-volume-group-snapshots=false" "${temp_snap_controller}"; then
+            sed -i -E "s/^\s+-\s+--enable-volume-group-snapshots=false$/      - $ARGUMENT/" "${temp_snap_controller}"
+            # Check if the argument is already present and set to true
+        elif grep -q -E "^\s+-\s+--enable-volume-group-snapshots=true" "${temp_snap_controller}"; then
+            echo "Argument already present and matching."
+        else
+            # Add the argument if it's not present
+            sed -i -E "/^(\s+)args:/a\           \ - $ARGUMENT" "${temp_snap_controller}"
+        fi
+    fi
+
+    kubectl "${operation}" -f "${VOLUME_GROUP_SNAPSHOTCLASS}"
+    kubectl "${operation}" -f "${VOLUME_GROUP_SNAPSHOT_CONTENT}"
+    kubectl "${operation}" -f "${VOLUME_GROUP_SNAPSHOT}"
     kubectl "${operation}" -f "${temp_rbac}"
     kubectl "${operation}" -f "${temp_snap_controller}" -n "${namespace}"
     kubectl "${operation}" -f "${SNAPSHOTCLASS}"
