@@ -71,7 +71,7 @@ function create_or_delete_resource() {
     curl -o "${temp_snap_controller}" "${SNAPSHOT_CONTROLLER}"
     sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_rbac}"
     sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_snap_controller}"
-    sed -i "s/canary/${SNAPSHOT_VERSION}/g" "${temp_snap_controller}"
+    sed -i -E "s/(image: registry\.k8s\.io\/sig-storage\/snapshot-controller:).*$/\1$SNAPSHOT_VERSION/g" "${temp_snap_controller}"
 
     if [ "${operation}" == "create" ]; then
         # Argument to add/update
