@@ -37,19 +37,19 @@ function install_snapshot_controller() {
 
     create_or_delete_resource "create" "${namespace}"
 
-    pod_ready=$(kubectl_retry get pods -l app=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
+    pod_ready=$(kubectl_retry get pods -l app.kubernetes.io/name=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
     INC=0
     until [[ "${pod_ready}" == "true" || $INC -gt 20 ]]; do
         sleep 10
         ((++INC))
-        pod_ready=$(kubectl_retry get pods -l app=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
+        pod_ready=$(kubectl_retry get pods -l app.kubernetes.io/name=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
         echo "snapshotter pod status: ${pod_ready}"
     done
 
     if [ "${pod_ready}" != "true" ]; then
         echo "snapshotter controller creation failed"
-        kubectl_retry get pods -l app=snapshot-controller -n "${namespace}"
-        kubectl_retry describe po -l app=snapshot-controller -n "${namespace}"
+        kubectl_retry get pods -l app.kubernetes.io/name=snapshot-controller -n "${namespace}"
+        kubectl_retry describe po -l app.kubernetes.io/name=snapshot-controller -n "${namespace}"
         exit 1
     fi
 
