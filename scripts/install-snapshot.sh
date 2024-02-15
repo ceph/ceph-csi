@@ -98,12 +98,6 @@ function create_or_delete_resource() {
     kubectl "${operation}" -f "${VOLUME_SNAPSHOT}"
 }
 
-function delete_snapshot_crd() {
-    kubectl delete -f "${SNAPSHOTCLASS}" --ignore-not-found
-    kubectl delete -f "${VOLUME_SNAPSHOT_CONTENT}" --ignore-not-found
-    kubectl delete -f "${VOLUME_SNAPSHOT}" --ignore-not-found
-}
-
 case "${1:-}" in
 install)
     install_snapshot_controller "$2"
