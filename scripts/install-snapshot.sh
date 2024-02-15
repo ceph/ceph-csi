@@ -7,6 +7,9 @@ SCRIPT_DIR="$(dirname "${0}")"
 # shellcheck source=build.env
 source "${SCRIPT_DIR}/../build.env"
 
+# shellcheck disable=SC1091
+[ ! -e "${SCRIPT_DIR}"/utils.sh ] || source "${SCRIPT_DIR}"/utils.sh
+
 SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v5.0.1"}
 
 TEMP_DIR="$(mktemp -d)"
@@ -34,19 +37,19 @@ function install_snapshot_controller() {
 
     create_or_delete_resource "create" "${namespace}"
 
-    pod_ready=$(kubectl get pods -l app=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
+    pod_ready=$(kubectl_retry get pods -l app=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
     INC=0
     until [[ "${pod_ready}" == "true" || $INC -gt 20 ]]; do
         sleep 10
         ((++INC))
-        pod_ready=$(kubectl get pods -l app=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
+        pod_ready=$(kubectl_retry get pods -l app=snapshot-controller -n "${namespace}" -o jsonpath='{.items[0].status.containerStatuses[0].ready}')
         echo "snapshotter pod status: ${pod_ready}"
     done
 
     if [ "${pod_ready}" != "true" ]; then
         echo "snapshotter controller creation failed"
-        kubectl get pods -l app=snapshot-controller -n "${namespace}"
-        kubectl describe po -l app=snapshot-controller -n "${namespace}"
+        kubectl_retry get pods -l app=snapshot-controller -n "${namespace}"
+        kubectl_retry describe po -l app=snapshot-controller -n "${namespace}"
         exit 1
     fi
 
@@ -88,14 +91,14 @@ function create_or_delete_resource() {
         fi
     fi
 
-    kubectl "${operation}" -f "${VOLUME_GROUP_SNAPSHOTCLASS}"
-    kubectl "${operation}" -f "${VOLUME_GROUP_SNAPSHOT_CONTENT}"
-    kubectl "${operation}" -f "${VOLUME_GROUP_SNAPSHOT}"
-    kubectl "${operation}" -f "${temp_rbac}"
-    kubectl "${operation}" -f "${temp_snap_controller}" -n "${namespace}"
-    kubectl "${operation}" -f "${SNAPSHOTCLASS}"
-    kubectl "${operation}" -f "${VOLUME_SNAPSHOT_CONTENT}"
-    kubectl "${operation}" -f "${VOLUME_SNAPSHOT}"
+    kubectl_retry "${operation}" -f "${VOLUME_GROUP_SNAPSHOTCLASS}"
+    kubectl_retry "${operation}" -f "${VOLUME_GROUP_SNAPSHOT_CONTENT}"
+    kubectl_retry "${operation}" -f "${VOLUME_GROUP_SNAPSHOT}"
+    kubectl_retry "${operation}" -f "${temp_rbac}"
+    kubectl_retry "${operation}" -f "${temp_snap_controller}" -n "${namespace}"
+    kubectl_retry "${operation}" -f "${SNAPSHOTCLASS}"
+    kubectl_retry "${operation}" -f "${VOLUME_SNAPSHOT_CONTENT}"
+    kubectl_retry "${operation}" -f "${VOLUME_SNAPSHOT}"
 }
 
 case "${1:-}" in
