@@ -83,5 +83,13 @@ data:
       "READ_TIMEOUT": 10,
       "WRITE_TIMEOUT": 10
     }
+  azure-test: |-
+    {
+      "KMS_PROVIDER": "azure-kv",
+      "AZURE_CERT_SECRET_NAME": "ceph-csi-azure-credentials",
+      "AZURE_VAULT_URL": "https://vault-name.vault.azure.net/",
+      "AZURE_CLIENT_ID": "__CLIENT_ID__",
+      "AZURE_TENANT_ID": "__TENANT_ID__"
+    }
 metadata:
   name: csi-kms-connection-details
