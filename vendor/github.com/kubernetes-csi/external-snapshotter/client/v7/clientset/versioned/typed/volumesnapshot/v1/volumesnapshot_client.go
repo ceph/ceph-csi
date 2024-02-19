@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ package v1
 import (
 	"net/http"
 
-	v1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
-	"github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned/scheme"
+	v1 "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
+	"github.com/kubernetes-csi/external-snapshotter/client/v7/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
