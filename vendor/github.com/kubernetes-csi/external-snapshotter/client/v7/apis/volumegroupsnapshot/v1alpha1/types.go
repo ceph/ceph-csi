@@ -20,7 +20,7 @@ import (
 	core_v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
 )
 
 // VolumeGroupSnapshotSpec defines the desired state of a volume group snapshot.
@@ -52,8 +52,8 @@ type VolumeGroupSnapshotSource struct {
 	// is created, the existing group snapshots won't be modified.
 	// Once a VolumeGroupSnapshotContent is created and the sidecar starts to process
 	// it, the volume list will not change with retries.
-	// Required.
-	Selector metav1.LabelSelector `json:"selector" protobuf:"bytes,1,opt,name=selector"`
+	// +optional
+	Selector *metav1.LabelSelector `json:"selector,omitempty" protobuf:"bytes,1,opt,name=selector"`
 
 	// VolumeGroupSnapshotContentName specifies the name of a pre-existing VolumeGroupSnapshotContent
 	// object representing an existing volume group snapshot.
@@ -348,16 +348,33 @@ type VolumeGroupSnapshotContentStatus struct {
 // Exactly one of its members must be set.
 // Members in VolumeGroupSnapshotContentSource are immutable.
 type VolumeGroupSnapshotContentSource struct {
-	// PersistentVolumeNames is a list of names of PersistentVolumes to be snapshotted
+	// VolumeHandles is a list of volume handles on the backend to be snapshotted
 	// together. It is specified for dynamic provisioning of the VolumeGroupSnapshot.
 	// This field is immutable.
 	// +optional
-	PersistentVolumeNames []string `json:"persistentVolumeNames,omitempty" protobuf:"bytes,1,opt,name=persistentVolumeNames"`
+	VolumeHandles []string `json:"volumeHandles,omitempty" protobuf:"bytes,1,opt,name=volumeHandles"`
 
+	// GroupSnapshotHandles specifies the CSI "group_snapshot_id" of a pre-existing
+	// group snapshot and a list of CSI "snapshot_id" of pre-existing snapshots
+	// on the underlying storage system for which a Kubernetes object
+	// representation was (or should be) created.
+	// This field is immutable.
+	// +optional
+	GroupSnapshotHandles *GroupSnapshotHandles `json:"groupSnapshotHandles,omitempty" protobuf:"bytes,2,opt,name=groupSnapshotHandles"`
+}
+
+type GroupSnapshotHandles struct {
 	// VolumeGroupSnapshotHandle specifies the CSI "group_snapshot_id" of a pre-existing
 	// group snapshot on the underlying storage system for which a Kubernetes object
 	// representation was (or should be) created.
 	// This field is immutable.
-	// +optional
-	VolumeGroupSnapshotHandle *string `json:"volumeGroupSnapshotHandle,omitempty" protobuf:"bytes,2,opt,name=volumeGroupSnapshotHandle"`
+	// Required.
+	VolumeGroupSnapshotHandle string `json:"volumeGroupSnapshotHandle" protobuf:"bytes,1,opt,name=volumeGroupSnapshotHandle"`
+
+	// VolumeSnapshotHandles is a list of CSI "snapshot_id" of pre-existing
+	// snapshots on the underlying storage system for which Kubernetes objects
+	// representation were (or should be) created.
+	// This field is immutable.
+	// Required.
+	VolumeSnapshotHandles []string `json:"volumeSnapshotHandles" protobuf:"bytes,2,opt,name=volumeSnapshotHandles"`
 }

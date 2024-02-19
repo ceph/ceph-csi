@@ -421,10 +421,10 @@ type VolumeSnapshotContentStatus struct {
 	// +optional
 	Error *VolumeSnapshotError `json:"error,omitempty" protobuf:"bytes,5,opt,name=error,casttype=VolumeSnapshotError"`
 
-	// VolumeGroupSnapshotContentName is the name of the VolumeGroupSnapshotContent of
-	// which this VolumeSnapshotContent is a part of.
+	// VolumeGroupSnapshotHandle is the CSI "group_snapshot_id" of a group snapshot
+	// on the underlying storage system.
 	// +optional
-	VolumeGroupSnapshotContentName *string `json:"volumeGroupSnapshotContentName,omitempty" protobuf:"bytes,6,opt,name=volumeGroupSnapshotContentName"`
+	VolumeGroupSnapshotHandle *string `json:"volumeGroupSnapshotHandle,omitempty" protobuf:"bytes,6,opt,name=volumeGroupSnapshotHandle"`
 }
 
 // DeletionPolicy describes a policy for end-of-life maintenance of volume snapshot contents
