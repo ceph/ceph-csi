@@ -209,10 +209,32 @@ func fmtBackingSnapshotOptionMismatch(optName, expected, actual string) error {
 		optName, actual, expected)
 }
 
+// getVolumeOptions validates the basic required basic options provided in the
+// volume parameters and extract the volumeOptions from volume parameters.
+// It contains the following checks:
+// - clusterID must be set
+// - monitors must be set
+// - fsName must be set.
+func getVolumeOptions(vo map[string]string) (*VolumeOptions, error) {
+	opts := VolumeOptions{}
+	clusterData, err := GetClusterInformation(vo)
+	if err != nil {
+		return nil, err
+	}
+
+	opts.ClusterID = clusterData.ClusterID
+	opts.Monitors = strings.Join(clusterData.Monitors, ",")
+	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
+
+	if err = extractOption(&opts.FsName, "fsName", vo); err != nil {
+		return nil, err
+	}
+
+	return &opts, nil
+}
+
 // NewVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters.
-//
-//nolint:gocyclo,cyclop // TODO: reduce complexity
 func NewVolumeOptions(
 	ctx context.Context,
 	requestName,
@@ -222,20 +244,17 @@ func NewVolumeOptions(
 	cr *util.Credentials,
 ) (*VolumeOptions, error) {
 	var (
-		opts                VolumeOptions
+		opts                *VolumeOptions
 		backingSnapshotBool string
 		err                 error
 	)
 
 	volOptions := req.GetParameters()
-	clusterData, err := GetClusterInformation(volOptions)
+	opts, err = getVolumeOptions(volOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	opts.ClusterID = clusterData.ClusterID
-	opts.Monitors = strings.Join(clusterData.Monitors, ",")
-	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
 	opts.Owner = k8s.GetOwner(volOptions)
 	opts.BackingSnapshot = IsShallowVolumeSupported(req)
 
@@ -244,10 +263,6 @@ func NewVolumeOptions(
 	}
 
 	if err = extractMounter(&opts.Mounter, volOptions); err != nil {
-		return nil, err
-	}
-
-	if err = extractOption(&opts.FsName, "fsName", volOptions); err != nil {
 		return nil, err
 	}
 
@@ -323,7 +338,7 @@ func NewVolumeOptions(
 		}
 	}
 
-	return &opts, nil
+	return opts, nil
 }
 
 // IsShallowVolumeSupported returns true only for ReadOnly volume requests
