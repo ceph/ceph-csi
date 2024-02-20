@@ -448,6 +448,33 @@ the AWS KMS is expected to contain:
 This Secret is expected to be created by the tenant/user in each namespace where
 Ceph-CSI is used to create encrypted rbd volumes.
 
+#### Configuring Azure key vault
+
+Ceph-CSI can be configured to use
+[Azure key vault](https://azure.microsoft.com/en-in/products/key-vault),
+for encrypting RBD volumes.
+
+There are a few settings that need to be included in the [KMS configuration
+file](../examples/kms/vault/kms-config.yaml):
+
+1. `KMS_PROVIDER`: should be set to `azure-kv`.
+1. `AZURE_CERT_SECRET_NAME`: name of the Kubernetes Secret (in the Namespace where
+   Ceph-CSI is deployed) which contains the credentials for communicating with
+   Azure. This defaults to `ceph-csi-azure-credentials`.
+1. `AZURE_VAULT_URL`: URL to access the Azure Key Vault service.
+1. `AZURE_CLIENT_ID`: Client ID of the Azure application object (service principal)
+   created in Azure Active Directory that serves as the username.
+1. `AZURE_TENANT_ID`: Tenant ID of the service principal.
+
+The [Secret with credentials](../examples/kms/vault/azure-credentials.yaml) for
+the Azure KMS is expected to contain:
+
+1. `CLIENT_CERT`: The client certificate used for authentication
+   with Azure Key Vault.
+
+This Secret is expected to be created by the user in the namespace where Ceph-CSI
+is deployed.
+
 #### Configuring KMIP KMS
 
 The Key Management Interoperability Protocol (KMIP) is an extensible
