@@ -33,6 +33,39 @@ func (ri *rbdImage) EnableImageMirroring(mode librbd.ImageMirrorMode) error {
 	}
 	defer image.Close()
 
+	parentInfo, err := image.GetParent()
+	if err != nil {
+		return fmt.Errorf("failed to get parent info of image %q: %w",
+			ri, err)
+	}
+
+	if parentInfo.Image.Trash {
+		return fmt.Errorf("failed to enable mirroring on image %q:"+
+			" parent %q is in trash",
+			parentInfo.Image.ImageID, ri)
+	}
+
+	parent, err := ri.getParent()
+	if err != nil {
+		return fmt.Errorf("failed to enable mirroring on image %q:"+
+			" failed to get parent: %w", ri, err)
+	}
+
+	if parent != nil {
+		parentMirroringInfo, err := parent.GetImageMirroringInfo()
+		if err != nil {
+			return fmt.Errorf("failed to enable mirroring on image %q:"+
+				" failed to get mirroring info of parent %q: %w",
+				ri, parent, err)
+		}
+
+		if parentMirroringInfo.State != librbd.MirrorImageEnabled {
+			return fmt.Errorf("failed to enable mirroring on image %q:"+
+				"parent image %q is not enabled for mirroring",
+				ri, parent)
+		}
+	}
+
 	err = image.MirrorEnable(mode)
 	if err != nil {
 		return fmt.Errorf("failed to enable mirroring on %q with error: %w", ri, err)
