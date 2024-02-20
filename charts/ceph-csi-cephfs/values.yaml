@@ -233,6 +233,10 @@ provisioner:
     ## https://github.com/kubernetes-csi/external-snapshotter#csi-external-snapshotter-sidecar-command-line-options
     extraArgs: []
 
+    args:
+      # enableVolumeGroupSnapshots enables support for volume group snapshots
+      enableVolumeGroupSnapshots: false
+
   nodeSelector: {}
 
   tolerations: []
