@@ -76,12 +76,19 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	}
 	options := req.GetParameters()
 	if value, ok := options["clusterID"]; !ok || value == "" {
-		return status.Error(codes.InvalidArgument, "missing or empty cluster ID to provision volume from")
+		return status.Error(codes.InvalidArgument, "empty cluster ID to provision volume from")
 	}
-	if value, ok := options["pool"]; !ok || value == "" {
+	poolValue, poolOK := options["pool"]
+	topologyConstrainedPoolsValue, topologyOK := options["topologyConstrainedPools"]
+	if !poolOK {
+		if topologyOK && topologyConstrainedPoolsValue == "" {
+			return status.Error(codes.InvalidArgument, "empty pool name or topologyConstrainedPools to provision volume")
+		} else if !topologyOK {
+			return status.Error(codes.InvalidArgument, "missing or empty pool name to provision volume from")
+		}
+	} else if poolValue == "" {
 		return status.Error(codes.InvalidArgument, "missing or empty pool name to provision volume from")
 	}
-
 	if value, ok := options["dataPool"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty datapool name to provision volume from")
 	}
@@ -244,6 +251,7 @@ func buildCreateVolumeResponse(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) 
 		VolumeContext: volumeContext,
 		ContentSource: req.GetVolumeContentSource(),
 	}
+
 	if rbdVol.Topology != nil {
 		volume.AccessibleTopology = []*csi.Topology{
 			{
@@ -341,6 +349,11 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
+	err = updateTopologyConstraints(rbdVol, rbdSnap)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	found, err := rbdVol.Exists(ctx, parentVol)
 	if err != nil {
 		return nil, getGRPCErrorForCreateVolume(err)
@@ -358,7 +371,7 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
-	err = reserveVol(ctx, rbdVol, rbdSnap, cr)
+	err = reserveVol(ctx, rbdVol, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

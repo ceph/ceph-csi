@@ -126,7 +126,10 @@ func createRBDStorageClass(
 	if name != "" {
 		sc.Name = name
 	}
-	sc.Parameters["pool"] = defaultRBDPool
+	// add pool only if topologyConstrainedPools is not present
+	if _, ok := parameters["topologyConstrainedPools"]; !ok {
+		sc.Parameters["pool"] = defaultRBDPool
+	}
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = rbdProvisionerSecretName
 
