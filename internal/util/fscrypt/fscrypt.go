@@ -58,6 +58,11 @@ var policyV2Support = []util.KernelVersion{
 	},
 }
 
+// error values
+var (
+	ErrBadAuth = errors.New("key authentication check failed")
+)
+
 func AppendEncyptedSubdirectory(dir string) string {
 	return path.Join(dir, FscryptSubdir)
 }
@@ -97,6 +102,10 @@ func createKeyFuncFromVolumeEncryption(
 	volID string,
 ) (func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error), error) {
 	keyFunc := func(info fscryptactions.ProtectorInfo, retry bool) (*fscryptcrypto.Key, error) {
+		if retry {
+			return nil, ErrBadAuth
+		}
+
 		passphrase, err := getPassphrase(ctx, encryption, volID)
 		if err != nil {
 			return nil, err
@@ -375,7 +384,7 @@ func Unlock(
 		return err
 	}
 
-	// A proper set up fscrypy directory requires metadata and a kernel policy:
+	// A proper set up fscrypt directory requires metadata and a kernel policy:
 
 	// 1. Do we have a metadata directory (.fscrypt) set up?
 	metadataDirExists := false
