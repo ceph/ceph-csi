@@ -76,6 +76,10 @@ func validateRbdVol(rbdVol *rbdVolume) error {
 		return err
 	}
 
+	if err = validateNonEmptyField(rbdVol.JournalPool, "JournalPool", "rbdVolume"); err != nil {
+		return err
+	}
+
 	if err = validateNonEmptyField(rbdVol.ClusterID, "ClusterID", "rbdVolume"); err != nil {
 		return err
 	}
@@ -433,6 +437,7 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 		if rbdVol.Topology != nil {
 			rbdVol.Pool = poolName
 			rbdVol.DataPool = dataPoolName
+			rbdVol.JournalPool = poolName
 		}
 
 		return nil
@@ -446,6 +451,7 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 		rbdVol.Pool = poolName
 		rbdVol.DataPool = dataPoolName
 		rbdVol.Topology = topology
+		rbdVol.JournalPool = poolName
 	}
 
 	return nil
@@ -453,13 +459,8 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name.
-func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	var err error
-
-	err = updateTopologyConstraints(rbdVol, rbdSnap)
-	if err != nil {
-		return err
-	}
 
 	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdVol.Monitors, rbdVol.JournalPool, rbdVol.Pool, cr)
 	if err != nil {

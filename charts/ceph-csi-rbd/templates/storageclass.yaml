@@ -16,8 +16,10 @@ metadata:
 provisioner: {{ .Values.driverName }}
 parameters:
   clusterID: {{ .Values.storageClass.clusterID }}
-  pool: {{ .Values.storageClass.pool }}
   imageFeatures: {{ .Values.storageClass.imageFeatures }}
+{{- if .Values.storageClass.pool }}  
+  pool: {{ .Values.storageClass.pool }}
+{{- end }}  
 {{- if .Values.storageClass.tryOtherMounters }}
   tryOtherMounters: {{ .Values.storageClass.tryOtherMounters | quote}}
 {{- end }}

@@ -343,6 +343,7 @@ storageClass:
   dataPool: ""
 
   # (required) Ceph pool into which the RBD image shall be created
+  # (optional) if topologyConstrainedPools is provided
   # eg: pool: replicapool
   pool: replicapool
 

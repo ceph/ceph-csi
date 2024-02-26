@@ -3043,19 +3043,21 @@ var _ = Describe("RBD", func() {
 				}
 
 				By("ensuring created PV has its CSI journal in the CSI journal specific pool")
-				err = checkPVCCSIJournalInPool(f, pvc, "replicapool")
+				err = checkPVCCSIJournalInPool(f, pvc, rbdTopologyPool)
 				if err != nil {
 					framework.Failf("failed to check csi journal in pool: %v", err)
 				}
 
-				err = deleteJournalInfoInPool(f, pvc, "replicapool")
+				err = deleteJournalInfoInPool(f, pvc, rbdTopologyPool)
 				if err != nil {
 					framework.Failf("failed to delete omap data: %v", err)
 				}
+
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
 					framework.Failf("failed to delete PVC and application: %v", err)
 				}
+
 				validateRBDImageCount(f, 0, defaultRBDPool)
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
@@ -3092,7 +3094,7 @@ var _ = Describe("RBD", func() {
 						framework.Failf("failed to check data pool for image: %v", err)
 					}
 
-					err = deleteJournalInfoInPool(f, pvc, "replicapool")
+					err = deleteJournalInfoInPool(f, pvc, rbdTopologyPool)
 					if err != nil {
 						framework.Failf("failed to delete omap data: %v", err)
 					}

@@ -1270,9 +1270,12 @@ func genVolFromVolumeOptions(
 	)
 
 	rbdVol := &rbdVolume{}
+
 	rbdVol.Pool, ok = volOptions["pool"]
 	if !ok {
-		return nil, errors.New("missing required parameter pool")
+		if _, ok = volOptions["topologyConstrainedPools"]; !ok {
+			return nil, errors.New("empty pool name or topologyConstrainedPools to provision volume")
+		}
 	}
 
 	rbdVol.DataPool = volOptions["dataPool"]

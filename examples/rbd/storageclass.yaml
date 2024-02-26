@@ -26,6 +26,7 @@ parameters:
    # dataPool: <ec-data-pool>
 
    # (required) Ceph pool into which the RBD image shall be created
+   # (optional) If the topologyConstrainedPools is provided
    # eg: pool: rbdpool
    pool: <rbd-pool-name>
 
