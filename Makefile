@@ -47,7 +47,8 @@ endif
 GO_PROJECT=github.com/ceph/ceph-csi
 
 CEPH_VERSION ?= $(shell . $(CURDIR)/build.env ; echo $${CEPH_VERSION})
-GO_TAGS_LIST ?= $(CEPH_VERSION)
+# TODO: ceph_preview tag required for FSQuiesce API
+GO_TAGS_LIST ?= $(CEPH_VERSION) ceph_preview
 
 # go build flags
 LDFLAGS ?=
