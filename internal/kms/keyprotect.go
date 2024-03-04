@@ -204,14 +204,14 @@ func (kms *keyProtectKMS) getService() error {
 }
 
 // EncryptDEK uses the KeyProtect KMS and the configured CRK to encrypt the DEK.
-func (kms *keyProtectKMS) EncryptDEK(volumeID, plainDEK string) (string, error) {
+func (kms *keyProtectKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
 	if err := kms.getService(); err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
 	}
 
 	dekByteSlice := []byte(plainDEK)
 	aadVolID := []string{volumeID}
-	result, err := kms.client.Wrap(context.TODO(), kms.customerRootKey, dekByteSlice, &aadVolID)
+	result, err := kms.client.Wrap(ctx, kms.customerRootKey, dekByteSlice, &aadVolID)
 	if err != nil {
 		return "", fmt.Errorf("failed to wrap the DEK: %w", err)
 	}
@@ -223,7 +223,7 @@ func (kms *keyProtectKMS) EncryptDEK(volumeID, plainDEK string) (string, error) 
 }
 
 // DecryptDEK uses the Key protect KMS and the configured CRK to decrypt the DEK.
-func (kms *keyProtectKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
+func (kms *keyProtectKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK string) (string, error) {
 	if err := kms.getService(); err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
 	}
@@ -235,7 +235,7 @@ func (kms *keyProtectKMS) DecryptDEK(volumeID, encryptedDEK string) (string, err
 	}
 
 	aadVolID := []string{volumeID}
-	result, err := kms.client.Unwrap(context.TODO(), kms.customerRootKey, ciphertextBlob, &aadVolID)
+	result, err := kms.client.Unwrap(ctx, kms.customerRootKey, ciphertextBlob, &aadVolID)
 	if err != nil {
 		return "", fmt.Errorf("failed to unwrap the DEK: %w", err)
 	}
@@ -243,6 +243,6 @@ func (kms *keyProtectKMS) DecryptDEK(volumeID, encryptedDEK string) (string, err
 	return string(result), nil
 }
 
-func (kms *keyProtectKMS) GetSecret(volumeID string) (string, error) {
+func (kms *keyProtectKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	return "", ErrGetSecretUnsupported
 }

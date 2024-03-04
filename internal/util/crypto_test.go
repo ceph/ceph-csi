@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"encoding/base64"
 	"testing"
 
@@ -55,11 +56,12 @@ func TestKMSWorkflow(t *testing.T) {
 	assert.Equal(t, kms.DefaultKMSType, ve.GetID())
 
 	volumeID := "volume-id"
+	ctx := context.TODO()
 
-	err = ve.StoreNewCryptoPassphrase(volumeID, defaultEncryptionPassphraseSize)
+	err = ve.StoreNewCryptoPassphrase(ctx, volumeID, defaultEncryptionPassphraseSize)
 	assert.NoError(t, err)
 
-	passphrase, err := ve.GetCryptoPassphrase(volumeID)
+	passphrase, err := ve.GetCryptoPassphrase(ctx, volumeID)
 	assert.NoError(t, err)
 	assert.Equal(t, secrets["encryptionPassphrase"], passphrase)
 }

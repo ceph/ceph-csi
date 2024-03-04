@@ -193,7 +193,7 @@ func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.KMS, error) {
 }
 
 // EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
-func (as *awsSTSMetadataKMS) EncryptDEK(_, plainDEK string) (string, error) {
+func (as *awsSTSMetadataKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string, error) {
 	svc, err := as.getServiceWithSTS()
 	if err != nil {
 		return "", fmt.Errorf("failed to get KMS service: %w", err)
@@ -213,7 +213,7 @@ func (as *awsSTSMetadataKMS) EncryptDEK(_, plainDEK string) (string, error) {
 }
 
 // DecryptDEK uses the Amazon KMS and the configured CMK to decrypt the DEK.
-func (as *awsSTSMetadataKMS) DecryptDEK(_, encryptedDEK string) (string, error) {
+func (as *awsSTSMetadataKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (string, error) {
 	svc, err := as.getServiceWithSTS()
 	if err != nil {
 		return "", fmt.Errorf("failed to get KMS service: %w", err)

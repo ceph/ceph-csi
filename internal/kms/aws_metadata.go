@@ -183,7 +183,7 @@ func (kms *awsMetadataKMS) getService() (*awsKMS.KMS, error) {
 }
 
 // EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
-func (kms *awsMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, error) {
+func (kms *awsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
 	svc, err := kms.getService()
 	if err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
@@ -205,7 +205,7 @@ func (kms *awsMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, error)
 }
 
 // DecryptDEK uses the Amazon KMS and the configured CMK to decrypt the DEK.
-func (kms *awsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
+func (kms *awsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK string) (string, error) {
 	svc, err := kms.getService()
 	if err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
@@ -227,6 +227,6 @@ func (kms *awsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string, er
 	return string(result.Plaintext), nil
 }
 
-func (kms *awsMetadataKMS) GetSecret(volumeID string) (string, error) {
+func (kms *awsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	return "", ErrGetSecretUnsupported
 }

@@ -155,7 +155,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		return err
 	}
 
-	err = parentVol.copyEncryptionConfig(&rv.rbdImage, true)
+	err = parentVol.copyEncryptionConfig(ctx, &rv.rbdImage, true)
 	if err != nil {
 		return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
 	}
@@ -232,7 +232,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 		return errClone
 	}
 
-	err = parentVol.copyEncryptionConfig(&rv.rbdImage, true)
+	err = parentVol.copyEncryptionConfig(ctx, &rv.rbdImage, true)
 	if err != nil {
 		return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
 	}
