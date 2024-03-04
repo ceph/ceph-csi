@@ -7,7 +7,7 @@ toolchain go1.21.5
 require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/openshift/api v0.0.0-20240115183315-0793e918179d
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	k8s.io/api v0.29.2
 )
 
