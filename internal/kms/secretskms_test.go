@@ -17,6 +17,7 @@ limitations under the License.
 package kms
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -103,19 +104,21 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	// plainDEK is the (LUKS) passphrase for the volume
 	plainDEK := "usually created with generateNewEncryptionPassphrase()"
 
-	encryptedDEK, err := kms.EncryptDEK(volumeID, plainDEK)
+	ctx := context.TODO()
+
+	encryptedDEK, err := kms.EncryptDEK(ctx, volumeID, plainDEK)
 	assert.NoError(t, err)
 	assert.NotEqual(t, "", encryptedDEK)
 	assert.NotEqual(t, plainDEK, encryptedDEK)
 
 	// with an incorrect volumeID, decrypting should fail
-	decryptedDEK, err := kms.DecryptDEK("incorrect-volumeID", encryptedDEK)
+	decryptedDEK, err := kms.DecryptDEK(ctx, "incorrect-volumeID", encryptedDEK)
 	assert.Error(t, err)
 	assert.Equal(t, "", decryptedDEK)
 	assert.NotEqual(t, plainDEK, decryptedDEK)
 
 	// with the right volumeID, decrypting should return the plainDEK
-	decryptedDEK, err = kms.DecryptDEK(volumeID, encryptedDEK)
+	decryptedDEK, err = kms.DecryptDEK(ctx, volumeID, encryptedDEK)
 	assert.NoError(t, err)
 	assert.NotEqual(t, "", decryptedDEK)
 	assert.Equal(t, plainDEK, decryptedDEK)

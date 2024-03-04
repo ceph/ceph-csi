@@ -901,7 +901,7 @@ func IsEncrypted(ctx context.Context, volOptions map[string]string) (bool, error
 
 // CopyEncryptionConfig copies passphrases and initializes a fresh
 // Encryption struct if necessary from (vo, vID) to (cp, cpVID).
-func (vo *VolumeOptions) CopyEncryptionConfig(cp *VolumeOptions, vID, cpVID string) error {
+func (vo *VolumeOptions) CopyEncryptionConfig(ctx context.Context, cp *VolumeOptions, vID, cpVID string) error {
 	var err error
 
 	if !vo.IsEncrypted() {
@@ -916,7 +916,7 @@ func (vo *VolumeOptions) CopyEncryptionConfig(cp *VolumeOptions, vID, cpVID stri
 	if cp.Encryption == nil {
 		cp.Encryption, err = util.NewVolumeEncryption(vo.Encryption.GetID(), vo.Encryption.KMS)
 		if errors.Is(err, util.ErrDEKStoreNeeded) {
-			_, err := vo.Encryption.KMS.GetSecret("")
+			_, err := vo.Encryption.KMS.GetSecret(ctx, "")
 			if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
 				return err
 			}
@@ -924,13 +924,13 @@ func (vo *VolumeOptions) CopyEncryptionConfig(cp *VolumeOptions, vID, cpVID stri
 	}
 
 	if vo.Encryption.KMS.RequiresDEKStore() == kmsapi.DEKStoreIntegrated {
-		passphrase, err := vo.Encryption.GetCryptoPassphrase(vID)
+		passphrase, err := vo.Encryption.GetCryptoPassphrase(ctx, vID)
 		if err != nil {
 			return fmt.Errorf("failed to fetch passphrase for %q (%+v): %w",
 				vID, vo, err)
 		}
 
-		err = cp.Encryption.StoreCryptoPassphrase(cpVID, passphrase)
+		err = cp.Encryption.StoreCryptoPassphrase(ctx, cpVID, passphrase)
 		if err != nil {
 			return fmt.Errorf("failed to store passphrase for %q (%+v): %w",
 				cpVID, cp, err)
@@ -962,7 +962,7 @@ func (vo *VolumeOptions) ConfigureEncryption(
 		// store. Since not all "metadata" KMS support
 		// GetSecret, test for support here. Postpone any
 		// other error handling
-		_, err := vo.Encryption.KMS.GetSecret("")
+		_, err := vo.Encryption.KMS.GetSecret(ctx, "")
 		if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
 			return err
 		}

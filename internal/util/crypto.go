@@ -189,12 +189,12 @@ func (ve *VolumeEncryption) Destroy() {
 
 // RemoveDEK deletes the DEK for a particular volumeID from the DEKStore linked
 // with this VolumeEncryption instance.
-func (ve *VolumeEncryption) RemoveDEK(volumeID string) error {
+func (ve *VolumeEncryption) RemoveDEK(ctx context.Context, volumeID string) error {
 	if ve.dekStore == nil {
 		return ErrDEKStoreNotFound
 	}
 
-	return ve.dekStore.RemoveDEK(volumeID)
+	return ve.dekStore.RemoveDEK(ctx, volumeID)
 }
 
 func (ve *VolumeEncryption) GetID() string {
@@ -203,13 +203,13 @@ func (ve *VolumeEncryption) GetID() string {
 
 // StoreCryptoPassphrase takes an unencrypted passphrase, encrypts it and saves
 // it in the DEKStore.
-func (ve *VolumeEncryption) StoreCryptoPassphrase(volumeID, passphrase string) error {
-	encryptedPassphrase, err := ve.KMS.EncryptDEK(volumeID, passphrase)
+func (ve *VolumeEncryption) StoreCryptoPassphrase(ctx context.Context, volumeID, passphrase string) error {
+	encryptedPassphrase, err := ve.KMS.EncryptDEK(ctx, volumeID, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed encrypt the passphrase for %s: %w", volumeID, err)
 	}
 
-	err = ve.dekStore.StoreDEK(volumeID, encryptedPassphrase)
+	err = ve.dekStore.StoreDEK(ctx, volumeID, encryptedPassphrase)
 	if err != nil {
 		return fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
 	}
@@ -218,23 +218,23 @@ func (ve *VolumeEncryption) StoreCryptoPassphrase(volumeID, passphrase string) e
 }
 
 // StoreNewCryptoPassphrase generates a new passphrase and saves it in the KMS.
-func (ve *VolumeEncryption) StoreNewCryptoPassphrase(volumeID string, length int) error {
+func (ve *VolumeEncryption) StoreNewCryptoPassphrase(ctx context.Context, volumeID string, length int) error {
 	passphrase, err := generateNewEncryptionPassphrase(length)
 	if err != nil {
 		return fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
 	}
 
-	return ve.StoreCryptoPassphrase(volumeID, passphrase)
+	return ve.StoreCryptoPassphrase(ctx, volumeID, passphrase)
 }
 
 // GetCryptoPassphrase Retrieves passphrase to encrypt volume.
-func (ve *VolumeEncryption) GetCryptoPassphrase(volumeID string) (string, error) {
-	passphrase, err := ve.dekStore.FetchDEK(volumeID)
+func (ve *VolumeEncryption) GetCryptoPassphrase(ctx context.Context, volumeID string) (string, error) {
+	passphrase, err := ve.dekStore.FetchDEK(ctx, volumeID)
 	if err != nil {
 		return "", err
 	}
 
-	return ve.KMS.DecryptDEK(volumeID, passphrase)
+	return ve.KMS.DecryptDEK(ctx, volumeID, passphrase)
 }
 
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.

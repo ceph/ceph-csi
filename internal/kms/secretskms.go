@@ -78,19 +78,19 @@ func (kms secretsKMS) Destroy() {
 }
 
 // FetchDEK returns passphrase from Kubernetes secrets.
-func (kms secretsKMS) FetchDEK(key string) (string, error) {
+func (kms secretsKMS) FetchDEK(ctx context.Context, key string) (string, error) {
 	return kms.passphrase, nil
 }
 
 // StoreDEK does nothing, as there is no passphrase per key (volume), so
 // no need to store is anywhere.
-func (kms secretsKMS) StoreDEK(key, value string) error {
+func (kms secretsKMS) StoreDEK(ctx context.Context, key, value string) error {
 	return nil
 }
 
 // RemoveDEK is doing nothing as no new passphrases are saved with
 // secretsKMS.
-func (kms secretsKMS) RemoveDEK(key string) error {
+func (kms secretsKMS) RemoveDEK(ctx context.Context, key string) error {
 	return nil
 }
 
@@ -206,9 +206,9 @@ type encryptedMetedataDEK struct {
 // the secretsKMS and the volumeID.
 // The resulting encryptedDEK contains a JSON with the encrypted DEK and the
 // nonce that was used for encrypting.
-func (kms secretsMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, error) {
+func (kms secretsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
 	// use the passphrase from the secretKMS
-	passphrase, err := kms.secretsKMS.FetchDEK(volumeID)
+	passphrase, err := kms.secretsKMS.FetchDEK(ctx, volumeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get passphrase: %w", err)
 	}
@@ -236,9 +236,9 @@ func (kms secretsMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, err
 
 // DecryptDEK takes the JSON formatted `encryptedMetadataDEK` contents, and it
 // fetches secretKMS passphrase to decrypt the DEK.
-func (kms secretsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
+func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK string) (string, error) {
 	// use the passphrase from the secretKMS
-	passphrase, err := kms.secretsKMS.FetchDEK(volumeID)
+	passphrase, err := kms.secretsKMS.FetchDEK(ctx, volumeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get passphrase: %w", err)
 	}
@@ -263,9 +263,9 @@ func (kms secretsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string,
 	return string(dek), nil
 }
 
-func (kms secretsMetadataKMS) GetSecret(volumeID string) (string, error) {
+func (kms secretsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	// use the passphrase from the secretKMS
-	return kms.secretsKMS.FetchDEK(volumeID)
+	return kms.secretsKMS.FetchDEK(ctx, volumeID)
 }
 
 // generateCipher returns a AEAD cipher based on a passphrase and salt

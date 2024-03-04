@@ -191,7 +191,7 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	// get the owner of the PVC which is required for few encryption related operations
 	rbdVol.Owner = k8s.GetOwner(req.GetParameters())
 
-	err = rbdVol.initKMS(req.GetParameters(), req.GetSecrets())
+	err = rbdVol.initKMS(ctx, req.GetParameters(), req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -486,7 +486,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 			return nil, err
 		}
 
-		err = rbdSnap.repairEncryptionConfig(&rbdVol.rbdImage)
+		err = rbdSnap.repairEncryptionConfig(ctx, &rbdVol.rbdImage)
 		if err != nil {
 			return nil, err
 		}
@@ -677,7 +677,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 
 	log.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol, rbdSnap)
 
-	err = parentVol.copyEncryptionConfig(&rbdVol.rbdImage, true)
+	err = parentVol.copyEncryptionConfig(ctx, &rbdVol.rbdImage, true)
 	if err != nil {
 		return fmt.Errorf("failed to copy encryption config for %q: %w", rbdVol, err)
 	}
@@ -1229,7 +1229,7 @@ func cloneFromSnapshot(
 	}
 	defer vol.Destroy()
 
-	err = rbdVol.copyEncryptionConfig(&vol.rbdImage, false)
+	err = rbdVol.copyEncryptionConfig(ctx, &vol.rbdImage, false)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -1332,7 +1332,7 @@ func (cs *ControllerServer) doSnapshotClone(
 		}
 	}()
 
-	err = parentVol.copyEncryptionConfig(&cloneRbd.rbdImage, false)
+	err = parentVol.copyEncryptionConfig(ctx, &cloneRbd.rbdImage, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to copy encryption "+
 			"config for %q: %v", cloneRbd, err)

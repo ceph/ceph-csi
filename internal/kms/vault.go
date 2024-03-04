@@ -17,6 +17,7 @@ limitations under the License.
 package kms
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -395,7 +396,7 @@ func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 
 // FetchDEK returns passphrase from Vault. The passphrase is stored in a
 // data.data.passphrase structure.
-func (kms *vaultKMS) FetchDEK(key string) (string, error) {
+func (kms *vaultKMS) FetchDEK(ctx context.Context, key string) (string, error) {
 	// Since the second return variable loss.Version is not used, there it is ignored.
 	s, _, err := kms.secrets.GetSecret(filepath.Join(kms.vaultPassphrasePath, key), kms.keyContext)
 	if err != nil {
@@ -415,7 +416,7 @@ func (kms *vaultKMS) FetchDEK(key string) (string, error) {
 }
 
 // StoreDEK saves new passphrase in Vault.
-func (kms *vaultKMS) StoreDEK(key, value string) error {
+func (kms *vaultKMS) StoreDEK(ctx context.Context, key, value string) error {
 	data := map[string]interface{}{
 		"data": map[string]string{
 			"passphrase": value,
@@ -433,7 +434,7 @@ func (kms *vaultKMS) StoreDEK(key, value string) error {
 }
 
 // RemoveDEK deletes passphrase from Vault.
-func (kms *vaultKMS) RemoveDEK(key string) error {
+func (kms *vaultKMS) RemoveDEK(ctx context.Context, key string) error {
 	pathKey := filepath.Join(kms.vaultPassphrasePath, key)
 	err := kms.secrets.DeleteSecret(pathKey, kms.getDeleteKeyContext())
 	if err != nil {

@@ -76,14 +76,14 @@ func getPassphrase(ctx context.Context, encryption util.VolumeEncryption, volID 
 
 	switch encryption.KMS.RequiresDEKStore() {
 	case kms.DEKStoreIntegrated:
-		passphrase, err = encryption.GetCryptoPassphrase(volID)
+		passphrase, err = encryption.GetCryptoPassphrase(ctx, volID)
 		if err != nil {
 			log.ErrorLog(ctx, "fscrypt: failed to get passphrase from KMS: %v", err)
 
 			return "", err
 		}
 	case kms.DEKStoreMetadata:
-		passphrase, err = encryption.KMS.GetSecret(volID)
+		passphrase, err = encryption.KMS.GetSecret(ctx, volID)
 		if err != nil {
 			log.ErrorLog(ctx, "fscrypt: failed to GetSecret: %v", err)
 
@@ -453,7 +453,7 @@ func Unlock(
 	if !kernelPolicyExists && !metadataDirExists {
 		log.DebugLog(ctx, "fscrypt: Creating new protector and policy")
 		if volEncryption.KMS.RequiresDEKStore() == kms.DEKStoreIntegrated {
-			if err := volEncryption.StoreNewCryptoPassphrase(volID, encryptionPassphraseSize); err != nil {
+			if err := volEncryption.StoreNewCryptoPassphrase(ctx, volID, encryptionPassphraseSize); err != nil {
 				log.ErrorLog(ctx, "fscrypt: store new crypto passphrase failed: %v", err)
 
 				return err

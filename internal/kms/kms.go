@@ -331,18 +331,18 @@ type EncryptionKMS interface {
 	// EncryptDEK provides a way for a KMS to encrypt a DEK. In case the
 	// encryption is done transparently inside the KMS service, the
 	// function can return an unencrypted value.
-	EncryptDEK(volumeID, plainDEK string) (string, error)
+	EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error)
 
 	// DecryptDEK provides a way for a KMS to decrypt a DEK. In case the
 	// encryption is done transparently inside the KMS service, the
 	// function does not need to do anything except return the encyptedDEK
 	// as it was received.
-	DecryptDEK(volumeID, encyptedDEK string) (string, error)
+	DecryptDEK(ctx context.Context, volumeID, encyptedDEK string) (string, error)
 
 	// GetSecret allows external key management systems to
 	// retrieve keys used in EncryptDEK / DecryptDEK to use them
 	// directly. Example: fscrypt uses this to unlock raw protectors
-	GetSecret(volumeID string) (string, error)
+	GetSecret(ctx context.Context, volumeID string) (string, error)
 }
 
 // DEKStoreType describes what DEKStore needs to be configured when using a
@@ -364,11 +364,11 @@ const (
 // the KMS can not store passphrases for volumes.
 type DEKStore interface {
 	// StoreDEK saves the DEK in the configured store.
-	StoreDEK(volumeID string, dek string) error
+	StoreDEK(ctx context.Context, volumeID string, dek string) error
 	// FetchDEK reads the DEK from the configured store and returns it.
-	FetchDEK(volumeID string) (string, error)
+	FetchDEK(ctx context.Context, volumeID string) (string, error)
 	// RemoveDEK deletes the DEK from the configured store.
-	RemoveDEK(volumeID string) error
+	RemoveDEK(ctx context.Context, volumeID string) error
 }
 
 // integratedDEK is a DEKStore that can not be configured. Either the KMS does
@@ -380,15 +380,15 @@ func (i integratedDEK) RequiresDEKStore() DEKStoreType {
 	return DEKStoreIntegrated
 }
 
-func (i integratedDEK) EncryptDEK(volumeID, plainDEK string) (string, error) {
+func (i integratedDEK) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
 	return plainDEK, nil
 }
 
-func (i integratedDEK) DecryptDEK(volumeID, encyptedDEK string) (string, error) {
+func (i integratedDEK) DecryptDEK(ctx context.Context, volumeID, encyptedDEK string) (string, error) {
 	return encyptedDEK, nil
 }
 
-func (i integratedDEK) GetSecret(volumeID string) (string, error) {
+func (i integratedDEK) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	return "", ErrGetSecretIntegrated
 }
 

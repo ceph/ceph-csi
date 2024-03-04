@@ -14,6 +14,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -34,7 +35,7 @@ func TestGetPassphraseFromKMS(t *testing.T) {
 
 		volEnc, err := NewVolumeEncryption(provider.UniqueID, kms)
 		if errors.Is(err, ErrDEKStoreNeeded) {
-			_, err = volEnc.KMS.GetSecret("")
+			_, err = volEnc.KMS.GetSecret(context.TODO(), "")
 			if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
 				continue // currently unsupported by fscrypt integration
 			}
@@ -45,7 +46,7 @@ func TestGetPassphraseFromKMS(t *testing.T) {
 			continue
 		}
 
-		secret, err := kms.GetSecret("")
+		secret, err := kms.GetSecret(context.TODO(), "")
 		assert.NoError(t, err, provider.UniqueID)
 		assert.NotEmpty(t, secret, provider.UniqueID)
 	}

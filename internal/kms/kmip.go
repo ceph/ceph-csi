@@ -180,7 +180,7 @@ func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 }
 
 // EncryptDEK uses the KMIP encrypt operation to encrypt the DEK.
-func (kms *kmipKMS) EncryptDEK(_, plainDEK string) (string, error) {
+func (kms *kmipKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string, error) {
 	conn, err := kms.connect()
 	if err != nil {
 		return "", err
@@ -236,7 +236,7 @@ func (kms *kmipKMS) EncryptDEK(_, plainDEK string) (string, error) {
 }
 
 // DecryptDEK uses the KMIP decrypt operation  to decrypt the DEK.
-func (kms *kmipKMS) DecryptDEK(_, encryptedDEK string) (string, error) {
+func (kms *kmipKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (string, error) {
 	conn, err := kms.connect()
 	if err != nil {
 		return "", err
@@ -500,7 +500,7 @@ func (kms *kmipKMS) verifyResponse(
 	return &batchItem, nil
 }
 
-func (kms *kmipKMS) GetSecret(volumeID string) (string, error) {
+func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	return "", ErrGetSecretUnsupported
 }
 
