@@ -6,4 +6,6 @@ spec:
   attachRequired: true
   podInfoOnMount: false
   fsGroupPolicy: File
+{{- if semverCompare ">= 1.25.x" .Capabilities.KubeVersion.Version }}
   seLinuxMount: true
+{{- end }}
