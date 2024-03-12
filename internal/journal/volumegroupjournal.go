@@ -36,7 +36,7 @@ type VolumeGroupJournal interface {
 	Connect(
 		monitors,
 		namespace string,
-		cr *util.Credentials) (*volumeGroupJournalConfig, error)
+		cr *util.Credentials) error
 	// Destroy frees any resources and invalidates the journal connection.
 	Destroy()
 	// SetNamespace sets the namespace for the journal.
@@ -115,14 +115,14 @@ func (sgj *volumeGroupJournalConfig) Connect(
 	monitors,
 	namespace string,
 	cr *util.Credentials,
-) (*volumeGroupJournalConfig, error) {
+) error {
 	conn, err := sgj.Config.Connect(monitors, namespace, cr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sgj.Connection = conn
 
-	return sgj, nil
+	return nil
 }
 
 func (sgj *volumeGroupJournalConfig) Destroy() {
