@@ -94,5 +94,9 @@ func replaceNamespaceInTemplate(filePath string) (string, error) {
 		return "", err
 	}
 
-	return strings.ReplaceAll(string(read), "namespace: default", fmt.Sprintf("namespace: %s", cephCSINamespace)), nil
+	// template can contain "default" as namespace, with or without ".
+	templ := strings.ReplaceAll(string(read), "namespace: default", fmt.Sprintf("namespace: %s", cephCSINamespace))
+	templ = strings.ReplaceAll(templ, "namespace: \"default\"", fmt.Sprintf("namespace: %s", cephCSINamespace))
+
+	return templ, nil
 }
