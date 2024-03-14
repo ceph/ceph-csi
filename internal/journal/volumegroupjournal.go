@@ -84,8 +84,8 @@ type volumeGroupJournalConfig struct {
 	*Connection
 }
 
-// NewCSIVolumeroupJournal returns an instance of VolumeGroupJournal for groups.
-func NewCSIVolumeroupJournal(suffix string) VolumeGroupJournal {
+// NewCSIVolumeGroupJournal returns an instance of VolumeGroupJournal for groups.
+func NewCSIVolumeGroupJournal(suffix string) VolumeGroupJournal {
 	return &volumeGroupJournalConfig{
 		Config: &Config{
 			csiDirectory:            "csi.groups." + suffix,
@@ -105,7 +105,7 @@ func (sgj *volumeGroupJournalConfig) SetNamespace(ns string) {
 // NewCSIVolumeGroupJournalWithNamespace returns an instance of VolumeGroupJournal for
 // volume groups using a predetermined namespace value.
 func NewCSIVolumeGroupJournalWithNamespace(suffix, ns string) VolumeGroupJournal {
-	j := NewCSIVolumeroupJournal(suffix)
+	j := NewCSIVolumeGroupJournal(suffix)
 	j.SetNamespace(ns)
 
 	return j
