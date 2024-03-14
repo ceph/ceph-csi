@@ -30,6 +30,9 @@ import (
 const (
 	keySeparator   rune   = '/'
 	labelSeparator string = ","
+
+	// topologyPoolsParam is the parameter name used to pass topology constrained pools.
+	topologyPoolsParam = "topologyConstrainedPools"
 )
 
 // GetTopologyFromDomainLabels returns the CSI topology map, determined from
@@ -129,7 +132,7 @@ func GetTopologyFromRequest(
 	var topologyPools []TopologyConstrainedPool
 
 	// check if parameters have pool configuration pertaining to topology
-	topologyPoolsStr := req.GetParameters()["topologyConstrainedPools"]
+	topologyPoolsStr := req.GetParameters()[topologyPoolsParam]
 	if topologyPoolsStr == "" {
 		return nil, nil, nil
 	}

@@ -240,8 +240,7 @@ func (cs *ControllerServer) parseVolCreateRequest(
 }
 
 func buildCreateVolumeResponse(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) *csi.CreateVolumeResponse {
-	// remove kubernetes csi prefixed parameters.
-	volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
+	volumeContext := util.GetVolumeContext(req.GetParameters())
 	volumeContext["pool"] = rbdVol.Pool
 	volumeContext["journalPool"] = rbdVol.JournalPool
 	volumeContext["imageName"] = rbdVol.RbdImageName
