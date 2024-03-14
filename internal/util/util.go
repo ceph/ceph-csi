@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"golang.org/x/sys/unix"
@@ -380,4 +381,35 @@ func CallStack() string {
 	_ = runtime.Stack(stack, false)
 
 	return string(stack)
+}
+
+// CheckSliceContains checks the slice for string.
+func CheckSliceContains(options []string, opt string) bool {
+	for _, o := range options {
+		if o == opt {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetVolumeContext filters out parameters that are not required in volume context.
+func GetVolumeContext(parameters map[string]string) map[string]string {
+	volumeContext := map[string]string{}
+
+	// parameters that are not required in the volume context
+	notRequiredParams := []string{
+		topologyPoolsParam,
+	}
+	for k, v := range parameters {
+		if !CheckSliceContains(notRequiredParams, k) {
+			volumeContext[k] = v
+		}
+	}
+
+	// remove kubernetes csi prefixed parameters.
+	volumeContext = k8s.RemoveCSIPrefixedParameters(volumeContext)
+
+	return volumeContext
 }

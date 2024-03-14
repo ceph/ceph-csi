@@ -2071,17 +2071,6 @@ func getCephClientLogFileName(id, logDir, prefix string) string {
 	return fmt.Sprintf("%s/%s-%s.log", logDir, prefix, id)
 }
 
-// CheckSliceContains checks the slice for string.
-func CheckSliceContains(options []string, opt string) bool {
-	for _, o := range options {
-		if o == opt {
-			return true
-		}
-	}
-
-	return false
-}
-
 // strategicActionOnLogFile act on log file based on cephLogStrategy.
 func strategicActionOnLogFile(ctx context.Context, logStrategy, logFile string) {
 	var err error
