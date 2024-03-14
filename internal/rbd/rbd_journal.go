@@ -192,7 +192,7 @@ func checkSnapCloneExists(
 	rbdSnap.VolSize = vol.VolSize
 	// found a snapshot already available, process and return its information
 	rbdSnap.VolID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, snapData.ImagePoolID, rbdSnap.Pool,
-		rbdSnap.ClusterID, snapUUID, volIDVersion)
+		rbdSnap.ClusterID, snapUUID)
 	if err != nil {
 		return false, err
 	}
@@ -328,7 +328,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 
 	// found a volume already available, process and return it!
 	rv.VolID, err = util.GenerateVolID(ctx, rv.Monitors, rv.conn.Creds, imageData.ImagePoolID, rv.Pool,
-		rv.ClusterID, rv.ReservedID, volIDVersion)
+		rv.ClusterID, rv.ReservedID)
 	if err != nil {
 		return false, err
 	}
@@ -405,7 +405,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 	}
 
 	rbdSnap.VolID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, imagePoolID, rbdSnap.Pool,
-		rbdSnap.ClusterID, rbdSnap.ReservedID, volIDVersion)
+		rbdSnap.ClusterID, rbdSnap.ReservedID)
 	if err != nil {
 		return err
 	}
@@ -482,7 +482,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 	}
 
 	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
-		rbdVol.ClusterID, rbdVol.ReservedID, volIDVersion)
+		rbdVol.ClusterID, rbdVol.ReservedID)
 	if err != nil {
 		return err
 	}
@@ -640,7 +640,7 @@ func RegenerateJournal(
 		}
 		// As the omap already exists for this image ID return nil.
 		rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
-			rbdVol.ClusterID, rbdVol.ReservedID, volIDVersion)
+			rbdVol.ClusterID, rbdVol.ReservedID)
 		if err != nil {
 			return "", err
 		}
@@ -665,7 +665,7 @@ func RegenerateJournal(
 		}
 	}()
 	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
-		rbdVol.ClusterID, rbdVol.ReservedID, volIDVersion)
+		rbdVol.ClusterID, rbdVol.ReservedID)
 	if err != nil {
 		return "", err
 	}

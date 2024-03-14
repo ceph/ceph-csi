@@ -22,11 +22,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/journal"
 )
 
-const (
-	// volIDVersion is the version number of volume ID encoding scheme.
-	volIDVersion uint16 = 1
-)
-
 var (
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
 	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
