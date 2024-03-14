@@ -84,10 +84,6 @@ const (
 	clusterNameKey = "csi.ceph.com/cluster/name"
 )
 
-type Image interface {
-	AddToGroup(groupName, ioctx *rados.IOContext) error
-}
-
 // rbdImage contains common attributes and methods for the rbdVolume and
 // rbdSnapshot types.
 type rbdImage struct {

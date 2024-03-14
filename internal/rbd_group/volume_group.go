@@ -1,45 +1,74 @@
+/*
+Copyright 2024 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package rbd_group
 
 import (
 	"context"
 	"errors"
 
-	"github.com/ceph/ceph-csi/internal/rbd"
+	"github.com/ceph/go-ceph/rados"
+	librbd "github.com/ceph/go-ceph/rbd"
+
+	"github.com/ceph/ceph-csi/internal/journal"
+	types "github.com/ceph/ceph-csi/internal/rbd_types"
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
 const (
+	groupSuffix = "rbd-group"
+	groupPrefix = "rbd-group"
+)
+
+var (
 	ErrRBDGroupNotConnected = errors.New("RBD group is not connected")
 )
 
-type RBDVolumeGroup interface {
-	Destroy()
-
-	SetPool(pool string)
-
-	Create(ctx context.Context) error
-	Delete(ctx context.Context) error
-
-	AddVolume(ctx context.Context, volumeID string) error
-	RemoveVolume(ctx context.Context, volumeID string) error
-
-	CreateSnapshot(ctx context.Context, name string) error
-}
-
 type rbdVolumeGroup struct {
 	name        string
+	clusterID   string
 	credentials *util.Credentials
-	secrets     []secrets
+	secrets     map[string]string
 
-	images []*rbd.Image
+	monitors    string
+	pool        string
+	poolID      int64
+	conn        *util.ClusterConnection
+	ioctx       *rados.IOContext
+	journal     journal.VolumeGroupJournal
+	journalPool string
+
+	id      string
+	volumes []types.Volume
 }
 
-func NewRBDVolumeGroup(ctx context.Context, name string, cr *util.Credentials, secrets []string) RBDVolumeGroup {
+// verify that rbdVolumeGroup implements the VolumeGroup interface
+var _ types.VolumeGroup = &rbdVolumeGroup{}
+
+// NewVolumeGroup initializes a new VolumeGroup object that can be used
+// to manage an `rbd group`.
+func NewVolumeGroup(ctx context.Context, name, clusterID string, secrets map[string]string) types.VolumeGroup {
+	creds, _ := util.NewUserCredentials(secrets)
+
 	return &rbdVolumeGroup{
 		name:        name,
-		credentials: cr,
+		clusterID:   clusterID,
+		credentials: creds,
 		secrets:     secrets,
-	}, nil
+	}
 }
 
 func (rvg *rbdVolumeGroup) validate() error {
@@ -47,17 +76,66 @@ func (rvg *rbdVolumeGroup) validate() error {
 		return ErrRBDGroupNotConnected
 	}
 
+	if rvg.journal == nil {
+		return ErrRBDGroupNotConnected
+	}
+
 	return nil
 }
 
-func (rvg *rbdVolumeGroup) Destroy() {
+// Destroy frees the resources used by the rbdVolumeGroup.
+func (rvg *rbdVolumeGroup) Destroy(ctx context.Context) {
 	if rvg.ioctx != nil {
 		rvg.ioctx.Destroy()
 		rvg.ioctx = nil
 	}
+
+	if rvg.conn != nil {
+		rvg.conn.Destroy()
+		rvg.conn = nil
+	}
+
+	if rvg.journal != nil {
+		rvg.journal.Destroy()
+		rvg.journal = nil
+	}
+
+	if rvg.credentials != nil {
+		rvg.credentials.DeleteCredentials()
+		rvg.credentials = nil
+	}
 }
 
-func (rvg *rbdVolumeGroup) SetPool(pool string) {
+func (rvg *rbdVolumeGroup) GetID(ctx context.Context) (string, error) {
+	// FIXME: this should be the group-snapshot-handle
+	if rvg.id != "" {
+		return rvg.id, nil
+	}
+
+	return rvg.id, nil
+}
+
+// SetMonitors connects to the Ceph cluster.
+func (rvg *rbdVolumeGroup) SetMonitors(ctx context.Context, monitors string) error {
+	conn := &util.ClusterConnection{}
+	err := conn.Connect(monitors, rvg.credentials)
+	if err != nil {
+		return err
+	}
+
+	rvg.conn = conn
+	rvg.monitors = monitors
+
+	return nil
+}
+
+// SetPool uses the connection to the Ceph cluster to create an IOContext to
+// the pool.
+func (rvg *rbdVolumeGroup) SetPool(ctx context.Context, pool string) error {
+	if rvg.conn == nil {
+		return ErrRBDGroupNotConnected
+	}
+
 	ioctx, err := rvg.conn.GetIoctx(pool)
 	if err != nil {
 		return err
@@ -65,6 +143,26 @@ func (rvg *rbdVolumeGroup) SetPool(pool string) {
 
 	rvg.pool = pool
 	rvg.ioctx = ioctx
+
+	return nil
+}
+
+func (rvg *rbdVolumeGroup) SetJournalNamespace(ctx context.Context, pool, namespace string) error {
+	if rvg.conn == nil {
+		return ErrRBDGroupNotConnected
+	}
+
+	vgj := journal.NewCSIVolumeGroupJournal(groupSuffix)
+	vgj.SetNamespace(namespace)
+	err := vgj.Connect(rvg.monitors, namespace, rvg.credentials)
+	if err != nil {
+		return err
+	}
+
+	rvg.journal = vgj
+	rvg.journalPool = pool
+
+	return nil
 }
 
 func (rvg *rbdVolumeGroup) Create(ctx context.Context) error {
@@ -72,8 +170,31 @@ func (rvg *rbdVolumeGroup) Create(ctx context.Context) error {
 		return err
 	}
 
+	journalPoolID, poolID, err := util.GetPoolIDs(
+		ctx,
+		rvg.monitors,
+		rvg.journalPool,
+		rvg.pool,
+		rvg.credentials)
+	if err != nil {
+		return err
+	}
+
+	id, uniqueName, err := rvg.journal.ReserveName(
+		ctx,
+		rvg.journalPool,
+		journalPoolID,
+		rvg.name,
+		groupPrefix)
+	if err != nil {
+		return err
+	}
+
+	rvg.id = id
+	rvg.poolID = poolID
+
 	// TODO: if the group already exists, resolve details and use that
-	return rbd.GroupCreate(rvg.ioctx, rvg.name)
+	return librbd.GroupCreate(rvg.ioctx, uniqueName)
 }
 
 func (rvg *rbdVolumeGroup) Delete(ctx context.Context) error {
@@ -81,37 +202,51 @@ func (rvg *rbdVolumeGroup) Delete(ctx context.Context) error {
 		return err
 	}
 
-	return rbd.GroupRemove(rvg.ioctx, rvg.name)
+	return librbd.GroupRemove(rvg.ioctx, rvg.name)
 }
 
-func (rvg *rbdVolumeGroup) AddVolume(ctx context.Context, image rbd.Image) error {
+func (rvg *rbdVolumeGroup) AddVolume(ctx context.Context, image types.Volume) error {
 	if err := rvg.validate(); err != nil {
 		return err
 	}
 
-	return image.AddToGroup(rvg.name, rvg.ioctx)
+	return image.AddToGroup(ctx, rvg.ioctx, rvg.name)
 }
 
-func (rvg *rbdVolumeGroup) RemoveVolume(ctx context.Context, volumeID string) error {
+func (rvg *rbdVolumeGroup) RemoveVolume(ctx context.Context, image types.Volume) error {
 	if err := rvg.validate(); err != nil {
 		return err
 	}
 
-	return rbd.GroupImageRemove(rvg.ioctx, group, rvg.ioctx, volumeID)
+	return image.RemoveFromGroup(ctx, rvg.ioctx, rvg.name)
 }
 
-func (rvg *rbdVolumeGroup) CreateSnapshot(ctx context.Context, snapName string) error {
-	if err := rvg.validate(); err != nil {
-		return err
-	}
-
-	return rbd.GroupSnapCreate(rvg.ioctx, rvg.group, snapName)
-}
-
-func (rvg *rbdVolumeGroup) ListSnapshots(ctx context.Context, snapName string) ([]Snapshot, error) {
+func (rvg *rbdVolumeGroup) CreateSnapshot(ctx context.Context, snapName string) (types.VolumeGroupSnapshot, error) {
 	if err := rvg.validate(); err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	err := librbd.GroupSnapCreate(rvg.ioctx, rvg.name, snapName)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: if the snapName already exists, use that as return value
+
+	return newVolumeGroupSnapshot(ctx, rvg, snapName), nil
+}
+
+func (rvg *rbdVolumeGroup) DeleteSnapshot(ctx context.Context, snapName string) error {
+	if err := rvg.validate(); err != nil {
+		return err
+	}
+
+	err := librbd.GroupSnapRemove(rvg.ioctx, rvg.name, snapName)
+	if err != nil {
+		return err
+	}
+
+	// TODO: it is not an error if the snapName was not found or does not exist
+
+	return nil
 }
