@@ -191,6 +191,7 @@ spec:
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
             - "--extra-create-metadata=true"
+            - "--enable-volume-group-snapshots={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
 {{- range .Values.provisioner.snapshotter.extraArgs }}
             - "--{{ . }}"
 {{- end }}
