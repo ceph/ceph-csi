@@ -34,7 +34,7 @@ var testData = []testTuple{
 	{
 		vID: CSIIdentifier{
 			LocationID:      0xffff,
-			EncodingVersion: 0xffff,
+			encodingVersion: 0xffff,
 			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
 			ObjectUUID:      "00000000-1111-2222-bbbb-cacacacacaca",
 		},

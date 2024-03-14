@@ -20,9 +20,6 @@ package util
 type VolumeID string
 
 const (
-	// VolIDVersion is the version number of volume ID encoding scheme.
-	VolIDVersion uint16 = 1
-
 	// RadosNamespace to store CSI specific objects and keys.
 	RadosNamespace = "csi"
 )

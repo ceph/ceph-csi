@@ -23,6 +23,11 @@ import (
 	"strings"
 )
 
+const (
+	// defaultEncodingVersion is only one version for the encoding at the moment.
+	defaultEncodingVersion = uint16(1)
+)
+
 /*
 CSIIdentifier contains the elements that form a CSI ID to be returned by the CSI plugin, and
 contains enough information to decompose and extract required cluster and pool information to locate
@@ -34,7 +39,7 @@ DecomposeCSIID is the inverse of the same function.
 The CSIIdentifier structure carries the following fields,
   - LocationID: 64 bit integer identifier determining the location of the volume on the Ceph cluster.
     It is the ID of the poolname or fsname, for RBD or CephFS backed volumes respectively.
-  - EncodingVersion: Carries the version number of the encoding scheme used to encode the CSI ID,
+  - encodingVersion: Carries the version number of the encoding scheme used to encode the CSI ID,
     and is preserved for any future proofing w.r.t changes in the encoding scheme, and to retain
     ability to parse backward compatible encodings.
   - ClusterID: Is a unique ID per cluster that the CSI instance is serving and is restricted to
@@ -44,7 +49,7 @@ The CSIIdentifier structure carries the following fields,
 */
 type CSIIdentifier struct {
 	LocationID      int64
-	EncodingVersion uint16
+	encodingVersion uint16
 	ClusterID       string
 	ObjectUUID      string
 }
@@ -82,7 +87,13 @@ func (ci CSIIdentifier) ComposeCSIID() (string, error) {
 		return "", errors.New("CSI ID invalid object uuid")
 	}
 
-	binary.BigEndian.PutUint16(buf16, ci.EncodingVersion)
+	// set the encoding version, as it is not set by default anywhere else
+	encodingVersion := ci.encodingVersion
+	if encodingVersion == 0 {
+		encodingVersion = defaultEncodingVersion
+	}
+
+	binary.BigEndian.PutUint16(buf16, encodingVersion)
 	versionEncodedHex := hex.EncodeToString(buf16)
 
 	binary.BigEndian.PutUint16(buf16, uint16(len(ci.ClusterID)))
@@ -112,7 +123,7 @@ func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) error {
 	if err != nil {
 		return err
 	}
-	ci.EncodingVersion = binary.BigEndian.Uint16(buf16)
+	ci.encodingVersion = binary.BigEndian.Uint16(buf16)
 	// 4 for version encoding and 1 for '-' separator
 	bytesToProcess -= 5
 

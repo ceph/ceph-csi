@@ -192,7 +192,7 @@ func CheckVolExists(ctx context.Context,
 
 	// found a volume already available, process and return it!
 	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, imageUUID, fsutil.VolIDVersion)
+		"", volOptions.ClusterID, imageUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +299,7 @@ func ReserveVol(ctx context.Context, volOptions *VolumeOptions, secret map[strin
 	volOptions.VolID = vid.FsSubvolName
 	// generate the volume ID to return to the CO system
 	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, imageUUID, fsutil.VolIDVersion)
+		"", volOptions.ClusterID, imageUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func ReserveSnap(
 
 	// generate the snapshot ID to return to the CO system
 	vid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, imageUUID, fsutil.VolIDVersion)
+		"", volOptions.ClusterID, imageUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +453,7 @@ func CheckSnapExists(
 
 	// found a snapshot already available, process and return it!
 	sid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, snapUUID, fsutil.VolIDVersion)
+		"", volOptions.ClusterID, snapUUID)
 	if err != nil {
 		return nil, err
 	}

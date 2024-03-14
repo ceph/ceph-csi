@@ -286,7 +286,6 @@ func GenerateVolID(
 	cr *Credentials,
 	locationID int64,
 	pool, clusterID, objUUID string,
-	volIDVersion uint16,
 ) (string, error) {
 	var err error
 
@@ -299,10 +298,9 @@ func GenerateVolID(
 
 	// generate the volume ID to return to the CO system
 	vi := CSIIdentifier{
-		LocationID:      locationID,
-		EncodingVersion: volIDVersion,
-		ClusterID:       clusterID,
-		ObjectUUID:      objUUID,
+		LocationID: locationID,
+		ClusterID:  clusterID,
+		ObjectUUID: objUUID,
 	}
 
 	volID, err := vi.ComposeCSIID()
