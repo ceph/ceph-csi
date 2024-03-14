@@ -30,6 +30,9 @@ import (
 	"github.com/ceph/ceph-csi/api/deploy/kubernetes"
 )
 
+//go:embed csi-provisioner-rbac-sa.yaml
+var csiProvisionerServiceAccount string
+
 //go:embed csi-provisioner-rbac-cr.yaml
 var csiProvisionerClusterRole string
 
@@ -88,7 +91,13 @@ func NewCSIProvisionerRBAC(values kubernetes.CSIProvisionerRBACValues) (kubernet
 func NewCSIProvisionerRBACYAML(values kubernetes.CSIProvisionerRBACValues) (string, error) {
 	docs := []string{}
 
-	data, err := newYAML("csiProvisionerClusterRole", csiProvisionerClusterRole, values)
+	data, err := newYAML("csiProvisionerServiceAccount", csiProvisionerServiceAccount, values)
+	if err != nil {
+		return "", err
+	}
+	docs = append(docs, data)
+
+	data, err = newYAML("csiProvisionerClusterRole", csiProvisionerClusterRole, values)
 	if err != nil {
 		return "", err
 	}
@@ -129,6 +138,21 @@ func newYAML(name, data string, values kubernetes.CSIProvisionerRBACValues) (str
 	}
 
 	return buf.String(), nil
+}
+
+func newServiceAccount(values kubernetes.CSIProvisionerRBACValues) (*corev1.ServiceAccount, error) {
+	data, err := newYAML("csiProvisionerServiceAccount", csiProvisionerServiceAccount, values)
+	if err != nil {
+		return nil, err
+	}
+
+	sa := &corev1.ServiceAccount{}
+	err = yaml.Unmarshal([]byte(data), sa)
+	if err != nil {
+		return nil, fmt.Errorf("failed convert YAML to %T: %w", sa, err)
+	}
+
+	return sa, nil
 }
 
 func newClusterRole(values kubernetes.CSIProvisionerRBACValues) (*rbacv1.ClusterRole, error) {
