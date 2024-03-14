@@ -107,7 +107,17 @@ func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
 	vol.JournalPool = rbdSnap.JournalPool
 	vol.RadosNamespace = rbdSnap.RadosNamespace
 	vol.RbdImageName = rbdSnap.RbdSnapName
-	vol.ImageID = rbdSnap.ImageID
+	vol.ParentName = rbdSnap.ParentName
+	vol.ParentID = rbdSnap.ParentID
+
+	// /!\ WARNING /!\
+	//
+	// Do not set the ImageID to the ID of the snapshot, a new image will
+	// be created based on the returned rbdVolume. If the ImageID is set to
+	// the ID of the snapshot, accessing the new image by ID will actually
+	// access the snapshot!
+	// vol.ImageID = rbdSnap.ImageID
+
 	// copyEncryptionConfig cannot be used here because the volume and the
 	// snapshot will have the same volumeID which cases the panic in
 	// copyEncryptionConfig function.
