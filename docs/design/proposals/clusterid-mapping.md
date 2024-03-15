@@ -178,3 +178,10 @@ operation from the primary cluster to a remote cluster. The existing volumes
 that are created on the remote cluster does not require any mapping as the
 volumeHandle already contains the required information about the local cluster (
 clusterID, poolID etc).
+
+**Note:-** To use a mirrored and promoted RBD image on a secondary site during a
+failover, you need to replace the primary monitor addresses with the IP
+addresses of the secondary cluster in the ceph-csi-config. Otherwise, Ceph-CSI
+won't be able to use the volumes, and application pods will become stuck in the
+`ContainerCreating` state. Thus, during failover, both clusters will have the
+same monitor IP addresses.
