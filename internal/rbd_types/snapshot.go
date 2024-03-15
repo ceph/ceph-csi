@@ -18,6 +18,7 @@ package rbd_types
 
 import (
 	"context"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
@@ -26,8 +27,8 @@ type Snapshot interface {
 	// Destroy frees the resources used by the Snapshot.
 	Destroy(ctx context.Context)
 
-	ToCSISnapshot(ctx context.Context) (*csi.Snapshot, error)
+	GetCreationTime(ctx context.Context) (*time.Time, error)
+	GetReadyToUse(ctx context.Context) (bool, error)
 
-	// Map the snapshot as an rbd device
-	Map(ctx context.Context) (string, error) // FIXME: just an example
+	ToCSISnapshot(ctx context.Context) (*csi.Snapshot, error)
 }

@@ -30,7 +30,6 @@ import (
 
 const (
 	groupSuffix = "rbd-group"
-	groupPrefix = "rbd-group"
 )
 
 var (
@@ -71,6 +70,54 @@ func NewVolumeGroup(ctx context.Context, name, clusterID string, secrets map[str
 	}
 }
 
+func GetVolumeGroup(ctx context.Context, id string, secrets map[string]string) (types.VolumeGroup, error) {
+	csiID := util.CSIIdentifier{}
+
+	err := csiID.DecomposeCSIID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	mons, _, err := util.GetMonsAndClusterID(ctx, csiID.ClusterID, false)
+	if err != nil {
+		return nil, err
+	}
+
+	namespace, err := util.GetRadosNamespace(util.CsiConfigFile, csiID.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	vg := &rbdVolumeGroup{
+		clusterID: csiID.ClusterID,
+		monitors:  mons,
+		secrets:   secrets,
+		id:        id,
+	}
+	defer func() {
+		if err != nil {
+			vg.Destroy(ctx)
+		}
+	}()
+
+	vg.credentials, err = util.NewUserCredentials(secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	pool, err := util.GetPoolName(mons, vg.credentials, csiID.LocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = vg.SetJournalNamespace(ctx, pool, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return vg, nil
+}
+
 func (rvg *rbdVolumeGroup) validate() error {
 	if rvg.ioctx == nil {
 		return ErrRBDGroupNotConnected
@@ -107,9 +154,9 @@ func (rvg *rbdVolumeGroup) Destroy(ctx context.Context) {
 }
 
 func (rvg *rbdVolumeGroup) GetID(ctx context.Context) (string, error) {
-	// FIXME: this should be the group-snapshot-handle
-	if rvg.id != "" {
-		return rvg.id, nil
+	if rvg.id == "" {
+		// FIXME: rbdVolumeGroup need have called .Create() or GetVolumeGroup()
+		return "", errors.New("BUG: rbdVolumeGroup does not have ID set")
 	}
 
 	return rvg.id, nil
@@ -165,7 +212,7 @@ func (rvg *rbdVolumeGroup) SetJournalNamespace(ctx context.Context, pool, namesp
 	return nil
 }
 
-func (rvg *rbdVolumeGroup) Create(ctx context.Context) error {
+func (rvg *rbdVolumeGroup) Create(ctx context.Context, prefix string) error {
 	if err := rvg.validate(); err != nil {
 		return err
 	}
@@ -185,7 +232,7 @@ func (rvg *rbdVolumeGroup) Create(ctx context.Context) error {
 		rvg.journalPool,
 		journalPoolID,
 		rvg.name,
-		groupPrefix)
+		prefix)
 	if err != nil {
 		return err
 	}
@@ -210,7 +257,14 @@ func (rvg *rbdVolumeGroup) AddVolume(ctx context.Context, image types.Volume) er
 		return err
 	}
 
-	return image.AddToGroup(ctx, rvg.ioctx, rvg.name)
+	err := image.AddToGroup(ctx, rvg.ioctx, rvg.name)
+	if err != nil {
+		return err
+	}
+
+	rvg.volumes = append(rvg.volumes, image)
+
+	return nil
 }
 
 func (rvg *rbdVolumeGroup) RemoveVolume(ctx context.Context, image types.Volume) error {
@@ -218,7 +272,42 @@ func (rvg *rbdVolumeGroup) RemoveVolume(ctx context.Context, image types.Volume)
 		return err
 	}
 
-	return image.RemoveFromGroup(ctx, rvg.ioctx, rvg.name)
+	// volume was already removed from the group
+	if len(rvg.volumes) == 0 {
+		return nil
+	}
+
+	err := image.RemoveFromGroup(ctx, rvg.ioctx, rvg.name)
+	if err != nil {
+		return err
+	}
+
+	// toRemove contain the ID of the volume that is removed from the group
+	toRemove, err := image.GetID(ctx)
+	if err != nil {
+		return err
+	}
+
+	// volumes is the updated list, without the volume that was removed
+	volumes := make([]types.Volume, 0)
+	for _, v := range rvg.volumes {
+		id, err := v.GetID(ctx)
+		if err != nil {
+			return err
+		}
+
+		if id == toRemove {
+			// do not add the volume to the list
+			continue
+		}
+
+		volumes = append(volumes, v)
+	}
+
+	// update the list of volumes
+	rvg.volumes = volumes
+
+	return nil
 }
 
 func (rvg *rbdVolumeGroup) CreateSnapshot(ctx context.Context, snapName string) (types.VolumeGroupSnapshot, error) {

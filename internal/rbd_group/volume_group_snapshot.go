@@ -20,6 +20,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	types "github.com/ceph/ceph-csi/internal/rbd_types"
 )
 
@@ -44,9 +46,18 @@ func newVolumeGroupSnapshot(ctx context.Context, parent *rbdVolumeGroup, name st
 	}
 }
 
+func GetVolumeGroupSnapshot(ctx context.Context, id string, secrets map[string]string) (types.VolumeGroupSnapshot, error) {
+	// TODO: resolve the VolumeGroupSnapshot by id
+	return nil, nil
+}
+
 // Destroy frees the resources used by the rbdVolumeGroup.
 func (rvgs *rbdVolumeGroupSnapshot) Destroy(ctx context.Context) {
 	// nothing to do (yet)
+}
+
+func (rvgs *rbdVolumeGroupSnapshot) Delete(ctx context.Context) error {
+	return nil
 }
 
 func (rvgs *rbdVolumeGroupSnapshot) GetID(ctx context.Context) (string, error) {
@@ -59,13 +70,62 @@ func (rvgs *rbdVolumeGroupSnapshot) ListSnapshots(ctx context.Context) ([]types.
 	return nil, nil
 }
 
-func (rvgs *rbdVolumeGroupSnapshot) GetCreationTime(ctx context.Context) *time.Time {
+func (rvgs *rbdVolumeGroupSnapshot) GetCreationTime(ctx context.Context) (*time.Time, error) {
 	// TODO: fetch the creation time of the group
 	// A group snapshot does not seem to have its own creation time. Use
 	// the time of the most recent created snapshot.
-	return nil
+	return nil, nil
 }
 
-func (rvgs *rbdVolumeGroupSnapshot) GetReadyToUse(ctx context.Context) bool {
-	return true
+// GetReadyToUse checks if all snapshots that are part if the group are ready
+// to use.
+func (rvgs *rbdVolumeGroupSnapshot) GetReadyToUse(ctx context.Context) (bool, error) {
+	for _, snapshot := range rvgs.snapshots {
+		ready, err := snapshot.GetReadyToUse(ctx)
+		if err != nil {
+			return false, err
+		}
+
+		if !ready {
+			// if this snapshot is not ready, no need to check
+			// other snapshots
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (rvgs *rbdVolumeGroupSnapshot) ToCSIVolumeGroupSnapshot(ctx context.Context) (*csi.VolumeGroupSnapshot, error) {
+	groupSnapshotID, err := rvgs.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshots, err := rvgs.ListSnapshots(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	csiSnapshots := make([]*csi.Snapshot, len(snapshots))
+	for i, snapshot := range snapshots {
+		csiSnapshot, err := snapshot.ToCSISnapshot(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		csiSnapshots[i] = csiSnapshot
+	}
+
+	ready, err := rvgs.GetReadyToUse(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &csi.VolumeGroupSnapshot{
+		GroupSnapshotId: groupSnapshotID,
+		Snapshots:       csiSnapshots,
+		CreationTime:    nil,
+		ReadyToUse:      ready,
+	}, nil
 }

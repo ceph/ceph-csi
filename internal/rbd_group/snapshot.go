@@ -19,6 +19,7 @@ package rbd_group
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
@@ -55,6 +56,14 @@ func (rgs *rbdGroupSnapshot) String() string {
 	return fmt.Sprintf("%s@%s", rgs.parent, rgs.snapName)
 }
 
+func (rgs *rbdGroupSnapshot) GetCreationTime(ctx context.Context) (*time.Time, error) {
+	return nil, nil
+}
+
+func (rgs *rbdGroupSnapshot) GetReadyToUse(ctx context.Context) (bool, error) {
+	return false, nil
+}
+
 func (rgs *rbdGroupSnapshot) ToCSISnapshot(ctx context.Context) (*csi.Snapshot, error) {
 	parentID, err := rgs.parent.GetID(ctx)
 	if err != nil {
@@ -62,11 +71,11 @@ func (rgs *rbdGroupSnapshot) ToCSISnapshot(ctx context.Context) (*csi.Snapshot, 
 	}
 
 	return &csi.Snapshot{
-		SizeBytes: 0,
-		SnapshotId: "",
-		SourceVolumeId: "",
-		CreationTime: nil,
-		ReadyToUse: false,
+		SizeBytes:       0,
+		SnapshotId:      "",
+		SourceVolumeId:  "",
+		CreationTime:    nil,
+		ReadyToUse:      false,
 		GroupSnapshotId: parentID,
 	}, nil
 }

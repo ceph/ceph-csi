@@ -19,6 +19,8 @@ package rbd_types
 import (
 	"context"
 	"time"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 // VolumeGroup contains a number of volumes, and can be used to create a
@@ -37,14 +39,13 @@ type VolumeGroup interface {
 
 	SetJournalNamespace(ctx context.Context, pool, namespace string) error
 
-	Create(ctx context.Context) error
+	Create(ctx context.Context, prefix string) error
 	Delete(ctx context.Context) error
 
 	AddVolume(ctx context.Context, volume Volume) error
 	RemoveVolume(ctx context.Context, volume Volume) error
 
 	CreateSnapshot(ctx context.Context, name string) (VolumeGroupSnapshot, error)
-	DeleteSnapshot(ctx context.Context, snapName string) error
 }
 
 // VolumeGroupSnapshot is an instance of a group of snapshots that was taken
@@ -53,10 +54,14 @@ type VolumeGroupSnapshot interface {
 	// Destroy frees the resources used by the VolumeGroupSnapshot.
 	Destroy(ctx context.Context)
 
+	Delete(ctx context.Context) error
+
 	GetID(ctx context.Context) (string, error)
 
 	ListSnapshots(ctx context.Context) ([]Snapshot, error)
 
-	GetCreationTime(ctx context.Context) *time.Time
-	GetReadyToUse(ctx context.Context) bool
+	GetCreationTime(ctx context.Context) (*time.Time, error)
+	GetReadyToUse(ctx context.Context) (bool, error)
+
+	ToCSIVolumeGroupSnapshot(ctx context.Context) (*csi.VolumeGroupSnapshot, error)
 }

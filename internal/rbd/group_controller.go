@@ -31,11 +31,12 @@ import (
 
 // cephConfig contains the configuration parameters for the Ceph cluster.
 type cephConfig struct {
-	clusterID   string
-	mons        string
-	pool        string
-	journalPool string
-	namespace   string
+	clusterID       string
+	mons            string
+	pool            string
+	journalPool     string
+	namespace       string
+	groupNamePrefix string
 }
 
 func getCephConfig(ctx context.Context, params, secrets map[string]string) (*cephConfig, error) {
@@ -64,12 +65,18 @@ func getCephConfig(ctx context.Context, params, secrets map[string]string) (*cep
 		return nil, errors.New("missing required parameter: radosNamespace")
 	}
 
+	namePrefix := params["groupNamePrefix"]
+	if namePrefix == "" {
+		return nil, errors.New("missing required parameter: groupNamePrefix")
+	}
+
 	return &cephConfig{
-		clusterID:   clusterID,
-		mons:        mons,
-		pool:        pool,
-		journalPool: journalPool,
-		namespace:   namespace,
+		clusterID:       clusterID,
+		mons:            mons,
+		pool:            pool,
+		journalPool:     journalPool,
+		namespace:       namespace,
+		groupNamePrefix: namePrefix,
 	}, nil
 }
 
@@ -105,6 +112,27 @@ func getVolumesForGroup(ctx context.Context, volumeIDs []string, secrets map[str
 	return volumes, nil
 }
 
+func initVolumeGroup(ctx context.Context, config *cephConfig, name string, secrets map[string]string) (types.VolumeGroup, error) {
+	group := rbd_group.NewVolumeGroup(ctx, name, config.clusterID, secrets)
+
+	err := group.SetMonitors(ctx, config.mons)
+	if err != nil {
+		return nil, err
+	}
+
+	err = group.SetPool(ctx, config.pool)
+	if err != nil {
+		return nil, err
+	}
+
+	err = group.SetJournalNamespace(ctx, config.journalPool, config.namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return group, nil
+}
+
 func (cs *ControllerServer) CreateVolumeGroupSnapshot(ctx context.Context, req *csi.CreateVolumeGroupSnapshotRequest) (*csi.CreateVolumeGroupSnapshotResponse, error) {
 
 	// 1. resolve each rbd-image from the volume-id
@@ -123,28 +151,26 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(ctx context.Context, req *
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	for _, v := range volumes {
+		defer v.Destroy()
+	}
 
-	group := rbd_group.NewVolumeGroup(ctx, req.GetName(), config.clusterID, req.GetSecrets())
+	group, err := initVolumeGroup(ctx, config, req.GetName(), req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 	defer group.Destroy(ctx)
 
-	err = group.SetMonitors(ctx, config.mons)
+	// TODO: take a lock on the request
+
+	err = group.Create(ctx, config.groupNamePrefix)
 	if err != nil {
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
 
-	err = group.SetPool(ctx, config.pool)
-	if err != nil {
-		return nil, status.Error(codes.Aborted, err.Error())
-	}
-
-	err = group.SetJournalNamespace(ctx, config.journalPool, config.namespace)
-	if err != nil {
-		return nil, status.Error(codes.Aborted, err.Error())
-	}
-
-	// TODO: add images to the group
-	for _, volume := range volumes {
-		err = group.AddVolume(ctx, volume)
+	// add images to the group
+	for _, v := range volumes {
+		err = group.AddVolume(ctx, v)
 		if err != nil {
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
@@ -156,41 +182,21 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(ctx context.Context, req *
 	}
 	defer groupSnapshot.Destroy(ctx)
 
-	groupSnapshotID, err := groupSnapshot.GetID(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Aborted, err.Error())
-	}
-
-	snapshots, err := groupSnapshot.ListSnapshots(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Aborted, err.Error())
-	}
-
-	csiSnapshots := make([]*csi.Snapshot, len(snapshots))
-	for i, snapshot := range snapshots {
-		csiSnapshot, err := snapshot.ToCSISnapshot(ctx)
+	// remove images from the group
+	for _, v := range volumes {
+		err = group.RemoveVolume(ctx, v)
 		if err != nil {
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
-
-		csiSnapshots[i] = csiSnapshot
 	}
 
-	// TODO: remove images from the group
-	for _, volume := range volumes {
-		err = group.RemoveVolume(ctx, volume)
-		if err != nil {
-			return nil, status.Error(codes.Aborted, err.Error())
-		}
+	csiGroupSnapshot, err := groupSnapshot.ToCSIVolumeGroupSnapshot(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Aborted, err.Error())
 	}
 
 	return &csi.CreateVolumeGroupSnapshotResponse{
-		GroupSnapshot: &csi.VolumeGroupSnapshot{
-			GroupSnapshotId: groupSnapshotID,
-			Snapshots:       csiSnapshots,
-			CreationTime:    nil,
-			ReadyToUse:      groupSnapshot.GetReadyToUse(ctx),
-		},
+		GroupSnapshot: csiGroupSnapshot,
 	}, nil
 }
 
@@ -199,11 +205,35 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context, req *
 	// 1. verify that all snapshots in the request are all snapshots in the group
 	// 2. delete the group
 
-	return nil, nil
+	snapshot, err := rbd_group.GetVolumeGroupSnapshot(ctx, req.GetGroupSnapshotId(), req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer snapshot.Destroy(ctx)
+
+	err = snapshot.Delete(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+
+	return &csi.DeleteVolumeGroupSnapshotResponse{}, nil
 }
 
 // TODO
 // sortof optional, only used for static/pre-provisioned VolumeGroupSnapshots
 func (cs *ControllerServer) GetVolumeGroupSnapshot(ctx context.Context, req *csi.GetVolumeGroupSnapshotRequest) (*csi.GetVolumeGroupSnapshotResponse, error) {
-	return nil, nil
+	snapshot, err := rbd_group.GetVolumeGroupSnapshot(ctx, req.GetGroupSnapshotId(), req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer snapshot.Destroy(ctx)
+
+	csiGroupSnapshot, err := snapshot.ToCSIVolumeGroupSnapshot(ctx)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return &csi.GetVolumeGroupSnapshotResponse{
+		GroupSnapshot: csiGroupSnapshot,
+	}, nil
 }
