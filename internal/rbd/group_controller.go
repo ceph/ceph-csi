@@ -103,7 +103,7 @@ func getVolumesForGroup(ctx context.Context, volumeIDs []string, secrets map[str
 	for i, id := range volumeIDs {
 		volume, err := GenVolFromVolID(ctx, id, creds, secrets)
 		if err != nil {
-			return nil, err
+ 			return nil, err
 		}
 
 		volumes[i] = volume
@@ -142,17 +142,17 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(ctx context.Context, req *
 	// 5. remove all rbd-images from the RBDVolumeGroup
 	// 6. return the RBDVolumeGroup-name and list of snapshots
 
-	config, err := getCephConfig(ctx, req.GetParameters(), req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
 	volumes, err := getVolumesForGroup(ctx, req.GetSourceVolumeIds(), req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	for _, v := range volumes {
 		defer v.Destroy()
+	}
+
+	config, err := getCephConfig(ctx, req.GetParameters(), req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	group, err := initVolumeGroup(ctx, config, req.GetName(), req.GetSecrets())
@@ -219,8 +219,6 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context, req *
 	return &csi.DeleteVolumeGroupSnapshotResponse{}, nil
 }
 
-// TODO
-// sortof optional, only used for static/pre-provisioned VolumeGroupSnapshots
 func (cs *ControllerServer) GetVolumeGroupSnapshot(ctx context.Context, req *csi.GetVolumeGroupSnapshotRequest) (*csi.GetVolumeGroupSnapshotResponse, error) {
 	snapshot, err := rbd_group.GetVolumeGroupSnapshot(ctx, req.GetGroupSnapshotId(), req.GetSecrets())
 	if err != nil {

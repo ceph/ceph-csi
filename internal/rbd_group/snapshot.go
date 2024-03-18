@@ -19,7 +19,6 @@ package rbd_group
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
@@ -27,45 +26,71 @@ import (
 )
 
 // verify that rbdSnapshot type implements the Snapshot interface
-var _ types.Snapshot = &rbdGroupSnapshot{}
+var _ types.Snapshot = &groupSnapshot{}
 
-// rbdGroupSnapshot describes a single snapshot that was taken as part of a group.
-type rbdGroupSnapshot struct {
-	parent   types.Volume
-	snapName string
-	snapID   uint64 // not needed now, may be used for cloning in the future
+// groupSnapshot describes a single snapshot that was taken as part of a group.
+type groupSnapshot struct {
+	*groupObject
+
+	// parent is the parent RBD-image that was snapshotted
+	parent types.Volume
+
+	// snapID is the (RBD) ID of the snapshot, may be used for cloning in the future
+	snapID uint64
 
 	// group is the optional value for a VolumeGroup that was used for
-	group types.VolumeGroup
+	group *volumeGroup
 }
 
-func newGroupSnapshot(group, name string, snapID uint64) types.Snapshot {
-	return &rbdGroupSnapshot{
-		//groupName: group,
-		snapName: name,
-		snapID:   snapID,
+func newGroupSnapshot(group *volumeGroup, parent types.Volume, name string, snapID uint64) types.Snapshot {
+	gs := &groupSnapshot{
+		groupObject: &groupObject{
+			name: name,
+		},
+		parent: parent,
+		snapID: snapID,
+		group:  group,
 	}
+
+	return gs
 }
 
-func (rgs *rbdGroupSnapshot) Destroy(ctx context.Context) {
-	// nothing to do yet
+// GetSnapshot returns a Snapshot by the given id.
+func GetSnapshot(ctx context.Context, id string, secrets map[string]string) (types.Snapshot, error) {
+	// TODO: use the journal to resolve the groupSnapshot by ID
+
+	gs := &groupSnapshot{}
+	err := gs.resolveByID(ctx, id, secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: resolve more attributes from the journal
+	gs.parent = nil
+	gs.group = nil
+
+	return gs, nil
 }
 
 // String returns the image-spec of the snapshot.
-func (rgs *rbdGroupSnapshot) String() string {
-	return fmt.Sprintf("%s@%s", rgs.parent, rgs.snapName)
+func (gs *groupSnapshot) String() string {
+	return fmt.Sprintf("%s@%s", gs.parent, gs.name)
 }
 
-func (rgs *rbdGroupSnapshot) GetCreationTime(ctx context.Context) (*time.Time, error) {
-	return nil, nil
+func (gs *groupSnapshot) Destroy(ctx context.Context) {
+	// nothing to do yet
+
+	gs.groupObject.Destroy(ctx)
 }
 
-func (rgs *rbdGroupSnapshot) GetReadyToUse(ctx context.Context) (bool, error) {
-	return false, nil
+func (gs *groupSnapshot) Delete(ctx context.Context) error {
+	// TODO: fail in case the parent group still exists
+	// TODO: remove object from the journal
+	return nil
 }
 
-func (rgs *rbdGroupSnapshot) ToCSISnapshot(ctx context.Context) (*csi.Snapshot, error) {
-	parentID, err := rgs.parent.GetID(ctx)
+func (gs *groupSnapshot) ToCSISnapshot(ctx context.Context) (*csi.Snapshot, error) {
+	parentID, err := gs.parent.GetID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +103,4 @@ func (rgs *rbdGroupSnapshot) ToCSISnapshot(ctx context.Context) (*csi.Snapshot, 
 		ReadyToUse:      false,
 		GroupSnapshotId: parentID,
 	}, nil
-}
-
-func (rgs *rbdGroupSnapshot) Map(ctx context.Context) (string, error) {
-	return "/dev/rbd123", nil
 }

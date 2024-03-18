@@ -18,7 +18,6 @@ package rbd_types
 
 import (
 	"context"
-	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
@@ -59,9 +58,6 @@ type VolumeGroupSnapshot interface {
 	GetID(ctx context.Context) (string, error)
 
 	ListSnapshots(ctx context.Context) ([]Snapshot, error)
-
-	GetCreationTime(ctx context.Context) (*time.Time, error)
-	GetReadyToUse(ctx context.Context) (bool, error)
 
 	ToCSIVolumeGroupSnapshot(ctx context.Context) (*csi.VolumeGroupSnapshot, error)
 }
