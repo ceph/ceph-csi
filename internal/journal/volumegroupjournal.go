@@ -51,8 +51,7 @@ type VolumeGroupJournal interface {
 		objectUUID string) (*VolumeGroupAttributes, error)
 	ReserveName(
 		ctx context.Context,
-		journalPool string,
-		journalPoolID int64,
+		journalPool,
 		reqName,
 		namePrefix string) (string, string, error)
 	// AddVolumesMapping adds a volumeMap map which contains volumeID's and its
@@ -296,7 +295,6 @@ held, to prevent parallel operations from modifying the state of the omaps for t
 
 Input arguments:
   - journalPool: Pool where the CSI journal is stored
-  - journalPoolID: pool ID of the journalPool
   - reqName: Name of the volumeGroupSnapshot request received
   - namePrefix: Prefix to use when generating the volumeGroupName name (suffix is an auto-generated UUID)
 
@@ -306,8 +304,7 @@ Return values:
   - error: non-nil in case of any errors
 */
 func (vgjc *VolumeGroupJournalConnection) ReserveName(ctx context.Context,
-	journalPool string, journalPoolID int64,
-	reqName, namePrefix string,
+	journalPool, reqName, namePrefix string,
 ) (string, string, error) {
 	cj := vgjc.config
 
