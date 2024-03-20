@@ -57,6 +57,7 @@ sidecarLogLevel: 1
 # accessModes contains ReadWriteOnce.
 CSIDriver:
   fsGroupPolicy: "File"
+  seLinuxMount: true
 
 nodeplugin:
   name: nodeplugin
