@@ -69,6 +69,24 @@ logLevel: 5
 # sidecarLogLevel is the variable for Kubernetes sidecar container's log level
 sidecarLogLevel: 1
 
+# Set fsGroupPolicy for CSI Driver object spec
+# https://kubernetes-csi.github.io/docs/support-fsgroup.html
+# The following modes are supported:
+# - None: Indicates that volumes will be mounted with no modifications, as the
+#   CSI volume driver does not support these operations.
+# - File: Indicates that the CSI volume driver supports volume ownership and
+#   permission change via fsGroup, and Kubernetes may use fsGroup to change
+#   permissions and ownership of the volume to match user requested fsGroup in
+#   the pod's SecurityPolicy regardless of fstype or access mode.
+# - ReadWriteOnceWithFSType: Indicates that volumes will be examined to
+#   determine if volume ownership and permissions should be modified to match
+#   the pod's security policy.
+# Changes will only occur if the fsType is defined and the persistent volume's
+# accessModes contains ReadWriteOnce.
+CSIDriver:
+  fsGroupPolicy: "File"
+  seLinuxMount: true
+
 nodeplugin:
   name: nodeplugin
   # set user created priorityclassName for csi plugin pods. default is
