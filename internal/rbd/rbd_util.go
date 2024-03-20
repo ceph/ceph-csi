@@ -114,6 +114,8 @@ type rbdImage struct {
 	NamePrefix  string
 	// ParentName represents the parent image name of the image.
 	ParentName string
+	// ParentID represents the parent image ID of the image.
+	ParentID string
 	// Parent Pool is the pool that contains the parent image.
 	ParentPool string
 	// Cluster name
@@ -505,7 +507,14 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 		return nil, err
 	}
 
-	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	var image *librbd.Image
+
+	// try to open by id, that works for images in trash too
+	if ri.ImageID != "" {
+		image, err = librbd.OpenImageById(ri.ioctx, ri.ImageID, librbd.NoSnapshot)
+	} else {
+		image, err = librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	}
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
 			err = util.JoinErrors(ErrImageNotFound, err)
@@ -704,6 +713,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.Pool = ri.Pool
 	vol.Monitors = ri.Monitors
 	vol.RbdImageName = ri.RbdImageName
+	vol.ImageID = ri.ImageID
 	vol.RadosNamespace = ri.RadosNamespace
 	vol.conn = ri.conn.Copy()
 
@@ -736,6 +746,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 			depth++
 		}
 		vol.RbdImageName = vol.ParentName
+		vol.ImageID = vol.ParentID
 		vol.Pool = vol.ParentPool
 	}
 }
@@ -830,7 +841,9 @@ func (ri *rbdImage) flattenRbdImage(
 	_, err = ta.AddFlatten(admin.NewImageSpec(ri.Pool, ri.RadosNamespace, ri.RbdImageName))
 	rbdCephMgrSupported := isCephMgrSupported(ctx, ri.ClusterID, err)
 	if rbdCephMgrSupported {
-		if err != nil {
+		// it is not possible to flatten an image that is in trash (ErrNotFoun)
+		switch {
+		case err != nil && !errors.Is(err, librbd.ErrNotFound):
 			// discard flattening error if the image does not have any parent
 			rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", ri.Pool, ri.RbdImageName)
 			if strings.Contains(err.Error(), rbdFlattenNoParent) {
@@ -839,11 +852,11 @@ func (ri *rbdImage) flattenRbdImage(
 			log.ErrorLog(ctx, "failed to add task flatten for %s : %v", ri, err)
 
 			return err
-		}
-		if forceFlatten || depth >= hardlimit {
+		case forceFlatten || depth >= hardlimit:
 			return fmt.Errorf("%w: flatten is in progress for image %s", ErrFlattenInProgress, ri.RbdImageName)
+		default:
+			log.DebugLog(ctx, "successfully added task to flatten image %q", ri)
 		}
-		log.DebugLog(ctx, "successfully added task to flatten image %q", ri)
 	}
 	if !rbdCephMgrSupported {
 		log.ErrorLog(
@@ -874,6 +887,9 @@ func (ri *rbdImage) getParentName() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	ri.ParentName = parentInfo.Image.ImageName
+	ri.ParentID = parentInfo.Image.ImageID
 
 	return parentInfo.Image.ImageName, nil
 }
@@ -1588,6 +1604,11 @@ func (ri *rbdImage) getImageInfo() error {
 	// TODO: can rv.VolSize not be a uint64? Or initialize it to -1?
 	ri.VolSize = int64(imageInfo.Size)
 
+	ri.ImageID, err = image.GetId()
+	if err != nil {
+		return err
+	}
+
 	features, err := image.GetFeatures()
 	if err != nil {
 		return err
@@ -1601,11 +1622,13 @@ func (ri *rbdImage) getImageInfo() error {
 		// the parent is an error or not.
 		if errors.Is(err, librbd.ErrNotFound) {
 			ri.ParentName = ""
+			ri.ParentID = ""
 		} else {
 			return err
 		}
 	} else {
 		ri.ParentName = parentInfo.Image.ImageName
+		ri.ParentID = parentInfo.Image.ImageID
 		ri.ParentPool = parentInfo.Image.PoolName
 	}
 	// Get image creation time
@@ -1636,6 +1659,7 @@ func (ri *rbdImage) getParent() (*rbdImage, error) {
 	parentImage.Pool = ri.ParentPool
 	parentImage.RadosNamespace = ri.RadosNamespace
 	parentImage.RbdImageName = ri.ParentName
+	parentImage.ImageID = ri.ParentID
 
 	err = parentImage.getImageInfo()
 	if err != nil {
@@ -1692,6 +1716,7 @@ type rbdImageMetadataStash struct {
 	Pool           string `json:"pool"`
 	RadosNamespace string `json:"radosNamespace"`
 	ImageName      string `json:"image"`
+	ImageID        string `json:"imageID"`
 	UnmapOptions   string `json:"unmapOptions"`
 	NbdAccess      bool   `json:"accessType"`
 	Encrypted      bool   `json:"encrypted"`
@@ -1721,6 +1746,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 		Pool:           volOptions.Pool,
 		RadosNamespace: volOptions.RadosNamespace,
 		ImageName:      volOptions.RbdImageName,
+		ImageID:        volOptions.ImageID,
 		Encrypted:      volOptions.isBlockEncrypted(),
 		UnmapOptions:   volOptions.UnmapOptions,
 	}
