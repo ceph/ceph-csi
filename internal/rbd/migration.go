@@ -81,7 +81,7 @@ func deleteMigratedVolume(ctx context.Context, parsedMigHandle *migrationVolID, 
 	if err != nil {
 		return err
 	}
-	defer rv.Destroy()
+	defer rv.Destroy(ctx)
 	err = rv.deleteImage(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete rbd image: %s, err: %v", rv, err)

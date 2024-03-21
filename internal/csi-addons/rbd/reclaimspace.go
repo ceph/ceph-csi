@@ -68,7 +68,7 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "failed to find volume with ID %q: %s", volumeID, err.Error())
 	}
-	defer rbdVol.Destroy()
+	defer rbdVol.Destroy(ctx)
 
 	err = rbdVol.Sparsify()
 	if errors.Is(err, rbdutil.ErrImageInUse) {

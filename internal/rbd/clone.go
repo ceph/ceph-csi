@@ -46,10 +46,10 @@ import (
 func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) (bool, error) {
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
-	defer tempClone.Destroy()
+	defer tempClone.Destroy(ctx)
 
 	snap := &rbdSnapshot{}
-	defer snap.Destroy()
+	defer snap.Destroy(ctx)
 	snap.RbdSnapName = rv.RbdImageName
 	snap.Pool = rv.Pool
 
@@ -183,7 +183,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
-	defer tempClone.Destroy()
+	defer tempClone.Destroy(ctx)
 
 	// snapshot name is same as temporary cloned image, This helps to
 	// flatten the temporary cloned images as we cannot have more than 510
