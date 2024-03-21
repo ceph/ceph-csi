@@ -348,6 +348,12 @@ func (cs *ControllerServer) CreateVolume(
 	if err != nil {
 		return nil, err
 	}
+	if parentVol != nil {
+		defer parentVol.Destroy()
+	}
+	if rbdSnap != nil {
+		defer rbdSnap.Destroy()
+	}
 
 	err = updateTopologyConstraints(rbdVol, rbdSnap)
 	if err != nil {
@@ -655,6 +661,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 
 		return status.Error(codes.Internal, err.Error())
 	}
+	defer rbdSnap.Destroy()
 
 	// update parent name(rbd image name in snapshot)
 	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
@@ -1458,6 +1465,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer rbdSnap.Destroy()
 
 	// safeguard against parallel create or delete requests against the same
 	// name
