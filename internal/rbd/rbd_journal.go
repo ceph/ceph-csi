@@ -163,7 +163,7 @@ func checkSnapCloneExists(
 	}
 
 	vol := rbdSnap.toVolume()
-	defer vol.Destroy()
+	defer vol.Destroy(ctx)
 	err = vol.Connect(cr)
 	if err != nil {
 		return false, err

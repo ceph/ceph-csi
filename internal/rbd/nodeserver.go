@@ -198,7 +198,7 @@ func (ns *NodeServer) populateRbdVol(
 	} else {
 		rv, err = GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
-			rv.Destroy()
+			rv.Destroy(ctx)
 			log.ErrorLog(ctx, "error generating volume %s: %v", volID, err)
 
 			return nil, status.Errorf(codes.Internal, "error generating volume %s: %v", volID, err)
@@ -221,7 +221,7 @@ func (ns *NodeServer) populateRbdVol(
 	// in case of any error call Destroy for cleanup.
 	defer func() {
 		if err != nil {
-			rv.Destroy()
+			rv.Destroy(ctx)
 		}
 	}()
 	// get the image details from the ceph cluster.
@@ -345,7 +345,7 @@ func (ns *NodeServer) NodeStageVolume(
 	if err != nil {
 		return nil, err
 	}
-	defer rv.Destroy()
+	defer rv.Destroy(ctx)
 
 	rv.NetNamespaceFilePath, err = util.GetRBDNetNamespaceFilePath(util.CsiConfigFile, rv.ClusterID)
 	if err != nil {
