@@ -150,6 +150,7 @@ func validateStriping(parameters map[string]string) error {
 func (cs *ControllerServer) parseVolCreateRequest(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
+	cr *util.Credentials,
 ) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
@@ -224,6 +225,13 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	rbdVol.TopologyPools, rbdVol.TopologyRequirement, err = util.GetTopologyFromRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = rbdVol.Connect(cr)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to connect to volume %v: %v", rbdVol.RbdImageName, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
@@ -324,7 +332,7 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
-	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
+	rbdVol, err := cs.parseVolCreateRequest(ctx, req, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -336,13 +344,6 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetName())
 	}
 	defer cs.VolumeLocks.Release(req.GetName())
-
-	err = rbdVol.Connect(cr)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to connect to volume %v: %v", rbdVol.RbdImageName, err)
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
 
 	parentVol, rbdSnap, err := checkContentSource(ctx, req, cr)
 	if err != nil {
