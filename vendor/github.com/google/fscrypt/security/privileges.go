@@ -18,8 +18,8 @@
  */
 
 // Package security manages:
-//  - Cache clearing (cache.go)
-//  - Privilege manipulation (privileges.go)
+//   - Cache clearing (cache.go)
+//   - Privilege manipulation (privileges.go)
 package security
 
 // Use the libc versions of setreuid, setregid, and setgroups instead of the

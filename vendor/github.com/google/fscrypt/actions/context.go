@@ -22,10 +22,10 @@
 // All of the actions include a significant amount of logging, so that good
 // output can be provided for cmd/fscrypt's verbose mode.
 // The top-level actions currently include:
-//	- Creating a new config file
-//	- Creating a context on which to perform actions
-//	- Creating, unlocking, and modifying Protectors
-//	- Creating, unlocking, and modifying Policies
+//   - Creating a new config file
+//   - Creating a context on which to perform actions
+//   - Creating, unlocking, and modifying Protectors
+//   - Creating, unlocking, and modifying Policies
 package actions
 
 import (

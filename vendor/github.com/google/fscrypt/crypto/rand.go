@@ -30,7 +30,8 @@ import (
 // the operating system has insufficient randomness, the buffer creation will
 // fail. This is an improvement over Go's built-in crypto/rand which will still
 // return bytes if the system has insufficiency entropy.
-// 	See: https://github.com/golang/go/issues/19274
+//
+//	See: https://github.com/golang/go/issues/19274
 //
 // While this syscall was only introduced in Kernel v3.17, it predates the
 // introduction of filesystem encryption, so it introduces no additional
