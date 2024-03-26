@@ -150,6 +150,7 @@ func validateStriping(parameters map[string]string) error {
 func (cs *ControllerServer) parseVolCreateRequest(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
+	cr *util.Credentials,
 ) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
@@ -224,6 +225,13 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	rbdVol.TopologyPools, rbdVol.TopologyRequirement, err = util.GetTopologyFromRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = rbdVol.Connect(cr)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to connect to volume %v: %v", rbdVol.RbdImageName, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
@@ -324,7 +332,7 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
-	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
+	rbdVol, err := cs.parseVolCreateRequest(ctx, req, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -337,16 +345,15 @@ func (cs *ControllerServer) CreateVolume(
 	}
 	defer cs.VolumeLocks.Release(req.GetName())
 
-	err = rbdVol.Connect(cr)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to connect to volume %v: %v", rbdVol.RbdImageName, err)
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	parentVol, rbdSnap, err := checkContentSource(ctx, req, cr)
 	if err != nil {
 		return nil, err
+	}
+	if parentVol != nil {
+		defer parentVol.Destroy()
+	}
+	if rbdSnap != nil {
+		defer rbdSnap.Destroy()
 	}
 
 	err = updateTopologyConstraints(rbdVol, rbdSnap)
@@ -638,7 +645,6 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 	rbdVol *rbdVolume,
 	snapshotID string,
 ) error {
-	rbdSnap := &rbdSnapshot{}
 	if acquired := cs.SnapshotLocks.TryAcquire(snapshotID); !acquired {
 		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, snapshotID)
 
@@ -646,7 +652,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 	}
 	defer cs.SnapshotLocks.Release(snapshotID)
 
-	err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr, secrets)
+	rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, secrets)
 	if err != nil {
 		if errors.Is(err, util.ErrPoolNotFound) {
 			log.ErrorLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)
@@ -656,10 +662,11 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 
 		return status.Error(codes.Internal, err.Error())
 	}
+	defer rbdSnap.Destroy()
 
 	// update parent name(rbd image name in snapshot)
 	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
-	parentVol := generateVolFromSnap(rbdSnap)
+	parentVol := rbdSnap.toVolume()
 	// as we are operating on single cluster reuse the connection
 	parentVol.conn = rbdVol.conn.Copy()
 
@@ -789,8 +796,8 @@ func checkContentSource(
 		if snapshotID == "" {
 			return nil, nil, status.Errorf(codes.NotFound, "volume Snapshot ID cannot be empty")
 		}
-		rbdSnap := &rbdSnapshot{}
-		if err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr, req.GetSecrets()); err != nil {
+		rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, req.GetSecrets())
+		if err != nil {
 			log.ErrorLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)
 			if !errors.Is(err, ErrSnapNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
@@ -1230,7 +1237,7 @@ func cloneFromSnapshot(
 	cr *util.Credentials,
 	parameters map[string]string,
 ) (*csi.CreateSnapshotResponse, error) {
-	vol := generateVolFromSnap(rbdSnap)
+	vol := rbdSnap.toVolume()
 	err := vol.Connect(cr)
 	if err != nil {
 		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
@@ -1315,7 +1322,7 @@ func (cs *ControllerServer) doSnapshotClone(
 	cr *util.Credentials,
 ) (*rbdVolume, error) {
 	// generate cloned volume details from snapshot
-	cloneRbd := generateVolFromSnap(rbdSnap)
+	cloneRbd := rbdSnap.toVolume()
 	defer cloneRbd.Destroy()
 	// add image feature for cloneRbd
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
@@ -1429,8 +1436,8 @@ func (cs *ControllerServer) DeleteSnapshot(
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(snapshotID)
 
-	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr, req.GetSecrets()); err != nil {
+	rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, req.GetSecrets())
+	if err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we don't
 		// need to worry about deleting snapshot or omap data, return success
 		if errors.Is(err, util.ErrPoolNotFound) {
@@ -1443,12 +1450,16 @@ func (cs *ControllerServer) DeleteSnapshot(
 		// or partially complete (snap and snapOMap are garbage collected already), hence return
 		// success as deletion is complete
 		if errors.Is(err, util.ErrKeyNotFound) {
+			log.UsefulLog(ctx, "snapshot %s was been deleted already: %v", snapshotID, err)
+
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
 
 		// if the error is ErrImageNotFound, We need to cleanup the image from
 		// trash and remove the metadata in OMAP.
 		if errors.Is(err, ErrImageNotFound) {
+			log.UsefulLog(ctx, "cleaning up leftovers of snapshot %s: %v", snapshotID, err)
+
 			err = cleanUpImageAndSnapReservation(ctx, rbdSnap, cr)
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -1459,6 +1470,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer rbdSnap.Destroy()
 
 	// safeguard against parallel create or delete requests against the same
 	// name
@@ -1472,7 +1484,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 	// Deleting snapshot and cloned volume
 	log.DebugLog(ctx, "deleting cloned rbd volume %s", rbdSnap.RbdSnapName)
 
-	rbdVol := generateVolFromSnap(rbdSnap)
+	rbdVol := rbdSnap.toVolume()
 
 	err = rbdVol.Connect(cr)
 	if err != nil {
@@ -1503,7 +1515,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 // cleanUpImageAndSnapReservation cleans up the image from the trash and
 // snapshot reservation in rados OMAP.
 func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	rbdVol := generateVolFromSnap(rbdSnap)
+	rbdVol := rbdSnap.toVolume()
 	err := rbdVol.Connect(cr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())

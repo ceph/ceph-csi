@@ -162,7 +162,7 @@ func checkSnapCloneExists(
 			snapData.ImagePool, rbdSnap.Pool)
 	}
 
-	vol := generateVolFromSnap(rbdSnap)
+	vol := rbdSnap.toVolume()
 	defer vol.Destroy()
 	err = vol.Connect(cr)
 	if err != nil {

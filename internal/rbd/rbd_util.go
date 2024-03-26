@@ -949,54 +949,57 @@ func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint6
 
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well.
+//
+// NOTE: The returned rbdSnapshot can be non-nil in case of an error. That
+// seems to be required for the DeleteSnapshot procedure, so that OMAP
+// attributes can be cleaned-up.
 func genSnapFromSnapID(
 	ctx context.Context,
-	rbdSnap *rbdSnapshot,
 	snapshotID string,
 	cr *util.Credentials,
 	secrets map[string]string,
-) error {
+) (*rbdSnapshot, error) {
 	var vi util.CSIIdentifier
 
-	rbdSnap.VolID = snapshotID
-
-	err := vi.DecomposeCSIID(rbdSnap.VolID)
+	err := vi.DecomposeCSIID(snapshotID)
 	if err != nil {
-		log.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.VolID)
+		log.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, snapshotID)
 
-		return err
+		return nil, err
 	}
 
+	rbdSnap := &rbdSnapshot{}
+	rbdSnap.VolID = snapshotID
 	rbdSnap.ClusterID = vi.ClusterID
 
 	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(ctx, rbdSnap.ClusterID, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
-		return err
+		return nil, err
 	}
 
 	rbdSnap.Pool, err = util.GetPoolName(rbdSnap.Monitors, cr, vi.LocationID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rbdSnap.JournalPool = rbdSnap.Pool
 
 	rbdSnap.RadosNamespace, err = util.GetRadosNamespace(util.CsiConfigFile, rbdSnap.ClusterID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer j.Destroy()
 
 	imageAttributes, err := j.GetImageAttributes(
 		ctx, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
-		return err
+		return rbdSnap, err
 	}
 	rbdSnap.ImageID = imageAttributes.ImageID
 	rbdSnap.RequestName = imageAttributes.RequestName
@@ -1009,48 +1012,48 @@ func genSnapFromSnapID(
 		rbdSnap.JournalPool, err = util.GetPoolName(rbdSnap.Monitors, cr, imageAttributes.JournalPoolID)
 		if err != nil {
 			// TODO: If pool is not found we may leak the image (as DeleteSnapshot will return success)
-			return err
+			return rbdSnap, err
 		}
 	}
 
 	err = rbdSnap.Connect(cr)
+	if err != nil {
+		return rbdSnap, fmt.Errorf("failed to connect to %q: %w",
+			rbdSnap, err)
+	}
 	defer func() {
 		if err != nil {
 			rbdSnap.Destroy()
 		}
 	}()
-	if err != nil {
-		return fmt.Errorf("failed to connect to %q: %w",
-			rbdSnap, err)
-	}
 
 	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeBlock {
 		err = rbdSnap.configureBlockEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
-			return fmt.Errorf("failed to configure block encryption for "+
+			return rbdSnap, fmt.Errorf("failed to configure block encryption for "+
 				"%q: %w", rbdSnap, err)
 		}
 	}
 	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeFile {
 		err = rbdSnap.configureFileEncryption(ctx, imageAttributes.KmsID, secrets)
 		if err != nil {
-			return fmt.Errorf("failed to configure file encryption for "+
+			return rbdSnap, fmt.Errorf("failed to configure file encryption for "+
 				"%q: %w", rbdSnap, err)
 		}
 	}
 
 	err = updateSnapshotDetails(rbdSnap)
 	if err != nil {
-		return fmt.Errorf("failed to update snapshot details for %q: %w", rbdSnap, err)
+		return rbdSnap, fmt.Errorf("failed to update snapshot details for %q: %w", rbdSnap, err)
 	}
 
-	return err
+	return rbdSnap, err
 }
 
 // updateSnapshotDetails will copy the details from the rbdVolume to the
 // rbdSnapshot. example copying size from rbdVolume to rbdSnapshot.
 func updateSnapshotDetails(rbdSnap *rbdSnapshot) error {
-	vol := generateVolFromSnap(rbdSnap)
+	vol := rbdSnap.toVolume()
 	err := vol.Connect(rbdSnap.conn.Creds)
 	if err != nil {
 		return err

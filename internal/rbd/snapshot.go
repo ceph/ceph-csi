@@ -98,23 +98,24 @@ func cleanUpSnapshot(
 	return nil
 }
 
-func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
-	vol := new(rbdVolume)
-	vol.ClusterID = rbdSnap.ClusterID
-	vol.VolID = rbdSnap.VolID
-	vol.Monitors = rbdSnap.Monitors
-	vol.Pool = rbdSnap.Pool
-	vol.JournalPool = rbdSnap.JournalPool
-	vol.RadosNamespace = rbdSnap.RadosNamespace
-	vol.RbdImageName = rbdSnap.RbdSnapName
-	vol.ImageID = rbdSnap.ImageID
-	// copyEncryptionConfig cannot be used here because the volume and the
-	// snapshot will have the same volumeID which cases the panic in
-	// copyEncryptionConfig function.
-	vol.blockEncryption = rbdSnap.blockEncryption
-	vol.fileEncryption = rbdSnap.fileEncryption
-
-	return vol
+func (rbdSnap *rbdSnapshot) toVolume() *rbdVolume {
+	return &rbdVolume{
+		rbdImage: rbdImage{
+			ClusterID:      rbdSnap.ClusterID,
+			VolID:          rbdSnap.VolID,
+			Monitors:       rbdSnap.Monitors,
+			Pool:           rbdSnap.Pool,
+			JournalPool:    rbdSnap.JournalPool,
+			RadosNamespace: rbdSnap.RadosNamespace,
+			RbdImageName:   rbdSnap.RbdSnapName,
+			ImageID:        rbdSnap.ImageID,
+			// copyEncryptionConfig cannot be used here because the volume and the
+			// snapshot will have the same volumeID which cases the panic in
+			// copyEncryptionConfig function.
+			blockEncryption: rbdSnap.blockEncryption,
+			fileEncryption:  rbdSnap.fileEncryption,
+		},
+	}
 }
 
 func undoSnapshotCloning(
