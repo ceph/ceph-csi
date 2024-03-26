@@ -1450,12 +1450,16 @@ func (cs *ControllerServer) DeleteSnapshot(
 		// or partially complete (snap and snapOMap are garbage collected already), hence return
 		// success as deletion is complete
 		if errors.Is(err, util.ErrKeyNotFound) {
+			log.UsefulLog(ctx, "snapshot %s was been deleted already: %v", snapshotID, err)
+
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
 
 		// if the error is ErrImageNotFound, We need to cleanup the image from
 		// trash and remove the metadata in OMAP.
 		if errors.Is(err, ErrImageNotFound) {
+			log.UsefulLog(ctx, "cleaning up leftovers of snapshot %s: %v", snapshotID, err)
+
 			err = cleanUpImageAndSnapReservation(ctx, rbdSnap, cr)
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
