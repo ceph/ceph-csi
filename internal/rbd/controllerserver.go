@@ -666,7 +666,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 
 	// update parent name(rbd image name in snapshot)
 	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
-	parentVol := generateVolFromSnap(rbdSnap)
+	parentVol := rbdSnap.toVolume()
 	// as we are operating on single cluster reuse the connection
 	parentVol.conn = rbdVol.conn.Copy()
 
@@ -1237,7 +1237,7 @@ func cloneFromSnapshot(
 	cr *util.Credentials,
 	parameters map[string]string,
 ) (*csi.CreateSnapshotResponse, error) {
-	vol := generateVolFromSnap(rbdSnap)
+	vol := rbdSnap.toVolume()
 	err := vol.Connect(cr)
 	if err != nil {
 		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
@@ -1322,7 +1322,7 @@ func (cs *ControllerServer) doSnapshotClone(
 	cr *util.Credentials,
 ) (*rbdVolume, error) {
 	// generate cloned volume details from snapshot
-	cloneRbd := generateVolFromSnap(rbdSnap)
+	cloneRbd := rbdSnap.toVolume()
 	defer cloneRbd.Destroy()
 	// add image feature for cloneRbd
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
@@ -1480,7 +1480,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 	// Deleting snapshot and cloned volume
 	log.DebugLog(ctx, "deleting cloned rbd volume %s", rbdSnap.RbdSnapName)
 
-	rbdVol := generateVolFromSnap(rbdSnap)
+	rbdVol := rbdSnap.toVolume()
 
 	err = rbdVol.Connect(cr)
 	if err != nil {
@@ -1511,7 +1511,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 // cleanUpImageAndSnapReservation cleans up the image from the trash and
 // snapshot reservation in rados OMAP.
 func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	rbdVol := generateVolFromSnap(rbdSnap)
+	rbdVol := rbdSnap.toVolume()
 	err := rbdVol.Connect(cr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
