@@ -256,6 +256,31 @@ func checkValidCreateVolumeRequest(
 	return nil
 }
 
+func buildCreateVolumeResponse(
+	req *csi.CreateVolumeRequest,
+	volOptions *store.VolumeOptions,
+	vID *store.VolumeIdentifier,
+) *csi.CreateVolumeResponse {
+	volumeContext := util.GetVolumeContext(req.GetParameters())
+	volumeContext["subvolumeName"] = vID.FsSubvolName
+	volumeContext["subvolumePath"] = volOptions.RootPath
+	volume := &csi.Volume{
+		VolumeId:      vID.VolumeID,
+		CapacityBytes: volOptions.Size,
+		ContentSource: req.GetVolumeContentSource(),
+		VolumeContext: volumeContext,
+	}
+	if volOptions.Topology != nil {
+		volume.AccessibleTopology = []*csi.Topology{
+			{
+				Segments: volOptions.Topology,
+			},
+		}
+	}
+
+	return &csi.CreateVolumeResponse{Volume: volume}
+}
+
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
 //
 //nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
@@ -376,25 +401,7 @@ func (cs *ControllerServer) CreateVolume(
 			}
 		}
 
-		// remove kubernetes csi prefixed parameters.
-		volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
-		volumeContext["subvolumeName"] = vID.FsSubvolName
-		volumeContext["subvolumePath"] = volOptions.RootPath
-		volume := &csi.Volume{
-			VolumeId:      vID.VolumeID,
-			CapacityBytes: volOptions.Size,
-			ContentSource: req.GetVolumeContentSource(),
-			VolumeContext: volumeContext,
-		}
-		if volOptions.Topology != nil {
-			volume.AccessibleTopology = []*csi.Topology{
-				{
-					Segments: volOptions.Topology,
-				},
-			}
-		}
-
-		return &csi.CreateVolumeResponse{Volume: volume}, nil
+		return buildCreateVolumeResponse(req, volOptions, vID), nil
 	}
 
 	// Reservation
@@ -467,25 +474,8 @@ func (cs *ControllerServer) CreateVolume(
 
 	log.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
 		vID.FsSubvolName, requestName)
-	// remove kubernetes csi prefixed parameters.
-	volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
-	volumeContext["subvolumeName"] = vID.FsSubvolName
-	volumeContext["subvolumePath"] = volOptions.RootPath
-	volume := &csi.Volume{
-		VolumeId:      vID.VolumeID,
-		CapacityBytes: volOptions.Size,
-		ContentSource: req.GetVolumeContentSource(),
-		VolumeContext: volumeContext,
-	}
-	if volOptions.Topology != nil {
-		volume.AccessibleTopology = []*csi.Topology{
-			{
-				Segments: volOptions.Topology,
-			},
-		}
-	}
 
-	return &csi.CreateVolumeResponse{Volume: volume}, nil
+	return buildCreateVolumeResponse(req, volOptions, vID), nil
 }
 
 // DeleteVolume deletes the volume in backend and its reservation.
