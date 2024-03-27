@@ -37,8 +37,8 @@ function deploy_rook() {
 	TEMP_DIR="$(mktemp -d)"
 	curl -o "${TEMP_DIR}/operator.yaml" "${ROOK_URL}/operator.yaml"
 	# disable rook deployed csi drivers
-	sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
-	sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
+	sed -i.bak 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
+	sed -i.bak 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
 
 	kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
 	# Override the ceph version which rook installs by default.
@@ -48,9 +48,9 @@ function deploy_rook() {
 		ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH="image: ${ROOK_CEPH_CLUSTER_IMAGE}"
 
 		curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
-		sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
-		sed -i "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
-		sed -i "s/healthCheck:/healthCheck:\n    livenessProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true\n    startupProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true/g" "${TEMP_DIR}"/cluster-test.yaml
+		sed -i.bak "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
+		sed -i.bak "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
+		sed -i.bak "s/healthCheck:/healthCheck:\n    livenessProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true\n    startupProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true/g" "${TEMP_DIR}"/cluster-test.yaml
 		cat "${TEMP_DIR}"/cluster-test.yaml
 		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
 	fi
@@ -97,7 +97,7 @@ function teardown_rook() {
 function create_or_delete_subvolumegroup() {
 	local action="$1"
 	curl -o "subvolumegroup.yaml" "${ROOK_URL}/subvolumegroup.yaml"
-	sed -i "s|name:.*|name: $ROOK_SUBVOLUMEGROUP_NAME|g" subvolumegroup.yaml
+	sed -i.bak "s|name:.*|name: $ROOK_SUBVOLUMEGROUP_NAME|g" subvolumegroup.yaml
 
 	if [ "$action" == "create" ]; then
 		kubectl_retry create -f subvolumegroup.yaml
@@ -110,7 +110,7 @@ function create_or_delete_subvolumegroup() {
 
 function create_block_pool() {
 	curl -o newpool.yaml "${ROOK_URL}/pool-test.yaml"
-	sed -i "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
+	sed -i.bak "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
 	kubectl_retry create -f "./newpool.yaml"
 	rm -f "./newpool.yaml"
 
@@ -119,15 +119,15 @@ function create_block_pool() {
 
 function delete_block_pool() {
 	curl -o newpool.yaml "${ROOK_URL}/pool-test.yaml"
-	sed -i "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
+	sed -i.bak "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
 	kubectl delete -f "./newpool.yaml"
 	rm -f "./newpool.yaml"
 }
 
 function create_block_ec_pool() {
 	curl -o block-pool-ec.yaml "${ROOK_URL}/pool-ec.yaml"
-	sed -i "s/ec-pool/${ROOK_BLOCK_EC_POOL_NAME}/g" block-pool-ec.yaml
-	sed -i "s/failureDomain: host/failureDomain: osd/g" block-pool-ec.yaml
+	sed -i.bak "s/ec-pool/${ROOK_BLOCK_EC_POOL_NAME}/g" block-pool-ec.yaml
+	sed -i.bak "s/failureDomain: host/failureDomain: osd/g" block-pool-ec.yaml
 	kubectl_retry create -f "./block-pool-ec.yaml"
 	rm -f "./block-pool-ec.yaml"
 
@@ -136,7 +136,7 @@ function create_block_ec_pool() {
 
 function delete_block_ec_pool() {
 	curl -o block-pool-ec.yaml "${ROOK_URL}/pool-ec.yaml"
-	sed -i "s/ec-pool/${ROOK_BLOCK_EC_POOL_NAME}/g" block-pool-ec.yaml
+	sed -i.bak "s/ec-pool/${ROOK_BLOCK_EC_POOL_NAME}/g" block-pool-ec.yaml
 	kubectl delete -f "./block-pool-ec.yaml"
 	rm -f "./block-pool-ec.yaml"
 }
