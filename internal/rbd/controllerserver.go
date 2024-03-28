@@ -1226,6 +1226,17 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	err = vol.Connect(cr)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer vol.Destroy(ctx)
+
+	err = vol.getImageInfo()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	csiSnap, err := vol.toSnapshot().ToCSI(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -1283,6 +1294,17 @@ func cloneFromSnapshot(
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+	}
+
+	err = rbdSnap.Connect(cr)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer rbdSnap.Destroy(ctx)
+
+	err = rbdSnap.getImageInfo()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	csiSnap, err := rbdSnap.ToCSI(ctx)

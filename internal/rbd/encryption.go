@@ -60,6 +60,9 @@ const (
 	metadataDEK    = "rbd.csi.ceph.com/dek"
 	oldMetadataDEK = ".rbd.csi.ceph.com/dek"
 
+	// luks2 header size metadata key.
+	luks2HeaderSizeKey = "rbd.csi.ceph.com/luks2HeaderSize"
+
 	encryptionPassphraseSize = 20
 
 	// rbdDefaultEncryptionType is the default to use when the
@@ -129,6 +132,11 @@ func (ri *rbdImage) setupBlockEncryption(ctx context.Context) error {
 			"image %s: %s", ri, err)
 
 		return err
+	}
+
+	err = ri.SetMetadata(luks2HeaderSizeKey, strconv.FormatUint(cryptsetup.Luks2HeaderSize, 10))
+	if err != nil {
+		return fmt.Errorf("failed to save %s metadata on image: %w", luks2HeaderSizeKey, err)
 	}
 
 	err = ri.ensureEncryptionMetadataSet(rbdImageEncryptionPrepared)
