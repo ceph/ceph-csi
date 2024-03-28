@@ -12,6 +12,6 @@ spec:
   attachRequired: false
   podInfoOnMount: false
   fsGroupPolicy: {{ .Values.CSIDriver.fsGroupPolicy }}
-{{- if and (semverCompare ">= 1.25.x" .Capabilities.KubeVersion.Version) .Values.seLinuxMount }}
+{{- if and (semverCompare ">= 1.25.x" .Capabilities.KubeVersion.Version) .Values.CSIDriver.seLinuxMount }}
   seLinuxMount: true
 {{- end }}
