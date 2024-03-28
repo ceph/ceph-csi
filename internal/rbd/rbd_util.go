@@ -449,8 +449,16 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return fmt.Errorf("failed to get IOContext: %w", err)
 	}
 
-	err = librbd.CreateImage(pOpts.ioctx, pOpts.RbdImageName,
-		uint64(util.RoundOffVolSize(pOpts.VolSize)*helpers.MiB), options)
+	size := uint64(util.RoundOffVolSize(pOpts.VolSize) * helpers.MiB)
+	if pOpts.isBlockEncrypted() {
+		// When a block-mode PVC is created with encryption enabled,
+		// some space is reserved for the LUKS2 header.
+		// Add the LUKS2 header size to the image size so that the user has at least
+		// the requested size.
+		size += util.Luks2HeaderSize
+	}
+
+	err = librbd.CreateImage(pOpts.ioctx, pOpts.RbdImageName, size, options)
 	if err != nil {
 		return fmt.Errorf("failed to create rbd image: %w", err)
 	}
@@ -1604,6 +1612,26 @@ func (ri *rbdImage) GetCreationTime(ctx context.Context) (*time.Time, error) {
 	return ri.CreatedAt, nil
 }
 
+// getLuks2HeaderSizeSet returns the value of the LUKS2 header size
+// set in the image metadata (size returned in MiB).
+func (ri *rbdImage) getLuks2HeaderSizeSet() (uint64, error) {
+	value, err := ri.GetMetadata(luks2HeaderSizeKey)
+	if err != nil {
+		if !errors.Is(err, librbd.ErrNotFound) {
+			return 0, err
+		}
+
+		return 0, nil
+	}
+
+	headerSize, parseErr := strconv.ParseUint(value, 10, 64)
+	if parseErr != nil {
+		return 0, parseErr
+	}
+
+	return headerSize, nil
+}
+
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found.
 func (ri *rbdImage) getImageInfo() error {
@@ -1619,6 +1647,14 @@ func (ri *rbdImage) getImageInfo() error {
 	}
 	// TODO: can rv.VolSize not be a uint64? Or initialize it to -1?
 	ri.VolSize = int64(imageInfo.Size)
+
+	// If the luks2HeaderSizeKey metadata is set
+	// reduce the extra size of the LUKS header from the image size.
+	headerSize, err := ri.getLuks2HeaderSizeSet()
+	if err != nil {
+		return err
+	}
+	ri.VolSize -= int64(headerSize)
 
 	features, err := image.GetFeatures()
 	if err != nil {
@@ -1869,7 +1905,17 @@ func (ri *rbdImage) resize(newSize int64) error {
 	}
 	defer image.Close()
 
-	err = image.Resize(uint64(util.RoundOffVolSize(newSize) * helpers.MiB))
+	size := uint64(util.RoundOffVolSize(newSize) * helpers.MiB)
+
+	// If the luks2HeaderSizeKey metadata is set
+	// add the extra size of the LUKS header to the image size.
+	headerSize, err := ri.getLuks2HeaderSizeSet()
+	if err != nil {
+		return err
+	}
+	size += headerSize
+
+	err = image.Resize(size)
 	if err != nil {
 		return err
 	}

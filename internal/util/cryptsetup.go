@@ -26,10 +26,17 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/log"
+
+	"k8s.io/cloud-provider/volume/helpers"
 )
 
 // Limit memory used by Argon2i PBKDF to 32 MiB.
-const cryptsetupPBKDFMemoryLimit = 32 << 10 // 32768 KiB
+const (
+	cryptsetupPBKDFMemoryLimit = 32 << 10 // 32768 KiB
+	luks2MetadataSize          = 32 << 7  // 4096 KiB
+	luks2KeySlotsSize          = 32 << 8  // 8192 KiB
+	Luks2HeaderSize            = uint64((((2 * luks2MetadataSize) + luks2KeySlotsSize) * helpers.KiB))
+)
 
 // LuksFormat sets up volume as an encrypted LUKS partition.
 func LuksFormat(devicePath, passphrase string) (string, string, error) {
@@ -41,6 +48,10 @@ func LuksFormat(devicePath, passphrase string) (string, string, error) {
 		"luks2",
 		"--hash",
 		"sha256",
+		"--luks2-metadata-size",
+		strconv.Itoa(luks2MetadataSize)+"k",
+		"--luks2-keyslots-size",
+		strconv.Itoa(luks2KeySlotsSize)+"k",
 		"--pbkdf-memory",
 		strconv.Itoa(cryptsetupPBKDFMemoryLimit),
 		devicePath,
