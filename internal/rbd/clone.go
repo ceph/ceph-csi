@@ -183,6 +183,8 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
+	defer tempClone.Destroy()
+
 	// snapshot name is same as temporary cloned image, This helps to
 	// flatten the temporary cloned images as we cannot have more than 510
 	// snapshots on an rbd image

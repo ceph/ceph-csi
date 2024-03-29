@@ -669,6 +669,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 	parentVol := rbdSnap.toVolume()
 	// as we are operating on single cluster reuse the connection
 	parentVol.conn = rbdVol.conn.Copy()
+	defer parentVol.Destroy()
 
 	// create clone image and delete snapshot
 	err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap, parentVol)
