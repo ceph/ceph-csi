@@ -1042,31 +1042,12 @@ func genSnapFromSnapID(
 		}
 	}
 
-	err = updateSnapshotDetails(rbdSnap)
+	err = rbdSnap.getImageInfo()
 	if err != nil {
 		return rbdSnap, fmt.Errorf("failed to update snapshot details for %q: %w", rbdSnap, err)
 	}
 
 	return rbdSnap, err
-}
-
-// updateSnapshotDetails will copy the details from the rbdVolume to the
-// rbdSnapshot. example copying size from rbdVolume to rbdSnapshot.
-func updateSnapshotDetails(rbdSnap *rbdSnapshot) error {
-	vol := rbdSnap.toVolume()
-	err := vol.Connect(rbdSnap.conn.Creds)
-	if err != nil {
-		return err
-	}
-	defer vol.Destroy()
-
-	err = vol.getImageInfo()
-	if err != nil {
-		return err
-	}
-	rbdSnap.VolSize = vol.VolSize
-
-	return nil
 }
 
 // generateVolumeFromVolumeID generates a rbdVolume structure from the provided identifier.
