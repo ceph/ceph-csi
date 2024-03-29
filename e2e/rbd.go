@@ -3552,7 +3552,7 @@ var _ = Describe("RBD", func() {
 					validateRBDImageCount(f, 1, defaultRBDPool)
 					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 					for i := 0; i < snapChainDepth; i++ {
-						var pvcClone *v1.PersistentVolumeClaim
+						var pvcClone, smartClonePVC *v1.PersistentVolumeClaim
 						snap := getSnapshot(snapshotPath)
 						snap.Name = fmt.Sprintf("%s-%d", snap.Name, i)
 						snap.Namespace = f.UniqueName
@@ -3601,6 +3601,41 @@ var _ = Describe("RBD", func() {
 						err = deleteSnapshot(&snap, deployTimeout)
 						if err != nil {
 							framework.Failf("failed to delete snapshot: %v", err)
+						}
+
+						// validate created backend rbd images = clone
+						totalImages = 1
+						validateRBDImageCount(f, totalImages, defaultRBDPool)
+						validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
+
+						// create pvc-pvc clone to validate pvc-pvc clone creation
+						// of child PVC created from a snapshot which no longer exits.
+						// Snapshot-> restore PVC -> delete Snapshot -> PVC-PVC clone.
+						smartClonePVC, err = loadPVC(pvcSmartClonePath)
+						if err != nil {
+							framework.Failf("failed to load smart clone PVC: %v", err)
+						}
+
+						smartClonePVC.Name = fmt.Sprintf("%s-%d", smartClonePVC.Name, i)
+						smartClonePVC.Namespace = f.UniqueName
+						smartClonePVC.Spec.DataSource.Name = pvcClone.Name
+						err = createPVCAndvalidatePV(f.ClientSet, smartClonePVC, deployTimeout)
+						if err != nil {
+							framework.Failf("failed to create smart clone PVC %q: %v",
+								smartClonePVC.Name, err)
+						}
+
+						// validate created backend rbd images = clone + smart clone + temp image
+						totalImages = 3
+						validateRBDImageCount(f, totalImages, defaultRBDPool)
+						validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
+
+						err = deletePVCAndValidatePV(f.ClientSet, smartClonePVC, deployTimeout)
+						if err != nil {
+							framework.Failf("failed to delete smart clone PVC %q: %v",
+								smartClonePVC.Name, err)
 						}
 
 						// validate created backend rbd images = clone
