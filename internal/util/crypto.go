@@ -111,7 +111,7 @@ func ParseEncryptionType(typeStr string) EncryptionType {
 	}
 }
 
-func EncryptionTypeString(encType EncryptionType) string {
+func (encType EncryptionType) String() string {
 	switch encType {
 	case EncryptionTypeBlock:
 		return encryptionTypeBlockString

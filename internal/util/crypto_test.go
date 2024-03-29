@@ -77,7 +77,7 @@ func TestEncryptionType(t *testing.T) {
 	assert.EqualValues(t, EncryptionTypeNone, ParseEncryptionType(""))
 
 	for _, s := range []string{"file", "block", ""} {
-		assert.EqualValues(t, s, EncryptionTypeString(ParseEncryptionType(s)))
+		assert.EqualValues(t, s, ParseEncryptionType(s).String())
 	}
 }
 
