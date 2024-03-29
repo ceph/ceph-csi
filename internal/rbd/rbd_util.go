@@ -116,8 +116,6 @@ type rbdImage struct {
 	ParentName string
 	// Parent Pool is the pool that contains the parent image.
 	ParentPool string
-	// ParentInTrash indicates the parent image is in trash.
-	ParentInTrash bool
 	// Cluster name
 	ClusterName string
 
@@ -148,6 +146,8 @@ type rbdImage struct {
 
 	// Set metadata on volume
 	EnableMetadata bool
+	// ParentInTrash indicates the parent image is in trash.
+	ParentInTrash bool
 }
 
 // rbdVolume represents a CSI volume and its RBD image specifics.
