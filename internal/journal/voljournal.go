@@ -387,8 +387,8 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 		if savedImageAttributes.EncryptionType != encryptionType {
 			return nil, fmt.Errorf("internal state inconsistent, omap encryption type"+
 				" mismatch, request type %q(%d) volume UUID (%s) volume omap encryption type %q (%d)",
-				util.EncryptionTypeString(encryptionType), encryptionType,
-				objUUID, util.EncryptionTypeString(savedImageAttributes.EncryptionType),
+				encryptionType, encryptionType,
+				objUUID, savedImageAttributes.EncryptionType,
 				savedImageAttributes.EncryptionType)
 		}
 	}
@@ -561,7 +561,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	imagePool string, imagePoolID int64,
 	reqName, namePrefix, parentName, kmsConf, volUUID, owner,
 	backingSnapshotID string,
-	encryptionType util.EncryptionType,
+	encryptionType util.EncryptionType, //nolint:interfacer // prefer util.EncryptionType over fmt.Stringer
 ) (string, string, error) {
 	// TODO: Take in-arg as ImageAttributes?
 	var (
@@ -642,7 +642,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	// Update UUID directory to store encryption values
 	if kmsConf != "" {
 		omapValues[cj.encryptKMSKey] = kmsConf
-		omapValues[cj.encryptionType] = util.EncryptionTypeString(encryptionType)
+		omapValues[cj.encryptionType] = encryptionType.String()
 	}
 
 	// if owner is passed, set it in the UUID directory too

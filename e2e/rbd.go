@@ -2006,7 +2006,7 @@ var _ = Describe("RBD", func() {
 						"mapOptions":      nbdMapOptions,
 						"cephLogStrategy": e2eDefaultCephLogStrategy,
 						"encrypted":       "true",
-						"encryptionType":  util.EncryptionTypeString(encType),
+						"encryptionType":  encType.String(),
 					},
 					deletePolicy)
 				if err != nil {
@@ -2041,7 +2041,7 @@ var _ = Describe("RBD", func() {
 					f,
 					defaultSCName,
 					nil,
-					map[string]string{"encrypted": "true", "encryptionType": util.EncryptionTypeString(encType)},
+					map[string]string{"encrypted": "true", "encryptionType": encType.String()},
 					deletePolicy)
 				if err != nil {
 					framework.Failf("failed to create storageclass: %v", err)
@@ -2075,7 +2075,7 @@ var _ = Describe("RBD", func() {
 					f,
 					defaultSCName,
 					nil,
-					map[string]string{"encrypted": "true", "encryptionType": util.EncryptionTypeString(encType)},
+					map[string]string{"encrypted": "true", "encryptionType": encType.String()},
 					deletePolicy)
 				if err != nil {
 					framework.Failf("failed to create storageclass: %v", err)
@@ -2120,7 +2120,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2153,7 +2153,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-tokens-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2207,7 +2207,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-tenant-sa-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2246,7 +2246,7 @@ var _ = Describe("RBD", func() {
 					scOpts := map[string]string{
 						"encrypted":       "true",
 						"encryptionKMSID": "secrets-metadata-test",
-						"encryptionType":  util.EncryptionTypeString(encType),
+						"encryptionType":  encType.String(),
 					}
 					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 					if err != nil {
@@ -2279,7 +2279,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "user-ns-secrets-metadata-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2333,7 +2333,7 @@ var _ = Describe("RBD", func() {
 					scOpts := map[string]string{
 						"encrypted":       "true",
 						"encryptionKMSID": "user-secrets-metadata-test",
-						"encryptionType":  util.EncryptionTypeString(encType),
+						"encryptionType":  encType.String(),
 					}
 					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 					if err != nil {
@@ -2460,7 +2460,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2494,7 +2494,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2504,7 +2504,7 @@ var _ = Describe("RBD", func() {
 				scOpts = map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-tenant-sa-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, restoreSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2554,7 +2554,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2564,7 +2564,7 @@ var _ = Describe("RBD", func() {
 				scOpts = map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-tenant-sa-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, restoreSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2617,7 +2617,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "secrets-metadata-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -2655,7 +2655,7 @@ var _ = Describe("RBD", func() {
 				scOpts := map[string]string{
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-test",
-					"encryptionType":  util.EncryptionTypeString(encType),
+					"encryptionType":  encType.String(),
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 				if err != nil {
@@ -4202,7 +4202,7 @@ var _ = Describe("RBD", func() {
 					scOpts := map[string]string{
 						"encrypted":       "true",
 						"encryptionKMSID": "vault-test",
-						"encryptionType":  util.EncryptionTypeString(encType),
+						"encryptionType":  encType.String(),
 					}
 					err := createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
 					if err != nil {
@@ -4264,7 +4264,7 @@ var _ = Describe("RBD", func() {
 				) {
 					scOpts := map[string]string{
 						"encrypted":       "true",
-						"encryptionType":  util.EncryptionTypeString(encType),
+						"encryptionType":  encType.String(),
 						"encryptionKMSID": "vault-test",
 					}
 					err := createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
