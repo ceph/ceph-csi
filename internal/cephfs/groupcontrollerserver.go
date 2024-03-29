@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -36,7 +37,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"k8s.io/utils/strings/slices"
 )
 
 // validateCreateVolumeGroupSnapshotRequest validates the request for creating
