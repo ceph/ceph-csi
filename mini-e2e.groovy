@@ -185,15 +185,17 @@ node('cico-workspace') {
 		}
 		stage('run e2e') {
 			timeout(time: 120, unit: 'MINUTES') {
-				test_type = "--test-rbd=true --test-cephfs=true --test-nfs=true"
+				def t_type = ""
 				if ("${test_type}" == "cephfs"){
-					test_type = "--test-cephfs=true --test-rbd=false --test-nfs=false"
+					t_type = "--test-cephfs=true --test-rbd=false --test-nfs=false"
 				} else if ("${test_type}" == "rbd"){
-					test_type = "--test-rbd=true --test-cephfs=false --test-nfs=false"
+					t_type = "--test-rbd=true --test-cephfs=false --test-nfs=false"
 				} else if ("${test_type}" == "nfs"){
-					test_type = "--test-nfs=true --test-cephfs=false --test-rbd=false"
+					t_type = "--test-nfs=true --test-cephfs=false --test-rbd=false"
+				} else {
+					t_type = "--test-rbd=true --test-cephfs=true --test-nfs=true"
 				}
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e E2E_ARGS=\"--delete-namespace-on-failure=false ${test_type}\""
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e E2E_ARGS=\"--delete-namespace-on-failure=false ${t_type}\""
 			}
 		}
 	}
