@@ -196,6 +196,8 @@ charts and their default values.
 | `secret.adminID`                               | Specifies the admin ID of the cephFS secret                                                                                                          | `<plaintext ID>`                                   |
 | `secret.adminKey`                              | Specifies the key that corresponds to the adminID                                                                                                    | `<Ceph auth key corresponding to ID above>`        |
 | `selinuxMount`                                | Mount the host /etc/selinux inside pods to support selinux-enabled filesystems                                                                                                      | `true`                                            |
+| `CSIDriver.fsGroupPolicy` | Specifies the fsGroupPolicy for the CSI driver object | `File` |
+| `CSIDriver.seLinuxMount` | Specify for efficient SELinux volume relabeling | `true` |
 
 ### Command Line
 

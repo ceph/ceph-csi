@@ -225,6 +225,8 @@ charts and their default values.
 | `secret.userKey`                               | Specifies the key that corresponds to the userID                                                                                                     | `<Ceph auth key corresponding to ID above>`        |
 | `secret.encryptionPassphrase`                  | Specifies the encryption passphrase of the secret                                                                                                    | `test_passphrase`                                  |
 | `selinuxMount`                                | Mount the host /etc/selinux inside pods to support selinux-enabled filesystems                                                                                                      | `true`                                            |
+| `CSIDriver.fsGroupPolicy` | Specifies the fsGroupPolicy for the CSI driver object | `File` |
+| `CSIDriver.seLinuxMount` | Specify for efficient SELinux volume relabeling | `true` |
 
 ### Command Line
 
