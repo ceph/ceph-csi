@@ -383,17 +383,6 @@ func CallStack() string {
 	return string(stack)
 }
 
-// CheckSliceContains checks the slice for string.
-func CheckSliceContains(options []string, opt string) bool {
-	for _, o := range options {
-		if o == opt {
-			return true
-		}
-	}
-
-	return false
-}
-
 // GetVolumeContext filters out parameters that are not required in volume context.
 func GetVolumeContext(parameters map[string]string) map[string]string {
 	volumeContext := map[string]string{}
@@ -403,7 +392,7 @@ func GetVolumeContext(parameters map[string]string) map[string]string {
 		topologyPoolsParam,
 	}
 	for k, v := range parameters {
-		if !CheckSliceContains(notRequiredParams, k) {
+		if !slices.Contains(notRequiredParams, k) {
 			volumeContext[k] = v
 		}
 	}
