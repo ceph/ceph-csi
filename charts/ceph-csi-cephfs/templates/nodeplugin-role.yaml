@@ -1,9 +1,9 @@
 {{- if .Values.rbac.create -}}
-kind: ClusterRole
+{{- if and .Values.encryptionKMSConfig .Values.encryptionKMSConfig.secretNamespace  .Values.encryptionKMSConfig.secretName (eq .Values.encryptionKMSConfig.secretNamespace .Release.Namespace) -}}
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
-  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-cephfs.name" . }}
     chart: {{ include "ceph-csi-cephfs.chart" . }}
@@ -12,17 +12,10 @@ metadata:
     heritage: {{ .Release.Service }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get"]
-  # allow to read Vault Token and connection options from the Tenants namespace
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get"]
-{{- if and .Values.encryptionKMSConfig .Values.encryptionKMSConfig.secretNamespace (not (eq .Values.encryptionKMSConfig.secretNamespace .Release.Namespace)) }}
   # allow to read the encryption key used with the metadata KMS
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get"]
+    resourceNames: [{{ .Values.encryptionKMSConfig.secretName | quote }}]
 {{- end -}}
 {{- end -}}
