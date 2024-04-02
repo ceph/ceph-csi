@@ -23,6 +23,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -363,22 +364,12 @@ func MountOptionsAdd(options string, add ...string) string {
 	}
 
 	for _, opt := range add {
-		if opt != "" && !contains(newOpts, opt) {
+		if opt != "" && !slices.Contains(newOpts, opt) {
 			newOpts = append(newOpts, opt)
 		}
 	}
 
 	return strings.Join(newOpts, ",")
-}
-
-func contains(s []string, key string) bool {
-	for _, v := range s {
-		if v == key {
-			return true
-		}
-	}
-
-	return false
 }
 
 // CallStack returns the stack of the calls in the current goroutine. Useful
