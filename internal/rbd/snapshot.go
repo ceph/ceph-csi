@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 
+	librbd "github.com/ceph/go-ceph/rbd"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -96,6 +98,25 @@ func cleanUpSnapshot(
 	}
 
 	return nil
+}
+
+//nolint:unused // rbdImage functions call rbdSnapshot.open() indirectly
+func (rbdSnap *rbdSnapshot) open() (*librbd.Image, error) {
+	err := rbdSnap.openIoctx()
+	if err != nil {
+		return nil, err
+	}
+
+	image, err := librbd.OpenImage(rbdSnap.ioctx, rbdSnap.RbdSnapName, librbd.NoSnapshot)
+	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			err = fmt.Errorf("failed to open snapshot (%w): %w", ErrImageNotFound, err)
+		}
+
+		return nil, err
+	}
+
+	return image, nil
 }
 
 func (rbdSnap *rbdSnapshot) toVolume() *rbdVolume {

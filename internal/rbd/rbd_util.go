@@ -508,7 +508,7 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
-			err = util.JoinErrors(ErrImageNotFound, err)
+			err = fmt.Errorf("failed to open image (%w): %w", ErrImageNotFound, err)
 		}
 
 		return nil, err
