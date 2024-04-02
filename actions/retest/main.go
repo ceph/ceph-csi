@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -145,7 +146,7 @@ func main() {
 				failedTestFound := false
 				for _, r := range statusList {
 					log.Printf("found context %s with status %s\n", r.GetContext(), r.GetState())
-					if contains([]string{"failed", "failure"}, r.GetState()) {
+					if slices.Contains([]string{"failed", "failure"}, r.GetState()) {
 						log.Printf("found failed test %s\n", r.GetContext())
 						failedTestFound = true
 						// rebase the pr if it is behind the devel branch.
@@ -251,17 +252,6 @@ func (c *retestConfig) checkRetestLimitReached(prNumber int, msg string) (bool, 
 	}
 
 	return false, nil
-}
-
-// containers check if slice contains string.
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-
-	return false
 }
 
 // filterStatusesList returns list of unique and recently updated github RepoStatuses.

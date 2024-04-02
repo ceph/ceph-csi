@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -349,17 +350,6 @@ func waitForDeploymentUpdate(
 	return nil
 }
 
-// contains check if slice contains string.
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-
-	return false
-}
-
 func waitForContainersArgsUpdate(
 	c kubernetes.Interface,
 	ns,
@@ -398,7 +388,7 @@ func waitForContainersArgsUpdate(
 	}
 	cid := deployment.Spec.Template.Spec.Containers // cid: read as containers in deployment
 	for i := range cid {
-		if contains(containers, cid[i].Name) {
+		if slices.Contains(containers, cid[i].Name) {
 			match := false
 			for j, ak := range cid[i].Args {
 				if ak == key {
