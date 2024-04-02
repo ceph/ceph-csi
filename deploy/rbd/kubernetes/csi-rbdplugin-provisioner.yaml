@@ -47,7 +47,7 @@ spec:
       priorityClassName: system-cluster-critical
       containers:
         - name: csi-rbdplugin
-          image: quay.io/cephcsi/cephcsi:v3.11.0
+          image: quay.io/cephcsi/cephcsi:v3.11-canary
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
@@ -173,7 +173,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-rbdplugin-controller
-          image: quay.io/cephcsi/cephcsi:v3.11.0
+          image: quay.io/cephcsi/cephcsi:v3.11-canary
           args:
             - "--type=controller"
             - "--v=5"
@@ -194,7 +194,7 @@ spec:
             - name: ceph-config
               mountPath: /etc/ceph/
         - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:v3.11.0
+          image: quay.io/cephcsi/cephcsi:v3.11-canary
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
