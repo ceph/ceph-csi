@@ -46,7 +46,7 @@ DriverInfo:
     volumeLimits: false
 
     # Support for volume expansion in controllers
-    controllerExpansion: false
+    controllerExpansion: true
 
     # Support for volume expansion in nodes
     nodeExpansion: false
@@ -61,7 +61,7 @@ DriverInfo:
     topology: false
 
     # Support populate data from snapshot
-    snapshotDataSource: false
+    snapshotDataSource: true
 
     # Support populated data from PVC
-    pvcDataSource: false
+    pvcDataSource: true
