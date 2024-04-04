@@ -121,52 +121,52 @@ func getReqID(req interface{}) string {
 	reqID := ""
 	switch r := req.(type) {
 	case *csi.CreateVolumeRequest:
-		reqID = r.Name
+		reqID = r.GetName()
 
 	case *csi.DeleteVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 
 	case *csi.CreateSnapshotRequest:
-		reqID = r.Name
+		reqID = r.GetName()
 	case *csi.DeleteSnapshotRequest:
-		reqID = r.SnapshotId
+		reqID = r.GetSnapshotId()
 
 	case *csi.ControllerExpandVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 
 	case *csi.NodeStageVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	case *csi.NodeUnstageVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 
 	case *csi.NodePublishVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	case *csi.NodeUnpublishVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 
 	case *csi.NodeExpandVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 
 	case *csi.CreateVolumeGroupSnapshotRequest:
-		reqID = r.Name
+		reqID = r.GetName()
 	case *csi.DeleteVolumeGroupSnapshotRequest:
-		reqID = r.GroupSnapshotId
+		reqID = r.GetGroupSnapshotId()
 	case *csi.GetVolumeGroupSnapshotRequest:
-		reqID = r.GroupSnapshotId
+		reqID = r.GetGroupSnapshotId()
 
 	// Replication
 	case *replication.EnableVolumeReplicationRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	case *replication.DisableVolumeReplicationRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	case *replication.PromoteVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	case *replication.DemoteVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	case *replication.ResyncVolumeRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	case *replication.GetVolumeReplicationInfoRequest:
-		reqID = r.VolumeId
+		reqID = r.GetVolumeId()
 	}
 
 	return reqID
@@ -353,9 +353,9 @@ func IsFileRWO(caps []*csi.VolumeCapability) bool {
 	// to preserve backward compatibility we allow RWO filemode, ideally SINGLE_NODE_WRITER check is good enough,
 	// however more granular level check could help us in future, so keeping it here as an additional measure.
 	for _, cap := range caps {
-		if cap.AccessMode != nil {
+		if cap.GetAccessMode() != nil {
 			if cap.GetMount() != nil {
-				switch cap.AccessMode.Mode { //nolint:exhaustive // only check what we want
+				switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 				case csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 					csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
 					csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER:
@@ -372,8 +372,8 @@ func IsFileRWO(caps []*csi.VolumeCapability) bool {
 // or block mode.
 func IsReaderOnly(caps []*csi.VolumeCapability) bool {
 	for _, cap := range caps {
-		if cap.AccessMode != nil {
-			switch cap.AccessMode.Mode { //nolint:exhaustive // only check what we want
+		if cap.GetAccessMode() != nil {
+			switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 			case csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY:
 				return true
@@ -397,8 +397,8 @@ func IsBlockMultiWriter(caps []*csi.VolumeCapability) (bool, bool) {
 	var block bool
 
 	for _, cap := range caps {
-		if cap.AccessMode != nil {
-			switch cap.AccessMode.Mode { //nolint:exhaustive // only check what we want
+		if cap.GetAccessMode() != nil {
+			switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 			case csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER:
 				multiWriter = true

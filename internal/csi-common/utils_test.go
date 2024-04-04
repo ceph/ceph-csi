@@ -25,7 +25,6 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/replication"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	mount "k8s.io/mount-utils"
 )
@@ -127,12 +126,12 @@ func TestFilesystemNodeGetVolumeStats(t *testing.T) {
 		}
 
 		require.NoError(t, err)
-		assert.NotEqual(t, len(stats.Usage), 0)
-		for _, usage := range stats.Usage {
-			assert.NotEqual(t, usage.Available, -1)
-			assert.NotEqual(t, usage.Total, -1)
-			assert.NotEqual(t, usage.Used, -1)
-			assert.NotEqual(t, usage.Unit, 0)
+		require.NotEmpty(t, stats.GetUsage())
+		for _, usage := range stats.GetUsage() {
+			require.NotEqual(t, -1, usage.GetAvailable())
+			require.NotEqual(t, -1, usage.GetTotal())
+			require.NotEqual(t, -1, usage.GetUsed())
+			require.NotEqual(t, 0, usage.GetUnit())
 		}
 
 		// tests done, no need to retry again
@@ -143,9 +142,9 @@ func TestFilesystemNodeGetVolumeStats(t *testing.T) {
 func TestRequirePositive(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, requirePositive(0), int64(0))
-	assert.Equal(t, requirePositive(-1), int64(0))
-	assert.Equal(t, requirePositive(1), int64(1))
+	require.Equal(t, int64(0), requirePositive(0))
+	require.Equal(t, int64(0), requirePositive(-1))
+	require.Equal(t, int64(1), requirePositive(1))
 }
 
 func TestIsBlockMultiNode(t *testing.T) {
@@ -204,8 +203,8 @@ func TestIsBlockMultiNode(t *testing.T) {
 
 	for _, test := range tests {
 		isBlock, isMultiNode := IsBlockMultiNode(test.caps)
-		assert.Equal(t, isBlock, test.isBlock, test.name)
-		assert.Equal(t, isMultiNode, test.isMultiNode, test.name)
+		require.Equal(t, isBlock, test.isBlock, test.name)
+		require.Equal(t, isMultiNode, test.isMultiNode, test.name)
 	}
 }
 
