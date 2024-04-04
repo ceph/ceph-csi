@@ -86,7 +86,7 @@ func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) 
 
 			return false
 		}
-		for _, f := range m.MountFlags {
+		for _, f := range m.GetMountFlags() {
 			if !hasOption(mountOptions, f) {
 				mountOptions = append(mountOptions, f)
 			}
