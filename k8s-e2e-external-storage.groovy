@@ -189,6 +189,7 @@ node('cico-workspace') {
 			timeout(time: 5, unit: 'MINUTES') {
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-configmap.sh '${namespace}'"
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-storageclasses.sh '${namespace}'"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-volumesnapshotclasses.sh '${namespace}'"
 			}
 		}
 		stage('run e2e') {
