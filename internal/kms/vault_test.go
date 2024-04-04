@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	loss "github.com/libopenstorage/secrets"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -113,8 +112,8 @@ func TestDefaultVaultDestroyKeys(t *testing.T) {
 	require.NoError(t, err)
 	keyContext := vc.getDeleteKeyContext()
 	destroySecret, ok := keyContext[loss.DestroySecret]
-	assert.NotEqual(t, destroySecret, "")
-	assert.True(t, ok)
+	require.NotEqual(t, "", destroySecret)
+	require.True(t, ok)
 
 	// setting vaultDestroyKeys to !true should remove the loss.DestroySecret entry
 	config["vaultDestroyKeys"] = "false"
@@ -122,11 +121,11 @@ func TestDefaultVaultDestroyKeys(t *testing.T) {
 	require.NoError(t, err)
 	keyContext = vc.getDeleteKeyContext()
 	_, ok = keyContext[loss.DestroySecret]
-	assert.False(t, ok)
+	require.False(t, ok)
 }
 
 func TestVaultKMSRegistered(t *testing.T) {
 	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeVault]
-	assert.True(t, ok)
+	require.True(t, ok)
 }

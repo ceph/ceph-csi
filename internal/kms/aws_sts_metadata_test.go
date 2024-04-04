@@ -19,11 +19,11 @@ package kms
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAWSSTSMetadataKMSRegistered(t *testing.T) {
 	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeAWSSTSMetadata]
-	assert.True(t, ok)
+	require.True(t, ok)
 }
