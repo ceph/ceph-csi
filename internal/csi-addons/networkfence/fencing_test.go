@@ -19,7 +19,7 @@ package networkfence
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetIPRange(t *testing.T) {
@@ -47,10 +47,10 @@ func TestGetIPRange(t *testing.T) {
 		t.Run(ts.cidr, func(t *testing.T) {
 			t.Parallel()
 			got, err := getIPRange(ts.cidr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// validate if number of IPs in the range is same as expected, if not, fail.
-			assert.ElementsMatch(t, ts.expectedIPs, got)
+			require.ElementsMatch(t, ts.expectedIPs, got)
 		})
 	}
 }

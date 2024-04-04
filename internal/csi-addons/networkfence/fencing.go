@@ -348,7 +348,7 @@ type Cidrs []*fence.CIDR
 func GetCIDR(cidrs Cidrs) ([]string, error) {
 	var cidrList []string
 	for _, cidr := range cidrs {
-		cidrList = append(cidrList, cidr.Cidr)
+		cidrList = append(cidrList, cidr.GetCidr())
 	}
 	if len(cidrList) < 1 {
 		return nil, errors.New("the CIDR cannot be empty")

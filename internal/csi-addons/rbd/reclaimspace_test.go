@@ -20,9 +20,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	rs "github.com/csi-addons/spec/lib/go/reclaimspace"
+	"github.com/stretchr/testify/require"
 )
 
 // TestControllerReclaimSpace is a minimal test for the
@@ -39,7 +38,7 @@ func TestControllerReclaimSpace(t *testing.T) {
 	}
 
 	_, err := controller.ControllerReclaimSpace(context.TODO(), req)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 // TestNodeReclaimSpace is a minimal test for the NodeReclaimSpace() procedure.
@@ -58,5 +57,5 @@ func TestNodeReclaimSpace(t *testing.T) {
 	}
 
 	_, err := node.NodeReclaimSpace(context.TODO(), req)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
