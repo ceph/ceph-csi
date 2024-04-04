@@ -19,7 +19,7 @@ package kms
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func noinitKMS(args ProviderInitArgs) (EncryptionKMS, error) {
@@ -47,9 +47,9 @@ func TestRegisterProvider(t *testing.T) {
 	for _, test := range tests {
 		provider := test.provider
 		if test.panics {
-			assert.Panics(t, func() { RegisterProvider(provider) })
+			require.Panics(t, func() { RegisterProvider(provider) })
 		} else {
-			assert.True(t, RegisterProvider(provider))
+			require.True(t, RegisterProvider(provider))
 		}
 	}
 }

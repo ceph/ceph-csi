@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,24 +31,24 @@ func TestNewSecretsKMS(t *testing.T) {
 	kms, err := newSecretsKMS(ProviderInitArgs{
 		Secrets: secrets,
 	})
-	assert.Error(t, err)
-	assert.Nil(t, kms)
+	require.Error(t, err)
+	require.Nil(t, kms)
 
 	// set a passphrase and it should pass
 	secrets[encryptionPassphraseKey] = "plaintext encryption key"
 	kms, err = newSecretsKMS(ProviderInitArgs{
 		Secrets: secrets,
 	})
-	assert.NotNil(t, kms)
-	assert.NoError(t, err)
+	require.NotNil(t, kms)
+	require.NoError(t, err)
 }
 
 func TestGenerateNonce(t *testing.T) {
 	t.Parallel()
 	size := 64
 	nonce, err := generateNonce(size)
-	assert.Equal(t, size, len(nonce))
-	assert.NoError(t, err)
+	require.Len(t, nonce, size)
+	require.NoError(t, err)
 }
 
 func TestGenerateCipher(t *testing.T) {
@@ -59,8 +58,8 @@ func TestGenerateCipher(t *testing.T) {
 	salt := "unique-id-for-the-volume"
 
 	aead, err := generateCipher(passphrase, salt)
-	assert.NoError(t, err)
-	assert.NotNil(t, aead)
+	require.NoError(t, err)
+	require.NotNil(t, aead)
 }
 
 func TestInitSecretsMetadataKMS(t *testing.T) {
@@ -73,16 +72,16 @@ func TestInitSecretsMetadataKMS(t *testing.T) {
 
 	// passphrase it not set, init should fail
 	kms, err := initSecretsMetadataKMS(args)
-	assert.Error(t, err)
-	assert.Nil(t, kms)
+	require.Error(t, err)
+	require.Nil(t, kms)
 
 	// set a passphrase to get a working KMS
 	args.Secrets[encryptionPassphraseKey] = "my-passphrase-from-kubernetes"
 
 	kms, err = initSecretsMetadataKMS(args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, kms)
-	assert.Equal(t, DEKStoreMetadata, kms.RequiresDEKStore())
+	require.Equal(t, DEKStoreMetadata, kms.RequiresDEKStore())
 }
 
 func TestWorkflowSecretsMetadataKMS(t *testing.T) {
@@ -98,7 +97,7 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	volumeID := "csi-vol-1b00f5f8-b1c1-11e9-8421-9243c1f659f0"
 
 	kms, err := initSecretsMetadataKMS(args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, kms)
 
 	// plainDEK is the (LUKS) passphrase for the volume
@@ -107,25 +106,25 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	ctx := context.TODO()
 
 	encryptedDEK, err := kms.EncryptDEK(ctx, volumeID, plainDEK)
-	assert.NoError(t, err)
-	assert.NotEqual(t, "", encryptedDEK)
-	assert.NotEqual(t, plainDEK, encryptedDEK)
+	require.NoError(t, err)
+	require.NotEqual(t, "", encryptedDEK)
+	require.NotEqual(t, plainDEK, encryptedDEK)
 
 	// with an incorrect volumeID, decrypting should fail
 	decryptedDEK, err := kms.DecryptDEK(ctx, "incorrect-volumeID", encryptedDEK)
-	assert.Error(t, err)
-	assert.Equal(t, "", decryptedDEK)
-	assert.NotEqual(t, plainDEK, decryptedDEK)
+	require.Error(t, err)
+	require.Equal(t, "", decryptedDEK)
+	require.NotEqual(t, plainDEK, decryptedDEK)
 
 	// with the right volumeID, decrypting should return the plainDEK
 	decryptedDEK, err = kms.DecryptDEK(ctx, volumeID, encryptedDEK)
-	assert.NoError(t, err)
-	assert.NotEqual(t, "", decryptedDEK)
-	assert.Equal(t, plainDEK, decryptedDEK)
+	require.NoError(t, err)
+	require.NotEqual(t, "", decryptedDEK)
+	require.Equal(t, plainDEK, decryptedDEK)
 }
 
 func TestSecretsMetadataKMSRegistered(t *testing.T) {
 	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeSecretsMetadata]
-	assert.True(t, ok)
+	require.True(t, ok)
 }

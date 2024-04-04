@@ -25,7 +25,6 @@ import (
 
 	"github.com/hashicorp/vault/api"
 	loss "github.com/libopenstorage/secrets"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -205,18 +204,18 @@ func TestTransformConfig(t *testing.T) {
 
 	config, err := transformConfig(cm)
 	require.NoError(t, err)
-	assert.Equal(t, config["encryptionKMSType"], cm["KMS_PROVIDER"])
-	assert.Equal(t, config["vaultAddress"], cm["VAULT_ADDR"])
-	assert.Equal(t, config["vaultBackend"], cm["VAULT_BACKEND"])
-	assert.Equal(t, config["vaultBackendPath"], cm["VAULT_BACKEND_PATH"])
-	assert.Equal(t, config["vaultDestroyKeys"], cm["VAULT_DESTROY_KEYS"])
-	assert.Equal(t, config["vaultCAFromSecret"], cm["VAULT_CACERT"])
-	assert.Equal(t, config["vaultTLSServerName"], cm["VAULT_TLS_SERVER_NAME"])
-	assert.Equal(t, config["vaultClientCertFromSecret"], cm["VAULT_CLIENT_CERT"])
-	assert.Equal(t, config["vaultClientCertKeyFromSecret"], cm["VAULT_CLIENT_KEY"])
-	assert.Equal(t, config["vaultAuthNamespace"], cm["VAULT_AUTH_NAMESPACE"])
-	assert.Equal(t, config["vaultNamespace"], cm["VAULT_NAMESPACE"])
-	assert.Equal(t, config["vaultCAVerify"], "false")
+	require.Equal(t, cm["KMS_PROVIDER"], config["encryptionKMSType"])
+	require.Equal(t, cm["VAULT_ADDR"], config["vaultAddress"])
+	require.Equal(t, cm["VAULT_BACKEND"], config["vaultBackend"])
+	require.Equal(t, cm["VAULT_BACKEND_PATH"], config["vaultBackendPath"])
+	require.Equal(t, cm["VAULT_DESTROY_KEYS"], config["vaultDestroyKeys"])
+	require.Equal(t, cm["VAULT_CACERT"], config["vaultCAFromSecret"])
+	require.Equal(t, cm["VAULT_TLS_SERVER_NAME"], config["vaultTLSServerName"])
+	require.Equal(t, cm["VAULT_CLIENT_CERT"], config["vaultClientCertFromSecret"])
+	require.Equal(t, cm["VAULT_CLIENT_KEY"], config["vaultClientCertKeyFromSecret"])
+	require.Equal(t, cm["VAULT_AUTH_NAMESPACE"], config["vaultAuthNamespace"])
+	require.Equal(t, cm["VAULT_NAMESPACE"], config["vaultNamespace"])
+	require.Equal(t, "false", config["vaultCAVerify"])
 }
 
 func TestTransformConfigDefaults(t *testing.T) {
@@ -226,15 +225,15 @@ func TestTransformConfigDefaults(t *testing.T) {
 
 	config, err := transformConfig(cm)
 	require.NoError(t, err)
-	assert.Equal(t, config["encryptionKMSType"], cm["KMS_PROVIDER"])
-	assert.Equal(t, config["vaultDestroyKeys"], vaultDefaultDestroyKeys)
-	assert.Equal(t, config["vaultCAVerify"], strconv.FormatBool(vaultDefaultCAVerify))
+	require.Equal(t, cm["KMS_PROVIDER"], config["encryptionKMSType"])
+	require.Equal(t, vaultDefaultDestroyKeys, config["vaultDestroyKeys"])
+	require.Equal(t, strconv.FormatBool(vaultDefaultCAVerify), config["vaultCAVerify"])
 }
 
 func TestVaultTokensKMSRegistered(t *testing.T) {
 	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeVaultTokens]
-	assert.True(t, ok)
+	require.True(t, ok)
 }
 
 func TestSetTenantAuthNamespace(t *testing.T) {
@@ -259,7 +258,7 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 
 		kms.setTenantAuthNamespace(config)
 
-		assert.Equal(tt, vaultNamespace, config["vaultAuthNamespace"])
+		require.Equal(tt, vaultNamespace, config["vaultAuthNamespace"])
 	})
 
 	t.Run("inherit vaultAuthNamespace", func(tt *testing.T) {
@@ -283,7 +282,7 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 
 		// when inheriting from the global config, the config of the
 		// tenant should not have vaultAuthNamespace configured
-		assert.Equal(tt, nil, config["vaultAuthNamespace"])
+		require.Nil(tt, config["vaultAuthNamespace"])
 	})
 
 	t.Run("unset vaultAuthNamespace", func(tt *testing.T) {
@@ -306,7 +305,7 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 		// global vaultAuthNamespace is not set, tenant
 		// vaultAuthNamespace will be configured as vaultNamespace by
 		// default
-		assert.Equal(tt, nil, config["vaultAuthNamespace"])
+		require.Nil(tt, config["vaultAuthNamespace"])
 	})
 
 	t.Run("no vaultNamespace", func(tt *testing.T) {
@@ -326,6 +325,6 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 
 		kms.setTenantAuthNamespace(config)
 
-		assert.Equal(tt, nil, config["vaultAuthNamespace"])
+		require.Nil(tt, config["vaultAuthNamespace"])
 	})
 }

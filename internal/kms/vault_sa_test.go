@@ -20,13 +20,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVaultTenantSAKMSRegistered(t *testing.T) {
 	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeVaultTenantSA]
-	assert.True(t, ok)
+	require.True(t, ok)
 }
 
 func TestTenantSAParseConfig(t *testing.T) {

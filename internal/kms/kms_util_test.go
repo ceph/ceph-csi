@@ -20,7 +20,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetConfigInt(t *testing.T) {
@@ -81,7 +81,7 @@ func TestSetConfigInt(t *testing.T) {
 				t.Errorf("setConfigInt() error = %v, wantErr %v", err, currentTT.err)
 			}
 			if err != nil {
-				assert.NotEqual(t, currentTT.value, currentTT.args.option)
+				require.NotEqual(t, currentTT.value, currentTT.args.option)
 			}
 		})
 	}
