@@ -27,7 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetStagingPath(t *testing.T) {
@@ -196,7 +196,7 @@ func TestNodeServer_appendReadAffinityMapOptions(t *testing.T) {
 				Mounter:    currentTT.args.mounter,
 			}
 			rv.appendReadAffinityMapOptions(currentTT.args.readAffinityMapOptions)
-			assert.Equal(t, currentTT.want, rv.MapOptions)
+			require.Equal(t, currentTT.want, rv.MapOptions)
 		})
 	}
 }
@@ -310,10 +310,10 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 				tmpConfPath, tc.clusterID, ns.CLIReadAffinityOptions, nodeLabels,
 			)
 			if err != nil {
-				assert.Fail(t, err.Error())
+				require.Fail(t, err.Error())
 			}
 
-			assert.Equal(t, tc.want, readAffinityMapOptions)
+			require.Equal(t, tc.want, readAffinityMapOptions)
 		})
 	}
 }

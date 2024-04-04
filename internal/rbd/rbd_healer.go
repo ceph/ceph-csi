@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -79,7 +80,7 @@ func getSecret(c *k8s.Clientset, ns, name string) (map[string]string, error) {
 func formatStagingTargetPath(c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) (string, error) {
 	// Kubernetes 1.24+ uses a hash of the volume-id in the path name
 	unique := sha256.Sum256([]byte(pv.Spec.CSI.VolumeHandle))
-	targetPath := filepath.Join(stagingPath, pv.Spec.CSI.Driver, fmt.Sprintf("%x", unique), "globalmount")
+	targetPath := filepath.Join(stagingPath, pv.Spec.CSI.Driver, hex.EncodeToString(unique[:]), "globalmount")
 
 	major, minor, err := kubeclient.GetServerVersion(c)
 	if err != nil {

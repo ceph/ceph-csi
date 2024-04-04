@@ -68,10 +68,10 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 		return err
 	}
 	// Check sanity of request Name, Volume Capabilities
-	if req.Name == "" {
+	if req.GetName() == "" {
 		return status.Error(codes.InvalidArgument, "volume Name cannot be empty")
 	}
-	if req.VolumeCapabilities == nil {
+	if req.GetVolumeCapabilities() == nil {
 		return status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty")
 	}
 	options := req.GetParameters()
@@ -105,7 +105,7 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 		return err
 	}
 
-	err = validateStriping(req.Parameters)
+	err = validateStriping(req.GetParameters())
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -156,13 +156,13 @@ func (cs *ControllerServer) parseVolCreateRequest(
 
 	// below capability check indicates that we support both {SINGLE_NODE or MULTI_NODE} WRITERs and the `isMultiWriter`
 	// flag has been set accordingly.
-	isMultiWriter, isBlock := csicommon.IsBlockMultiWriter(req.VolumeCapabilities)
+	isMultiWriter, isBlock := csicommon.IsBlockMultiWriter(req.GetVolumeCapabilities())
 
 	// below return value has set, if it is RWO mode File PVC.
-	isRWOFile := csicommon.IsFileRWO(req.VolumeCapabilities)
+	isRWOFile := csicommon.IsFileRWO(req.GetVolumeCapabilities())
 
 	// below return value has set, if it is ReadOnly capability.
-	isROOnly := csicommon.IsReaderOnly(req.VolumeCapabilities)
+	isROOnly := csicommon.IsReaderOnly(req.GetVolumeCapabilities())
 	// We want to fail early if the user is trying to create a RWX on a non-block type device
 	if !isRWOFile && !isBlock && !isROOnly {
 		return nil, status.Error(
@@ -782,13 +782,13 @@ func checkContentSource(
 	req *csi.CreateVolumeRequest,
 	cr *util.Credentials,
 ) (*rbdVolume, *rbdSnapshot, error) {
-	if req.VolumeContentSource == nil {
+	if req.GetVolumeContentSource() == nil {
 		return nil, nil, nil
 	}
-	volumeSource := req.VolumeContentSource
-	switch volumeSource.Type.(type) {
+	volumeSource := req.GetVolumeContentSource()
+	switch volumeSource.GetType().(type) {
 	case *csi.VolumeContentSource_Snapshot:
-		snapshot := req.VolumeContentSource.GetSnapshot()
+		snapshot := req.GetVolumeContentSource().GetSnapshot()
 		if snapshot == nil {
 			return nil, nil, status.Error(codes.NotFound, "volume Snapshot cannot be empty")
 		}
@@ -808,7 +808,7 @@ func checkContentSource(
 
 		return nil, rbdSnap, nil
 	case *csi.VolumeContentSource_Volume:
-		vol := req.VolumeContentSource.GetVolume()
+		vol := req.GetVolumeContentSource().GetVolume()
 		if vol == nil {
 			return nil, nil, status.Error(codes.NotFound, "volume cannot be empty")
 		}
@@ -1066,11 +1066,11 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
-	if len(req.VolumeCapabilities) == 0 {
+	if len(req.GetVolumeCapabilities()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "empty volume capabilities in request")
 	}
 
-	for _, capability := range req.VolumeCapabilities {
+	for _, capability := range req.GetVolumeCapabilities() {
 		if capability.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
 			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
@@ -1078,7 +1078,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 
 	return &csi.ValidateVolumeCapabilitiesResponse{
 		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
-			VolumeCapabilities: req.VolumeCapabilities,
+			VolumeCapabilities: req.GetVolumeCapabilities(),
 		},
 	}, nil
 }
@@ -1297,10 +1297,10 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	}
 
 	// Check sanity of request Snapshot Name, Source Volume Id
-	if req.Name == "" {
+	if req.GetName() == "" {
 		return status.Error(codes.InvalidArgument, "snapshot Name cannot be empty")
 	}
-	if req.SourceVolumeId == "" {
+	if req.GetSourceVolumeId() == "" {
 		return status.Error(codes.InvalidArgument, "source Volume ID cannot be empty")
 	}
 

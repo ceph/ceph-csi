@@ -163,7 +163,7 @@ func (ns *NodeServer) populateRbdVol(
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	disableInUseChecks := false
 	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
-	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+	if req.GetVolumeCapability().GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
 		if !isBlock {
 			log.WarningLog(
 				ctx,
@@ -400,7 +400,7 @@ func (ns *NodeServer) stageTransaction(
 	var err error
 
 	// Allow image to be mounted on multiple nodes if it is ROX
-	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
+	if req.GetVolumeCapability().GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
 		log.ExtendedLog(ctx, "setting disableInUseChecks on rbd volume to: %v", req.GetVolumeId)
 		volOptions.DisableInUseChecks = true
 		volOptions.readOnly = true
@@ -777,8 +777,9 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	rOnly := "ro"
 
-	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
-		req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+	mode := req.GetVolumeCapability().GetAccessMode().GetMode()
+	if mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+		mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 		if !csicommon.MountOptionContains(opt, rOnly) {
 			opt = append(opt, rOnly)
 		}

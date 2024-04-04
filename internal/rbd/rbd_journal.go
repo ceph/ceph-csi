@@ -294,7 +294,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
 	// save it for size checks before fetching image data
-	requestSize := rv.VolSize //nolint:ifshort // FIXME: rename and split function into helpers
+	requestSize := rv.VolSize
 	// Fetch on-disk image attributes and compare against request
 	err = rv.getImageInfo()
 	if err != nil {
