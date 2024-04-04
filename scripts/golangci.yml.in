@@ -1,5 +1,5 @@
 ---
-# https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
+# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
 # This file contains all available configuration options
 # with their default values.
 
@@ -12,7 +12,7 @@ run:
   concurrency: 4
 
   # timeout for analysis, e.g. 30s, 5m, default is 1m
-  deadline: 20m
+  timeout: 20m
 
   # exit code when at least one issue was found, default is 1
   issues-exit-code: 1
