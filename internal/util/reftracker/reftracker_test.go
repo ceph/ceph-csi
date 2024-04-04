@@ -22,7 +22,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
 	"github.com/ceph/ceph-csi/internal/util/reftracker/reftype"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const rtName = "hello-rt"
@@ -36,8 +36,8 @@ func TestRTAdd(t *testing.T) {
 
 		ioctx := radoswrapper.NewFakeIOContext(radoswrapper.NewFakeRados())
 		created, err := Add(ioctx, "", nil)
-		assert.Error(ts, err)
-		assert.False(ts, created)
+		require.Error(ts, err)
+		require.False(ts, created)
 	})
 
 	// Verify input validation for nil and empty refs.
@@ -51,8 +51,8 @@ func TestRTAdd(t *testing.T) {
 		}
 		for _, ref := range refs {
 			created, err := Add(ioctx, rtName, ref)
-			assert.Error(ts, err)
-			assert.False(ts, created)
+			require.Error(ts, err)
+			require.False(ts, created)
 		}
 	})
 
@@ -66,8 +66,8 @@ func TestRTAdd(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 	})
 
 	// Add refs where each Add() has some of the refs overlapping
@@ -80,8 +80,8 @@ func TestRTAdd(t *testing.T) {
 			"ref1": {},
 			"ref2": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		refsTable := []map[string]struct{}{
 			{"ref2": {}, "ref3": {}},
@@ -90,8 +90,8 @@ func TestRTAdd(t *testing.T) {
 		}
 		for _, refs := range refsTable {
 			created, err = Add(ioctx, rtName, refs)
-			assert.NoError(ts, err)
-			assert.False(ts, created)
+			require.NoError(ts, err)
+			require.False(ts, created)
 		}
 	})
 }
@@ -110,8 +110,8 @@ func TestRTRemove(t *testing.T) {
 		}
 		for _, ref := range refs {
 			created, err := Remove(ioctx, rtName, ref)
-			assert.Error(ts, err)
-			assert.False(ts, created)
+			require.Error(ts, err)
+			require.False(ts, created)
 		}
 	})
 
@@ -124,8 +124,8 @@ func TestRTRemove(t *testing.T) {
 		deleted, err := Remove(ioctx, "xxx", map[string]reftype.RefType{
 			"ref1": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Removing only non-existent refs should not result in reftracker object
@@ -140,16 +140,16 @@ func TestRTRemove(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"refX": reftype.Normal,
 			"refY": reftype.Normal,
 			"refZ": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, deleted)
+		require.NoError(ts, err)
+		require.False(ts, deleted)
 	})
 
 	// Removing all refs plus some surplus should result in reftracker object
@@ -162,8 +162,8 @@ func TestRTRemove(t *testing.T) {
 		created, err := Add(ioctx, rtName, map[string]struct{}{
 			"ref": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"refX": reftype.Normal,
@@ -171,8 +171,8 @@ func TestRTRemove(t *testing.T) {
 			"ref":  reftype.Normal,
 			"refZ": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Bulk removal of all refs should result in reftracker object deletion.
@@ -189,12 +189,12 @@ func TestRTRemove(t *testing.T) {
 		}
 
 		created, err := Add(ioctx, rtName, refsToAdd)
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, refsToRemove)
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Removal of all refs one-by-one should result in reftracker object deletion
@@ -209,23 +209,23 @@ func TestRTRemove(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		for _, k := range []string{"ref3", "ref2"} {
 			deleted, errRemove := Remove(ioctx, rtName, map[string]reftype.RefType{
 				k: reftype.Normal,
 			})
-			assert.NoError(ts, errRemove)
-			assert.False(ts, deleted)
+			require.NoError(ts, errRemove)
+			require.False(ts, deleted)
 		}
 
 		// Remove the last reference. It should remove the whole reftracker object too.
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Cycle through reftracker object twice.
@@ -246,12 +246,12 @@ func TestRTRemove(t *testing.T) {
 
 		for i := 0; i < 2; i++ {
 			created, err := Add(ioctx, rtName, refsToAdd)
-			assert.NoError(ts, err)
-			assert.True(ts, created)
+			require.NoError(ts, err)
+			require.True(ts, created)
 
 			deleted, err := Remove(ioctx, rtName, refsToRemove)
-			assert.NoError(ts, err)
-			assert.True(ts, deleted)
+			require.NoError(ts, err)
+			require.True(ts, deleted)
 		}
 	})
 
@@ -265,8 +265,8 @@ func TestRTRemove(t *testing.T) {
 			"ref1": {},
 			"ref2": {},
 		})
-		assert.True(ts, created)
-		assert.NoError(ts, err)
+		require.True(ts, created)
+		require.NoError(ts, err)
 		refsTable := []map[string]struct{}{
 			{"ref2": {}, "ref3": {}},
 			{"ref3": {}, "ref4": {}},
@@ -274,8 +274,8 @@ func TestRTRemove(t *testing.T) {
 		}
 		for _, refs := range refsTable {
 			created, err = Add(ioctx, rtName, refs)
-			assert.False(ts, created)
-			assert.NoError(ts, err)
+			require.False(ts, created)
+			require.NoError(ts, err)
 		}
 
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
@@ -285,8 +285,8 @@ func TestRTRemove(t *testing.T) {
 			"ref4": reftype.Normal,
 			"ref5": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 }
 
@@ -307,12 +307,12 @@ func TestRTMask(t *testing.T) {
 		}
 
 		created, err := Add(ioctx, rtName, refsToAdd)
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, refsToRemove)
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Masking all refs one-by-one should result in reftracker object deletion in
@@ -327,15 +327,15 @@ func TestRTMask(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		for _, k := range []string{"ref3", "ref2"} {
 			deleted, errRemove := Remove(ioctx, rtName, map[string]reftype.RefType{
 				k: reftype.Mask,
 			})
-			assert.NoError(ts, errRemove)
-			assert.False(ts, deleted)
+			require.NoError(ts, errRemove)
+			require.False(ts, deleted)
 		}
 
 		// Remove the last reference. It should delete the whole reftracker object
@@ -343,8 +343,8 @@ func TestRTMask(t *testing.T) {
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Mask,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Bulk removing two (out of 3) refs and then masking the ref that's left
@@ -359,21 +359,21 @@ func TestRTMask(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Normal,
 			"ref2": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, deleted)
+		require.NoError(ts, err)
+		require.False(ts, deleted)
 
 		deleted, err = Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref3": reftype.Mask,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Bulk masking two (out of 3) refs and then removing the ref that's left
@@ -388,21 +388,21 @@ func TestRTMask(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Mask,
 			"ref2": reftype.Mask,
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, deleted)
+		require.NoError(ts, err)
+		require.False(ts, deleted)
 
 		deleted, err = Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref3": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Verify that masking refs hides them from future Add()s.
@@ -416,28 +416,28 @@ func TestRTMask(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Mask,
 			"ref2": reftype.Mask,
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, deleted)
+		require.NoError(ts, err)
+		require.False(ts, deleted)
 
 		created, err = Add(ioctx, rtName, map[string]struct{}{
 			"ref1": {},
 			"ref2": {},
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, created)
+		require.NoError(ts, err)
+		require.False(ts, created)
 
 		deleted, err = Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref3": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 
 	// Verify that masked refs may be removed with reftype.Normal and re-added.
@@ -451,41 +451,41 @@ func TestRTMask(t *testing.T) {
 			"ref2": {},
 			"ref3": {},
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, created)
+		require.NoError(ts, err)
+		require.True(ts, created)
 
 		deleted, err := Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Mask,
 			"ref2": reftype.Mask,
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, deleted)
+		require.NoError(ts, err)
+		require.False(ts, deleted)
 
 		deleted, err = Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Normal,
 			"ref2": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, deleted)
+		require.NoError(ts, err)
+		require.False(ts, deleted)
 
 		created, err = Add(ioctx, rtName, map[string]struct{}{
 			"ref1": {},
 			"ref2": {},
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, created)
+		require.NoError(ts, err)
+		require.False(ts, created)
 
 		deleted, err = Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref3": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.False(ts, deleted)
+		require.NoError(ts, err)
+		require.False(ts, deleted)
 
 		deleted, err = Remove(ioctx, rtName, map[string]reftype.RefType{
 			"ref1": reftype.Normal,
 			"ref2": reftype.Normal,
 		})
-		assert.NoError(ts, err)
-		assert.True(ts, deleted)
+		require.NoError(ts, err)
+		require.True(ts, deleted)
 	})
 }

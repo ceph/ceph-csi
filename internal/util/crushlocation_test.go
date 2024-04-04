@@ -19,7 +19,7 @@ package util
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_getCrushLocationMap(t *testing.T) {
@@ -105,7 +105,7 @@ func Test_getCrushLocationMap(t *testing.T) {
 		currentTT := tt
 		t.Run(currentTT.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t,
+			require.Equal(t,
 				currentTT.want,
 				getCrushLocationMap(currentTT.args.crushLocationLabels, currentTT.args.nodeLabels))
 		})

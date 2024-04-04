@@ -17,14 +17,13 @@ limitations under the License.
 package v1
 
 import (
-	goerrors "errors"
 	"testing"
 
 	"github.com/ceph/ceph-csi/internal/util/reftracker/errors"
 	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
 	"github.com/ceph/ceph-csi/internal/util/reftracker/reftype"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestV1Read(t *testing.T) {
@@ -73,17 +72,17 @@ func TestV1Read(t *testing.T) {
 	)
 
 	err := Add(validObj, rtName, gen, refsToAdd)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for i := range invalidObjs {
 		err = Add(invalidObjs[i], rtName, gen, refsToAdd)
-		assert.Error(t, err)
+		require.Error(t, err)
 	}
 
 	// Check for correct error type for wrong gen num.
 	err = Add(invalidObjs[1], rtName, gen, refsToAdd)
-	assert.Error(t, err)
-	assert.True(t, goerrors.Is(err, errors.ErrObjectOutOfDate))
+	require.Error(t, err)
+	require.ErrorIs(t, err, errors.ErrObjectOutOfDate)
 }
 
 func TestV1Init(t *testing.T) {
@@ -106,10 +105,10 @@ func TestV1Init(t *testing.T) {
 	)
 
 	err := Init(emptyRados, rtName, refsToInit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = Init(alreadyExists, rtName, refsToInit)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestV1Add(t *testing.T) {
@@ -224,19 +223,19 @@ func TestV1Add(t *testing.T) {
 		ioctx.Rados.Objs[rtName] = shouldSucceed[i].before
 
 		err := Add(ioctx, rtName, 0, shouldSucceed[i].refsToAdd)
-		assert.NoError(t, err)
-		assert.Equal(t, shouldSucceed[i].after, ioctx.Rados.Objs[rtName])
+		require.NoError(t, err)
+		require.Equal(t, shouldSucceed[i].after, ioctx.Rados.Objs[rtName])
 	}
 
 	for i := range shouldFail {
 		err := Add(shouldFail[i], rtName, 0, map[string]struct{}{"ref1": {}})
-		assert.Error(t, err)
+		require.Error(t, err)
 	}
 
 	// Check for correct error type for wrong gen num.
 	err := Add(shouldFail[1], rtName, 0, map[string]struct{}{"ref1": {}})
-	assert.Error(t, err)
-	assert.True(t, goerrors.Is(err, errors.ErrObjectOutOfDate))
+	require.Error(t, err)
+	require.ErrorIs(t, err, errors.ErrObjectOutOfDate)
 }
 
 func TestV1Remove(t *testing.T) {
@@ -412,12 +411,12 @@ func TestV1Remove(t *testing.T) {
 		ioctx.Rados.Objs[rtName] = shouldSucceed[i].before
 
 		deleted, err := Remove(ioctx, rtName, 0, shouldSucceed[i].refsToRemove)
-		assert.NoError(t, err)
-		assert.Equal(t, shouldSucceed[i].deleted, deleted)
-		assert.Equal(t, shouldSucceed[i].after, ioctx.Rados.Objs[rtName])
+		require.NoError(t, err)
+		require.Equal(t, shouldSucceed[i].deleted, deleted)
+		require.Equal(t, shouldSucceed[i].after, ioctx.Rados.Objs[rtName])
 	}
 
 	_, err := Remove(badGen, rtName, 0, map[string]reftype.RefType{"ref": reftype.Normal})
-	assert.Error(t, err)
-	assert.True(t, goerrors.Is(err, errors.ErrObjectOutOfDate))
+	require.Error(t, err)
+	require.ErrorIs(t, err, errors.ErrObjectOutOfDate)
 }

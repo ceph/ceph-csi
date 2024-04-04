@@ -19,7 +19,7 @@ package reftype
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRefTypeBytes(t *testing.T) {
@@ -41,7 +41,7 @@ func TestRefTypeBytes(t *testing.T) {
 
 		for i := range expectedBytes {
 			bs := ToBytes(refTypes[i])
-			assert.Equal(ts, expectedBytes[i], bs)
+			require.Equal(ts, expectedBytes[i], bs)
 		}
 	})
 
@@ -50,14 +50,14 @@ func TestRefTypeBytes(t *testing.T) {
 
 		for i := range refTypes {
 			refType, err := FromBytes(expectedBytes[i])
-			assert.NoError(ts, err)
-			assert.Equal(ts, refTypes[i], refType)
+			require.NoError(ts, err)
+			require.Equal(ts, refTypes[i], refType)
 		}
 
 		_, err := FromBytes(refTypeInvalidBytes)
-		assert.Error(ts, err)
+		require.Error(ts, err)
 
 		_, err = FromBytes(refTypeWrongSizeBytes)
-		assert.Error(ts, err)
+		require.Error(ts, err)
 	})
 }

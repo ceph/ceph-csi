@@ -463,5 +463,5 @@ func Unlock(
 		return initializeAndUnlock(ctx, fscryptContext, encryptedPath, protectorName, keyFn)
 	}
 
-	return fmt.Errorf("unsupported")
+	return errors.New("unsupported")
 }

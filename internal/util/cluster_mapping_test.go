@@ -159,7 +159,7 @@ func TestGetClusterMappingInfo(t *testing.T) {
 		})
 	}
 
-	clusterMappingConfigFile = fmt.Sprintf("%s/mapping.json", mappingBasePath)
+	clusterMappingConfigFile = mappingBasePath + "/mapping.json"
 	err = os.WriteFile(clusterMappingConfigFile, mappingFileContent, 0o600)
 	if err != nil {
 		t.Errorf("failed to write mapping content error = %v", err)

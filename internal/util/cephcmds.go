@@ -48,7 +48,7 @@ func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, arg
 		return "", "", fmt.Errorf("failed to get stat for %s %w", netPath, err)
 	}
 	//  nsenter --net=%s -- <program> <args>
-	args = append([]string{fmt.Sprintf("--net=%s", netPath), "--", program}, args...)
+	args = append([]string{"--net=" + netPath, "--", program}, args...)
 	sanitizedArgs := StripSecretInArgs(args)
 	cmd := exec.Command(nsenter, args...) // #nosec:G204, commands executing not vulnerable.
 	cmd.Stdout = &stdoutBuf

@@ -70,7 +70,7 @@ func getCgroupPidsFile() (string, error) {
 		}
 	}
 	if slice == "" {
-		return "", fmt.Errorf("could not find a cgroup for 'pids'")
+		return "", errors.New("could not find a cgroup for 'pids'")
 	}
 
 	return pidsMax, nil
@@ -112,7 +112,7 @@ func GetPIDLimit() (int, error) {
 func SetPIDLimit(limit int) error {
 	limitStr := "max"
 	if limit != -1 {
-		limitStr = fmt.Sprintf("%d", limit)
+		limitStr = strconv.Itoa(limit)
 	}
 
 	pidsMax, err := getCgroupPidsFile()
