@@ -183,13 +183,13 @@ func (cs *ControllerServer) checkContentSource(
 	req *csi.CreateVolumeRequest,
 	cr *util.Credentials,
 ) (*store.VolumeOptions, *store.VolumeIdentifier, *store.SnapshotIdentifier, error) {
-	if req.VolumeContentSource == nil {
+	if req.GetVolumeContentSource() == nil {
 		return nil, nil, nil, nil
 	}
-	volumeSource := req.VolumeContentSource
-	switch volumeSource.Type.(type) {
+	volumeSource := req.GetVolumeContentSource()
+	switch volumeSource.GetType().(type) {
 	case *csi.VolumeContentSource_Snapshot:
-		snapshotID := req.VolumeContentSource.GetSnapshot().GetSnapshotId()
+		snapshotID := req.GetVolumeContentSource().GetSnapshot().GetSnapshotId()
 		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, snapshotID, cr,
 			req.GetSecrets(), cs.ClusterName, cs.SetMetadata)
 		if err != nil {
@@ -203,9 +203,9 @@ func (cs *ControllerServer) checkContentSource(
 		return volOpt, nil, sid, nil
 	case *csi.VolumeContentSource_Volume:
 		// Find the volume using the provided VolumeID
-		volID := req.VolumeContentSource.GetVolume().GetVolumeId()
+		volID := req.GetVolumeContentSource().GetVolume().GetVolumeId()
 		parentVol, pvID, err := store.NewVolumeOptionsFromVolID(ctx,
-			volID, nil, req.Secrets, cs.ClusterName, cs.SetMetadata)
+			volID, nil, req.GetSecrets(), cs.ClusterName, cs.SetMetadata)
 		if err != nil {
 			if !errors.Is(err, cerrors.ErrVolumeNotFound) {
 				return nil, nil, nil, status.Error(codes.NotFound, err.Error())
@@ -342,7 +342,7 @@ func (cs *ControllerServer) CreateVolume(
 	// As we are trying to create RWX volume from backing snapshot, we need to
 	// retrieve the snapshot details from the backing snapshot and create a
 	// subvolume clone from the snapshot.
-	if parentVol != nil && parentVol.BackingSnapshot && !store.IsVolumeCreateRO(req.VolumeCapabilities) {
+	if parentVol != nil && parentVol.BackingSnapshot && !store.IsVolumeCreateRO(req.GetVolumeCapabilities()) {
 		// unset pvID as we dont have real subvolume for the parent volumeID as its a backing snapshot
 		pvID = nil
 		parentVol, _, sID, err = store.NewSnapshotOptionsFromID(ctx, parentVol.BackingSnapshotID, cr,
@@ -674,7 +674,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	// Cephfs doesn't support Block volume
-	for _, capability := range req.VolumeCapabilities {
+	for _, capability := range req.GetVolumeCapabilities() {
 		if capability.GetBlock() != nil {
 			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
@@ -682,7 +682,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 
 	return &csi.ValidateVolumeCapabilitiesResponse{
 		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
-			VolumeCapabilities: req.VolumeCapabilities,
+			VolumeCapabilities: req.GetVolumeCapabilities(),
 		},
 	}, nil
 }
@@ -970,10 +970,10 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	}
 
 	// Check sanity of request Snapshot Name, Source Volume Id
-	if req.Name == "" {
+	if req.GetName() == "" {
 		return status.Error(codes.NotFound, "snapshot Name cannot be empty")
 	}
-	if req.SourceVolumeId == "" {
+	if req.GetSourceVolumeId() == "" {
 		return status.Error(codes.NotFound, "source Volume ID cannot be empty")
 	}
 

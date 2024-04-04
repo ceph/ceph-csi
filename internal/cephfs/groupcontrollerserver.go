@@ -180,7 +180,7 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 
 	for _, r := range *resp {
 		r.Snapshot.GroupSnapshotId = vgs.VolumeGroupSnapshotID
-		response.GroupSnapshot.Snapshots = append(response.GroupSnapshot.Snapshots, r.Snapshot)
+		response.GroupSnapshot.Snapshots = append(response.GroupSnapshot.Snapshots, r.GetSnapshot())
 	}
 
 	return response, nil
@@ -293,7 +293,7 @@ func (cs *ControllerServer) releaseQuiesceAndGetVolumeGroupSnapshotResponse(
 
 	for _, r := range snapshotResponses {
 		r.Snapshot.GroupSnapshotId = vgs.VolumeGroupSnapshotID
-		response.GroupSnapshot.Snapshots = append(response.GroupSnapshot.Snapshots, r.Snapshot)
+		response.GroupSnapshot.Snapshots = append(response.GroupSnapshot.Snapshots, r.GetSnapshot())
 	}
 
 	return response, nil
@@ -703,7 +703,7 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
 		return nil, err
 	}
 
-	groupSnapshotID := req.GroupSnapshotId
+	groupSnapshotID := req.GetGroupSnapshotId()
 	// Existence and conflict checks
 	if acquired := cs.VolumeGroupLocks.TryAcquire(groupSnapshotID); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, groupSnapshotID)
@@ -718,7 +718,7 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	vgo, vgsi, err := store.NewVolumeGroupOptionsFromID(ctx, req.GroupSnapshotId, cr)
+	vgo, vgsi, err := store.NewVolumeGroupOptionsFromID(ctx, req.GetGroupSnapshotId(), cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get volume group options: %v", err)
 		err = extractDeleteVolumeGroupError(err)

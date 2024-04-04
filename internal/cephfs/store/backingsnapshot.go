@@ -18,7 +18,6 @@ package store
 
 import (
 	"context"
-	"fmt"
 
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -28,7 +27,7 @@ import (
 )
 
 func fmtBackingSnapshotReftrackerName(backingSnapID string) string {
-	return fmt.Sprintf("rt-backingsnapshot-%s", backingSnapID)
+	return "rt-backingsnapshot-" + backingSnapID
 }
 
 func AddSnapshotBackedVolumeRef(

@@ -29,11 +29,11 @@ import (
 // that interacts with CephFS filesystem API's.
 type FileSystem interface {
 	// GetFscID returns the ID of the filesystem with the given name.
-	GetFscID(context.Context, string) (int64, error)
+	GetFscID(ctx context.Context, fsName string) (int64, error)
 	// GetMetadataPool returns the metadata pool name of the filesystem with the given name.
-	GetMetadataPool(context.Context, string) (string, error)
+	GetMetadataPool(ctx context.Context, fsName string) (string, error)
 	// GetFsName returns the name of the filesystem with the given ID.
-	GetFsName(context.Context, int64) (string, error)
+	GetFsName(ctx context.Context, fsID int64) (string, error)
 }
 
 // fileSystem is the implementation of FileSystem interface.

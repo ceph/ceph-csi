@@ -81,7 +81,7 @@ func (m *kernelMounter) mountKernel(
 	optionsStr := fmt.Sprintf("name=%s,secretfile=%s", cr.ID, cr.KeyFile)
 	mdsNamespace := ""
 	if volOptions.FsName != "" {
-		mdsNamespace = fmt.Sprintf("mds_namespace=%s", volOptions.FsName)
+		mdsNamespace = "mds_namespace=" + volOptions.FsName
 	}
 	optionsStr = util.MountOptionsAdd(optionsStr, mdsNamespace, volOptions.KernelMountOptions, netDev)
 

@@ -20,7 +20,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -44,7 +43,7 @@ func TestSetupCSIAddonsServer(t *testing.T) {
 
 	// verify the socket file has been created
 	_, err = os.Stat(tmpDir + "/csi-addons.sock")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// stop the gRPC server
 	drv.cas.Stop()
