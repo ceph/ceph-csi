@@ -229,7 +229,7 @@ func waitForPath(ctx context.Context, pool, namespace, image string, maxRetries 
 func SetRbdNbdToolFeatures() {
 	var stderr string
 	// check if the module is loaded or compiled in
-	_, err := os.Stat(fmt.Sprintf("/sys/module/%s", moduleNbd))
+	_, err := os.Stat("/sys/module/" + moduleNbd)
 	if os.IsNotExist(err) {
 		// try to load the module
 		_, stderr, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
@@ -377,7 +377,7 @@ func appendNbdDeviceTypeAndOptions(cmdArgs []string, userOptions, cookie string)
 		}
 
 		if hasNBDCookieSupport {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--cookie=%s", cookie))
+			cmdArgs = append(cmdArgs, "--cookie="+cookie)
 		}
 	}
 
@@ -409,7 +409,7 @@ func appendKRbdDeviceTypeAndOptions(cmdArgs []string, userOptions string) []stri
 // provided for rbd integrated cli to rbd-nbd cli format specific.
 func appendRbdNbdCliOptions(cmdArgs []string, userOptions, cookie string) []string {
 	if !strings.Contains(userOptions, useNbdNetlink) {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", useNbdNetlink))
+		cmdArgs = append(cmdArgs, "--"+useNbdNetlink)
 	}
 	if !strings.Contains(userOptions, setNbdReattach) {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdReattach, defaultNbdReAttachTimeout))
@@ -418,12 +418,12 @@ func appendRbdNbdCliOptions(cmdArgs []string, userOptions, cookie string) []stri
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
 	}
 	if hasNBDCookieSupport {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--cookie=%s", cookie))
+		cmdArgs = append(cmdArgs, "--cookie="+cookie)
 	}
 	if userOptions != "" {
 		options := strings.Split(userOptions, ",")
 		for _, opt := range options {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", opt))
+			cmdArgs = append(cmdArgs, "--"+opt)
 		}
 	}
 
@@ -566,7 +566,7 @@ func detachRBDImageOrDeviceSpec(
 
 			return err
 		}
-		if len(mapper) > 0 {
+		if mapper != "" {
 			// mapper found, so it is open Luks device
 			err = util.CloseEncryptedVolume(ctx, mapperFile)
 			if err != nil {

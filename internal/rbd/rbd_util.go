@@ -1163,8 +1163,6 @@ func generateVolumeFromVolumeID(
 
 // GenVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well.
-//
-//nolint:golint // TODO: returning unexported rbdVolume type, use an interface instead.
 func GenVolFromVolID(
 	ctx context.Context,
 	volumeID string,
@@ -1231,7 +1229,7 @@ func generateVolumeFromMapping(
 				vi.ClusterID)
 			// Add mapping clusterID to Identifier
 			nvi.ClusterID = mappedClusterID
-			poolID := fmt.Sprintf("%d", (vi.LocationID))
+			poolID := strconv.FormatInt(vi.LocationID, 10)
 			for _, pools := range cm.RBDpoolIDMappingInfo {
 				for key, val := range pools {
 					mappedPoolID := util.GetMappedID(key, val, poolID)
@@ -1525,7 +1523,7 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 
 	logMsg := fmt.Sprintf("setting image options on %s", rv)
 	if rv.DataPool != "" {
-		logMsg += fmt.Sprintf(", data pool %s", rv.DataPool)
+		logMsg += ", data pool %s" + rv.DataPool
 		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
 		if err != nil {
 			return fmt.Errorf("failed to set data pool: %w", err)

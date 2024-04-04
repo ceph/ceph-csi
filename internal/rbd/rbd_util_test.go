@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	librbd "github.com/ceph/go-ceph/rbd"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHasSnapshotFeature(t *testing.T) {
@@ -165,11 +165,11 @@ func TestValidateImageFeatures(t *testing.T) {
 	for _, test := range tests {
 		err := test.rbdVol.validateImageFeatures(test.imageFeatures)
 		if test.isErr {
-			assert.EqualError(t, err, test.errMsg)
+			require.EqualError(t, err, test.errMsg)
 
 			continue
 		}
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	}
 }
 

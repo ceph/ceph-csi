@@ -312,7 +312,7 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 	case util.EncryptionTypeFile:
 		err = ri.configureFileEncryption(ctx, kmsID, credentials)
 	case util.EncryptionTypeInvalid:
-		return fmt.Errorf("invalid encryption type")
+		return errors.New("invalid encryption type")
 	case util.EncryptionTypeNone:
 		return nil
 	}
