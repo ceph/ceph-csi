@@ -84,9 +84,9 @@ func (cs *Server) CreateVolume(
 		return nil, err
 	}
 
-	backend := res.Volume
+	backend := res.GetVolume()
 
-	log.DebugLog(ctx, "CephFS volume created: %s", backend.VolumeId)
+	log.DebugLog(ctx, "CephFS volume created: %s", backend.GetVolumeId())
 
 	secret := req.GetSecrets()
 	cr, err := util.NewAdminCredentials(secret)
@@ -97,7 +97,7 @@ func (cs *Server) CreateVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(ctx, backend.VolumeId)
+	nfsVolume, err := NewNFSVolume(ctx, backend.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

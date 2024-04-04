@@ -127,12 +127,12 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	if !nv.connected {
 		return fmt.Errorf("can not created export for %q: %w", nv, ErrNotConnected)
 	}
-
-	fs := backend.VolumeContext["fsName"]
-	nfsCluster := backend.VolumeContext["nfsCluster"]
-	path := backend.VolumeContext["subvolumePath"]
-	secTypes := backend.VolumeContext["secTypes"]
-	clients := backend.VolumeContext["clients"]
+	vctx := backend.GetVolumeContext()
+	fs := vctx["fsName"]
+	nfsCluster := vctx["nfsCluster"]
+	path := vctx["subvolumePath"]
+	secTypes := vctx["secTypes"]
+	clients := vctx["clients"]
 
 	err := nv.setNFSCluster(nfsCluster)
 	if err != nil {
