@@ -23,7 +23,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-// #nosec because of the word `Secret`
+//nolint:gosec // secret for test
 const (
 	// ceph user names.
 	keyringRBDProvisionerUsername          = "cephcsi-rbd-provisioner"
@@ -110,7 +110,7 @@ func createCephUser(f *framework.Framework, user string, caps []string) (string,
 }
 
 func deleteCephUser(f *framework.Framework, user string) error {
-	cmd := fmt.Sprintf("ceph auth del client.%s", user)
+	cmd := "ceph auth del client." + user
 	_, _, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 
 	return err

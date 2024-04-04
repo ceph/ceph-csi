@@ -382,7 +382,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 		case v1.PodPending:
 			if expectedError != "" {
 				events, err := c.CoreV1().Events(ns).List(ctx, metav1.ListOptions{
-					FieldSelector: fmt.Sprintf("involvedObject.name=%s", name),
+					FieldSelector: "involvedObject.name=" + name,
 				})
 				if err != nil {
 					return false, err
@@ -452,7 +452,7 @@ func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 
 // calculateSHA512sum returns the sha512sum of a file inside a pod.
 func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, opt *metav1.ListOptions) (string, error) {
-	cmd := fmt.Sprintf("sha512sum %s", filePath)
+	cmd := "sha512sum " + filePath
 	sha512sumOut, stdErr, err := execCommandInPod(f, cmd, app.Namespace, opt)
 	if err != nil {
 		return "", err

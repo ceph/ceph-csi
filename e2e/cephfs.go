@@ -23,7 +23,7 @@ import (
 	"sync"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
-	. "github.com/onsi/ginkgo/v2" //nolint:golint // e2e uses By() and other Ginkgo functions
+	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -735,7 +735,7 @@ var _ = Describe(cephfsType, func() {
 					framework.Failf("failed to create PVC and Deployment: %v", err)
 				}
 				deplPods, err := listPods(f, depl.Namespace, &metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", depl.Labels["app"]),
+					LabelSelector: "app=" + depl.Labels["app"],
 				})
 				if err != nil {
 					framework.Failf("failed to list pods for Deployment: %v", err)
@@ -744,7 +744,7 @@ var _ = Describe(cephfsType, func() {
 				doStat := func(podName string) (string, error) {
 					_, stdErr, execErr := execCommandInContainerByPodName(
 						f,
-						fmt.Sprintf("stat %s", depl.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath),
+						"stat "+depl.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath,
 						depl.Namespace,
 						podName,
 						depl.Spec.Template.Spec.Containers[0].Name,
@@ -808,7 +808,7 @@ var _ = Describe(cephfsType, func() {
 				}
 				// List Deployment's pods again to get name of the new pod.
 				deplPods, err = listPods(f, depl.Namespace, &metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", depl.Labels["app"]),
+					LabelSelector: "app=" + depl.Labels["app"],
 				})
 				if err != nil {
 					framework.Failf("failed to list pods for Deployment: %v", err)
@@ -1074,13 +1074,13 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					LabelSelector: "app=" + app.Name,
 				}
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				_, stdErr := execCommandInPodAndAllowFail(
 					f,
-					fmt.Sprintf("echo 'Hello World' > %s", filePath),
+					"echo 'Hello World' >"+filePath,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
@@ -2407,13 +2407,13 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					LabelSelector: "app=" + app.Name,
 				}
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				_, stdErr := execCommandInPodAndAllowFail(
 					f,
-					fmt.Sprintf("echo 'Hello World' > %s", filePath),
+					"echo 'Hello World' > "+filePath,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
