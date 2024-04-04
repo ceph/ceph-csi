@@ -19,12 +19,13 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:golint // e2e uses By() and other Ginkgo functions
+	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -536,7 +537,7 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("reattach the old PV to a new PVC and check if PVC metadata is updated on RBD image", func() {
-				reattachPVCNamespace := fmt.Sprintf("%s-2", f.Namespace.Name)
+				reattachPVCNamespace := f.Namespace.Name + "-2"
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
 					framework.Failf("failed to load PVC: %v", err)
@@ -1512,7 +1513,7 @@ var _ = Describe("RBD", func() {
 				cmd := fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath)
 
 				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					LabelSelector: "app=" + app.Name,
 				}
 				podList, err := e2epod.PodClientNS(f, app.Namespace).List(context.TODO(), opt)
 				if err != nil {
@@ -1630,10 +1631,10 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
 
 				filePath := appClone.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				cmd := fmt.Sprintf("echo 'Hello World' > %s", filePath)
+				cmd := "echo 'Hello World' > " + filePath
 
 				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", appClone.Name),
+					LabelSelector: "app=" + appClone.Name,
 				}
 				podList, err := e2epod.PodClientNS(f, appClone.Namespace).List(context.TODO(), opt)
 				if err != nil {
@@ -1766,7 +1767,7 @@ var _ = Describe("RBD", func() {
 				cmd := fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath)
 
 				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", appClone.Name),
+					LabelSelector: "app=" + appClone.Name,
 				}
 				podList, err := e2epod.PodClientNS(f, appClone.Namespace).List(context.TODO(), opt)
 				if err != nil {
@@ -1862,14 +1863,14 @@ var _ = Describe("RBD", func() {
 				}
 
 				appOpt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					LabelSelector: "app=" + app.Name,
 				}
 				// TODO: Remove this once we ensure that rbd-nbd can sync data
 				// from Filesystem layer to backend rbd image as part of its
 				// detach or SIGTERM signal handler
 				_, stdErr, err := execCommandInPod(
 					f,
-					fmt.Sprintf("sync %s", app.Spec.Containers[0].VolumeMounts[0].MountPath),
+					"sync "+app.Spec.Containers[0].VolumeMounts[0].MountPath,
 					app.Namespace,
 					&appOpt)
 				if err != nil || stdErr != "" {
@@ -1956,7 +1957,7 @@ var _ = Describe("RBD", func() {
 					filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 					_, stdErr, err = execCommandInPod(
 						f,
-						fmt.Sprintf("echo 'Hello World' > %s", filePath),
+						"echo 'Hello World' > "+filePath,
 						app.Namespace,
 						&appOpt)
 					if err != nil || stdErr != "" {
@@ -3331,13 +3332,13 @@ var _ = Describe("RBD", func() {
 				for i := 0; i < totalCount; i++ {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					opt := metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("app=%s", name),
+						LabelSelector: "app=" + name,
 					}
 
 					filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 					_, stdErr := execCommandInPodAndAllowFail(
 						f,
-						fmt.Sprintf("echo 'Hello World' > %s", filePath),
+						"echo 'Hello World' > "+filePath,
 						appClone.Namespace,
 						&opt)
 					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
@@ -3961,13 +3962,13 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					LabelSelector: "app=" + app.Name,
 				}
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				_, stdErr := execCommandInPodAndAllowFail(
 					f,
-					fmt.Sprintf("echo 'Hello World' > %s", filePath),
+					"echo 'Hello World' > "+filePath,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
@@ -4350,9 +4351,9 @@ var _ = Describe("RBD", func() {
 					defaultSCName,
 					nil,
 					map[string]string{
-						"stripeUnit":  fmt.Sprintf("%d", stripeUnit),
-						"stripeCount": fmt.Sprintf("%d", stripeCount),
-						"objectSize":  fmt.Sprintf("%d", objectSize),
+						"stripeUnit":  strconv.Itoa(stripeUnit),
+						"stripeCount": strconv.Itoa(stripeCount),
+						"objectSize":  strconv.Itoa(objectSize),
 					},
 					deletePolicy)
 				if err != nil {

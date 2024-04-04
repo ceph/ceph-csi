@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:golint // e2e uses By() and other Ginkgo functions
+	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -239,13 +239,13 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				}
 
 				// force an immediate write of all cached data to disk.
-				_, stdErr = execCommandInPodAndAllowFail(f, fmt.Sprintf("sync %s", filePath), app.Namespace, &opt)
+				_, stdErr = execCommandInPodAndAllowFail(f, "sync "+filePath, app.Namespace, &opt)
 				if stdErr != "" {
 					framework.Failf("failed to sync data to a disk %s", stdErr)
 				}
 
 				opt = metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", appLabel),
+					LabelSelector: "app=" + appLabel,
 				}
 				framework.Logf("Calculating checksum of %s", filePath)
 				checkSum, err = calculateSHA512sum(f, app, filePath, &opt)

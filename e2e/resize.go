@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/onsi/gomega" //nolint:golint // e2e uses Expect() and other Gomega functions
+	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -179,7 +179,7 @@ func getDirSizeCheckCmd(dirPath string) string {
 }
 
 func getDeviceSizeCheckCmd(devPath string) string {
-	return fmt.Sprintf("blockdev --getsize64 %s", devPath)
+	return "blockdev --getsize64 " + devPath
 }
 
 func checkAppMntSize(f *framework.Framework, opt *metav1.ListOptions, size, cmd, ns string, t int) error {

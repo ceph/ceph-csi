@@ -338,7 +338,7 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	}
 	snapIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
 	snapID := snapIDRegex.FindString(*sc.Status.SnapshotHandle)
-	snapshotName := fmt.Sprintf("csi-snap-%s", snapID)
+	snapshotName := "csi-snap-" + snapID
 	framework.Logf("snapshotName= %s", snapshotName)
 
 	return snapshotName, nil
@@ -392,10 +392,10 @@ func validateEncryptedCephfs(f *framework.Framework, pvName, appName string) err
 		LabelSelector: selector,
 	}
 
-	cmd := fmt.Sprintf("getfattr --name=ceph.fscrypt.auth --only-values %s", volumeMountPath)
+	cmd := "getfattr --name=ceph.fscrypt.auth --only-values " + volumeMountPath
 	_, _, err = execCommandInContainer(f, cmd, cephCSINamespace, "csi-cephfsplugin", &opt)
 	if err != nil {
-		cmd = fmt.Sprintf("getfattr --recursive --dump %s", volumeMountPath)
+		cmd = "getfattr --recursive --dump " + volumeMountPath
 		stdOut, stdErr, listErr := execCommandInContainer(f, cmd, cephCSINamespace, "csi-cephfsplugin", &opt)
 		if listErr == nil {
 			return fmt.Errorf("error checking for cephfs fscrypt xattr on %q. listing: %s %s",

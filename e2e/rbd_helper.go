@@ -118,7 +118,7 @@ func createRBDStorageClass(
 	scOptions, parameters map[string]string,
 	policy v1.PersistentVolumeReclaimPolicy,
 ) error {
-	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
+	scPath := rbdExamplePath + "/" + "storageclass.yaml"
 	sc, err := getStorageClass(scPath)
 	if err != nil {
 		return fmt.Errorf("failed to get sc: %w", err)
@@ -184,7 +184,7 @@ func createRBDStorageClass(
 
 func createRadosNamespace(f *framework.Framework) error {
 	stdOut, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd namespace ls --pool=%s", defaultRBDPool), rookNamespace)
+		"rbd namespace ls --pool="+defaultRBDPool, rookNamespace)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func createRadosNamespace(f *framework.Framework) error {
 	}
 	if !strings.Contains(stdOut, radosNamespace) {
 		_, stdErr, err = execCommandInToolBoxPod(f,
-			fmt.Sprintf("rbd namespace create %s", rbdOptions(defaultRBDPool)), rookNamespace)
+			"rbd namespace create "+rbdOptions(defaultRBDPool), rookNamespace)
 		if err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func createRadosNamespace(f *framework.Framework) error {
 		}
 	}
 	stdOut, stdErr, err = execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd namespace ls --pool=%s", rbdTopologyPool), rookNamespace)
+		"rbd namespace ls --pool="+rbdTopologyPool, rookNamespace)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func createRadosNamespace(f *framework.Framework) error {
 
 	if !strings.Contains(stdOut, radosNamespace) {
 		_, stdErr, err = execCommandInToolBoxPod(f,
-			fmt.Sprintf("rbd namespace create %s", rbdOptions(rbdTopologyPool)), rookNamespace)
+			"rbd namespace create "+rbdOptions(rbdTopologyPool), rookNamespace)
 		if err != nil {
 			return err
 		}
@@ -269,7 +269,7 @@ func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (
 
 	imageData = imageInfoFromPVC{
 		imageID:         imageID,
-		imageName:       fmt.Sprintf("csi-vol-%s", imageID),
+		imageName:       "csi-vol-" + imageID,
 		csiVolumeHandle: pv.Spec.CSI.VolumeHandle,
 		pvName:          pv.Name,
 	}
@@ -671,7 +671,7 @@ func validateEncryptedFilesystem(f *framework.Framework, rbdImageSpec, pvName, a
 	cmd := fmt.Sprintf("lsattr -la %s | grep -E '%s/.\\s+Encrypted'", volumeMountPath, volumeMountPath)
 	_, _, err = execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
 	if err != nil {
-		cmd = fmt.Sprintf("lsattr -lRa %s", volumeMountPath)
+		cmd = "lsattr -lRa " + volumeMountPath
 		stdOut, stdErr, listErr := execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
 		if listErr == nil {
 			return fmt.Errorf("error checking file encrypted attribute of %q. listing filesystem+attrs: %s %s",
@@ -697,7 +697,7 @@ func listRBDImages(f *framework.Framework, pool string) ([]string, error) {
 	var imgInfos []string
 
 	stdout, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd ls --format=json %s", rbdOptions(pool)), rookNamespace)
+		"rbd ls --format=json "+rbdOptions(pool), rookNamespace)
 	if err != nil {
 		return imgInfos, err
 	}
@@ -744,7 +744,7 @@ type rbdDuImageList struct {
 // getRbdDu runs 'rbd du' on the RBD image and returns a rbdDuImage struct with
 // the result.
 //
-//nolint:deadcode,unused // required for reclaimspace e2e.
+//nolint:unused // Unused code will be used in future.
 func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImage, error) {
 	rdil := rbdDuImageList{}
 
@@ -778,7 +778,7 @@ func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImag
 // take up any space anymore. This can be used to verify that an empty, but
 // allocated (with zerofill) extents have been released.
 //
-//nolint:deadcode,unused // required for reclaimspace e2e.
+//nolint:unused // Unused code will be used in future.
 func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
@@ -802,7 +802,7 @@ func deletePool(name string, cephFS bool, f *framework.Framework) error {
 		// --yes-i-really-mean-it
 		// ceph osd pool delete myfs-replicated myfs-replicated
 		// --yes-i-really-mean-it
-		cmds = append(cmds, fmt.Sprintf("ceph fs fail %s", name),
+		cmds = append(cmds, "ceph fs fail "+name,
 			fmt.Sprintf("ceph fs rm %s --yes-i-really-mean-it", name),
 			fmt.Sprintf("ceph osd pool delete %s-metadata %s-metadata --yes-i-really-really-mean-it", name, name),
 			fmt.Sprintf("ceph osd pool delete %s-replicated %s-replicated --yes-i-really-really-mean-it", name, name))
@@ -850,7 +850,7 @@ func getPVCImageInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	}
 
 	stdOut, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd info %s", imageSpec(pool, imageData.imageName)), rookNamespace)
+		"rbd info "+imageSpec(pool, imageData.imageName), rookNamespace)
 	if err != nil {
 		return "", err
 	}
@@ -1021,7 +1021,7 @@ func listRBDImagesInTrash(f *framework.Framework, poolName string) ([]trashInfo,
 	var trashInfos []trashInfo
 
 	stdout, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd trash ls --format=json %s", rbdOptions(poolName)), rookNamespace)
+		"rbd trash ls --format=json "+rbdOptions(poolName), rookNamespace)
 	if err != nil {
 		return trashInfos, err
 	}

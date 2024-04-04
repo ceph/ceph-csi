@@ -183,9 +183,9 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 		{
 			volumeMode:           volumesType,
 			driverType:           rbdType,
-			radosLsCmd:           fmt.Sprintf("rados ls %s", rbdOptions(pool)),
+			radosLsCmd:           "rados ls " + rbdOptions(pool),
 			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.", rbdOptions(pool)),
-			radosLsKeysCmd:       fmt.Sprintf("rados listomapkeys csi.volumes.default %s", rbdOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.volumes.default " + rbdOptions(pool),
 			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default %s | wc -l", rbdOptions(pool)),
 		},
 		{
@@ -201,9 +201,9 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 		{
 			volumeMode:           snapsType,
 			driverType:           rbdType,
-			radosLsCmd:           fmt.Sprintf("rados ls %s", rbdOptions(pool)),
+			radosLsCmd:           "rados ls " + rbdOptions(pool),
 			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", rbdOptions(pool)),
-			radosLsKeysCmd:       fmt.Sprintf("rados listomapkeys csi.snaps.default %s", rbdOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.snaps.default " + rbdOptions(pool),
 			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.snaps.default %s | wc -l", rbdOptions(pool)),
 		},
 	}
@@ -716,7 +716,7 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	if err != nil {
 		return err
 	}
-	persistData, stdErr, err := execCommandInPod(f, fmt.Sprintf("cat %s", filePath), app.Namespace, &opt)
+	persistData, stdErr, err := execCommandInPod(f, "cat "+filePath, app.Namespace, &opt)
 	if err != nil {
 		return err
 	}
@@ -793,7 +793,7 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 		LabelSelector: "app=validate-mount-opt",
 	}
 
-	cmd := fmt.Sprintf("mount |grep %s", app.Spec.Containers[0].VolumeMounts[0].MountPath)
+	cmd := "mount |grep " + app.Spec.Containers[0].VolumeMounts[0].MountPath
 	data, stdErr, err := execCommandInPod(f, cmd, app.Namespace, &opt)
 	if err != nil {
 		return err
@@ -1545,7 +1545,7 @@ func validateController(
 // If fetching the ServerVersion of the Kubernetes cluster fails, the calling
 // test case is marked as `FAILED` and gets aborted.
 //
-//nolint:deadcode,unused // Unused code will be used in future.
+//nolint:unused // Unused code will be used in future.
 func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 	v, err := c.Discovery().ServerVersion()
 	if err != nil {
@@ -1555,8 +1555,8 @@ func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 		// return value.
 	}
 
-	maj := fmt.Sprintf("%d", major)
-	min := fmt.Sprintf("%d", minor)
+	maj := strconv.Itoa(major)
+	min := strconv.Itoa(minor)
 
 	return (v.Major > maj) || (v.Major == maj && v.Minor >= min)
 }
