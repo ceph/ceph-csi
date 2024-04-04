@@ -6,7 +6,7 @@ StorageClass:
 
 SnapshotClass:
   # Must be set to enable snapshotting tests
-  FromName: false
+  FromExistingClassName: k8s-storage-e2e-cephfs
 
 DriverInfo:
   # Internal name of the driver, display name in the test case and test objects
