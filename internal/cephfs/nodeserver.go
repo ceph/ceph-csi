@@ -110,8 +110,7 @@ func (ns *NodeServer) getVolumeOptions(
 func validateSnapshotBackedVolCapability(volCap *csi.VolumeCapability) error {
 	// Snapshot-backed volumes may be used with read-only volume access modes only.
 
-	mode := volCap.AccessMode.Mode
-
+	mode := volCap.GetAccessMode().GetMode()
 	if mode != csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY &&
 		mode != csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 		return status.Error(codes.InvalidArgument,
@@ -352,7 +351,6 @@ func (ns *NodeServer) mount(
 			true,
 			[]string{"bind", "_netdev"},
 		)
-
 		if err != nil {
 			log.ErrorLog(ctx,
 				"failed to bind mount snapshot root %s: %v", absoluteSnapshotRoot, err)
@@ -813,9 +811,9 @@ func (ns *NodeServer) setMountOptions(
 	}
 
 	const readOnly = "ro"
-
-	if volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
-		volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+	mode := volCap.GetAccessMode().GetMode()
+	if mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+		mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 		switch mnt.(type) {
 		case *mounter.FuseMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {

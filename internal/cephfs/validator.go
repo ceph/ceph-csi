@@ -54,11 +54,11 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 		return err
 	}
 
-	if req.VolumeContentSource != nil {
-		volumeSource := req.VolumeContentSource
-		switch volumeSource.Type.(type) {
+	if req.GetVolumeContentSource() != nil {
+		volumeSource := req.GetVolumeContentSource()
+		switch volumeSource.GetType().(type) {
 		case *csi.VolumeContentSource_Snapshot:
-			snapshot := req.VolumeContentSource.GetSnapshot()
+			snapshot := req.GetVolumeContentSource().GetSnapshot()
 			// CSI spec requires returning NOT_FOUND when the volumeSource is missing/incorrect.
 			if snapshot == nil {
 				return status.Error(codes.NotFound, "volume Snapshot cannot be empty")
@@ -68,7 +68,7 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 			}
 		case *csi.VolumeContentSource_Volume:
 			// CSI spec requires returning NOT_FOUND when the volumeSource is missing/incorrect.
-			vol := req.VolumeContentSource.GetVolume()
+			vol := req.GetVolumeContentSource().GetVolume()
 			if vol == nil {
 				return status.Error(codes.NotFound, "volume cannot be empty")
 			}

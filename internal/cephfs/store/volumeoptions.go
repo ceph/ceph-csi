@@ -168,7 +168,7 @@ func extractMounter(dest *string, options map[string]string) error {
 func GetClusterInformation(options map[string]string) (*cephcsi.ClusterInfo, error) {
 	clusterID, ok := options["clusterID"]
 	if !ok {
-		err := fmt.Errorf("clusterID must be set")
+		err := errors.New("clusterID must be set")
 
 		return nil, err
 	}
@@ -344,15 +344,15 @@ func NewVolumeOptions(
 // IsShallowVolumeSupported returns true only for ReadOnly volume requests
 // with datasource as snapshot.
 func IsShallowVolumeSupported(req *csi.CreateVolumeRequest) bool {
-	isRO := IsVolumeCreateRO(req.VolumeCapabilities)
+	isRO := IsVolumeCreateRO(req.GetVolumeCapabilities())
 
 	return isRO && (req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil)
 }
 
 func IsVolumeCreateRO(caps []*csi.VolumeCapability) bool {
 	for _, cap := range caps {
-		if cap.AccessMode != nil {
-			switch cap.AccessMode.Mode { //nolint:exhaustive // only check what we want
+		if cap.GetAccessMode() != nil {
+			switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 			case csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY:
 				return true
@@ -612,7 +612,7 @@ func NewVolumeOptionsFromMonitorList(
 	// check if there are mon values in secret and if so override option retrieved monitors from
 	// monitors in the secret
 	mon, err := util.GetMonValFromSecret(secrets)
-	if err == nil && len(mon) > 0 {
+	if err == nil && mon != "" {
 		opts.Monitors = mon
 	}
 

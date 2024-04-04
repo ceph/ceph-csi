@@ -17,13 +17,12 @@ limitations under the License.
 package core
 
 import (
-	"errors"
 	"testing"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 
 	fsa "github.com/ceph/go-ceph/cephfs/admin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCloneStateToError(t *testing.T) {
@@ -36,6 +35,6 @@ func TestCloneStateToError(t *testing.T) {
 	errorState[cephFSCloneState{fsa.CloneFailed, "", ""}] = cerrors.ErrCloneFailed
 
 	for state, err := range errorState {
-		assert.True(t, errors.Is(state.ToError(), err))
+		require.ErrorIs(t, state.ToError(), err)
 	}
 }

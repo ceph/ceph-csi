@@ -19,7 +19,7 @@ package mounter
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilesystemSupported(t *testing.T) {
@@ -31,8 +31,8 @@ func TestFilesystemSupported(t *testing.T) {
 
 	// "proc" is always a supported filesystem, we detect supported
 	// filesystems by reading from it
-	assert.True(t, filesystemSupported("proc"))
+	require.True(t, filesystemSupported("proc"))
 
 	// "nonefs" is a made-up name, and does not exist
-	assert.False(t, filesystemSupported("nonefs"))
+	require.False(t, filesystemSupported("nonefs"))
 }
