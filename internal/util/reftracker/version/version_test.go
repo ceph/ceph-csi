@@ -21,7 +21,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -38,18 +38,18 @@ func TestVersionBytes(t *testing.T) {
 		ts.Parallel()
 
 		bs := ToBytes(v1Value)
-		assert.Equal(ts, v1Bytes, bs)
+		require.Equal(ts, v1Bytes, bs)
 	})
 
 	t.Run("FromBytes", func(ts *testing.T) {
 		ts.Parallel()
 
 		ver, err := FromBytes(v1Bytes)
-		assert.NoError(ts, err)
-		assert.Equal(ts, v1Value, ver)
+		require.NoError(ts, err)
+		require.Equal(ts, v1Value, ver)
 
 		_, err = FromBytes(wrongSizeVersionBytes)
-		assert.Error(ts, err)
+		require.Error(ts, err)
 	})
 }
 
@@ -101,11 +101,11 @@ func TestVersionRead(t *testing.T) {
 	)
 
 	ver, err := Read(validObj, rtName)
-	assert.NoError(t, err)
-	assert.Equal(t, v1Value, ver)
+	require.NoError(t, err)
+	require.Equal(t, v1Value, ver)
 
 	for i := range invalidObjs {
 		_, err = Read(invalidObjs[i], rtName)
-		assert.Error(t, err)
+		require.Error(t, err)
 	}
 }

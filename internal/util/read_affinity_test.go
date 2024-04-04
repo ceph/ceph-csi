@@ -19,7 +19,7 @@ package util
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadAffinity_ConstructReadAffinityMapOption(t *testing.T) {
@@ -62,7 +62,7 @@ func TestReadAffinity_ConstructReadAffinityMapOption(t *testing.T) {
 		currentTT := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Contains(t, currentTT.wantAny, ConstructReadAffinityMapOption(currentTT.crushLocationmap))
+			require.Contains(t, currentTT.wantAny, ConstructReadAffinityMapOption(currentTT.crushLocationmap))
 		})
 	}
 }

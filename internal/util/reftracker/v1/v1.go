@@ -205,7 +205,7 @@ func Remove(
 
 	if rcToSubtract > readRes.total {
 		// BUG: this should never happen!
-		return false, fmt.Errorf("refcount underflow, reftracker object corrupted")
+		return false, goerrors.New("refcount underflow, reftracker object corrupted")
 	}
 
 	newRC := readRes.total - rcToSubtract

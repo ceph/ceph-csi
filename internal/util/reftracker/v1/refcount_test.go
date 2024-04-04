@@ -19,7 +19,7 @@ package v1
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestV1RefCountBytes(t *testing.T) {
@@ -35,17 +35,17 @@ func TestV1RefCountBytes(t *testing.T) {
 		ts.Parallel()
 
 		bs := refCountValue.toBytes()
-		assert.Equal(ts, refCountBytes, bs)
+		require.Equal(ts, refCountBytes, bs)
 	})
 
 	t.Run("FromBytes", func(ts *testing.T) {
 		ts.Parallel()
 
 		rc, err := refCountFromBytes(refCountBytes)
-		assert.NoError(ts, err)
-		assert.Equal(ts, refCountValue, rc)
+		require.NoError(ts, err)
+		require.Equal(ts, refCountValue, rc)
 
 		_, err = refCountFromBytes(wrongSizeRefCountBytes)
-		assert.Error(ts, err)
+		require.Error(ts, err)
 	})
 }

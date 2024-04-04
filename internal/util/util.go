@@ -212,7 +212,7 @@ func parseKernelRelease(release string) (int, int, int, int, error) {
 	extraversion := 0
 	if n > minVersions {
 		n, err = fmt.Sscanf(extra, ".%d%s", &sublevel, &extra)
-		if err != nil && n == 0 && len(extra) > 0 && extra[0] != '-' && extra[0] == '.' {
+		if err != nil && n == 0 && extra != "" && extra[0] != '-' && extra[0] == '.' {
 			return 0, 0, 0, 0, fmt.Errorf("failed to parse subversion from %s: %w", release, err)
 		}
 
