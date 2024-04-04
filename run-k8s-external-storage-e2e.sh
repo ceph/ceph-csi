@@ -22,6 +22,7 @@ export KUBECONFIG="${KUBECONFIG_TMP}"
 for driver in /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/driver-*.yaml
 do
 	kubernetes/test/bin/ginkgo \
+		--vv \
 		-focus="External.Storage.*.csi.ceph.com" \
 		-skip='\[Feature:|\[Disruptive\]|Generic Ephemeral-volume' \
 		kubernetes/test/bin/e2e.test \
