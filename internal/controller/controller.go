@@ -31,7 +31,7 @@ import (
 // The New controllers which gets added, as to implement Add function to get
 // started by the manager.
 type Manager interface {
-	Add(manager.Manager, Config) error
+	Add(mgr manager.Manager, cfg Config) error
 }
 
 // Config holds the drivername and namespace name.
