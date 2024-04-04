@@ -561,7 +561,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	imagePool string, imagePoolID int64,
 	reqName, namePrefix, parentName, kmsConf, volUUID, owner,
 	backingSnapshotID string,
-	encryptionType util.EncryptionType, //nolint:interfacer // prefer util.EncryptionType over fmt.Stringer
+	encryptionType util.EncryptionType,
 ) (string, string, error) {
 	// TODO: Take in-arg as ImageAttributes?
 	var (
