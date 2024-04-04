@@ -19,7 +19,6 @@ package server
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +38,7 @@ func TestNewCSIAddonsServer(t *testing.T) {
 
 		cas, err := NewCSIAddonsServer("")
 		require.Error(t, err)
-		assert.Nil(t, cas)
+		require.Nil(t, cas)
 	})
 
 	t.Run("no UDS endpoint", func(t *testing.T) {
@@ -47,6 +46,6 @@ func TestNewCSIAddonsServer(t *testing.T) {
 
 		cas, err := NewCSIAddonsServer("endpoint at /tmp/...")
 		require.Error(t, err)
-		assert.Nil(t, cas)
+		require.Nil(t, cas)
 	})
 }

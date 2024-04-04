@@ -62,7 +62,7 @@ func (fcs *FenceControllerServer) FenceClusterNetwork(
 	ctx context.Context,
 	req *fence.FenceClusterNetworkRequest,
 ) (*fence.FenceClusterNetworkResponse, error) {
-	err := validateNetworkFenceReq(req.GetCidrs(), req.Parameters)
+	err := validateNetworkFenceReq(req.GetCidrs(), req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -73,7 +73,7 @@ func (fcs *FenceControllerServer) FenceClusterNetwork(
 	}
 	defer cr.DeleteCredentials()
 
-	nwFence, err := nf.NewNetworkFence(ctx, cr, req.Cidrs, req.GetParameters())
+	nwFence, err := nf.NewNetworkFence(ctx, cr, req.GetCidrs(), req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -91,7 +91,7 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 	ctx context.Context,
 	req *fence.UnfenceClusterNetworkRequest,
 ) (*fence.UnfenceClusterNetworkResponse, error) {
-	err := validateNetworkFenceReq(req.GetCidrs(), req.Parameters)
+	err := validateNetworkFenceReq(req.GetCidrs(), req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -102,7 +102,7 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 	}
 	defer cr.DeleteCredentials()
 
-	nwFence, err := nf.NewNetworkFence(ctx, cr, req.Cidrs, req.GetParameters())
+	nwFence, err := nf.NewNetworkFence(ctx, cr, req.GetCidrs(), req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

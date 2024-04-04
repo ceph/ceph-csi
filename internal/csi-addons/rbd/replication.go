@@ -709,7 +709,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", sErr.Error())
 		}
 		log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime.AsTime())
-		if req.Force && st.Equal(creationTime.AsTime()) {
+		if req.GetForce() && st.Equal(creationTime.AsTime()) {
 			err = rbdVol.ResyncVol(localStatus)
 			if err != nil {
 				return nil, getGRPCError(err)
@@ -738,7 +738,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 // timestampToString converts the time.Time object to string.
 func timestampToString(st *timestamppb.Timestamp) string {
-	return fmt.Sprintf("seconds:%d nanos:%d", st.Seconds, st.Nanos)
+	return fmt.Sprintf("seconds:%d nanos:%d", st.GetSeconds(), st.GetNanos())
 }
 
 // timestampFromString parses the timestamp string and returns the time.Time
@@ -989,7 +989,7 @@ func checkVolumeResyncStatus(ctx context.Context, localStatus librbd.SiteMirrorI
 	if err != nil {
 		return fmt.Errorf("failed to get last sync info: %w", err)
 	}
-	if resp.LastSyncTime == nil {
+	if resp.GetLastSyncTime() == nil {
 		return errors.New("last sync time is nil")
 	}
 

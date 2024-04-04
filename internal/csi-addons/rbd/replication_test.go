@@ -30,7 +30,7 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
 	"github.com/csi-addons/spec/lib/go/replication"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -511,19 +511,29 @@ func TestValidateLastSyncInfo(t *testing.T) {
 					tt.expectedErr, err)
 			}
 			if teststruct != nil {
-				if teststruct.LastSyncTime.GetSeconds() != tt.info.LastSyncTime.GetSeconds() {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v", tt.name, teststruct.LastSyncTime, tt.info.LastSyncTime)
+				if teststruct.GetLastSyncTime().GetSeconds() != tt.info.GetLastSyncTime().GetSeconds() {
+					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
+						tt.name,
+						teststruct.GetLastSyncTime(),
+						tt.info.GetLastSyncTime())
 				}
-				if tt.info.LastSyncDuration == nil && teststruct.LastSyncDuration != nil {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v", tt.name, teststruct.LastSyncDuration,
-						tt.info.LastSyncDuration)
+				if tt.info.GetLastSyncDuration() == nil && teststruct.GetLastSyncDuration() != nil {
+					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
+						tt.name,
+						teststruct.GetLastSyncDuration(),
+						tt.info.GetLastSyncDuration())
 				}
-				if teststruct.LastSyncDuration.GetSeconds() != tt.info.LastSyncDuration.GetSeconds() {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v", tt.name, teststruct.LastSyncDuration,
-						tt.info.LastSyncDuration)
+				if teststruct.GetLastSyncDuration().GetSeconds() != tt.info.GetLastSyncDuration().GetSeconds() {
+					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
+						tt.name,
+						teststruct.GetLastSyncDuration(),
+						tt.info.GetLastSyncDuration())
 				}
-				if teststruct.LastSyncBytes != tt.info.LastSyncBytes {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v", tt.name, teststruct.LastSyncBytes, tt.info.LastSyncBytes)
+				if teststruct.GetLastSyncBytes() != tt.info.GetLastSyncBytes() {
+					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
+						tt.name,
+						teststruct.GetLastSyncBytes(),
+						tt.info.GetLastSyncBytes())
 				}
 			}
 		})
@@ -594,7 +604,7 @@ func TestGetGRPCError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := getGRPCError(tt.err)
-			assert.Equal(t, tt.expectedErr, result)
+			require.Equal(t, tt.expectedErr, result)
 		})
 	}
 }

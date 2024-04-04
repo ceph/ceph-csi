@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/csi-addons/spec/lib/go/fence"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestFenceClusterNetwork is a minimal test for the FenceClusterNetwork()
@@ -39,7 +39,7 @@ func TestFenceClusterNetwork(t *testing.T) {
 	}
 
 	_, err := controller.FenceClusterNetwork(context.TODO(), req)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 // TestUnfenceClusterNetwork is a minimal test for the UnfenceClusterNetwork()
@@ -55,5 +55,5 @@ func TestUnfenceClusterNetwork(t *testing.T) {
 		Cidrs:      nil,
 	}
 	_, err := controller.UnfenceClusterNetwork(context.TODO(), req)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
