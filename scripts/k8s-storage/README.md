@@ -5,8 +5,12 @@ This job runs the [Kubernetes end-to-end external storage tests][1] with
 different driver configurations/manifests (in the `driver-*.yaml` files). Each
 driver configuration refers to a StorageClass that is used while testing.
 
-The StorageClasses are created with the `create-storageclass.sh` script and the
+The StorageClasses are created with the `create-storageclasses.sh` script and the
 `sc-*.yaml.in` templates.
+
+The VolumeSnapshotClasses are created with the
+`create-volumesnapshotclasses.sh` script and the
+`volumesnapshotclass-*.yaml.in` templates.
 
 The Ceph-CSI Configuration from the `ceph-csi-config` ConfigMap is created with
 `create-configmap.sh` after the deployment is finished. The ConfigMap is
