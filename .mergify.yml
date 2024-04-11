@@ -95,6 +95,7 @@ pull_request_rules:
   - name: start CI jobs for PRs in the merge queue
     conditions:
       - base~=^(devel)|(release-.+)$
+      - label!=conflicts
       - not:
           check-pending~=^ci/centos
       - not:
