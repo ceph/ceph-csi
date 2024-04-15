@@ -18,7 +18,6 @@ package kms
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -106,18 +105,10 @@ func initAzureKeyVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 		return nil, fmt.Errorf("failed to get secrets for %T, %w", kms, err)
 	}
 
-	var encodedClientCertificate string
-	err = setConfigString(&encodedClientCertificate, secrets, azureClientCertificate)
+	err = setConfigString(&kms.clientCertificate, secrets, azureClientCertificate)
 	if err != nil {
 		return nil, err
 	}
-
-	clientCertificate, err := base64.StdEncoding.DecodeString(encodedClientCertificate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode client certificate: %w", err)
-	}
-
-	kms.clientCertificate = string(clientCertificate)
 
 	return kms, nil
 }
