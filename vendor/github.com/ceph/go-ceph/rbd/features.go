@@ -43,6 +43,10 @@ const (
 	// from librbd
 	FeatureOperations = uint64(C.RBD_FEATURE_OPERATIONS)
 
+	// FeatureMigrating is the representation of RBD_FEATURE_MIGRATING from
+	// librbd
+	FeatureMigrating = uint64(C.RBD_FEATURE_MIGRATING)
+
 	// RBD features, strings
 
 	// FeatureNameLayering is the representation of
@@ -80,6 +84,10 @@ const (
 	// FeatureNameOperations is the representation of
 	// RBD_FEATURE_NAME_OPERATIONS from librbd
 	FeatureNameOperations = C.RBD_FEATURE_NAME_OPERATIONS
+
+	// FeatureNameMigrating is the representation of
+	// RBD_FEATURE_NAME_MIGRATING from librbd
+	FeatureNameMigrating = C.RBD_FEATURE_NAME_MIGRATING
 
 	// old names for backwards compatibility (unused?)
 
@@ -124,6 +132,7 @@ var (
 		FeatureNameJournaling:    FeatureJournaling,
 		FeatureNameDataPool:      FeatureDataPool,
 		FeatureNameOperations:    FeatureOperations,
+		FeatureNameMigrating:     FeatureMigrating,
 	}
 )
 
