@@ -936,7 +936,10 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	var cMaxSnaps C.int
 
 	ret := C.rbd_snap_list(image.image, nil, &cMaxSnaps)
-
+	// bugfix index out of range(&cSnaps[0])
+	if cMaxSnaps < 1 {
+		return nil, rbdError(ret)
+	}
 	cSnaps := make([]C.rbd_snap_info_t, cMaxSnaps)
 	snaps = make([]SnapInfo, cMaxSnaps)
 
