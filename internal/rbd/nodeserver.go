@@ -198,7 +198,6 @@ func (ns *NodeServer) populateRbdVol(
 	} else {
 		rv, err = GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
-			rv.Destroy()
 			log.ErrorLog(ctx, "error generating volume %s: %v", volID, err)
 
 			return nil, status.Errorf(codes.Internal, "error generating volume %s: %v", volID, err)
