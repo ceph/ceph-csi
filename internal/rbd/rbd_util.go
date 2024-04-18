@@ -553,9 +553,13 @@ func (ri *rbdImage) isInUse() (bool, error) {
 	// because we opened the image, there is at least one watcher
 	defaultWatchers := 1
 	if mirrorInfo.Primary {
+		count, err := util.GetRBDMirrorDaemonCount(util.CsiConfigFile, ri.ClusterID)
+		if err != nil {
+			return false, err
+		}
 		// if rbd mirror daemon is running, a watcher will be added by the rbd
 		// mirror daemon for mirrored images.
-		defaultWatchers++
+		defaultWatchers += count
 	}
 
 	return len(watchers) > defaultWatchers, nil

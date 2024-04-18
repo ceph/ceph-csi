@@ -17,11 +17,14 @@ limitations under the License.
 package util
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"testing"
 
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
+
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -529,4 +532,89 @@ func TestGetCephFSMountOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetRBDMirrorDaemonCount(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		clusterID string
+		want      int
+	}{
+		{
+			name:      "get rbd mirror daemon count for cluster-1",
+			clusterID: "cluster-1",
+			want:      2,
+		},
+		{
+			name:      "get rbd mirror daemon count for cluster-2",
+			clusterID: "cluster-2",
+			want:      4,
+		},
+		{
+			name:      "when rbd mirror daemon count is empty",
+			clusterID: "cluster-3",
+			want:      1, // default mirror daemon count
+		},
+	}
+
+	csiConfig := []cephcsi.ClusterInfo{
+		{
+			ClusterID: "cluster-1",
+			Monitors:  []string{"ip-1", "ip-2"},
+			RBD: cephcsi.RBD{
+				MirrorDaemonCount: 2,
+			},
+		},
+		{
+			ClusterID: "cluster-2",
+			Monitors:  []string{"ip-3", "ip-4"},
+			RBD: cephcsi.RBD{
+				MirrorDaemonCount: 4,
+			},
+		},
+		{
+			ClusterID: "cluster-3",
+			Monitors:  []string{"ip-5", "ip-6"},
+		},
+	}
+	csiConfigFileContent, err := json.Marshal(csiConfig)
+	if err != nil {
+		t.Errorf("failed to marshal csi config info %v", err)
+	}
+	tmpConfPath := t.TempDir() + "/ceph-csi.json"
+	err = os.WriteFile(tmpConfPath, csiConfigFileContent, 0o600)
+	if err != nil {
+		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
+	}
+	for _, tt := range tests {
+		ts := tt
+		t.Run(ts.name, func(t *testing.T) {
+			t.Parallel()
+			var got int
+			got, err = GetRBDMirrorDaemonCount(tmpConfPath, ts.clusterID)
+			if err != nil {
+				t.Errorf("GetRBDMirrorDaemonCount() error = %v", err)
+
+				return
+			}
+			if got != ts.want {
+				t.Errorf("GetRBDMirrorDaemonCount() = %v, want %v", got, ts.want)
+			}
+		})
+	}
+
+	// when mirrorDaemonCount is set as string
+	csiConfigFileContent = bytes.Replace(
+		csiConfigFileContent,
+		[]byte(`"mirrorDaemonCount":2`),
+		[]byte(`"mirrorDaemonCount":"2"`),
+		1)
+	tmpCSIConfPath := t.TempDir() + "/ceph-csi.json"
+	err = os.WriteFile(tmpCSIConfPath, csiConfigFileContent, 0o600)
+	if err != nil {
+		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
+	}
+	_, err = GetRBDMirrorDaemonCount(tmpCSIConfPath, "test")
+	require.Error(t, err)
 }

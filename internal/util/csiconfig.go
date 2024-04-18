@@ -45,6 +45,7 @@ const (
 	"clusterID": "<cluster-id>",
 	"rbd": {
 		"radosNamespace": "<rados-namespace>"
+		"mirrorDaemonCount": 1
 	},
 	"monitors": [
 		"<monitor-value>",
@@ -103,6 +104,22 @@ func GetRadosNamespace(pathToConfig, clusterID string) (string, error) {
 	}
 
 	return cluster.RBD.RadosNamespace, nil
+}
+
+// GetRBDMirrorDaemonCount returns the number of mirror daemon count for the
+// given clusterID.
+func GetRBDMirrorDaemonCount(pathToConfig, clusterID string) (int, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return 0, err
+	}
+
+	// if it is empty, set the default to 1 which is most common in a cluster.
+	if cluster.RBD.MirrorDaemonCount == 0 {
+		return 1, nil
+	}
+
+	return cluster.RBD.MirrorDaemonCount, nil
 }
 
 // CephFSSubvolumeGroup returns the subvolumeGroup for CephFS volumes. If not set, it returns the default value "csi".
