@@ -27,6 +27,7 @@ serviceAccounts:
 #       - "<MONValue2>"
 #     rbd:
 #       netNamespaceFilePath: "{{ .kubeletDir }}/plugins/{{ .driverName }}/net"
+#       mirrorDaemonCount: 1
 #     readAffinity:
 #       enabled: true
 #       crushLocationLabels:
