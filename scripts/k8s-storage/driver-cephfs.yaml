@@ -36,6 +36,18 @@ DriverInfo:
     # Volume ownership via fsGroup
     fsGroup: false
 
+    # multiple pods on a node can use the same volume concurrently
+    multipods: true
+
+    # support online expansion
+    onlineExpansion: true
+
+    # supports ReadWriteOncePod pod
+    readWriteOncePod: true
+
+    # supports ROX AccessMode in PVC
+    capReadOnlyMany: true
+
     # Raw block mode
     block: false
 
