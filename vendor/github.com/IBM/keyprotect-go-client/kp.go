@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -276,7 +275,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, res interface{}) (*h
 	}
 	defer response.Body.Close()
 
-	resBody, err := ioutil.ReadAll(response.Body)
+	resBody, err := io.ReadAll(response.Body)
 	redact := []string{c.Config.APIKey, req.Header.Get("authorization")}
 	c.Dump(req, response, []byte{}, resBody, c.Logger, redact)
 	if err != nil {
@@ -514,4 +513,18 @@ func redact(s string, redactStrings []string) string {
 // noredact does not perform redaction, and returns the given string.
 func noredact(s string, redactStrings []string) string {
 	return s
+}
+
+// Collection Metadata is generic and can be shared between multiple resource types
+type CollectionMetadata struct {
+	CollectionType  string `json:"collectionType"`
+	CollectionTotal int    `json:"collectionTotal"`
+	TotalCount      int    `json:"totalCount,omitempty"`
+}
+
+// ListsOptions struct to add the query parameters for list functions. Extensible.
+type ListOptions struct {
+	Limit      *uint32
+	Offset     *uint32
+	TotalCount *bool
 }

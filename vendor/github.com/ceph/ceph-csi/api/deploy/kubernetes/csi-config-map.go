@@ -46,8 +46,6 @@ type RBD struct {
 	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
 	// RadosNamespace is a rados namespace in the pool
 	RadosNamespace string `json:"radosNamespace"`
-	// RBD mirror daemons running in the ceph cluster.
-	MirrorDaemonCount int `json:"mirrorDaemonCount"`
 }
 
 type NFS struct {
