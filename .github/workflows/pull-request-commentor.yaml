@@ -23,6 +23,8 @@ jobs:
         exclude:
           # the next Ceph-CSI version will not be tested with old Kubernetes
           - k8s: "1.26"
+            branch: "release-v3.11"
+          - k8s: "1.26"
             branch: "devel"
 
           # Ceph-CSI <= 3.10 was released before Kubernetes 1.29
