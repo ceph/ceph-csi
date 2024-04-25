@@ -8,7 +8,7 @@
 # little different.
 #
 
-FROM registry.fedoraproject.org/fedora:latest
+FROM registry.fedoraproject.org/fedora:39
 
 ARG GOPATH=/go
 ARG GOROOT=/usr/local/go
