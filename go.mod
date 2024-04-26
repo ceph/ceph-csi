@@ -1,8 +1,8 @@
 module github.com/ceph/ceph-csi
 
-go 1.21
+go 1.22
 
-toolchain go1.21.9
+toolchain go1.22.2
 
 require (
 	github.com/IBM/keyprotect-go-client v0.12.2
