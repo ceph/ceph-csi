@@ -78,12 +78,11 @@ func Test_validateNodePublishVolumeRequest(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		currentTT := tt
-		t.Run(currentTT.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := validateNodePublishVolumeRequest(currentTT.args.req)
-			if (err != nil) != currentTT.wantErr {
-				t.Errorf("validateNodePublishVoluemRequest() error = %v, wantErr %v", err, currentTT.wantErr)
+			err := validateNodePublishVolumeRequest(tt.args.req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateNodePublishVoluemRequest() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -157,17 +156,16 @@ func Test_getSource(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		currentTT := tt
-		t.Run(currentTT.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := getSource(currentTT.args.volContext)
-			if (err != nil) != currentTT.wantErr {
-				t.Errorf("getSource() error = %v, wantErr %v", err, currentTT.wantErr)
+			got, err := getSource(tt.args.volContext)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getSource() error = %v, wantErr %v", err, tt.wantErr)
 
 				return
 			}
-			if got != currentTT.want {
-				t.Errorf("getSource() = %v, want %v", got, currentTT.want)
+			if got != tt.want {
+				t.Errorf("getSource() = %v, want %v", got, tt.want)
 			}
 		})
 	}

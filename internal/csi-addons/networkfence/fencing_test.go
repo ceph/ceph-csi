@@ -43,14 +43,13 @@ func TestGetIPRange(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.cidr, func(t *testing.T) {
+		t.Run(tt.cidr, func(t *testing.T) {
 			t.Parallel()
-			got, err := getIPRange(ts.cidr)
+			got, err := getIPRange(tt.cidr)
 			require.NoError(t, err)
 
 			// validate if number of IPs in the range is same as expected, if not, fail.
-			require.ElementsMatch(t, ts.expectedIPs, got)
+			require.ElementsMatch(t, tt.expectedIPs, got)
 		})
 	}
 }
@@ -86,20 +85,18 @@ func TestFetchIP(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ts := tt
-
-		t.Run(ts.clientInfo, func(t *testing.T) {
+		t.Run(tt.clientInfo, func(t *testing.T) {
 			t.Parallel()
 
-			client := activeClient{Inst: ts.clientInfo}
+			client := activeClient{Inst: tt.clientInfo}
 			ip, actualErr := client.fetchIP()
 
-			if (actualErr != nil) != ts.expectedErr {
-				t.Errorf("expected error %v but got %v", ts.expectedErr, actualErr)
+			if (actualErr != nil) != tt.expectedErr {
+				t.Errorf("expected error %v but got %v", tt.expectedErr, actualErr)
 			}
 
-			if ip != ts.expectedIP {
-				t.Errorf("expected IP %s but got %s", ts.expectedIP, ip)
+			if ip != tt.expectedIP {
+				t.Errorf("expected IP %s but got %s", tt.expectedIP, ip)
 			}
 		})
 	}
@@ -126,18 +123,17 @@ func TestFetchID(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.clientInfo, func(t *testing.T) {
+		t.Run(tt.clientInfo, func(t *testing.T) {
 			t.Parallel()
-			ac := &activeClient{Inst: ts.clientInfo}
+			ac := &activeClient{Inst: tt.clientInfo}
 			actualID, actualErr := ac.fetchID()
 
-			if (actualErr != nil) != ts.expectedErr {
-				t.Errorf("expected error %v but got %v", ts.expectedErr, actualErr)
+			if (actualErr != nil) != tt.expectedErr {
+				t.Errorf("expected error %v but got %v", tt.expectedErr, actualErr)
 			}
 
-			if actualID != ts.expectedID {
-				t.Errorf("expected ID %d but got %d", ts.expectedID, actualID)
+			if actualID != tt.expectedID {
+				t.Errorf("expected ID %d but got %d", tt.expectedID, actualID)
 			}
 		})
 	}

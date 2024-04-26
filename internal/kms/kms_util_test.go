@@ -73,15 +73,14 @@ func TestSetConfigInt(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		currentTT := tt
-		t.Run(currentTT.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := setConfigInt(currentTT.args.option, currentTT.args.config, currentTT.args.key)
-			if !errors.Is(err, currentTT.err) {
-				t.Errorf("setConfigInt() error = %v, wantErr %v", err, currentTT.err)
+			err := setConfigInt(tt.args.option, tt.args.config, tt.args.key)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("setConfigInt() error = %v, wantErr %v", err, tt.err)
 			}
 			if err != nil {
-				require.NotEqual(t, currentTT.value, currentTT.args.option)
+				require.NotEqual(t, tt.value, tt.args.option)
 			}
 		})
 	}

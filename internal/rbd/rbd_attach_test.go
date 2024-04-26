@@ -82,24 +82,23 @@ func TestParseMapOptions(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tc := tt
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			krbdOpts, nbdOpts, err := parseMapOptions(tc.mapOption)
-			if err != nil && !strings.Contains(err.Error(), tc.expectErr) {
+			krbdOpts, nbdOpts, err := parseMapOptions(tt.mapOption)
+			if err != nil && !strings.Contains(err.Error(), tt.expectErr) {
 				// returned error
 				t.Errorf("parseMapOptions(%s) returned error, expected: %v, got: %v",
-					tc.mapOption, tc.expectErr, err)
+					tt.mapOption, tt.expectErr, err)
 			}
-			if krbdOpts != tc.expectKrbdOptions {
+			if krbdOpts != tt.expectKrbdOptions {
 				// unexpected krbd option error
 				t.Errorf("parseMapOptions(%s) returned unexpected krbd options, expected :%q, got: %q",
-					tc.mapOption, tc.expectKrbdOptions, krbdOpts)
+					tt.mapOption, tt.expectKrbdOptions, krbdOpts)
 			}
-			if nbdOpts != tc.expectNbdOptions {
+			if nbdOpts != tt.expectNbdOptions {
 				// unexpected nbd option error
 				t.Errorf("parseMapOptions(%s) returned unexpected nbd options, expected: %q, got: %q",
-					tc.mapOption, tc.expectNbdOptions, nbdOpts)
+					tt.mapOption, tt.expectNbdOptions, nbdOpts)
 			}
 		})
 	}

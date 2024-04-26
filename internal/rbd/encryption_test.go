@@ -76,23 +76,22 @@ func TestParseEncryptionOpts(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.testName, func(t *testing.T) {
+		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 			actualKMS, actualEnc, actualErr := ParseEncryptionOpts(
-				newtt.volOptions,
-				newtt.fallbackType,
+				tt.volOptions,
+				tt.fallbackType,
 			)
-			if actualKMS != newtt.expectedKMS {
-				t.Errorf("Expected KMS ID: %s, but got: %s", newtt.expectedKMS, actualKMS)
+			if actualKMS != tt.expectedKMS {
+				t.Errorf("Expected KMS ID: %s, but got: %s", tt.expectedKMS, actualKMS)
 			}
 
-			if actualEnc != newtt.expectedEnc {
-				t.Errorf("Expected Encryption Type: %v, but got: %v", newtt.expectedEnc, actualEnc)
+			if actualEnc != tt.expectedEnc {
+				t.Errorf("Expected Encryption Type: %v, but got: %v", tt.expectedEnc, actualEnc)
 			}
 
-			if (actualErr != nil) != newtt.expectedErr {
-				t.Errorf("expected error %v but got %v", newtt.expectedErr, actualErr)
+			if (actualErr != nil) != tt.expectedErr {
+				t.Errorf("expected error %v but got %v", tt.expectedErr, actualErr)
 			}
 		})
 	}

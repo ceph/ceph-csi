@@ -102,12 +102,11 @@ func Test_getCrushLocationMap(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		currentTT := tt
-		t.Run(currentTT.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t,
-				currentTT.want,
-				getCrushLocationMap(currentTT.args.crushLocationLabels, currentTT.args.nodeLabels))
+				tt.want,
+				getCrushLocationMap(tt.args.crushLocationLabels, tt.args.nodeLabels))
 		})
 	}
 }

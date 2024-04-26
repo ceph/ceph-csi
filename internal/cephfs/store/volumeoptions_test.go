@@ -86,12 +86,11 @@ func TestIsVolumeCreateRO(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			wantErr := IsVolumeCreateRO(newtt.caps)
-			if wantErr != newtt.isRO {
-				t.Errorf("isVolumeCreateRO() wantErr = %v, isRO %v", wantErr, newtt.isRO)
+			wantErr := IsVolumeCreateRO(tt.caps)
+			if wantErr != tt.isRO {
+				t.Errorf("isVolumeCreateRO() wantErr = %v, isRO %v", wantErr, tt.isRO)
 			}
 		})
 	}
@@ -209,13 +208,12 @@ func TestIsShallowVolumeSupported(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
-			t.Log(newtt.args.req.GetVolumeContentSource().GetSnapshot())
-			t.Log(IsVolumeCreateRO(newtt.args.req.GetVolumeCapabilities()))
+		t.Run(tt.name, func(t *testing.T) {
+			t.Log(tt.args.req.GetVolumeContentSource().GetSnapshot())
+			t.Log(IsVolumeCreateRO(tt.args.req.GetVolumeCapabilities()))
 			t.Parallel()
-			if got := IsShallowVolumeSupported(newtt.args.req); got != newtt.want {
-				t.Errorf("IsShallowVolumeSupported() = %v, want %v", got, newtt.want)
+			if got := IsShallowVolumeSupported(tt.args.req); got != tt.want {
+				t.Errorf("IsShallowVolumeSupported() = %v, want %v", got, tt.want)
 			}
 		})
 	}

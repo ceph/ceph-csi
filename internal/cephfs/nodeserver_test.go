@@ -143,28 +143,27 @@ func Test_setMountOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tc := tt
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			driver := &csicommon.CSIDriver{}
-			tc.ns.DefaultNodeServer = csicommon.NewDefaultNodeServer(
+			tt.ns.DefaultNodeServer = csicommon.NewDefaultNodeServer(
 				driver, "cephfs", "", map[string]string{}, map[string]string{},
 			)
 
-			err := tc.ns.setMountOptions(tc.mnt, tc.volOptions, volCap, tmpConfPath)
+			err := tt.ns.setMountOptions(tt.mnt, tt.volOptions, volCap, tmpConfPath)
 			if err != nil {
 				t.Errorf("setMountOptions() = %v", err)
 			}
 
-			switch tc.mnt.(type) {
+			switch tt.mnt.(type) {
 			case *mounter.FuseMounter:
-				if !strings.Contains(tc.volOptions.FuseMountOptions, tc.want) {
-					t.Errorf("Set FuseMountOptions = %v Required FuseMountOptions = %v", tc.volOptions.FuseMountOptions, tc.want)
+				if !strings.Contains(tt.volOptions.FuseMountOptions, tt.want) {
+					t.Errorf("Set FuseMountOptions = %v Required FuseMountOptions = %v", tt.volOptions.FuseMountOptions, tt.want)
 				}
 			case mounter.KernelMounter:
-				if !strings.Contains(tc.volOptions.KernelMountOptions, tc.want) {
-					t.Errorf("Set KernelMountOptions = %v Required KernelMountOptions = %v", tc.volOptions.KernelMountOptions, tc.want)
+				if !strings.Contains(tt.volOptions.KernelMountOptions, tt.want) {
+					t.Errorf("Set KernelMountOptions = %v Required KernelMountOptions = %v", tt.volOptions.KernelMountOptions, tt.want)
 				}
 			}
 		})

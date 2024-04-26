@@ -104,11 +104,10 @@ func TestParseBoolOption(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tc := tt
-		val := parseBoolOption(ctx, tc.scParameters, optionName, defaultValue)
-		if val != tc.expect {
+		val := parseBoolOption(ctx, tt.scParameters, optionName, defaultValue)
+		if val != tt.expect {
 			t.Errorf("parseBoolOption(%v) returned: %t, expected: %t",
-				tc.scParameters, val, tc.expect)
+				tt.scParameters, val, tt.expect)
 		}
 	}
 }
@@ -188,15 +187,14 @@ func TestNodeServer_appendReadAffinityMapOptions(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		currentTT := tt
-		t.Run(currentTT.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			rv := &rbdVolume{
-				MapOptions: currentTT.args.mapOptions,
-				Mounter:    currentTT.args.mounter,
+				MapOptions: tt.args.mapOptions,
+				Mounter:    tt.args.mounter,
 			}
-			rv.appendReadAffinityMapOptions(currentTT.args.readAffinityMapOptions)
-			require.Equal(t, currentTT.want, rv.MapOptions)
+			rv.appendReadAffinityMapOptions(tt.args.readAffinityMapOptions)
+			require.Equal(t, tt.want, rv.MapOptions)
 		})
 	}
 }
@@ -294,10 +292,9 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tc := tt
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			crushLocationMap := util.GetCrushLocationMap(tc.CLICrushLocationLabels, nodeLabels)
+			crushLocationMap := util.GetCrushLocationMap(tt.CLICrushLocationLabels, nodeLabels)
 			cliReadAffinityMapOptions := util.ConstructReadAffinityMapOption(crushLocationMap)
 			driver := &csicommon.CSIDriver{}
 
@@ -307,13 +304,13 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 				),
 			}
 			readAffinityMapOptions, err := util.GetReadAffinityMapOptions(
-				tmpConfPath, tc.clusterID, ns.CLIReadAffinityOptions, nodeLabels,
+				tmpConfPath, tt.clusterID, ns.CLIReadAffinityOptions, nodeLabels,
 			)
 			if err != nil {
 				require.Fail(t, err.Error())
 			}
 
-			require.Equal(t, tc.want, readAffinityMapOptions)
+			require.Equal(t, tt.want, readAffinityMapOptions)
 		})
 	}
 }

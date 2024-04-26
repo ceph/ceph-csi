@@ -59,10 +59,9 @@ func TestReadAffinity_ConstructReadAffinityMapOption(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		currentTT := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Contains(t, currentTT.wantAny, ConstructReadAffinityMapOption(currentTT.crushLocationmap))
+			require.Contains(t, tt.wantAny, ConstructReadAffinityMapOption(tt.crushLocationmap))
 		})
 	}
 }
