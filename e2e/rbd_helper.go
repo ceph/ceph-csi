@@ -377,7 +377,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 	// create snapshot
 	wg.Add(totalCount)
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
@@ -416,7 +416,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
 	// create multiple PVCs from same snapshot
 	wg.Add(totalCount)
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
@@ -440,7 +440,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	}
 	wg.Add(totalCount)
 	// delete clone and app
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
@@ -464,7 +464,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 
 	wg.Add(totalCount)
 	// delete snapshot
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = deleteSnapshot(&s, deployTimeout)

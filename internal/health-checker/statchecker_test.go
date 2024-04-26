@@ -41,11 +41,11 @@ func TestStatChecker(t *testing.T) {
 		t.Error("checker failed to start")
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		// check health, should be healthy
 		healthy, msg := checker.isHealthy()
 		if !healthy || msg != nil {
-			t.Error("volume is unhealthy")
+			t.Errorf("volume is unhealthy after %d tries", i+1)
 		}
 
 		time.Sleep(time.Second)

@@ -244,7 +244,7 @@ func TestRTRemove(t *testing.T) {
 			"ref3": reftype.Normal,
 		}
 
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			created, err := Add(ioctx, rtName, refsToAdd)
 			require.NoError(ts, err)
 			require.True(ts, created)
