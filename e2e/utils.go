@@ -927,7 +927,7 @@ func validatePVCClone(
 	appClone.Namespace = f.UniqueName
 	wg.Add(totalCount)
 	// create clone and bind it to an app
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			label := make(map[string]string)
@@ -1020,7 +1020,7 @@ func validatePVCClone(
 	validateRBDImageCount(f, totalCloneCount, defaultRBDPool)
 	wg.Add(totalCount)
 	// delete clone and app
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
@@ -1131,7 +1131,7 @@ func validatePVCSnapshot(
 
 	wg.Add(totalCount)
 	// create snapshot
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
@@ -1189,7 +1189,7 @@ func validatePVCSnapshot(
 
 	// create multiple PVC from same snapshot
 	wg.Add(totalCount)
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			label := make(map[string]string)
@@ -1267,7 +1267,7 @@ func validatePVCSnapshot(
 	validateRBDImageCount(f, totalCloneCount, defaultRBDPool)
 	wg.Add(totalCount)
 	// delete clone and app
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
@@ -1294,7 +1294,7 @@ func validatePVCSnapshot(
 	// create clones from different snapshots and bind it to an
 	// app
 	wg.Add(totalCount)
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
@@ -1334,7 +1334,7 @@ func validatePVCSnapshot(
 	validateRBDImageCount(f, totalSnapCount, defaultRBDPool)
 	wg.Add(totalCount)
 	// delete snapshot
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			content := &snapapi.VolumeSnapshotContent{}
@@ -1388,7 +1388,7 @@ func validatePVCSnapshot(
 	validateRBDImageCount(f, totalCount, defaultRBDPool)
 	wg.Add(totalCount)
 	// delete clone and app
-	for i := 0; i < totalCount; i++ {
+	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
@@ -1814,7 +1814,7 @@ func checkExports(f *framework.Framework, clusterID, clientString string) bool {
 	}
 
 	found := false
-	for i := 0; i < len(*exportList); i++ {
+	for i := range len(*exportList) {
 		export := (*exportList)[i]
 		for _, client := range export.Clients {
 			for _, address := range client.Addresses {

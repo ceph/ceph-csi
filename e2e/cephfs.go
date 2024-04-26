@@ -874,7 +874,7 @@ var _ = Describe(cephfsType, func() {
 				}
 				app.Namespace = f.UniqueName
 				// create PVC and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					err = createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
@@ -889,7 +889,7 @@ var _ = Describe(cephfsType, func() {
 				validateSubvolumeCount(f, totalCount, fileSystemName, subvolumegroup)
 				validateOmapCount(f, totalCount, cephfsType, metadataPool, volumesType)
 				// delete PVC and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					err = deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
@@ -1452,7 +1452,7 @@ var _ = Describe(cephfsType, func() {
 				snap.Namespace = f.UniqueName
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 				// create snapshot
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, s snapapi.VolumeSnapshot) {
 						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 						wgErrs[n] = createSnapshot(&s, deployTimeout)
@@ -1488,7 +1488,7 @@ var _ = Describe(cephfsType, func() {
 
 				// create multiple PVC from same snapshot
 				wg.Add(totalCount)
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 						name := fmt.Sprintf("%s%d", f.UniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
@@ -1520,7 +1520,7 @@ var _ = Describe(cephfsType, func() {
 
 				wg.Add(totalCount)
 				// delete clone and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 						name := fmt.Sprintf("%s%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
@@ -1548,7 +1548,7 @@ var _ = Describe(cephfsType, func() {
 				// create clones from different snapshots and bind it to an
 				// app
 				wg.Add(totalCount)
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 						name := fmt.Sprintf("%s%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
@@ -1581,7 +1581,7 @@ var _ = Describe(cephfsType, func() {
 
 				wg.Add(totalCount)
 				// delete snapshot
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, s snapapi.VolumeSnapshot) {
 						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 						wgErrs[n] = deleteSnapshot(&s, deployTimeout)
@@ -1605,7 +1605,7 @@ var _ = Describe(cephfsType, func() {
 
 				wg.Add(totalCount)
 				// delete clone and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 						name := fmt.Sprintf("%s%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
@@ -2308,7 +2308,7 @@ var _ = Describe(cephfsType, func() {
 				appClone.Namespace = f.UniqueName
 				wg.Add(totalCount)
 				// create clone and bind it to an app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 						name := fmt.Sprintf("%s%d", f.UniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
@@ -2340,7 +2340,7 @@ var _ = Describe(cephfsType, func() {
 
 				wg.Add(totalCount)
 				// delete clone and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 						name := fmt.Sprintf("%s%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name

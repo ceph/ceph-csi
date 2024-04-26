@@ -2721,7 +2721,7 @@ var _ = Describe("RBD", func() {
 				}
 				app.Namespace = f.UniqueName
 				// create PVC and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					err := createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
@@ -2733,7 +2733,7 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, totalCount, defaultRBDPool)
 				validateOmapCount(f, totalCount, rbdType, defaultRBDPool, volumesType)
 				// delete PVC and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					err := deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
@@ -3316,7 +3316,7 @@ var _ = Describe("RBD", func() {
 				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 
 				// create PVC and app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					label := map[string]string{
 						"app": name,
@@ -3329,7 +3329,7 @@ var _ = Describe("RBD", func() {
 					}
 				}
 
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					opt := metav1.ListOptions{
 						LabelSelector: "app=" + name,
@@ -3348,7 +3348,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				// delete app
-				for i := 0; i < totalCount; i++ {
+				for i := range totalCount {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
 					appClone.Name = name
 					err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
@@ -3552,7 +3552,7 @@ var _ = Describe("RBD", func() {
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1, defaultRBDPool)
 					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-					for i := 0; i < snapChainDepth; i++ {
+					for i := range snapChainDepth {
 						var pvcClone, smartClonePVC *v1.PersistentVolumeClaim
 						snap := getSnapshot(snapshotPath)
 						snap.Name = fmt.Sprintf("%s-%d", snap.Name, i)
@@ -3722,7 +3722,7 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 1, defaultRBDPool)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
-				for i := 0; i < cloneChainDepth; i++ {
+				for i := range cloneChainDepth {
 					var pvcClone *v1.PersistentVolumeClaim
 					pvcClone, err = loadPVC(pvcSmartClonePath)
 					if err != nil {

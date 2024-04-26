@@ -249,7 +249,7 @@ func TestStrategicActionOnLogFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	var logFile [3]string
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		f, err := os.CreateTemp(tmpDir, "rbd-*.log")
 		if err != nil {
 			t.Errorf("creating tempfile failed: %v", err)

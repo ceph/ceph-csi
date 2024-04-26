@@ -41,7 +41,7 @@ func TestFileChecker(t *testing.T) {
 		t.Error("checker failed to start")
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		// check health, should be healthy
 		healthy, msg := checker.isHealthy()
 		if !healthy || msg != nil {

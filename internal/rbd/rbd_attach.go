@@ -210,7 +210,7 @@ func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, 
 
 // Stat a path, if it doesn't exist, retry maxRetries times.
 func waitForPath(ctx context.Context, pool, namespace, image string, maxRetries int, useNbdDriver bool) (string, bool) {
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		if i != 0 {
 			time.Sleep(time.Second)
 		}
