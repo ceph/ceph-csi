@@ -77,11 +77,10 @@ func TestValidateStriping(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if err := validateStriping(ts.parameters); (err != nil) != ts.wantErr {
-				t.Errorf("validateStriping() error = %v, wantErr %v", err, ts.wantErr)
+			if err := validateStriping(tt.parameters); (err != nil) != tt.wantErr {
+				t.Errorf("validateStriping() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -514,8 +514,6 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				for kmsID, kmsConf := range kmsToTest {
-					kmsID := kmsID
-					kmsConf := kmsConf
 					By("create a storageclass with pool and an encrypted PVC then bind it to an app with "+kmsID, func() {
 						scOpts := map[string]string{
 							"encrypted":       "true",
@@ -1649,7 +1647,6 @@ var _ = Describe(cephfsType, func() {
 
 			if testCephFSFscrypt {
 				for _, kmsID := range []string{"secrets-metadata-test", "vault-test"} {
-					kmsID := kmsID
 					By("checking encrypted snapshot-backed volume with KMS "+kmsID, func() {
 						err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {
@@ -2234,8 +2231,6 @@ var _ = Describe(cephfsType, func() {
 					"vault-test":            vaultKMS,
 				}
 				for kmsID, kmsConf := range kmsToTest {
-					kmsID := kmsID
-					kmsConf := kmsConf
 					By("create an encrypted PVC-PVC clone and bind it to an app with "+kmsID, func() {
 						err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {

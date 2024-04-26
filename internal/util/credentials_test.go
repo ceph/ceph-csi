@@ -39,11 +39,10 @@ func TestIsMigrationSecret(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := isMigrationSecret(newtt.vc); got != newtt.want {
-				t.Errorf("isMigrationSecret() = %v, want %v", got, newtt.want)
+			if got := isMigrationSecret(tt.vc); got != tt.want {
+				t.Errorf("isMigrationSecret() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -83,17 +82,16 @@ func TestParseAndSetSecretMapFromMigSecret(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := ParseAndSetSecretMapFromMigSecret(newtt.secretmap)
-			if (err != nil) != newtt.wantErr {
-				t.Errorf("ParseAndSetSecretMapFromMigSecret() error = %v, wantErr %v", err, newtt.wantErr)
+			got, err := ParseAndSetSecretMapFromMigSecret(tt.secretmap)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseAndSetSecretMapFromMigSecret() error = %v, wantErr %v", err, tt.wantErr)
 
 				return
 			}
-			if !reflect.DeepEqual(got, newtt.want) {
-				t.Errorf("ParseAndSetSecretMapFromMigSecret() got = %v, want %v", got, newtt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseAndSetSecretMapFromMigSecret() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

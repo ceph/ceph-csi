@@ -106,13 +106,12 @@ func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T)
 		},
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := cs.validateCreateVolumeGroupSnapshotRequest(ts.args.ctx, ts.args.req)
-			if ts.wantErr {
+			err := cs.validateCreateVolumeGroupSnapshotRequest(tt.args.ctx, tt.args.req)
+			if tt.wantErr {
 				c := status.Code(err)
-				if c != ts.code {
+				if c != tt.code {
 					t.Errorf("ControllerServer.validateVolumeGroupSnapshotRequest() error = %v, want code %v", err, c)
 				}
 			}

@@ -299,12 +299,11 @@ func TestIsFileRWO(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			rwoFile := IsFileRWO(newtt.caps)
-			if rwoFile != newtt.rwoFile {
-				t.Errorf("IsFileRWO() rwofile = %v, want %v", rwoFile, newtt.rwoFile)
+			rwoFile := IsFileRWO(tt.caps)
+			if rwoFile != tt.rwoFile {
+				t.Errorf("IsFileRWO() rwofile = %v, want %v", rwoFile, tt.rwoFile)
 			}
 		})
 	}
@@ -482,15 +481,14 @@ func TestIsBlockMultiWriter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			multiWriter, block := IsBlockMultiWriter(newtt.caps)
-			if multiWriter != newtt.multiWriter {
-				t.Errorf("IsBlockMultiWriter() multiWriter = %v, want %v", multiWriter, newtt.multiWriter)
+			multiWriter, block := IsBlockMultiWriter(tt.caps)
+			if multiWriter != tt.multiWriter {
+				t.Errorf("IsBlockMultiWriter() multiWriter = %v, want %v", multiWriter, tt.multiWriter)
 			}
-			if block != newtt.block {
-				t.Errorf("IsBlockMultiWriter block = %v, want %v", block, newtt.block)
+			if block != tt.block {
+				t.Errorf("IsBlockMultiWriter block = %v, want %v", block, tt.block)
 			}
 		})
 	}
@@ -615,12 +613,11 @@ func TestIsReaderOnly(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			roOnly := IsReaderOnly(newtt.caps)
-			if roOnly != newtt.roOnly {
-				t.Errorf("isReadOnly() roOnly = %v, want %v", roOnly, newtt.roOnly)
+			roOnly := IsReaderOnly(tt.caps)
+			if roOnly != tt.roOnly {
+				t.Errorf("isReadOnly() roOnly = %v, want %v", roOnly, tt.roOnly)
 			}
 		})
 	}

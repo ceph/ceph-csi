@@ -50,12 +50,11 @@ func TestRemoveCSIPrefixedParameters(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := RemoveCSIPrefixedParameters(ts.param)
-			if !reflect.DeepEqual(got, ts.want) {
-				t.Errorf("RemoveCSIPrefixedParameters() = %v, want %v", got, ts.want)
+			got := RemoveCSIPrefixedParameters(tt.param)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RemoveCSIPrefixedParameters() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -84,11 +83,10 @@ func TestGetOwner(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := GetOwner(ts.args); got != ts.want {
-				t.Errorf("GetOwner() = %v, want %v", got, ts.want)
+			if got := GetOwner(tt.args); got != tt.want {
+				t.Errorf("GetOwner() = %v, want %v", got, tt.want)
 			}
 		})
 	}

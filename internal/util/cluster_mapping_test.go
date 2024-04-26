@@ -138,23 +138,21 @@ func TestGetClusterMappingInfo(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		currentI := i
-		currentTT := tt
-		t.Run(currentTT.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			mappingConfigFile := fmt.Sprintf("%s/mapping-%d.json", mappingBasePath, currentI)
-			if len(currentTT.mappingFilecontent) != 0 {
-				err = os.WriteFile(mappingConfigFile, currentTT.mappingFilecontent, 0o600)
+			mappingConfigFile := fmt.Sprintf("%s/mapping-%d.json", mappingBasePath, i)
+			if len(tt.mappingFilecontent) != 0 {
+				err = os.WriteFile(mappingConfigFile, tt.mappingFilecontent, 0o600)
 				if err != nil {
 					t.Errorf("failed to write to %q, error = %v", mappingConfigFile, err)
 				}
 			}
-			data, mErr := getClusterMappingInfo(currentTT.clusterID, mappingConfigFile)
-			if (mErr != nil) != currentTT.expectErr {
-				t.Errorf("getClusterMappingInfo() error = %v, expected Error %v", mErr, currentTT.expectErr)
+			data, mErr := getClusterMappingInfo(tt.clusterID, mappingConfigFile)
+			if (mErr != nil) != tt.expectErr {
+				t.Errorf("getClusterMappingInfo() error = %v, expected Error %v", mErr, tt.expectErr)
 			}
-			if !reflect.DeepEqual(data, currentTT.expectedData) {
-				t.Errorf("getClusterMappingInfo() = %v, expected data %v", data, currentTT.expectedData)
+			if !reflect.DeepEqual(data, tt.expectedData) {
+				t.Errorf("getClusterMappingInfo() = %v, expected data %v", data, tt.expectedData)
 			}
 		})
 	}
@@ -285,7 +283,6 @@ func TestGetMappedID(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			val := GetMappedID(tt.args.key, tt.args.value, tt.args.id)
@@ -407,7 +404,6 @@ func TestFetchMappedClusterIDAndMons(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, got1, err := fetchMappedClusterIDAndMons(ctx, tt.args.clusterID, clusterMappingConfigFile, csiConfigFile)

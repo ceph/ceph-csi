@@ -199,17 +199,16 @@ func TestGetRBDNetNamespaceFilePath(t *testing.T) {
 		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := GetRBDNetNamespaceFilePath(tmpConfPath, ts.clusterID)
+			got, err := GetRBDNetNamespaceFilePath(tmpConfPath, tt.clusterID)
 			if err != nil {
 				t.Errorf("GetRBDNetNamespaceFilePath() error = %v", err)
 
 				return
 			}
-			if got != ts.want {
-				t.Errorf("GetRBDNetNamespaceFilePath() = %v, want %v", got, ts.want)
+			if got != tt.want {
+				t.Errorf("GetRBDNetNamespaceFilePath() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -269,17 +268,16 @@ func TestGetCephFSNetNamespaceFilePath(t *testing.T) {
 		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := GetCephFSNetNamespaceFilePath(tmpConfPath, ts.clusterID)
+			got, err := GetCephFSNetNamespaceFilePath(tmpConfPath, tt.clusterID)
 			if err != nil {
 				t.Errorf("GetCephFSNetNamespaceFilePath() error = %v", err)
 
 				return
 			}
-			if got != ts.want {
-				t.Errorf("GetCephFSNetNamespaceFilePath() = %v, want %v", got, ts.want)
+			if got != tt.want {
+				t.Errorf("GetCephFSNetNamespaceFilePath() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -339,17 +337,16 @@ func TestGetNFSNetNamespaceFilePath(t *testing.T) {
 		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := GetNFSNetNamespaceFilePath(tmpConfPath, ts.clusterID)
+			got, err := GetNFSNetNamespaceFilePath(tmpConfPath, tt.clusterID)
 			if err != nil {
 				t.Errorf("GetNFSNetNamespaceFilePath() error = %v", err)
 
 				return
 			}
-			if got != ts.want {
-				t.Errorf("GetNFSNetNamespaceFilePath() = %v, want %v", got, ts.want)
+			if got != tt.want {
+				t.Errorf("GetNFSNetNamespaceFilePath() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -443,17 +440,16 @@ func TestGetReadAffinityOptions(t *testing.T) {
 		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
 	}
 	for _, tt := range tests {
-		tc := tt
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			enabled, labels, err := GetCrushLocationLabels(tmpConfPath, tc.clusterID)
+			enabled, labels, err := GetCrushLocationLabels(tmpConfPath, tt.clusterID)
 			if err != nil {
 				t.Errorf("GetCrushLocationLabels() error = %v", err)
 
 				return
 			}
-			if enabled != tc.want.enabled || labels != tc.want.labels {
-				t.Errorf("GetCrushLocationLabels() = {%v %v} want %v", enabled, labels, tc.want)
+			if enabled != tt.want.enabled || labels != tt.want.labels {
+				t.Errorf("GetCrushLocationLabels() = {%v %v} want %v", enabled, labels, tt.want)
 			}
 		})
 	}
@@ -518,16 +514,15 @@ func TestGetCephFSMountOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tc := tt
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			kernelMntOptions, fuseMntOptions, err := GetCephFSMountOptions(tmpConfPath, tc.clusterID)
+			kernelMntOptions, fuseMntOptions, err := GetCephFSMountOptions(tmpConfPath, tt.clusterID)
 			if err != nil {
 				t.Errorf("GetCephFSMountOptions() error = %v", err)
 			}
-			if kernelMntOptions != tc.wantKernelMntOptions || fuseMntOptions != tc.wantFuseMntOptions {
+			if kernelMntOptions != tt.wantKernelMntOptions || fuseMntOptions != tt.wantFuseMntOptions {
 				t.Errorf("GetCephFSMountOptions() = (%v, %v), want (%v, %v)",
-					kernelMntOptions, fuseMntOptions, tc.wantKernelMntOptions, tc.wantFuseMntOptions,
+					kernelMntOptions, fuseMntOptions, tt.wantKernelMntOptions, tt.wantFuseMntOptions,
 				)
 			}
 		})
@@ -588,18 +583,17 @@ func TestGetRBDMirrorDaemonCount(t *testing.T) {
 		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
 	}
 	for _, tt := range tests {
-		ts := tt
-		t.Run(ts.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var got int
-			got, err = GetRBDMirrorDaemonCount(tmpConfPath, ts.clusterID)
+			got, err = GetRBDMirrorDaemonCount(tmpConfPath, tt.clusterID)
 			if err != nil {
 				t.Errorf("GetRBDMirrorDaemonCount() error = %v", err)
 
 				return
 			}
-			if got != ts.want {
-				t.Errorf("GetRBDMirrorDaemonCount() = %v, want %v", got, ts.want)
+			if got != tt.want {
+				t.Errorf("GetRBDMirrorDaemonCount() = %v, want %v", got, tt.want)
 			}
 		})
 	}

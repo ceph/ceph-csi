@@ -64,25 +64,24 @@ func TestExecCommandWithTimeout(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		newtt := tt
-		t.Run(newtt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			stdout, _, err := ExecCommandWithTimeout(newtt.args.ctx,
-				newtt.args.timeout,
-				newtt.args.program,
-				newtt.args.args...)
-			if (err != nil) != newtt.wantErr {
-				t.Errorf("ExecCommandWithTimeout() error = %v, wantErr %v", err, newtt.wantErr)
+			stdout, _, err := ExecCommandWithTimeout(tt.args.ctx,
+				tt.args.timeout,
+				tt.args.program,
+				tt.args.args...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ExecCommandWithTimeout() error = %v, wantErr %v", err, tt.wantErr)
 
 				return
 			}
 
-			if newtt.wantErr && !errors.Is(err, newtt.expectedErr) {
-				t.Errorf("ExecCommandWithTimeout() error expected got = %v, want %v", err, newtt.expectedErr)
+			if tt.wantErr && !errors.Is(err, tt.expectedErr) {
+				t.Errorf("ExecCommandWithTimeout() error expected got = %v, want %v", err, tt.expectedErr)
 			}
 
-			if stdout != newtt.stdout {
-				t.Errorf("ExecCommandWithTimeout() got = %v, want %v", stdout, newtt.stdout)
+			if stdout != tt.stdout {
+				t.Errorf("ExecCommandWithTimeout() got = %v, want %v", stdout, tt.stdout)
 			}
 		})
 	}
