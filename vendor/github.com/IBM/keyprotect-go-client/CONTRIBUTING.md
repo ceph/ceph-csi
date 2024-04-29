@@ -11,6 +11,10 @@ please open a [Github Issue](https://github.com/IBM/keyprotect-go-client/issues)
 
 For your pull request to be merged, it must meet the criteria of a "correct patch", and also
 be fully reviewed and approved by two Maintainer level contributors.
+The PR should be named with the proper prefix to satisfy the semantic release. 
+- `fix(build):` for patch version bump (0.0.x)
+- `feat(build):` for minor version bump (0.x.0)
+- `perf(build):` for major version bump (x.0.0)
 
 A correct patch is defined as the following:
 
