@@ -27,10 +27,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/cloud-provider/volume/helpers"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2edebug "k8s.io/kubernetes/test/e2e/framework/debug"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
@@ -1981,6 +1983,214 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					framework.Failf("failed to create storageclass: %v", err)
 				}
+			})
+
+			By("create/resize/clone/restore a encrypted block pvc and verify the image size", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{"encrypted": "true", "encryptionType": util.EncryptionTypeBlock.String()},
+					deletePolicy)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
+
+				err = createRBDSnapshotClass(f)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
+					if err != nil {
+						framework.Failf("failed to delete VolumeSnapshotClass: %v", err)
+					}
+				}()
+
+				var (
+					imageSize       uint64
+					resizeImageSize uint64
+					sizeInBytes     int64
+				)
+
+				//nolint:goconst // The string "1Gi" is used multiple times in rbd.go, so it's not a const value.
+				pvcSize := "1Gi"
+				if sizeInBytes, err = helpers.RoundUpToB(resource.MustParse(pvcSize)); err != nil {
+					framework.Failf("failed to parse pvc size: %v", err)
+				}
+				imageSize = uint64(sizeInBytes) + util.Luks2HeaderSize
+
+				pvc, err := loadPVC(rawPvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+
+				app, err := loadApp(rawAppPath)
+				if err != nil {
+					framework.Failf("failed to load application: %v", err)
+				}
+				labelKey := "app"
+				labelValue := "rbd-pod-block-encrypted"
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", labelKey, labelValue),
+				}
+
+				app.Labels = map[string]string{labelKey: labelValue}
+				app.Namespace = f.UniqueName
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC and application: %v", err)
+				}
+
+				// validate created backend rbd images
+				err = validateImageSize(f, pvc, imageSize)
+				if err != nil {
+					framework.Failf("failed to validate image size: %v", err)
+				}
+				err = checkDeviceSize(app, f, &opt, pvcSize)
+				if err != nil {
+					framework.Failf("failed to validate device size: %v", err)
+				}
+
+				// create clone PVC and validate the image size
+				labelValueClonePod := "rbd-pod-block-encrypted-clone"
+				optClonePod := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", labelKey, labelValueClonePod),
+				}
+
+				pvcClone, err := loadPVC(pvcBlockSmartClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvcClone.Spec.DataSource.Name = pvc.Name
+				pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+				pvcClone.Namespace = f.UniqueName
+
+				appClone, err := loadApp(appBlockSmartClonePath)
+				if err != nil {
+					framework.Failf("failed to load application: %v", err)
+				}
+				appClone.Namespace = f.UniqueName
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+				appClone.Labels = map[string]string{labelKey: labelValueClonePod}
+
+				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create clone PVC and application : %v", err)
+				}
+
+				err = validateImageSize(f, pvcClone, imageSize)
+				if err != nil {
+					framework.Failf("failed to validate image size: %v", err)
+				}
+				err = checkDeviceSize(appClone, f, &optClonePod, pvcSize)
+				if err != nil {
+					framework.Failf("failed to validate device size: %v", err)
+				}
+
+				// create snapshot and restore PVC and validate the image size
+				labelValueRestorePod := "rbd-pod-block-encrypted-restore"
+				optRestorePod := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", labelKey, labelValueRestorePod),
+				}
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create snapshot: %v", err)
+				}
+
+				pvcRestore, err := loadPVC(pvcBlockRestorePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvcRestore.Spec.DataSource.Name = snap.Name
+				pvcRestore.Spec.VolumeMode = pvc.Spec.VolumeMode
+				pvcRestore.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+				pvcRestore.Namespace = f.UniqueName
+
+				appRestore, err := loadApp(appBlockRestorePath)
+				if err != nil {
+					framework.Failf("failed to load application: %v", err)
+				}
+				appRestore.Namespace = f.UniqueName
+				appRestore.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcRestore.Name
+				appRestore.Labels = map[string]string{labelKey: labelValueRestorePod}
+
+				err = createPVCAndApp("", f, pvcRestore, appRestore, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create clone PVC and application : %v", err)
+				}
+
+				err = validateImageSize(f, pvcRestore, imageSize)
+				if err != nil {
+					framework.Failf("failed to validate image size: %v", err)
+				}
+				err = checkDeviceSize(appRestore, f, &optRestorePod, pvcSize)
+				if err != nil {
+					framework.Failf("failed to validate device size: %v", err)
+				}
+
+				// resize PVC and validate the image size
+				resizePVCSize := "2Gi"
+				if sizeInBytes, err = helpers.RoundUpToB(resource.MustParse(resizePVCSize)); err != nil {
+					framework.Failf("failed to parse resize pvc size: %v", err)
+				}
+				resizeImageSize = uint64(sizeInBytes) + util.Luks2HeaderSize
+
+				err = expandPVCSize(f.ClientSet, pvc, resizePVCSize, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to expand pvc size: %v", err)
+				}
+				// wait for application pod to come up after resize
+				err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout, noError)
+				if err != nil {
+					framework.Failf("timeout waiting for pod to be in running state: %v", err)
+				}
+
+				err = validateImageSize(f, pvc, resizeImageSize)
+				if err != nil {
+					framework.Failf("failed to validate image size after resize: %v", err)
+				}
+				err = checkDeviceSize(app, f, &opt, resizePVCSize)
+				if err != nil {
+					framework.Failf("failed to validate device size after resize: %v", err)
+				}
+
+				// delete resources
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					framework.Failf("failed to delete pvc and app: %v", err)
+				}
+				err = deletePVCAndApp("", f, pvcClone, appClone)
+				if err != nil {
+					framework.Failf("failed to delete clone pvc and app: %v", err)
+				}
+				err = deletePVCAndApp("", f, pvcRestore, appRestore)
+				if err != nil {
+					framework.Failf("failed to delete clone pvc and app: %v", err)
+				}
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete snapshot: %v", err)
+				}
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 			})
 
 			ByFileAndBlockEncryption("create a PVC and bind it to an app using rbd-nbd mounter with encryption", func(
