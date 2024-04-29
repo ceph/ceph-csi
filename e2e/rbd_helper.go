@@ -1089,6 +1089,7 @@ type imageInfo struct {
 	StripeUnit  int    `json:"stripe_unit"`
 	StripeCount int    `json:"stripe_count"`
 	ObjectSize  int    `json:"object_size"`
+	Size        uint64 `json:"size"`
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -1162,6 +1163,31 @@ func validateStripe(f *framework.Framework,
 
 	if imgInfo.StripeCount != stripeCount {
 		return fmt.Errorf("stripeCount %d does not match expected %d", imgInfo.StripeCount, stripeCount)
+	}
+
+	return nil
+}
+
+// validateImageSize validates the size of the image.
+func validateImageSize(f *framework.Framework, pvc *v1.PersistentVolumeClaim, imageSize uint64) error {
+	var imgInfo imageInfo
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	imgInfoStr, err := getImageInfo(f, imageData.imageName, defaultRBDPool)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal([]byte(imgInfoStr), &imgInfo)
+	if err != nil {
+		return fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, imgInfoStr)
+	}
+
+	if imgInfo.Size != imageSize {
+		return fmt.Errorf("image %s size %d does not match expected %d", imgInfo.Name, imgInfo.Size, imageSize)
 	}
 
 	return nil
