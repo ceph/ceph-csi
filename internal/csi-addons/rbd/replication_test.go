@@ -261,12 +261,12 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name      string
-		args      librbd.GlobalMirrorImageStatus
+		args      *librbd.GlobalMirrorImageStatus
 		wantReady bool
 	}{
 		{
 			name: "Test a single peer in sync",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{
 					{
 						MirrorUUID: "remote",
@@ -279,7 +279,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test a single peer in sync, including a local instance",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{
 					{
 						MirrorUUID: "remote",
@@ -297,7 +297,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test a multiple peers in sync",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{
 					{
 						MirrorUUID: "remote1",
@@ -315,14 +315,14 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test no remote peers",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{},
 			},
 			wantReady: false,
 		},
 		{
 			name: "Test single peer not in sync",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{
 					{
 						MirrorUUID: "remote",
@@ -335,7 +335,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test single peer not up",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{
 					{
 						MirrorUUID: "remote",
@@ -348,7 +348,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test multiple peers, when first peer is not in sync",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{
 					{
 						MirrorUUID: "remote1",
@@ -366,7 +366,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test multiple peers, when second peer is not up",
-			args: librbd.GlobalMirrorImageStatus{
+			args: &librbd.GlobalMirrorImageStatus{
 				SiteStatuses: []librbd.SiteMirrorImageStatus{
 					{
 						MirrorUUID: "remote1",
@@ -386,7 +386,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if ready := checkRemoteSiteStatus(context.TODO(), &tt.args); ready != tt.wantReady {
+			if ready := checkRemoteSiteStatus(context.TODO(), tt.args); ready != tt.wantReady {
 				t.Errorf("checkRemoteSiteStatus() ready = %v, expect ready = %v", ready, tt.wantReady)
 			}
 		})
