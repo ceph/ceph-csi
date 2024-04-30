@@ -297,12 +297,12 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			int(time.Since(start).Seconds()))
 		pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(ctx, name, metav1.GetOptions{})
 		if err == nil {
-			framework.Logf("PVC %s (status: %s) has not been deleted yet, rechecking...", name, pvc.Status)
+			framework.Logf("PVC %s (status: %v) has not been deleted yet, rechecking...", name, pvc.Status)
 
 			return false, nil
 		}
 		if isRetryableAPIError(err) {
-			framework.Logf("failed to verify deletion of PVC %s (status: %s): %v", name, pvc.Status, err)
+			framework.Logf("failed to verify deletion of PVC %s (status: %v): %v", name, pvc.Status, err)
 
 			return false, nil
 		}
@@ -313,12 +313,12 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		// Examine the pv.ClaimRef and UID. Expect nil values.
 		oldPV, err := c.CoreV1().PersistentVolumes().Get(ctx, pv.Name, metav1.GetOptions{})
 		if err == nil {
-			framework.Logf("PV %s (status: %s) has not been deleted yet, rechecking...", pv.Name, oldPV.Status)
+			framework.Logf("PV %s (status: %v) has not been deleted yet, rechecking...", pv.Name, oldPV.Status)
 
 			return false, nil
 		}
 		if isRetryableAPIError(err) {
-			framework.Logf("failed to verify deletion of PV %s (status: %s): %v", pv.Name, oldPV.Status, err)
+			framework.Logf("failed to verify deletion of PV %s (status: %v): %v", pv.Name, oldPV.Status, err)
 
 			return false, nil
 		}
@@ -445,12 +445,12 @@ func waitForPVCToBeDeleted(c kubernetes.Interface, namespace, pvcName string, t 
 			pvc.Status.String(),
 			int(time.Since(start).Seconds()))
 		if err == nil {
-			framework.Logf("PVC %s (status: %s) has not been deleted yet, rechecking...", pvcName, pvc.Status)
+			framework.Logf("PVC %s (status: %v) has not been deleted yet, rechecking...", pvcName, pvc.Status)
 
 			return false, nil
 		}
 		if isRetryableAPIError(err) {
-			framework.Logf("failed to verify deletion of PVC %s (status: %s): %v", pvcName, pvc.Status, err)
+			framework.Logf("failed to verify deletion of PVC %s (status: %v): %v", pvcName, pvc.Status, err)
 
 			return false, nil
 		}
