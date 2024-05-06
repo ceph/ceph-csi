@@ -212,8 +212,10 @@ func (ns *NodeServer) NodeStageVolume(
 
 	// Check if the volume is already mounted
 
-	if err = ns.tryRestoreFuseMountInNodeStage(ctx, mnt, stagingTargetPath); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
+	if _, ok := mnt.(*mounter.FuseMounter); ok {
+		if err = ns.tryRestoreFuseMountInNodeStage(ctx, stagingTargetPath); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
+		}
 	}
 
 	isMnt, err := util.IsMountPoint(ns.Mounter, stagingTargetPath)
@@ -446,23 +448,37 @@ func (ns *NodeServer) NodePublishVolume(
 	targetPath := req.GetTargetPath()
 	volID := fsutil.VolumeID(req.GetVolumeId())
 
+	volOptions := &store.VolumeOptions{}
+	defer volOptions.Destroy()
+
+	if err := volOptions.DetectMounter(req.GetVolumeContext()); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to detect mounter for volume %s: %v", volID, err.Error())
+	}
+
+	volMounter, err := mounter.New(volOptions)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create mounter for volume %s: %v", volID, err.Error())
+	}
+
 	// Considering kubelet make sure the stage and publish operations
 	// are serialized, we dont need any extra locking in nodePublish
 
-	if err := util.CreateMountPoint(targetPath); err != nil {
+	if err = util.CreateMountPoint(targetPath); err != nil {
 		log.ErrorLog(ctx, "failed to create mount point at %s: %v", targetPath, err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := ns.tryRestoreFuseMountsInNodePublish(
-		ctx,
-		volID,
-		stagingTargetPath,
-		targetPath,
-		req.GetVolumeContext(),
-	); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
+	if _, ok := volMounter.(*mounter.FuseMounter); ok {
+		if err = ns.tryRestoreFuseMountsInNodePublish(
+			ctx,
+			volID,
+			stagingTargetPath,
+			targetPath,
+			req.GetVolumeContext(),
+		); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
+		}
 	}
 
 	if req.GetReadonly() {

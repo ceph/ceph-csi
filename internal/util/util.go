@@ -340,12 +340,6 @@ func IsCorruptedMountError(err error) bool {
 	return mount.IsCorruptedMnt(err)
 }
 
-// ReadMountInfoForProc reads /proc/<PID>/mountpoint and marshals it into
-// MountInfo structs.
-func ReadMountInfoForProc(proc string) ([]mount.MountInfo, error) {
-	return mount.ParseMountInfo(fmt.Sprintf("/proc/%s/mountinfo", proc))
-}
-
 // Mount mounts the source to target path.
 func Mount(mounter mount.Interface, source, target, fstype string, options []string) error {
 	return mounter.MountSensitiveWithoutSystemd(source, target, fstype, options, nil)

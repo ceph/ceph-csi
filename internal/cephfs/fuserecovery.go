@@ -24,8 +24,6 @@ import (
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	mountutil "k8s.io/mount-utils"
 )
 
 type (
@@ -37,9 +35,6 @@ const (
 	msNotMounted
 	msMounted
 	msCorrupted
-
-	// ceph-fuse fsType in /proc/<PID>/mountinfo.
-	cephFuseFsType = "fuse.ceph-fuse"
 )
 
 func (ms mountState) String() string {
@@ -66,30 +61,6 @@ func (ns *NodeServer) getMountState(path string) (mountState, error) {
 	}
 
 	return msNotMounted, nil
-}
-
-func findMountinfo(mountpoint string, minfo []mountutil.MountInfo) int {
-	for i := range minfo {
-		if minfo[i].MountPoint == mountpoint {
-			return i
-		}
-	}
-
-	return -1
-}
-
-// Ensures that given mountpoint is of specified fstype.
-// Returns true if fstype matches, or if no such mountpoint exists.
-func validateFsType(mountpoint, fsType string, minfo []mountutil.MountInfo) bool {
-	if idx := findMountinfo(mountpoint, minfo); idx > 0 {
-		mi := minfo[idx]
-
-		if mi.FsType != fsType {
-			return false
-		}
-	}
-
-	return true
 }
 
 // tryRestoreFuseMountsInNodePublish tries to restore staging and publish
@@ -158,19 +129,6 @@ func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
 		volOptions *store.VolumeOptions
 	)
 
-	procMountInfo, err := util.ReadMountInfoForProc("self")
-	if err != nil {
-		return err
-	}
-
-	if !validateFsType(stagingTargetPath, cephFuseFsType, procMountInfo) ||
-		!validateFsType(targetPath, cephFuseFsType, procMountInfo) {
-		// We can't restore mounts not managed by ceph-fuse.
-		log.WarningLog(ctx, "cephfs: cannot proceed with mount recovery on non-FUSE mountpoints")
-
-		return nil
-	}
-
 	volOptions, err = ns.getVolumeOptions(ctx, volID, volContext, nsMountinfo.Secrets)
 	if err != nil {
 		return err
@@ -179,13 +137,6 @@ func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
 	volMounter, err = mounter.New(volOptions)
 	if err != nil {
 		return err
-	}
-
-	if _, ok := volMounter.(*mounter.FuseMounter); !ok {
-		// We can't restore mounts with non-FUSE mounter.
-		log.WarningLog(ctx, "cephfs: cannot proceed with mount recovery with non-FUSE mounter")
-
-		return nil
 	}
 
 	// Try to restore mount in staging target path.
@@ -225,7 +176,6 @@ func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
 // should be able to continue with mounting the volume normally afterwards.
 func (ns *NodeServer) tryRestoreFuseMountInNodeStage(
 	ctx context.Context,
-	mnt mounter.VolumeMounter,
 	stagingTargetPath string,
 ) error {
 	// Check if there is anything to restore.
@@ -244,28 +194,6 @@ func (ns *NodeServer) tryRestoreFuseMountInNodeStage(
 
 	log.WarningLog(ctx, "cephfs: mountpoint problem detected when staging a volume: %s is %s; attempting recovery",
 		stagingTargetPath, stagingTargetMs)
-
-	// Check that the existing stage mount for this volume is  managed by
-	// ceph-fuse, and that the mounter is FuseMounter. Then try to restore them.
-
-	procMountInfo, err := util.ReadMountInfoForProc("self")
-	if err != nil {
-		return err
-	}
-
-	if !validateFsType(stagingTargetPath, cephFuseFsType, procMountInfo) {
-		// We can't restore mounts not managed by ceph-fuse.
-		log.WarningLog(ctx, "cephfs: cannot proceed with mount recovery on non-FUSE mountpoints")
-
-		return nil
-	}
-
-	if _, ok := mnt.(*mounter.FuseMounter); !ok {
-		// We can't restore mounts with non-FUSE mounter.
-		log.WarningLog(ctx, "cephfs: cannot proceed with mount recovery with non-FUSE mounter")
-
-		return nil
-	}
 
 	// Restoration here means only unmounting the volume.
 	// NodeStageVolume should take care of the rest.
