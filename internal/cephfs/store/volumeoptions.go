@@ -151,6 +151,10 @@ func validateMounter(m string) error {
 	return nil
 }
 
+func (v *VolumeOptions) DetectMounter(options map[string]string) error {
+	return extractMounter(&v.Mounter, options)
+}
+
 func extractMounter(dest *string, options map[string]string) error {
 	if err := extractOptionalOption(dest, "mounter", options); err != nil {
 		return err
