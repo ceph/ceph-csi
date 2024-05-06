@@ -1,6 +1,6 @@
 language: go
 
-dist: bionic
+dist: jammy
 
 go:
 - 1.17.x
@@ -13,7 +13,6 @@ env:
 
 before_install:
   - sudo apt-get update
-  - pyenv global 3.8
 
 before_script:
   - GO111MODULE=off go get -u github.com/haya14busa/goverage
@@ -27,6 +26,9 @@ script:
   - $GOPATH/bin/goverage -v -race -coverprofile=cover.out $(go list ./... | grep -v '/vendor|/scripts')
   - go tool cover -func=cover.out
   - go tool cover -html=cover.out -o=cover.html
+ # these steps are to make sure that node will properly install for semantic release.
+  - nvm install node
+  - npm install -g npm
 
 # To enable semantic-release, uncomment these sections.
 before_deploy:
