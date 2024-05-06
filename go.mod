@@ -31,7 +31,7 @@ require (
 	golang.org/x/net v0.25.0
 	golang.org/x/sys v0.20.0
 	google.golang.org/grpc v1.63.2
-	google.golang.org/protobuf v1.33.0
+	google.golang.org/protobuf v1.34.1
 	//
 	// when updating k8s.io/kubernetes, make sure to update the replace section too
 	//
