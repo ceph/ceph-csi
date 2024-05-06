@@ -57,9 +57,3 @@ func (e pairError) Is(target error) bool {
 func (e pairError) Unwrap() error {
 	return e.second
 }
-
-// JoinErrors combines two errors. Of the returned error, Is() follows the first
-// branch, Unwrap() follows the second branch.
-func JoinErrors(e1, e2 error) error {
-	return pairError{e1, e2}
-}

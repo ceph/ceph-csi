@@ -146,6 +146,8 @@ type rbdImage struct {
 
 	// Set metadata on volume
 	EnableMetadata bool
+	// ParentInTrash indicates the parent image is in trash.
+	ParentInTrash bool
 }
 
 // rbdVolume represents a CSI volume and its RBD image specifics.
@@ -508,7 +510,7 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
-			err = util.JoinErrors(ErrImageNotFound, err)
+			err = fmt.Errorf("Failed as %w (internal %w)", ErrImageNotFound, err)
 		}
 
 		return nil, err
@@ -553,9 +555,13 @@ func (ri *rbdImage) isInUse() (bool, error) {
 	// because we opened the image, there is at least one watcher
 	defaultWatchers := 1
 	if mirrorInfo.Primary {
+		count, err := util.GetRBDMirrorDaemonCount(util.CsiConfigFile, ri.ClusterID)
+		if err != nil {
+			return false, err
+		}
 		// if rbd mirror daemon is running, a watcher will be added by the rbd
 		// mirror daemon for mirrored images.
-		defaultWatchers++
+		defaultWatchers += count
 	}
 
 	return len(watchers) > defaultWatchers, nil
@@ -635,14 +641,14 @@ func (ri *rbdImage) deleteImage(ctx context.Context) error {
 
 	if ri.isBlockEncrypted() {
 		log.DebugLog(ctx, "rbd: going to remove DEK for %q (block encryption)", ri)
-		if err = ri.blockEncryption.RemoveDEK(ri.VolID); err != nil {
+		if err = ri.blockEncryption.RemoveDEK(ctx, ri.VolID); err != nil {
 			log.WarningLog(ctx, "failed to clean the passphrase for volume %s (block encryption): %s", ri.VolID, err)
 		}
 	}
 
 	if ri.isFileEncrypted() {
 		log.DebugLog(ctx, "rbd: going to remove DEK for %q (file encryption)", ri)
-		if err = ri.fileEncryption.RemoveDEK(ri.VolID); err != nil {
+		if err = ri.fileEncryption.RemoveDEK(ctx, ri.VolID); err != nil {
 			log.WarningLog(ctx, "failed to clean the passphrase for volume %s (file encryption): %s", ri.VolID, err)
 		}
 	}
@@ -890,7 +896,7 @@ func (ri *rbdImage) flatten() error {
 		// rbd image flatten will fail if the rbd image does not have a parent
 		parent, pErr := ri.getParentName()
 		if pErr != nil {
-			return util.JoinErrors(err, pErr)
+			return fmt.Errorf("Failed as %w (internal %w)", err, pErr)
 		}
 		if parent == "" {
 			return nil
@@ -949,54 +955,57 @@ func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint6
 
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well.
+//
+// NOTE: The returned rbdSnapshot can be non-nil in case of an error. That
+// seems to be required for the DeleteSnapshot procedure, so that OMAP
+// attributes can be cleaned-up.
 func genSnapFromSnapID(
 	ctx context.Context,
-	rbdSnap *rbdSnapshot,
 	snapshotID string,
 	cr *util.Credentials,
 	secrets map[string]string,
-) error {
+) (*rbdSnapshot, error) {
 	var vi util.CSIIdentifier
 
-	rbdSnap.VolID = snapshotID
-
-	err := vi.DecomposeCSIID(rbdSnap.VolID)
+	err := vi.DecomposeCSIID(snapshotID)
 	if err != nil {
-		log.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.VolID)
+		log.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, snapshotID)
 
-		return err
+		return nil, err
 	}
 
+	rbdSnap := &rbdSnapshot{}
+	rbdSnap.VolID = snapshotID
 	rbdSnap.ClusterID = vi.ClusterID
 
 	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(ctx, rbdSnap.ClusterID, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
-		return err
+		return nil, err
 	}
 
 	rbdSnap.Pool, err = util.GetPoolName(rbdSnap.Monitors, cr, vi.LocationID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rbdSnap.JournalPool = rbdSnap.Pool
 
 	rbdSnap.RadosNamespace, err = util.GetRadosNamespace(util.CsiConfigFile, rbdSnap.ClusterID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer j.Destroy()
 
 	imageAttributes, err := j.GetImageAttributes(
 		ctx, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
-		return err
+		return rbdSnap, err
 	}
 	rbdSnap.ImageID = imageAttributes.ImageID
 	rbdSnap.RequestName = imageAttributes.RequestName
@@ -1009,48 +1018,48 @@ func genSnapFromSnapID(
 		rbdSnap.JournalPool, err = util.GetPoolName(rbdSnap.Monitors, cr, imageAttributes.JournalPoolID)
 		if err != nil {
 			// TODO: If pool is not found we may leak the image (as DeleteSnapshot will return success)
-			return err
+			return rbdSnap, err
 		}
 	}
 
 	err = rbdSnap.Connect(cr)
+	if err != nil {
+		return rbdSnap, fmt.Errorf("failed to connect to %q: %w",
+			rbdSnap, err)
+	}
 	defer func() {
 		if err != nil {
 			rbdSnap.Destroy()
 		}
 	}()
-	if err != nil {
-		return fmt.Errorf("failed to connect to %q: %w",
-			rbdSnap, err)
-	}
 
 	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeBlock {
 		err = rbdSnap.configureBlockEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
-			return fmt.Errorf("failed to configure block encryption for "+
+			return rbdSnap, fmt.Errorf("failed to configure block encryption for "+
 				"%q: %w", rbdSnap, err)
 		}
 	}
 	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeFile {
-		err = rbdSnap.configureFileEncryption(imageAttributes.KmsID, secrets)
+		err = rbdSnap.configureFileEncryption(ctx, imageAttributes.KmsID, secrets)
 		if err != nil {
-			return fmt.Errorf("failed to configure file encryption for "+
+			return rbdSnap, fmt.Errorf("failed to configure file encryption for "+
 				"%q: %w", rbdSnap, err)
 		}
 	}
 
 	err = updateSnapshotDetails(rbdSnap)
 	if err != nil {
-		return fmt.Errorf("failed to update snapshot details for %q: %w", rbdSnap, err)
+		return rbdSnap, fmt.Errorf("failed to update snapshot details for %q: %w", rbdSnap, err)
 	}
 
-	return err
+	return rbdSnap, err
 }
 
 // updateSnapshotDetails will copy the details from the rbdVolume to the
 // rbdSnapshot. example copying size from rbdVolume to rbdSnapshot.
 func updateSnapshotDetails(rbdSnap *rbdSnapshot) error {
-	vol := generateVolFromSnap(rbdSnap)
+	vol := rbdSnap.toVolume()
 	err := vol.Connect(rbdSnap.conn.Creds)
 	if err != nil {
 		return err
@@ -1133,7 +1142,7 @@ func generateVolumeFromVolumeID(
 		}
 	}
 	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeFile {
-		err = rbdVol.configureFileEncryption(imageAttributes.KmsID, secrets)
+		err = rbdVol.configureFileEncryption(ctx, imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err
 		}
@@ -1160,8 +1169,6 @@ func generateVolumeFromVolumeID(
 
 // GenVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well.
-//
-//nolint:golint // TODO: returning unexported rbdVolume type, use an interface instead.
 func GenVolFromVolID(
 	ctx context.Context,
 	volumeID string,
@@ -1228,7 +1235,7 @@ func generateVolumeFromMapping(
 				vi.ClusterID)
 			// Add mapping clusterID to Identifier
 			nvi.ClusterID = mappedClusterID
-			poolID := fmt.Sprintf("%d", (vi.LocationID))
+			poolID := strconv.FormatInt(vi.LocationID, 10)
 			for _, pools := range cm.RBDpoolIDMappingInfo {
 				for key, val := range pools {
 					mappedPoolID := util.GetMappedID(key, val, poolID)
@@ -1270,9 +1277,12 @@ func genVolFromVolumeOptions(
 	)
 
 	rbdVol := &rbdVolume{}
+
 	rbdVol.Pool, ok = volOptions["pool"]
 	if !ok {
-		return nil, errors.New("missing required parameter pool")
+		if _, ok = volOptions["topologyConstrainedPools"]; !ok {
+			return nil, errors.New("empty pool name or topologyConstrainedPools to provision volume")
+		}
 	}
 
 	rbdVol.DataPool = volOptions["dataPool"]
@@ -1438,7 +1448,7 @@ func (ri *rbdImage) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) erro
 	}
 	err = snap.Remove()
 	if errors.Is(err, librbd.ErrNotFound) {
-		return util.JoinErrors(ErrSnapNotFound, err)
+		return fmt.Errorf("Failed as %w (internal %w)", ErrSnapNotFound, err)
 	}
 
 	return err
@@ -1519,7 +1529,7 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 
 	logMsg := fmt.Sprintf("setting image options on %s", rv)
 	if rv.DataPool != "" {
-		logMsg += fmt.Sprintf(", data pool %s", rv.DataPool)
+		logMsg += ", data pool %s" + rv.DataPool
 		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
 		if err != nil {
 			return fmt.Errorf("failed to set data pool: %w", err)
@@ -1607,6 +1617,7 @@ func (ri *rbdImage) getImageInfo() error {
 	} else {
 		ri.ParentName = parentInfo.Image.ImageName
 		ri.ParentPool = parentInfo.Image.PoolName
+		ri.ParentInTrash = parentInfo.Image.Trash
 	}
 	// Get image creation time
 	tm, err := image.GetCreateTimestamp()
@@ -1625,7 +1636,9 @@ func (ri *rbdImage) getParent() (*rbdImage, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ri.ParentName == "" {
+	// The image may not have a parent or the parent maybe in trash.
+	// Return nil in both the cases.
+	if ri.ParentName == "" || ri.ParentInTrash {
 		return nil, nil
 	}
 
@@ -1656,6 +1669,7 @@ func (ri *rbdImage) flattenParent(ctx context.Context, hardLimit, softLimit uint
 	if parentImage == nil {
 		return nil
 	}
+	defer parentImage.Destroy()
 
 	return parentImage.flattenRbdImage(ctx, false, hardLimit, softLimit)
 }
@@ -1765,7 +1779,7 @@ func lookupRBDImageMetadataStash(metaDataPath string) (rbdImageMetadataStash, er
 			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): %w", fPath, err)
 		}
 
-		return imgMeta, util.JoinErrors(ErrMissingStash, err)
+		return imgMeta, fmt.Errorf("Failed as %w (internal %w", ErrMissingStash, err)
 	}
 
 	err = json.Unmarshal(encodedBytes, &imgMeta)
@@ -2062,17 +2076,6 @@ func getCephClientLogFileName(id, logDir, prefix string) string {
 	}
 
 	return fmt.Sprintf("%s/%s-%s.log", logDir, prefix, id)
-}
-
-// CheckSliceContains checks the slice for string.
-func CheckSliceContains(options []string, opt string) bool {
-	for _, o := range options {
-		if o == opt {
-			return true
-		}
-	}
-
-	return false
 }
 
 // strategicActionOnLogFile act on log file based on cephLogStrategy.
