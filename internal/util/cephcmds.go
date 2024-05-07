@@ -235,7 +235,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
 		if errors.Is(err, ErrPoolNotFound) {
-			err = JoinErrors(ErrObjectNotFound, err)
+			err = fmt.Errorf("Failed as %w (internal %w)", ErrObjectNotFound, err)
 		}
 
 		return err
@@ -248,7 +248,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	err = ioctx.Create(objectName, rados.CreateExclusive)
 	if errors.Is(err, rados.ErrObjectExists) {
-		return JoinErrors(ErrObjectExists, err)
+		return fmt.Errorf("Failed as %w (internal %w)", ErrObjectExists, err)
 	} else if err != nil {
 		log.ErrorLog(ctx, "failed creating omap (%s) in pool (%s): (%v)", objectName, poolName, err)
 
@@ -271,7 +271,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
 		if errors.Is(err, ErrPoolNotFound) {
-			err = JoinErrors(ErrObjectNotFound, err)
+			err = fmt.Errorf("Failed as %w (internal %w)", ErrObjectNotFound, err)
 		}
 
 		return err
@@ -284,7 +284,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	err = ioctx.Delete(oMapName)
 	if errors.Is(err, rados.ErrNotFound) {
-		return JoinErrors(ErrObjectNotFound, err)
+		return fmt.Errorf("Failed as %w (internal %w)", ErrObjectNotFound, err)
 	} else if err != nil {
 		log.ErrorLog(ctx, "failed removing omap (%s) in pool (%s): (%v)", oMapName, poolName, err)
 

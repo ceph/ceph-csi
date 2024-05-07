@@ -510,7 +510,7 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
-			err = util.JoinErrors(ErrImageNotFound, err)
+			err = fmt.Errorf("Failed as %w (internal %w)", ErrImageNotFound, err)
 		}
 
 		return nil, err
@@ -896,7 +896,7 @@ func (ri *rbdImage) flatten() error {
 		// rbd image flatten will fail if the rbd image does not have a parent
 		parent, pErr := ri.getParentName()
 		if pErr != nil {
-			return util.JoinErrors(err, pErr)
+			return fmt.Errorf("Failed as %w (internal %w)", err, pErr)
 		}
 		if parent == "" {
 			return nil
@@ -1448,7 +1448,7 @@ func (ri *rbdImage) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) erro
 	}
 	err = snap.Remove()
 	if errors.Is(err, librbd.ErrNotFound) {
-		return util.JoinErrors(ErrSnapNotFound, err)
+		return fmt.Errorf("Failed as %w (internal %w)", ErrSnapNotFound, err)
 	}
 
 	return err
@@ -1779,7 +1779,7 @@ func lookupRBDImageMetadataStash(metaDataPath string) (rbdImageMetadataStash, er
 			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): %w", fPath, err)
 		}
 
-		return imgMeta, util.JoinErrors(ErrMissingStash, err)
+		return imgMeta, fmt.Errorf("Failed as %w (internal %w)", ErrMissingStash, err)
 	}
 
 	err = json.Unmarshal(encodedBytes, &imgMeta)

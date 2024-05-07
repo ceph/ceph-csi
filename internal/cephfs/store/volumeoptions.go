@@ -390,7 +390,7 @@ func NewVolumeOptionsFromVolID(
 	if err != nil {
 		err = fmt.Errorf("error decoding volume ID (%s): %w", volID, err)
 
-		return nil, nil, util.JoinErrors(cerrors.ErrInvalidVolID, err)
+		return nil, nil, fmt.Errorf("Failed as %w (internal %w)", cerrors.ErrInvalidVolID, err)
 	}
 	volOptions.ClusterID = vi.ClusterID
 	vid.VolumeID = volID
