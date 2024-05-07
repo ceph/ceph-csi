@@ -140,7 +140,7 @@ func (s *subVolumeClient) GetVolumeRootPathCeph(ctx context.Context) (string, er
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s", s.VolID, err)
 		if errors.Is(err, rados.ErrNotFound) {
-			return "", util.JoinErrors(cerrors.ErrVolumeNotFound, err)
+			return "", fmt.Errorf("Failed as %w (internal %w)", cerrors.ErrVolumeNotFound, err)
 		}
 
 		return "", err
@@ -303,10 +303,10 @@ func (s *subVolumeClient) PurgeVolume(ctx context.Context, force bool) error {
 	if err != nil {
 		log.ErrorLog(ctx, "failed to purge subvolume %s in fs %s: %s", s.VolID, s.FsName, err)
 		if strings.Contains(err.Error(), cerrors.VolumeNotEmpty) {
-			return util.JoinErrors(cerrors.ErrVolumeHasSnapshots, err)
+			return fmt.Errorf("Failed as %w (internal %w)", cerrors.ErrVolumeHasSnapshots, err)
 		}
 		if errors.Is(err, rados.ErrNotFound) {
-			return util.JoinErrors(cerrors.ErrVolumeNotFound, err)
+			return fmt.Errorf("Failed as %w (internal %w)", cerrors.ErrVolumeNotFound, err)
 		}
 
 		return err

@@ -164,7 +164,7 @@ func setOMapKeys(
 
 func omapPoolError(err error) error {
 	if errors.Is(err, rados.ErrNotFound) {
-		return util.JoinErrors(util.ErrPoolNotFound, err)
+		return fmt.Errorf("Failed as %w (internal %w)", util.ErrPoolNotFound, err)
 	}
 
 	return err

@@ -18,7 +18,6 @@ package util
 
 import (
 	"errors"
-	"fmt"
 )
 
 var (
@@ -38,28 +37,3 @@ var (
 	// ErrMissingConfigForMonitor is returned when clusterID is not found for the mon.
 	ErrMissingConfigForMonitor = errors.New("missing configuration of cluster ID for monitor")
 )
-
-type pairError struct {
-	first  error
-	second error
-}
-
-func (e pairError) Error() string {
-	return fmt.Sprintf("%v: %v", e.first, e.second)
-}
-
-// Is checks if target error is wrapped in the first error.
-func (e pairError) Is(target error) bool {
-	return errors.Is(e.first, target)
-}
-
-// Unwrap returns the second error.
-func (e pairError) Unwrap() error {
-	return e.second
-}
-
-// JoinErrors combines two errors. Of the returned error, Is() follows the first
-// branch, Unwrap() follows the second branch.
-func JoinErrors(e1, e2 error) error {
-	return pairError{e1, e2}
-}
