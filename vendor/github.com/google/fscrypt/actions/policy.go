@@ -24,6 +24,7 @@ import (
 	"log"
 	"os"
 	"os/user"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -452,7 +453,7 @@ func (policy *Policy) AddProtector(protector *Protector) error {
 
 	// If the protector is on a different filesystem, we need to add a link
 	// to it on the policy's filesystem.
-	if policy.Context.Mount != protector.Context.Mount {
+	if !reflect.DeepEqual(policy.Context.Mount, protector.Context.Mount) {
 		log.Printf("policy on %s\n protector on %s\n", policy.Context.Mount, protector.Context.Mount)
 		ownerIfCreating, err := getOwnerOfMetadataForProtector(protector)
 		if err != nil {
@@ -525,7 +526,7 @@ func (policy *Policy) RemoveProtector(protectorDescriptor string) error {
 func (policy *Policy) Apply(path string) error {
 	if pathMount, err := filesystem.FindMount(path); err != nil {
 		return err
-	} else if pathMount != policy.Context.Mount {
+	} else if !reflect.DeepEqual(pathMount, policy.Context.Mount) {
 		return &ErrDifferentFilesystem{policy.Context.Mount, pathMount}
 	}
 
