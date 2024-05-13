@@ -492,6 +492,7 @@ func (c *Client) SetInstancePolicies(ctx context.Context, policies MultiplePolic
 			PolicyType: AllowedNetwork,
 			PolicyData: PolicyData{
 				Enabled: &(policies.AllowedNetwork.Enabled),
+				// due to legacy reasons, the allowed_network policy requires attribute to always be specified
 				Attributes: &Attributes{
 					AllowedNetwork: &(policies.AllowedNetwork.Network),
 				},
@@ -505,10 +506,15 @@ func (c *Client) SetInstancePolicies(ctx context.Context, policies MultiplePolic
 			PolicyType: AllowedIP,
 			PolicyData: PolicyData{
 				Enabled: &(policies.AllowedIP.Enabled),
-				Attributes: &Attributes{
-					AllowedIP: policies.AllowedIP.IPAddresses,
-				},
 			},
+		}
+
+		// attributes can only be provided if policy is being enabled
+		// ignore any attribute inputs if provided during a disable
+		if policies.AllowedIP.Enabled {
+			policy.PolicyData.Attributes = &Attributes{
+				AllowedIP: policies.AllowedIP.IPAddresses,
+			}
 		}
 		resPolicies = append(resPolicies, policy)
 	}
@@ -527,16 +533,21 @@ func (c *Client) SetInstancePolicies(ctx context.Context, policies MultiplePolic
 		policy := InstancePolicy{
 			PolicyType: KeyCreateImportAccess,
 			PolicyData: PolicyData{
-				Enabled:    &(policies.KeyCreateImportAccess.Enabled),
-				Attributes: &Attributes{},
+				Enabled: &(policies.KeyCreateImportAccess.Enabled),
 			},
 		}
 
-		policy.PolicyData.Attributes.CreateRootKey = &policies.KeyCreateImportAccess.CreateRootKey
-		policy.PolicyData.Attributes.CreateStandardKey = &policies.KeyCreateImportAccess.CreateStandardKey
-		policy.PolicyData.Attributes.ImportRootKey = &policies.KeyCreateImportAccess.ImportRootKey
-		policy.PolicyData.Attributes.ImportStandardKey = &policies.KeyCreateImportAccess.ImportStandardKey
-		policy.PolicyData.Attributes.EnforceToken = &policies.KeyCreateImportAccess.EnforceToken
+		// attributes can only be provided if policy is being enabled
+		// ignore any attribute inputs if provided during a disable
+		if policies.KeyCreateImportAccess.Enabled {
+			policy.PolicyData.Attributes = &Attributes{
+				CreateRootKey:     &policies.KeyCreateImportAccess.CreateRootKey,
+				CreateStandardKey: &policies.KeyCreateImportAccess.CreateStandardKey,
+				ImportRootKey:     &policies.KeyCreateImportAccess.ImportRootKey,
+				ImportStandardKey: &policies.KeyCreateImportAccess.ImportStandardKey,
+				EnforceToken:      &policies.KeyCreateImportAccess.EnforceToken,
+			}
+		}
 
 		resPolicies = append(resPolicies, policy)
 	}
