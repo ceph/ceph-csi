@@ -83,6 +83,16 @@ storageClass:
     encryptionKMSID: kubernetes
 ```
 
+#### Least privilege secret access
+
+If you use the `metadata` and let RBAC created by the chart, permissions
+will be given to access **only** the secret referenced in the
+`encryptionKMSConfig`. This is something important to keep in mind, as a
+manual change to the config to point to another secret or add further KMS
+config will not be authorized. If you wish to give CephCSI a global secret
+access to the cluster, you may set `rbac.leastPrivileges` to `false`, and
+permissions will be granted globally via a *ClusterRole*.
+
 #### Known Issues Upgrading
 
 - When upgrading to version >=3.7.0, you might encounter an error that the
@@ -127,6 +137,7 @@ charts and their default values.
 | Parameter                                      | Description                                                                                                                                          | Default                                            |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | `rbac.create`                                  | Specifies whether RBAC resources should be created                                                                                                   | `true`                                             |
+| `rbac.leastPrivileges`                         | Specifies whether RBAC resources should be created with a restricted scope when supported (only secrets supported currently)                         | `true`                                             |
 | `serviceAccounts.nodeplugin.create`            | Specifies whether a nodeplugin ServiceAccount should be created                                                                                      | `true`                                             |
 | `serviceAccounts.nodeplugin.name`              | The name of the nodeplugin ServiceAccount to use. If not set and create is true, a name is generated using the fullname                              | ""                                                 |
 | `serviceAccounts.provisioner.create`           | Specifies whether a provisioner ServiceAccount should be created                                                                                     | `true`                                             |

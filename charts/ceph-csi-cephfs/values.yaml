@@ -2,6 +2,9 @@
 rbac:
   # Specifies whether RBAC resources should be created
   create: true
+  # When possible try and reduce the scope of permission to only give
+  # access to resources defined in the config. See the README for more info
+  leastPrivileges: true
 
 serviceAccounts:
   nodeplugin:
