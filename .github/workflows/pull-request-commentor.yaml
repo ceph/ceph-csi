@@ -19,14 +19,22 @@ jobs:
     strategy:
       matrix:
         branch: [release-v3.10, release-v3.11, devel]
-        k8s: ["1.26", "1.27", "1.28", "1.29"]
+        k8s: ["1.26", "1.27", "1.28", "1.29", "1.30"]
         exclude:
           # the next Ceph-CSI version will not be tested with old Kubernetes
           - k8s: "1.26"
+            branch: "release-v3.11"
+          - k8s: "1.26"
             branch: "devel"
+
+          # Ceph-CSI <= 3.11 was released before Kubernetes 1.30
+          - k8s: "1.30"
+            branch: "release-v3.11"
 
           # Ceph-CSI <= 3.10 was released before Kubernetes 1.29
           - k8s: "1.29"
+            branch: "release-v3.10"
+          - k8s: "1.30"
             branch: "release-v3.10"
 
     # watch out, matrix.branch can not be used in this if-statement :-/
