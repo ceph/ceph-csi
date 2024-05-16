@@ -208,6 +208,6 @@ Please use the following to reach members of the community:
   [#ceph-csi](https://ceph-storage.slack.com/archives/C05522L7P60) channel
   on the [ceph Slack](https://ceph-storage.slack.com) to discuss anything
   related to this project. You can join the Slack by this
-  [invite link](bit.ly/ceph-slack-invite)
+  [invite link](https://bit.ly/ceph-slack-invite)
 - Forums: [ceph-csi](https://groups.google.com/forum/#!forum/ceph-csi)
 - Twitter: [@CephCsi](https://twitter.com/CephCsi)
