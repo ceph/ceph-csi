@@ -37,6 +37,7 @@ RUN source /build.env \
         libcephfs-devel \
 	librbd-devel \
 	openssl \
+	ruby-devel \
 	rubygems \
 	ShellCheck \
 	codespell \
