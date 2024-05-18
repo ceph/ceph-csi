@@ -243,11 +243,8 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to marshal csi config info %v", err)
 	}
-	tmpConfPath := util.CsiConfigFile
-	err = os.Mkdir("/etc/ceph-csi-config", 0o600)
-	if err != nil {
-		t.Errorf("failed to create directory %s: %v", "/etc/ceph-csi-config", err)
-	}
+	tmpConfPath := t.TempDir() + "/ceph-csi.json"
+
 	err = os.WriteFile(tmpConfPath, csiConfigFileContent, 0o600)
 	if err != nil {
 		t.Errorf("failed to write %s file content: %v", util.CsiConfigFile, err)
