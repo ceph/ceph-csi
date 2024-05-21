@@ -38,7 +38,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.30.1
 	k8s.io/klog/v2 v2.120.1
-	k8s.io/kubernetes v1.30.0
+	k8s.io/kubernetes v1.30.1
 	k8s.io/mount-utils v0.29.3
 	k8s.io/pod-security-admission v0.30.1
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
@@ -174,7 +174,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.30.0 // indirect
+	k8s.io/apiextensions-apiserver v0.30.1 // indirect
 	k8s.io/apiserver v0.30.1 // indirect
 	k8s.io/component-base v0.30.1 // indirect
 	k8s.io/component-helpers v0.30.1 // indirect
@@ -216,7 +216,7 @@ replace (
 	k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.30.1
 	k8s.io/endpointslice => k8s.io/endpointslice v0.30.1
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.30.1
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.30.0
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.30.1
 	k8s.io/kube-proxy => k8s.io/kube-proxy v0.30.1
 	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.30.1
 	k8s.io/kubectl => k8s.io/kubectl v0.30.1
