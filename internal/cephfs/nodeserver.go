@@ -393,6 +393,7 @@ func getBackingSnapshotRoot(
 
 		return "", status.Errorf(codes.Internal, err.Error())
 	}
+	defer dir.Close()
 
 	// Read the contents of <root path>/.snap directory into a string slice.
 
