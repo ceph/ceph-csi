@@ -223,7 +223,9 @@ replace (
 	k8s.io/kubelet => k8s.io/kubelet v0.30.0
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.30.0
 	k8s.io/metrics => k8s.io/metrics v0.30.0
-	k8s.io/mount-utils => k8s.io/mount-utils v0.30.0
+
+	// TODO: replace with latest once https://github.com/ceph/ceph-csi/issues/4633 is fixed
+	k8s.io/mount-utils => k8s.io/mount-utils v0.29.3
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.30.0
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.30.0
 	// layeh.com seems to be misbehaving
