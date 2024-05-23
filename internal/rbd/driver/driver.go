@@ -144,10 +144,8 @@ func (r *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		r.ns, err = NewNodeServer(r.cd, conf.Vtype, nodeLabels, topology, crushLocationMap)
-		if err != nil {
-			log.FatalLogMsg("failed to start node server, err %v\n", err)
-		}
+		r.ns = NewNodeServer(r.cd, conf.Vtype, nodeLabels, topology, crushLocationMap)
+
 		var attr string
 		attr, err = rbd.GetKrbdSupportedFeatures()
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -213,7 +211,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	r.cas.RegisterService(is)
 
 	if conf.IsControllerServer {
-		rs := casrbd.NewReclaimSpaceControllerServer()
+		rs := casrbd.NewReclaimSpaceControllerServer(r.cs.VolumeLocks)
 		r.cas.RegisterService(rs)
 
 		fcs := casrbd.NewFenceControllerServer()
@@ -227,7 +225,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	}
 
 	if conf.IsNodeServer {
-		rs := casrbd.NewReclaimSpaceNodeServer()
+		rs := casrbd.NewReclaimSpaceNodeServer(r.ns.VolumeLocks)
 		r.cas.RegisterService(rs)
 
 		ekr := casrbd.NewEncryptionKeyRotationServer(r.ns.VolumeLocks)

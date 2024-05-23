@@ -37,12 +37,13 @@ import (
 // of CSI-addons reclaimspace controller service spec.
 type ReclaimSpaceControllerServer struct {
 	*rs.UnimplementedReclaimSpaceControllerServer
+	volumeLocks *util.VolumeLocks
 }
 
 // NewReclaimSpaceControllerServer creates a new ReclaimSpaceControllerServer which handles
 // the ReclaimSpace Service requests from the CSI-Addons specification.
-func NewReclaimSpaceControllerServer() *ReclaimSpaceControllerServer {
-	return &ReclaimSpaceControllerServer{}
+func NewReclaimSpaceControllerServer(volumeLocks *util.VolumeLocks) *ReclaimSpaceControllerServer {
+	return &ReclaimSpaceControllerServer{volumeLocks: volumeLocks}
 }
 
 func (rscs *ReclaimSpaceControllerServer) RegisterService(server grpc.ServiceRegistrar) {
@@ -63,6 +64,13 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer cr.DeleteCredentials()
+
+	if acquired := rscs.volumeLocks.TryAcquire(volumeID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer rscs.volumeLocks.Release(volumeID)
 
 	rbdVol, err := rbdutil.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	if err != nil {
@@ -90,12 +98,13 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 // of CSI-addons reclaimspace controller service spec.
 type ReclaimSpaceNodeServer struct {
 	*rs.UnimplementedReclaimSpaceNodeServer
+	volumeLocks *util.VolumeLocks
 }
 
 // NewReclaimSpaceNodeServer creates a new IdentityServer which handles the
 // Identity Service requests from the CSI-Addons specification.
-func NewReclaimSpaceNodeServer() *ReclaimSpaceNodeServer {
-	return &ReclaimSpaceNodeServer{}
+func NewReclaimSpaceNodeServer(volumeLocks *util.VolumeLocks) *ReclaimSpaceNodeServer {
+	return &ReclaimSpaceNodeServer{volumeLocks: volumeLocks}
 }
 
 func (rsns *ReclaimSpaceNodeServer) RegisterService(server grpc.ServiceRegistrar) {
@@ -115,6 +124,13 @@ func (rsns *ReclaimSpaceNodeServer) NodeReclaimSpace(
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
+
+	if acquired := rsns.volumeLocks.TryAcquire(volumeID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer rsns.volumeLocks.Release(volumeID)
 
 	// path can either be the staging path on the node, or the volume path
 	// inside an application container
