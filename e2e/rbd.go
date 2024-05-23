@@ -599,7 +599,7 @@ var _ = Describe("RBD", func() {
 					pvc.Name,
 					metav1.DeleteOptions{})
 				if err != nil {
-					framework.Logf("failed to delete pvc: %w", err)
+					framework.Logf("failed to delete pvc: %s", err)
 				}
 
 				// Remove the claimRef to bind this PV to a new PVC.
