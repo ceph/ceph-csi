@@ -61,14 +61,14 @@ type PolicyData struct {
 
 // Attributes contains the details of an instance policy
 type Attributes struct {
-	AllowedNetwork    *string     `json:"allowed_network,omitempty"`
-	AllowedIP         IPAddresses `json:"allowed_ip,omitempty"`
-	CreateRootKey     *bool       `json:"create_root_key,omitempty"`
-	CreateStandardKey *bool       `json:"create_standard_key,omitempty"`
-	ImportRootKey     *bool       `json:"import_root_key,omitempty"`
-	ImportStandardKey *bool       `json:"import_standard_key,omitempty"`
-	EnforceToken      *bool       `json:"enforce_token,omitempty"`
-	IntervalMonth     *int        `json:"interval_month,omitempty"`
+	AllowedNetwork    *string      `json:"allowed_network,omitempty"`
+	AllowedIP         *IPAddresses `json:"allowed_ip,omitempty"`
+	CreateRootKey     *bool        `json:"create_root_key,omitempty"`
+	CreateStandardKey *bool        `json:"create_standard_key,omitempty"`
+	ImportRootKey     *bool        `json:"import_root_key,omitempty"`
+	ImportStandardKey *bool        `json:"import_standard_key,omitempty"`
+	EnforceToken      *bool        `json:"enforce_token,omitempty"`
+	IntervalMonth     *int         `json:"interval_month,omitempty"`
 }
 
 // IPAddresses ...
@@ -313,7 +313,8 @@ func (c *Client) SetAllowedIPInstancePolicy(ctx context.Context, enable bool, al
 	// The IP address validation is performed by the key protect service.
 	if enable && len(allowedIPs) != 0 {
 		policy.PolicyData.Attributes = &Attributes{}
-		policy.PolicyData.Attributes.AllowedIP = allowedIPs
+		ips := IPAddresses(allowedIPs)
+		policy.PolicyData.Attributes.AllowedIP = &ips
 	} else if enable && len(allowedIPs) == 0 {
 		return fmt.Errorf("Please provide at least 1 IP subnet specified with CIDR notation")
 	} else if !enable && len(allowedIPs) != 0 {
@@ -445,17 +446,21 @@ type AllowedNetworkPolicyData struct {
 // AllowedIPPolicyData defines the attribute input for the Allowed IP instance policy
 type AllowedIPPolicyData struct {
 	Enabled     bool
-	IPAddresses IPAddresses
+	IPAddresses *IPAddresses
 }
 
 // KeyAccessInstancePolicyData defines the attribute input for the Key Create Import Access instance policy
 type KeyCreateImportAccessInstancePolicy struct {
-	Enabled           bool
-	CreateRootKey     bool
-	CreateStandardKey bool
-	ImportRootKey     bool
-	ImportStandardKey bool
-	EnforceToken      bool
+	Enabled    bool
+	Attributes *KeyCreateImportAccessInstancePolicyAttributes
+}
+
+type KeyCreateImportAccessInstancePolicyAttributes struct {
+	CreateRootKey     *bool
+	CreateStandardKey *bool
+	ImportRootKey     *bool
+	ImportStandardKey *bool
+	EnforceToken      *bool
 }
 
 type RotationPolicyData struct {
@@ -492,6 +497,7 @@ func (c *Client) SetInstancePolicies(ctx context.Context, policies MultiplePolic
 			PolicyType: AllowedNetwork,
 			PolicyData: PolicyData{
 				Enabled: &(policies.AllowedNetwork.Enabled),
+				// due to legacy reasons, the allowed_network policy requires attribute to always be specified
 				Attributes: &Attributes{
 					AllowedNetwork: &(policies.AllowedNetwork.Network),
 				},
@@ -527,16 +533,19 @@ func (c *Client) SetInstancePolicies(ctx context.Context, policies MultiplePolic
 		policy := InstancePolicy{
 			PolicyType: KeyCreateImportAccess,
 			PolicyData: PolicyData{
-				Enabled:    &(policies.KeyCreateImportAccess.Enabled),
-				Attributes: &Attributes{},
+				Enabled: &(policies.KeyCreateImportAccess.Enabled),
 			},
 		}
 
-		policy.PolicyData.Attributes.CreateRootKey = &policies.KeyCreateImportAccess.CreateRootKey
-		policy.PolicyData.Attributes.CreateStandardKey = &policies.KeyCreateImportAccess.CreateStandardKey
-		policy.PolicyData.Attributes.ImportRootKey = &policies.KeyCreateImportAccess.ImportRootKey
-		policy.PolicyData.Attributes.ImportStandardKey = &policies.KeyCreateImportAccess.ImportStandardKey
-		policy.PolicyData.Attributes.EnforceToken = &policies.KeyCreateImportAccess.EnforceToken
+		if attr := policies.KeyCreateImportAccess.Attributes; attr != nil {
+			policy.PolicyData.Attributes = &Attributes{
+				CreateRootKey:     attr.CreateRootKey,
+				CreateStandardKey: attr.CreateStandardKey,
+				ImportRootKey:     attr.ImportRootKey,
+				ImportStandardKey: attr.ImportStandardKey,
+				EnforceToken:      attr.EnforceToken,
+			}
+		}
 
 		resPolicies = append(resPolicies, policy)
 	}

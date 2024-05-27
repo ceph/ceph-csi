@@ -1,3 +1,41 @@
+# v1.28.10 (2024-05-23)
+
+* No change notes available for this release.
+
+# v1.28.9 (2024-05-16)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.28.8 (2024-05-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.28.7 (2024-05-08)
+
+* **Bug Fix**: GoDoc improvement
+
+# v1.28.6 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.28.5 (2024-03-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.28.4 (2024-03-07)
+
+* **Bug Fix**: Remove dependency on go-cmp.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.28.3 (2024-03-05)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.28.2 (2024-03-04)
+
+* **Bug Fix**: Update internal/presigned-url dependency for corrected API name.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.28.1 (2024-02-23)
 
 * **Bug Fix**: Move all common, SDK-side middleware stack ops into the service client module to prevent cross-module compatibility issues in the future.
