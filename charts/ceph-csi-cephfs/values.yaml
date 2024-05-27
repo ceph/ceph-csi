@@ -204,7 +204,7 @@ provisioner:
   provisioner:
     image:
       repository: registry.k8s.io/sig-storage/csi-provisioner
-      tag: v4.0.1
+      tag: v5.0.1
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -219,7 +219,7 @@ provisioner:
     enabled: true
     image:
       repository: registry.k8s.io/sig-storage/csi-resizer
-      tag: v1.10.1
+      tag: v1.11.1
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
@@ -229,7 +229,7 @@ provisioner:
   snapshotter:
     image:
       repository: registry.k8s.io/sig-storage/csi-snapshotter
-      tag: v7.0.2
+      tag: v8.0.1
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
