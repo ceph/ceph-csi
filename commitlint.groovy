@@ -1,6 +1,6 @@
 def cico_retries = 16
 def cico_retry_interval = 60
-def duffy_pool = 'virt-ec2-t2-centos-8s-x86_64'
+def duffy_pool = 'virt-ec2-t2-centos-9s-x86_64'
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
 def ref = "devel"
