@@ -74,7 +74,7 @@ func (cvg *commonVolumeGroup) initCommonVolumeGroup(
 		return fmt.Errorf("failed to get MONs for cluster id %q: %w", csiID.ClusterID, err)
 	}
 
-	namespace, err := util.GetRadosNamespace(util.CsiConfigFile, csiID.ClusterID)
+	namespace, err := util.GetRBDRadosNamespace(util.CsiConfigFile, csiID.ClusterID)
 	if err != nil {
 		return fmt.Errorf("failed to get RADOS namespace for cluster id %q: %w", csiID.ClusterID, err)
 	}

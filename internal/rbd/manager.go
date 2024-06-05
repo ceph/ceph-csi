@@ -97,7 +97,7 @@ func (mgr *rbdManager) getVolumeGroupJournal(clusterID string) (journal.VolumeGr
 		return nil, fmt.Errorf("failed to find MONs for cluster %q: %w", clusterID, err)
 	}
 
-	ns, err := util.GetRadosNamespace(util.CsiConfigFile, clusterID)
+	ns, err := util.GetRBDRadosNamespace(util.CsiConfigFile, clusterID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find the RADOS namespace for cluster %q: %w", clusterID, err)
 	}

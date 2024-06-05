@@ -31,6 +31,10 @@ const (
 	// This was hardcoded once and defaults to the old value to keep backward compatibility.
 	defaultCsiSubvolumeGroup = "csi"
 
+	// defaultCsiCephFSRadosNamespace defines the default RADOS namespace used for storing
+	// CSI-specific objects and keys for CephFS volumes.
+	defaultCsiCephFSRadosNamespace = "csi"
+
 	// CsiConfigFile is the location of the CSI config file.
 	CsiConfigFile = "/etc/ceph-csi-config/config.json"
 
@@ -96,14 +100,29 @@ func Mons(pathToConfig, clusterID string) (string, error) {
 	return strings.Join(cluster.Monitors, ","), nil
 }
 
-// GetRadosNamespace returns the namespace for the given clusterID.
-func GetRadosNamespace(pathToConfig, clusterID string) (string, error) {
+// GetRBDRadosNamespace returns the namespace for the given clusterID.
+func GetRBDRadosNamespace(pathToConfig, clusterID string) (string, error) {
 	cluster, err := readClusterInfo(pathToConfig, clusterID)
 	if err != nil {
 		return "", err
 	}
 
 	return cluster.RBD.RadosNamespace, nil
+}
+
+// GetCephFSRadosNamespace returns the namespace for the given clusterID.
+// If not set, it returns the default value "csi".
+func GetCephFSRadosNamespace(pathToConfig, clusterID string) (string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", err
+	}
+
+	if cluster.CephFS.RadosNamespace == "" {
+		return defaultCsiCephFSRadosNamespace, nil
+	}
+
+	return cluster.CephFS.RadosNamespace, nil
 }
 
 // GetRBDMirrorDaemonCount returns the number of mirror daemon count for the
