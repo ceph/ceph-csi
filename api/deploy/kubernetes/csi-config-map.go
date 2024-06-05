@@ -36,6 +36,8 @@ type CephFS struct {
 	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
 	// SubvolumeGroup contains the name of the SubvolumeGroup for CSI volumes
 	SubvolumeGroup string `json:"subvolumeGroup"`
+	// RadosNamespace is a rados namespace in the filesystem metadata pool
+	RadosNamespace string `json:"radosNamespace"`
 	// KernelMountOptions contains the kernel mount options for CephFS volumes
 	KernelMountOptions string `json:"kernelMountOptions"`
 	// FuseMountOptions contains the fuse mount options for CephFS volumes
