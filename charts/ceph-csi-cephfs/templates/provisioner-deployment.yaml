@@ -57,6 +57,7 @@ spec:
 {{ toYaml .Values.provisioner.affinity | indent 8 -}}
 {{- end -}}
 {{- end }}
+      securityContext: {{ toYaml .Values.provisioner.podSecurityContext | nindent 8 }}
       serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}
       hostNetwork: {{ .Values.provisioner.enableHostNetwork }}
 {{- if .Values.provisioner.priorityClassName }}
