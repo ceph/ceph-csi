@@ -28,6 +28,7 @@ spec:
         heritage: {{ .Release.Service }}
         {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
+      securityContext: {{ toYaml .Values.nodeplugin.podSecurityContext | nindent 8 }}
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.nodeplugin" . }}
       hostNetwork: true
       hostPID: true
