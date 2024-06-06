@@ -1076,6 +1076,8 @@ func updateSnapshotDetails(rbdSnap *rbdSnapshot) error {
 }
 
 // generateVolumeFromVolumeID generates a rbdVolume structure from the provided identifier.
+// The returned rbdVolume is connected in case no error occurred, and should be
+// cleaned up with rbdVolume.Destroy().
 func generateVolumeFromVolumeID(
 	ctx context.Context,
 	volumeID string,
@@ -1122,6 +1124,13 @@ func generateVolumeFromVolumeID(
 	if err != nil {
 		return rbdVol, err
 	}
+	// in case of any error call Destroy for cleanup.
+	defer func() {
+		if err != nil {
+			rbdVol.Destroy()
+		}
+	}()
+
 	rbdVol.JournalPool = rbdVol.Pool
 
 	imageAttributes, err := j.GetImageAttributes(
@@ -1169,6 +1178,8 @@ func generateVolumeFromVolumeID(
 
 // GenVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well.
+// The returned rbdVolume is connected in case no error occurred, and should be
+// cleaned up with rbdVolume.Destroy().
 func GenVolFromVolID(
 	ctx context.Context,
 	volumeID string,
@@ -1191,17 +1202,27 @@ func GenVolFromVolID(
 		!errors.Is(err, ErrImageNotFound) {
 		return vol, err
 	}
+	defer func() {
+		if err != nil {
+			vol.Destroy()
+		}
+	}()
 
 	// Check clusterID mapping exists
-	mapping, mErr := util.GetClusterMappingInfo(vi.ClusterID)
-	if mErr != nil {
-		return vol, mErr
+	mapping, err := util.GetClusterMappingInfo(vi.ClusterID)
+	if err != nil {
+		return vol, err
 	}
 	if mapping != nil {
-		rbdVol, vErr := generateVolumeFromMapping(ctx, mapping, volumeID, vi, cr, secrets)
-		if !errors.Is(vErr, util.ErrKeyNotFound) && !errors.Is(vErr, util.ErrPoolNotFound) &&
-			!errors.Is(vErr, ErrImageNotFound) {
-			return rbdVol, vErr
+		// create a new volume based on the mapping, cleanup the old volume
+		if vol != nil {
+			vol.Destroy()
+		}
+
+		vol, err = generateVolumeFromMapping(ctx, mapping, volumeID, vi, cr, secrets)
+		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) &&
+			!errors.Is(err, ErrImageNotFound) {
+			return vol, err
 		}
 	}
 
