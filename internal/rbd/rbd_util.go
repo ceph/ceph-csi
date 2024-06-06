@@ -703,6 +703,22 @@ func (ri *rbdImage) trashRemoveImage(ctx context.Context) error {
 	return nil
 }
 
+// DeleteTempImage deletes the temporary image created for volume datasource.
+func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
+	tempClone := rv.generateTempClone()
+	err := tempClone.deleteImage(ctx)
+	if err != nil {
+		if errors.Is(err, ErrImageNotFound) {
+			return tempClone.ensureImageCleanup(ctx)
+		} else {
+			// return error if it is not ErrImageNotFound
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	var depth uint
 	vol := rbdVolume{}

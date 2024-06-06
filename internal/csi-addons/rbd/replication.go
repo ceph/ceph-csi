@@ -74,6 +74,12 @@ const (
 	// (optional) StartTime is the time the snapshot schedule
 	// begins, can be specified using the ISO 8601 time format.
 	schedulingStartTimeKey = "schedulingStartTime"
+
+	// flattenModeKey to get the flattenMode from the parameters.
+	// (optional) flattenMode decides how to handle images with parent.
+	// (default) If set to "never", the image with parent will not be flattened.
+	// If set to "force", the image with parent will be flattened.
+	flattenModeKey = "flattenMode"
 )
 
 // ReplicationServer struct of rbd CSI driver with supported methods of Replication
@@ -113,6 +119,27 @@ func getForceOption(ctx context.Context, parameters map[string]string) (bool, er
 	}
 
 	return force, nil
+}
+
+// getFlattenMode gets flatten mode from the input GRPC request parameters.
+// flattenMode is the key to check the mode in the parameters.
+func getFlattenMode(ctx context.Context, parameters map[string]string) (corerbd.FlattenMode, error) {
+	val, ok := parameters[flattenModeKey]
+	if !ok {
+		log.DebugLog(ctx, "%q is not set in parameters, setting to default (%v)",
+			flattenModeKey, corerbd.FlattenModeNever)
+
+		return corerbd.FlattenModeNever, nil
+	}
+
+	mode := corerbd.FlattenMode(val)
+	switch mode {
+	case corerbd.FlattenModeForce, corerbd.FlattenModeNever:
+		return mode, nil
+	}
+	log.ErrorLog(ctx, "%q=%q is not supported", flattenModeKey, val)
+
+	return mode, status.Errorf(codes.InvalidArgument, "%q=%q is not supported", flattenModeKey, val)
 }
 
 // getMirroringMode gets the mirroring mode from the input GRPC request parameters.
@@ -265,6 +292,11 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	// extract the flatten mode
+	flattenMode, err := getFlattenMode(ctx, req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
 
 	mirroringInfo, err := rbdVol.GetImageMirroringInfo()
 	if err != nil {
@@ -274,6 +306,12 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 
 	if mirroringInfo.State != librbd.MirrorImageEnabled {
+		err = rbdVol.HandleParentImageExistence(ctx, flattenMode)
+		if err != nil {
+			log.ErrorLog(ctx, err.Error())
+
+			return nil, getGRPCError(err)
+		}
 		err = rbdVol.EnableImageMirroring(mirroringMode)
 		if err != nil {
 			log.ErrorLog(ctx, err.Error())
@@ -777,6 +815,7 @@ func getGRPCError(err error) error {
 
 	errorStatusMap := map[error]codes.Code{
 		corerbd.ErrInvalidArgument:    codes.InvalidArgument,
+		corerbd.ErrFlattenInProgress:  codes.Aborted,
 		corerbd.ErrAborted:            codes.Aborted,
 		corerbd.ErrFailedPrecondition: codes.FailedPrecondition,
 		corerbd.ErrUnavailable:        codes.Unavailable,
