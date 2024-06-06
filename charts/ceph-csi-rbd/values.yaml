@@ -156,6 +156,8 @@ nodeplugin:
 
   affinity: {}
 
+  podSecurityContext: {}
+
 provisioner:
   name: provisioner
   replicaCount: 3
@@ -294,6 +296,8 @@ provisioner:
   tolerations: []
 
   affinity: {}
+
+  podSecurityContext: {}
 
 topology:
   # Specifies whether topology based provisioning support should
