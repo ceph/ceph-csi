@@ -58,6 +58,13 @@ func isRetryableAPIError(err error) bool {
 		return true
 	}
 
+	// "pod nfs-820 does not have a host assigned" seems to get reported
+	// when a Pod is not completely started yet, or was restarted while
+	// trying to access it
+	if strings.Contains(err.Error(), "does not have a host assigned") {
+		return true
+	}
+
 	return false
 }
 
