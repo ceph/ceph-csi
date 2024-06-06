@@ -25,6 +25,69 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 )
 
+// FlattenMode is used to indicate the flatten mode for an RBD image.
+type FlattenMode string
+
+const (
+	// FlattenModeNever indicates that the image should never be flattened.
+	FlattenModeNever FlattenMode = "never"
+	// FlattenModeForce indicates that the image with the parent must be flattened.
+	FlattenModeForce FlattenMode = "force"
+)
+
+// HandleParentImageExistence checks the image's parent.
+// if the parent image does not exist and is not in trash, it returns nil.
+// if the flattenMode is FlattenModeForce, it flattens the image itself.
+// if the parent image is in trash, it returns an error.
+// if the parent image exists and is not enabled for mirroring, it returns an error.
+func (rv *rbdVolume) HandleParentImageExistence(
+	ctx context.Context,
+	flattenMode FlattenMode,
+) error {
+	if rv.ParentName == "" && !rv.ParentInTrash {
+		return nil
+	}
+
+	if flattenMode == FlattenModeForce {
+		// Delete temp image that exists for volume datasource since
+		// it is no longer required when the live image is flattened.
+		err := rv.DeleteTempImage(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete temporary rbd image: %w", err)
+		}
+
+		err = rv.flattenRbdImage(ctx, true, 0, 0)
+		if err != nil {
+			return err
+		}
+	}
+
+	if rv.ParentInTrash {
+		return fmt.Errorf("%w: failed to enable mirroring on image %q:"+
+			" parent is in trash",
+			ErrFailedPrecondition, rv)
+	}
+
+	parent, err := rv.getParent()
+	if err != nil {
+		return err
+	}
+	parentMirroringInfo, err := parent.GetImageMirroringInfo()
+	if err != nil {
+		return fmt.Errorf(
+			"failed to get mirroring info of parent %q of image %q: %w",
+			parent, rv, err)
+	}
+
+	if parentMirroringInfo.State != librbd.MirrorImageEnabled {
+		return fmt.Errorf("%w: failed to enable mirroring on image %q: "+
+			"parent image %q is not enabled for mirroring",
+			ErrFailedPrecondition, rv, parent)
+	}
+
+	return nil
+}
+
 // EnableImageMirroring enables mirroring on an image.
 func (ri *rbdImage) EnableImageMirroring(mode librbd.ImageMirrorMode) error {
 	image, err := ri.open()

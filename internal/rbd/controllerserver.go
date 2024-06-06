@@ -1020,21 +1020,11 @@ func cleanupRBDImage(ctx context.Context,
 
 	// delete the temporary rbd image created as part of volume clone during
 	// create volume
-	tempClone := rbdVol.generateTempClone()
-	err = tempClone.deleteImage(ctx)
+	err = rbdVol.DeleteTempImage(ctx)
 	if err != nil {
-		if errors.Is(err, ErrImageNotFound) {
-			err = tempClone.ensureImageCleanup(ctx)
-			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-		} else {
-			// return error if it is not ErrImageNotFound
-			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v",
-				tempClone, err)
+		log.ErrorLog(ctx, "failed to delete temporary rbd image: %v", err)
 
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Deleting rbd image

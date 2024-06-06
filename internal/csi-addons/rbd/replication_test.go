@@ -641,3 +641,69 @@ func Test_timestampFromString(t *testing.T) {
 		})
 	}
 }
+
+func Test_getFlattenMode(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		ctx        context.Context
+		parameters map[string]string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    corerbd.FlattenMode
+		wantErr bool
+	}{
+		{
+			name: "flattenMode option not set",
+			args: args{
+				ctx:        context.TODO(),
+				parameters: map[string]string{},
+			},
+			want: corerbd.FlattenModeNever,
+		},
+		{
+			name: "flattenMode option set to never",
+			args: args{
+				ctx: context.TODO(),
+				parameters: map[string]string{
+					flattenModeKey: string(corerbd.FlattenModeNever),
+				},
+			},
+			want: corerbd.FlattenModeNever,
+		},
+		{
+			name: "flattenMode option set to force",
+			args: args{
+				ctx: context.TODO(),
+				parameters: map[string]string{
+					flattenModeKey: string(corerbd.FlattenModeForce),
+				},
+			},
+			want: corerbd.FlattenModeForce,
+		},
+
+		{
+			name: "flattenMode option set to invalid value",
+			args: args{
+				ctx: context.TODO(),
+				parameters: map[string]string{
+					flattenModeKey: "invalid123",
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := getFlattenMode(tt.args.ctx, tt.args.parameters)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getFlattenMode() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getFlattenMode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
