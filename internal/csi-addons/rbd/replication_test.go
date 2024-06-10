@@ -542,26 +542,6 @@ func TestGetGRPCError(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "FetchingLocalStateFailed",
-			err:         corerbd.ErrFetchingLocalState,
-			expectedErr: status.Error(codes.Internal, corerbd.ErrFetchingLocalState.Error()),
-		},
-		{
-			name:        "ResyncImageFailed",
-			err:         corerbd.ErrResyncImageFailed,
-			expectedErr: status.Error(codes.Internal, corerbd.ErrResyncImageFailed.Error()),
-		},
-		{
-			name:        "DisableImageMirroringFailed",
-			err:         corerbd.ErrDisableImageMirroringFailed,
-			expectedErr: status.Error(codes.Internal, corerbd.ErrDisableImageMirroringFailed.Error()),
-		},
-		{
-			name:        "FetchingMirroringInfoFailed",
-			err:         corerbd.ErrFetchingMirroringInfo,
-			expectedErr: status.Error(codes.Internal, corerbd.ErrFetchingMirroringInfo.Error()),
-		},
-		{
 			name:        "InvalidArgument",
 			err:         corerbd.ErrInvalidArgument,
 			expectedErr: status.Error(codes.InvalidArgument, corerbd.ErrInvalidArgument.Error()),
@@ -584,7 +564,7 @@ func TestGetGRPCError(t *testing.T) {
 		{
 			name:        "InvalidError",
 			err:         errors.New("some error"),
-			expectedErr: status.Error(codes.Unknown, "some error"),
+			expectedErr: status.Error(codes.Internal, "some error"),
 		},
 		{
 			name:        "NilError",

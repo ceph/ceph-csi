@@ -55,14 +55,6 @@ var (
 	ErrAborted = errors.New("operation got aborted")
 	// ErrInvalidArgument is returned when the client specified an invalid argument.
 	ErrInvalidArgument = errors.New("invalid arguments provided")
-	// ErrFetchingLocalState is returned when the operation to fetch local state fails.
-	ErrFetchingLocalState = errors.New("failed to get local state")
-	// ErrDisableImageMirroringFailed is returned when the operation to disable image mirroring fails.
-	ErrDisableImageMirroringFailed = errors.New("failed to disable image mirroring")
-	// ErrFetchingMirroringInfo is returned when the operation to fetch mirroring info of image fails.
-	ErrFetchingMirroringInfo = errors.New("failed to get mirroring info of image")
-	// ErrResyncImageFailed is returned when the operation to resync the image fails.
-	ErrResyncImageFailed = errors.New("failed to resync image")
 	// ErrImageInUse is returned when the image is in use.
 	ErrImageInUse = errors.New("image is in use")
 )

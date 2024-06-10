@@ -776,14 +776,10 @@ func getGRPCError(err error) error {
 	}
 
 	errorStatusMap := map[error]codes.Code{
-		corerbd.ErrFetchingLocalState:          codes.Internal,
-		corerbd.ErrResyncImageFailed:           codes.Internal,
-		corerbd.ErrDisableImageMirroringFailed: codes.Internal,
-		corerbd.ErrFetchingMirroringInfo:       codes.Internal,
-		corerbd.ErrInvalidArgument:             codes.InvalidArgument,
-		corerbd.ErrAborted:                     codes.Aborted,
-		corerbd.ErrFailedPrecondition:          codes.FailedPrecondition,
-		corerbd.ErrUnavailable:                 codes.Unavailable,
+		corerbd.ErrInvalidArgument:    codes.InvalidArgument,
+		corerbd.ErrAborted:            codes.Aborted,
+		corerbd.ErrFailedPrecondition: codes.FailedPrecondition,
+		corerbd.ErrUnavailable:        codes.Unavailable,
 	}
 
 	for e, code := range errorStatusMap {
@@ -792,8 +788,8 @@ func getGRPCError(err error) error {
 		}
 	}
 
-	// Handle any other non nil error not listed in the map
-	return status.Error(codes.Unknown, err.Error())
+	// Handle any other non nil error not listed in the map as internal error
+	return status.Error(codes.Internal, err.Error())
 }
 
 // GetVolumeReplicationInfo extracts the RBD volume information from the volumeID, If the
