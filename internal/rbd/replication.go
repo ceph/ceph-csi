@@ -25,7 +25,7 @@ import (
 
 func (rv *rbdVolume) ResyncVol(localStatus librbd.SiteMirrorImageStatus) error {
 	if err := rv.resyncImage(); err != nil {
-		return fmt.Errorf("%w: failed to resync image: %w", ErrResyncImageFailed, err)
+		return fmt.Errorf("failed to resync image: %w", err)
 	}
 
 	// If we issued a resync, return a non-final error as image needs to be recreated
@@ -73,7 +73,7 @@ func (rv *rbdVolume) DisableVolumeReplication(
 		// replication Kubernetes artifacts after failback operation.
 		localStatus, rErr := rv.GetLocalState()
 		if rErr != nil {
-			return fmt.Errorf("%w: %w", ErrFetchingLocalState, rErr)
+			return fmt.Errorf("failed to get local state: %w", rErr)
 		}
 		if localStatus.Up && localStatus.State == librbd.MirrorImageStatusStateReplaying {
 			return nil
@@ -84,13 +84,13 @@ func (rv *rbdVolume) DisableVolumeReplication(
 	}
 	err := rv.DisableImageMirroring(force)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrDisableImageMirroringFailed, err)
+		return fmt.Errorf("failed to disable image mirroring: %w", err)
 	}
 	// the image state can be still disabling once we disable the mirroring
 	// check the mirroring is disabled or not
 	mirroringInfo, err = rv.GetImageMirroringInfo()
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrFetchingMirroringInfo, err)
+		return fmt.Errorf("failed to get mirroring info of image: %w", err)
 	}
 	if mirroringInfo.State == librbd.MirrorImageDisabling {
 		return fmt.Errorf("%w: %q is in disabling state", ErrAborted, rv.VolID)
