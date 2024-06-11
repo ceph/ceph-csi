@@ -111,8 +111,6 @@ spec:
             - "--timeout=150s"
             - "--retry-interval-start=500ms"
             - "--leader-election=true"
-            #  set it to true to use topology based provisioning
-            - "--feature-gates=Topology=false"
             - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
             # if fstype is not specified in storageclass, ext4 is default
