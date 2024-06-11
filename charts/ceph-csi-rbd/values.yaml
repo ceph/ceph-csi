@@ -300,9 +300,6 @@ provisioner:
   podSecurityContext: {}
 
 topology:
-  # Specifies whether topology based provisioning support should
-  # be exposed by CSI
-  enabled: false
   # domainLabels define which node labels to use as domains
   # for CSI nodeplugins to advertise their domains
   # NOTE: the value here serves as an example and needs to be

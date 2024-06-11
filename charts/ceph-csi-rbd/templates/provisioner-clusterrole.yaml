@@ -81,7 +81,7 @@ rules:
     resources: ["persistentvolumeclaims/status"]
     verbs: ["update", "patch"]
 {{- end }}
-{{- if .Values.topology.enabled }}
+{{- if .Values.topology.domainLabels }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list","watch"]
