@@ -823,10 +823,6 @@ func oneReplicaDeployYaml(template string) string {
 	return re.ReplaceAllString(template, `$1 1`)
 }
 
-func enableTopologyInTemplate(data string) string {
-	return strings.ReplaceAll(data, "--feature-gates=Topology=false", "--feature-gates=Topology=true")
-}
-
 func enableReadAffinityInTemplate(template string) string {
 	return strings.ReplaceAll(template, "# - \"--enable-read-affinity=true\"", "- \"--enable-read-affinity=true\"")
 }
