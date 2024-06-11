@@ -156,10 +156,9 @@ func createORDeleteRbdResources(action kubectlAction) {
 		},
 		// the provisioner itself
 		&yamlResourceNamespaced{
-			filename:       rbdDirPath + rbdProvisioner,
-			namespace:      cephCSINamespace,
-			oneReplica:     true,
-			enableTopology: true,
+			filename:   rbdDirPath + rbdProvisioner,
+			namespace:  cephCSINamespace,
+			oneReplica: true,
 		},
 		// dependencies for the node-plugin
 		&yamlResourceNamespaced{

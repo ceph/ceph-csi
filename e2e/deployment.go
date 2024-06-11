@@ -240,9 +240,6 @@ type yamlResourceNamespaced struct {
 	// set the number of replicas in a Deployment to 1.
 	oneReplica bool
 
-	// enable topology support (for RBD)
-	enableTopology bool
-
 	// enable read affinity support (for RBD)
 	enableReadAffinity bool
 }
@@ -255,10 +252,6 @@ func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
 
 	if yrn.oneReplica {
 		data = oneReplicaDeployYaml(data)
-	}
-
-	if yrn.enableTopology {
-		data = enableTopologyInTemplate(data)
 	}
 
 	if yrn.domainLabel != "" {
