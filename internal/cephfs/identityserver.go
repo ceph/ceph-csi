@@ -54,13 +54,6 @@ func (is *IdentityServer) GetPluginCapabilities(
 			{
 				Type: &csi.PluginCapability_Service_{
 					Service: &csi.PluginCapability_Service{
-						Type: csi.PluginCapability_Service_VOLUME_ACCESSIBILITY_CONSTRAINTS,
-					},
-				},
-			},
-			{
-				Type: &csi.PluginCapability_Service_{
-					Service: &csi.PluginCapability_Service{
 						Type: csi.PluginCapability_Service_GROUP_CONTROLLER_SERVICE,
 					},
 				},
