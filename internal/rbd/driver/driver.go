@@ -70,14 +70,14 @@ func NewNodeServer(
 	d *csicommon.CSIDriver,
 	t string,
 	nodeLabels, topology, crushLocationMap map[string]string,
-) (*rbd.NodeServer, error) {
+) *rbd.NodeServer {
 	cliReadAffinityMapOptions := util.ConstructReadAffinityMapOption(crushLocationMap)
 	ns := rbd.NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, cliReadAffinityMapOptions, topology, nodeLabels),
 		VolumeLocks:       util.NewVolumeLocks(),
 	}
 
-	return &ns, nil
+	return &ns
 }
 
 // Run start a non-blocking grpc controller,node and identityserver for
