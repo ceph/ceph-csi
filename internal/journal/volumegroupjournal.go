@@ -55,17 +55,18 @@ type VolumeGroupJournal interface {
 		journalPoolID int64,
 		reqName,
 		namePrefix string) (string, string, error)
-	// AddVolumeMapping adds a volumeID and value mapping to the UUID
+	// AddVolumesMapping adds a volumeMap map which contains volumeID's and its
+	// corresponding values mapping which need to be added to the UUID
 	// directory. value can be anything which needs mapping, in case of
-	// volumegroupsnapshot its a snapshotID and its empty in case of volumegroup.
-	AddVolumeMapping(
+	// volumegroupsnapshot its a snapshotID and its empty in case of
+	// volumegroup.
+	AddVolumesMapping(
 		ctx context.Context,
 		pool,
-		reservedUUID,
-		volumeID,
-		value string) error
-	// RemoveVolumeMapping removes volumeIDs mapping from the UUID directory.
-	RemoveVolumeMapping(
+		reservedUUID string,
+		volumeMap map[string]string) error
+	// RemoveVolumesMapping removes volumeIDs mapping from the UUID directory.
+	RemoveVolumesMapping(
 		ctx context.Context,
 		pool,
 		reservedUUID string,
@@ -403,17 +404,16 @@ func (vgjc *VolumeGroupJournalConnection) GetVolumeGroupAttributes(
 	return groupAttributes, nil
 }
 
-func (vgjc *VolumeGroupJournalConnection) AddVolumeMapping(
+func (vgjc *VolumeGroupJournalConnection) AddVolumesMapping(
 	ctx context.Context,
 	pool,
-	reservedUUID,
-	volumeID,
-	value string,
+	reservedUUID string,
+	volumeMap map[string]string,
 ) error {
 	err := setOMapKeys(ctx, vgjc.connection, pool, vgjc.config.namespace, vgjc.config.cephUUIDDirectoryPrefix+reservedUUID,
-		map[string]string{volumeID: value})
+		volumeMap)
 	if err != nil {
-		log.ErrorLog(ctx, "failed adding volume mapping: %v", err)
+		log.ErrorLog(ctx, "failed to add volumeMap %v: %w ", volumeMap, err)
 
 		return err
 	}
@@ -421,7 +421,7 @@ func (vgjc *VolumeGroupJournalConnection) AddVolumeMapping(
 	return nil
 }
 
-func (vgjc *VolumeGroupJournalConnection) RemoveVolumeMapping(
+func (vgjc *VolumeGroupJournalConnection) RemoveVolumesMapping(
 	ctx context.Context,
 	pool,
 	reservedUUID string,
