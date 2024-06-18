@@ -169,7 +169,7 @@ func NewVolumeGroupOptionsFromID(
 	vgs.RequestName = groupAttributes.RequestName
 	vgs.FsVolumeGroupSnapshotName = groupAttributes.GroupName
 	vgs.VolumeGroupSnapshotID = volumeGroupSnapshotID
-	vgs.VolumeSnapshotMap = groupAttributes.VolumeSnapshotMap
+	vgs.VolumeSnapshotMap = groupAttributes.VolumeMap
 
 	return volOptions, &vgs, nil
 }
@@ -208,7 +208,7 @@ func CheckVolumeGroupSnapExists(
 	vgs.RequestName = volOptions.RequestName
 	vgs.ReservedID = volGroupData.GroupUUID
 	vgs.FsVolumeGroupSnapshotName = volGroupData.GroupName
-	vgs.VolumeSnapshotMap = volGroupData.VolumeGroupAttributes.VolumeSnapshotMap
+	vgs.VolumeSnapshotMap = volGroupData.VolumeGroupAttributes.VolumeMap
 
 	// found a snapshot already available, process and return it!
 	vgs.VolumeGroupSnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
