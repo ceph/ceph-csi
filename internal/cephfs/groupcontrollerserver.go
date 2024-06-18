@@ -461,7 +461,7 @@ func (cs *ControllerServer) createSnapshotAndAddMapping(
 	}
 	defer j.Destroy()
 	// Add the snapshot to the volume group journal
-	err = j.AddVolumeSnapshotMapping(ctx,
+	err = j.AddVolumeMapping(ctx,
 		vgo.MetadataPool,
 		vgs.ReservedID,
 		req.GetSourceVolumeId(),
@@ -640,7 +640,7 @@ func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Contex
 			return err
 		}
 		// remove the entry from the omap
-		err = j.RemoveVolumeSnapshotMapping(
+		err = j.RemoveVolumeMapping(
 			ctx,
 			vgo.MetadataPool,
 			vgsi.ReservedID,
