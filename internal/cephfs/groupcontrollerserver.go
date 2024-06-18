@@ -461,11 +461,13 @@ func (cs *ControllerServer) createSnapshotAndAddMapping(
 	}
 	defer j.Destroy()
 	// Add the snapshot to the volume group journal
-	err = j.AddVolumeMapping(ctx,
+	err = j.AddVolumesMapping(ctx,
 		vgo.MetadataPool,
 		vgs.ReservedID,
-		req.GetSourceVolumeId(),
-		resp.GetSnapshot().GetSnapshotId())
+		map[string]string{
+			req.GetSourceVolumeId(): resp.GetSnapshot().GetSnapshotId(),
+		},
+	)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to add volume snapshot mapping: %v", err)
 		// Delete the last created snapshot as its still not added to the
@@ -640,7 +642,7 @@ func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Contex
 			return err
 		}
 		// remove the entry from the omap
-		err = j.RemoveVolumeMapping(
+		err = j.RemoveVolumesMapping(
 			ctx,
 			vgo.MetadataPool,
 			vgsi.ReservedID,
