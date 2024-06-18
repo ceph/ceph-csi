@@ -64,12 +64,12 @@ type VolumeGroupJournal interface {
 		reservedUUID,
 		volumeID,
 		value string) error
-	// RemoveVolumeMapping removes a volumeID mapping from the UUID directory.
+	// RemoveVolumeMapping removes volumeIDs mapping from the UUID directory.
 	RemoveVolumeMapping(
 		ctx context.Context,
 		pool,
-		reservedUUID,
-		volumeID string) error
+		reservedUUID string,
+		volumeIDs []string) error
 }
 
 // VolumeGroupJournalConfig contains the configuration.
@@ -424,14 +424,14 @@ func (vgjc *VolumeGroupJournalConnection) AddVolumeMapping(
 func (vgjc *VolumeGroupJournalConnection) RemoveVolumeMapping(
 	ctx context.Context,
 	pool,
-	reservedUUID,
-	volumeID string,
+	reservedUUID string,
+	volumeIDs []string,
 ) error {
 	err := removeMapKeys(ctx, vgjc.connection, pool, vgjc.config.namespace,
 		vgjc.config.cephUUIDDirectoryPrefix+reservedUUID,
-		[]string{volumeID})
+		volumeIDs)
 	if err != nil {
-		log.ErrorLog(ctx, "failed removing volume mapping from group: key %q: %v", volumeID, err)
+		log.ErrorLog(ctx, "failed removing volume mapping from group: key: %q %v", volumeIDs, err)
 
 		return err
 	}

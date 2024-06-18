@@ -644,7 +644,7 @@ func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Contex
 			ctx,
 			vgo.MetadataPool,
 			vgsi.ReservedID,
-			volID)
+			[]string{volID})
 		j.Destroy()
 		if err != nil {
 			log.ErrorLog(ctx, "failed to remove volume snapshot mapping: %v", err)
