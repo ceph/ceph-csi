@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
@@ -33,6 +34,9 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/fscrypt"
 	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/internal/util/radosmutex"
+	"github.com/ceph/ceph-csi/internal/util/radosmutex/retryoptions"
+	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -49,6 +53,10 @@ type NodeServer struct {
 	kernelMountOptions string
 	fuseMountOptions   string
 	healthChecker      hc.Manager
+}
+
+func volumeRadosMutexName(volumeID string) string {
+	return "rados-mutex-" + volumeID
 }
 
 func getCredentialsForVolume(
@@ -127,13 +135,72 @@ func maybeUnlockFileEncryption(
 	stagingTargetPath string,
 	volID fsutil.VolumeID,
 ) error {
-	if volOptions.IsEncrypted() {
-		log.DebugLog(ctx, "cephfs: unlocking fscrypt on volume %q path %s", volID, stagingTargetPath)
 
+	retryoptions := retryoptions.RetryOptions{
+		MaxAttempts:   20,
+		SleepDuration: 2000 * time.Microsecond,
+	}
+
+	lockName := volumeRadosMutexName(string(volID))
+
+	if volOptions.IsEncrypted() == false {
+		return nil
+	}
+
+	log.ErrorLog(ctx, "Creating lock for the following volume ID %s", lockName)
+
+	ioctx, err := volOptions.GetConnection().GetIoctx(volOptions.MetadataPool)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to create RADOS ioctx: %s", err)
+
+		return err
+	}
+	defer ioctx.Destroy()
+
+	ioctx.SetNamespace(fsutil.RadosNamespace)
+	ioctxW := radoswrapper.NewIOContext(ioctx)
+
+	created, err := radosmutex.CreateOrAquireLock(
+		ctx,
+		ioctxW,
+		lockName,
+		"This is some pod here",
+		retryoptions,
+	)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to aquire lock %s: %v", lockName, err)
+
+		return err
+	}
+
+	if created {
+		defer func() {
+			log.DebugLog(ctx, "Releasing following lock  %s", lockName)
+
+			var deleted bool
+			deleted, err = radosmutex.ReleaseLock(
+				ctx,
+				ioctxW,
+				lockName,
+				"This is some pod here",
+			)
+
+			if err != nil {
+				log.ErrorLog(ctx, "failed to release following lock, this will lead to orphan lock %s: %v",
+					lockName, err)
+			}
+			if !deleted {
+				log.ErrorLog(ctx, "failed to release following lock, this will lead to orphan lock %s",
+					lockName)
+			}
+
+		}()
+
+		log.DebugLog(ctx, "cephfs: unlocking fscrypt on volume %q path %s", volID, stagingTargetPath)
 		return fscrypt.Unlock(ctx, volOptions.Encryption, stagingTargetPath, string(volID))
 	}
 
-	return nil
+	return fmt.Errorf("There is already one file system with name %s", string(volID))
 }
 
 // maybeInitializeFileEncryption initializes KMS and node specifics, if volContext enables encryption.
