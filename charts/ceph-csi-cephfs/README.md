@@ -200,6 +200,7 @@ charts and their default values.
 | `selinuxMount`                                | Mount the host /etc/selinux inside pods to support selinux-enabled filesystems                                                                                                      | `true`                                            |
 | `CSIDriver.fsGroupPolicy` | Specifies the fsGroupPolicy for the CSI driver object | `File` |
 | `CSIDriver.seLinuxMount` | Specify for efficient SELinux volume relabeling | `true` |
+| `instanceID`                                   | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning. | ` ` |
 
 ### Command Line
 

@@ -60,6 +60,9 @@ spec:
 {{- if .Values.topology.domainLabels }}
             - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
 {{- end }}
+{{- if .Values.instanceID }}
+            - "--instanceid={{ .Values.instanceID }}"
+{{- end }}
 {{- if .Values.nodeplugin.profiling.enabled }}
             - "--enableprofiling={{ .Values.nodeplugin.profiling.enabled }}"
 {{- end }}
