@@ -63,6 +63,10 @@ const (
 	// user did not specify an "encryptionType", but set
 	// "encryption": true.
 	rbdDefaultEncryptionType = util.EncryptionTypeBlock
+
+	// Luks slots.
+	luksSlot0 = "0"
+	luksSlot1 = "1"
 )
 
 // checkRbdImageEncrypted verifies if rbd image was encrypted when created.
@@ -435,5 +439,74 @@ func (ri *rbdImage) RemoveDEK(ctx context.Context, volumeID string) error {
 			ri, volumeID)
 	}
 
+	return nil
+}
+
+// GetEncryptionPassphraseSize returns the value of `encryptionPassphraseSize`.
+func GetEncryptionPassphraseSize() int {
+	return encryptionPassphraseSize
+}
+
+// RotateEncryptionKey processes the key rotation for the RBD Volume.
+func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
+	if !rv.isBlockEncrypted() {
+		return errors.New("key rotation unsupported for non block encrypted device")
+	}
+
+	// Verify that the underlying device has been setup for encryption
+	currState, err := rv.checkRbdImageEncrypted(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check encryption state: %w", err)
+	}
+
+	if currState != rbdImageEncrypted {
+		return errors.New("key rotation not supported for unencrypted device")
+	}
+
+	// Get the device path for the underlying image
+	useNbd := rv.Mounter == rbdNbdMounter && hasNBD
+	devicePath, found := waitForPath(ctx, rv.Pool, rv.RadosNamespace, rv.RbdImageName, 1, useNbd)
+	if !found {
+		return fmt.Errorf("failed to get the device path for %q: %w", rv, err)
+	}
+
+	// Step 1: Get the current passphrase
+	oldPassphrase, err := rv.blockEncryption.GetCryptoPassphrase(ctx, rv.VolID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch the current passphrase for %q: %w", rv, err)
+	}
+
+	// Step 2: Add current key to slot 1
+	err = util.LuksAddKey(devicePath, oldPassphrase, oldPassphrase, luksSlot1)
+	if err != nil {
+		return fmt.Errorf("failed to add curr key to luksSlot1: %w", err)
+	}
+
+	// Step 3: Generate new key and add it to slot 0
+	newPassphrase, err := rv.blockEncryption.GetNewCryptoPassphrase(
+		GetEncryptionPassphraseSize())
+	if err != nil {
+		return fmt.Errorf("failed to generate a new passphrase: %w", err)
+	}
+
+	err = util.LuksAddKey(devicePath, oldPassphrase, newPassphrase, luksSlot0)
+	if err != nil {
+		return fmt.Errorf("failed to add the new key to luksSlot0: %w", err)
+	}
+
+	// Step 4: Add the new key to KMS
+	err = rv.blockEncryption.StoreCryptoPassphrase(ctx, rv.VolID, newPassphrase)
+	if err != nil {
+		return fmt.Errorf("failed to update the new key into the KMS: %w", err)
+	}
+
+	// Step 5: Remove the old key from slot 1
+	// We use the newPassphrase to authenticate LUKS here
+	err = util.LuksRemoveKey(devicePath, newPassphrase, luksSlot1)
+	if err != nil {
+		return fmt.Errorf("failed to remove the backup key from luksSlot1: %w", err)
+	}
+
+	// Return error accordingly.
 	return nil
 }

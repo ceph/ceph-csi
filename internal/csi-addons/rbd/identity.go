@@ -133,6 +133,13 @@ func (is *IdentityServer) GetCapabilities(
 						Type: identity.Capability_ReclaimSpace_ONLINE,
 					},
 				},
+			},
+			&identity.Capability{
+				Type: &identity.Capability_EncryptionKeyRotation_{
+					EncryptionKeyRotation: &identity.Capability_EncryptionKeyRotation{
+						Type: identity.Capability_EncryptionKeyRotation_ENCRYPTIONKEYROTATION,
+					},
+				},
 			})
 	}
 

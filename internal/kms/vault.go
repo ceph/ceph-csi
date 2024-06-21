@@ -28,6 +28,8 @@ import (
 	"github.com/hashicorp/vault/api"
 	loss "github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/vault"
+
+	"github.com/ceph/ceph-csi/internal/util/file"
 )
 
 const (
@@ -269,10 +271,12 @@ func (vc *vaultConnection) initCertificates(config map[string]interface{}, secre
 			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
 		}
 
-		vaultConfig[api.EnvVaultCACert], err = createTempFile("vault-ca-cert", []byte(caPEM))
+		tf, err := file.CreateTempFile("vault-ca-cert", caPEM)
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
 		}
+		vaultConfig[api.EnvVaultCACert] = tf.Name()
+
 		// update the existing config
 		for key, value := range vaultConfig {
 			vc.vaultConfig[key] = value
@@ -479,32 +483,4 @@ func detectAuthMountPath(path string) (string, error) {
 	}
 
 	return authMountPath, nil
-}
-
-// createTempFile writes data to a temporary file that contains the pattern in
-// the filename (see os.CreateTemp for details).
-func createTempFile(pattern string, data []byte) (string, error) {
-	t, err := os.CreateTemp("", pattern)
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary file: %w", err)
-	}
-
-	// delete the tmpfile on error
-	defer func() {
-		if err != nil {
-			// ignore error on failure to remove tmpfile (gosec complains)
-			_ = os.Remove(t.Name())
-		}
-	}()
-
-	s, err := t.Write(data)
-	if err != nil || s != len(data) {
-		return "", fmt.Errorf("failed to write temporary file: %w", err)
-	}
-	err = t.Close()
-	if err != nil {
-		return "", fmt.Errorf("failed to close temporary file: %w", err)
-	}
-
-	return t.Name(), nil
 }

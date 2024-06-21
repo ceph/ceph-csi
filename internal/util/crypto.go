@@ -237,6 +237,11 @@ func (ve *VolumeEncryption) GetCryptoPassphrase(ctx context.Context, volumeID st
 	return ve.KMS.DecryptDEK(ctx, volumeID, passphrase)
 }
 
+// GetNewCryptoPassphrase returns a random passphrase of given length.
+func (ve *VolumeEncryption) GetNewCryptoPassphrase(length int) (string, error) {
+	return generateNewEncryptionPassphrase(length)
+}
+
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.
 func generateNewEncryptionPassphrase(length int) (string, error) {
 	bytesPassphrase := make([]byte, length)
