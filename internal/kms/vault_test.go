@@ -18,7 +18,6 @@ package kms
 
 import (
 	"errors"
-	"os"
 	"testing"
 
 	loss "github.com/libopenstorage/secrets"
@@ -41,23 +40,6 @@ func TestDetectAuthMountPath(t *testing.T) {
 	}
 	if authMountPath != "kubernetes" {
 		t.Errorf("authMountPath should be set to 'kubernetes', but is: %s", authMountPath)
-	}
-}
-
-func TestCreateTempFile(t *testing.T) {
-	t.Parallel()
-	data := []byte("Hello World!")
-	tmpfile, err := createTempFile("my-file", data)
-	if err != nil {
-		t.Errorf("createTempFile() failed: %s", err)
-	}
-	if tmpfile == "" {
-		t.Errorf("createTempFile() returned an empty filename")
-	}
-
-	err = os.Remove(tmpfile)
-	if err != nil {
-		t.Errorf("failed to remove tmpfile (%s): %s", tmpfile, err)
 	}
 }
 

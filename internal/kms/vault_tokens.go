@@ -24,6 +24,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 
 	"github.com/hashicorp/vault/api"
@@ -378,10 +379,11 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 				return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, cErr)
 			}
 		}
-		vaultConfig[api.EnvVaultCACert], err = createTempFile("vault-ca-cert", []byte(cert))
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
+		cer, ferr := file.CreateTempFile("vault-ca-cert", cert)
+		if ferr != nil {
+			return fmt.Errorf("failed to create temporary file for Vault CA: %w", ferr)
 		}
+		vaultConfig[api.EnvVaultCACert] = cer.Name()
 	}
 
 	vaultClientCertFromSecret := "" // optional
@@ -403,10 +405,11 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 				return fmt.Errorf("failed to get client certificate from secret %s: %w", vaultCAFromSecret, cErr)
 			}
 		}
-		vaultConfig[api.EnvVaultClientCert], err = createTempFile("vault-ca-cert", []byte(cert))
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for Vault client certificate: %w", err)
+		cer, ferr := file.CreateTempFile("vault-ca-cert", cert)
+		if ferr != nil {
+			return fmt.Errorf("failed to create temporary file for Vault client certificate: %w", ferr)
 		}
+		vaultConfig[api.EnvVaultClientCert] = cer.Name()
 	}
 
 	vaultClientCertKeyFromSecret := "" // optional
@@ -432,10 +435,11 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 				return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultCAFromSecret, err)
 			}
 		}
-		vaultConfig[api.EnvVaultClientKey], err = createTempFile("vault-client-cert-key", []byte(certKey))
+		ckey, err := file.CreateTempFile("vault-client-cert-key", certKey)
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file for Vault client cert key: %w", err)
 		}
+		vaultConfig[api.EnvVaultClientKey] = ckey.Name()
 	}
 
 	for key, value := range vaultConfig {

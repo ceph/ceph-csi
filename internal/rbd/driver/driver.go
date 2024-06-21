@@ -229,6 +229,9 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	if conf.IsNodeServer {
 		rs := casrbd.NewReclaimSpaceNodeServer()
 		r.cas.RegisterService(rs)
+
+		ekr := casrbd.NewEncryptionKeyRotationServer(r.ns.VolumeLocks)
+		r.cas.RegisterService(ekr)
 	}
 
 	// start the server, this does not block, it runs a new go-routine
