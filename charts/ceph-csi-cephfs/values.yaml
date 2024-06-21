@@ -372,3 +372,6 @@ configMapName: ceph-csi-config
 externallyManagedConfigmap: false
 # Name of the configmap used for ceph.conf
 cephConfConfigMapName: ceph-config
+# Unique ID distinguishing this instance of Ceph CSI among other instances,
+# when sharing Ceph clusters across CSI instances for provisioning
+# instanceID: default

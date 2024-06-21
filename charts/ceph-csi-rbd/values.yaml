@@ -553,3 +553,6 @@ externallyManagedConfigmap: false
 cephConfConfigMapName: ceph-config
 # Name of the configmap used for encryption kms configuration
 kmsConfigMapName: ceph-csi-encryption-kms-config
+# Unique ID distinguishing this instance of Ceph CSI among other instances,
+# when sharing Ceph clusters across CSI instances for provisioning
+# instanceID: default

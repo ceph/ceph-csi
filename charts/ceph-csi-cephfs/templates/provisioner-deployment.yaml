@@ -79,6 +79,9 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
+{{- if .Values.instanceID }}
+            - "--instanceid={{ .Values.instanceID }}"
+{{- end }}
 {{- if .Values.provisioner.profiling.enabled }}
             - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
 {{- end }}
