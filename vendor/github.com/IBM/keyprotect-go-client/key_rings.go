@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	path = "key_rings"
+	keyRingPath = "key_rings"
 )
 
 type KeyRing struct {
@@ -28,7 +28,7 @@ type KeyRings struct {
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-managing-key-rings#create-key-ring-api
 func (c *Client) CreateKeyRing(ctx context.Context, id string) error {
 
-	req, err := c.newRequest("POST", fmt.Sprintf(path+"/%s", id), nil)
+	req, err := c.newRequest("POST", fmt.Sprintf(keyRingPath+"/%s", id), nil)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (c *Client) CreateKeyRing(ctx context.Context, id string) error {
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-managing-key-rings#list-key-ring-api
 func (c *Client) GetKeyRings(ctx context.Context) (*KeyRings, error) {
 	rings := KeyRings{}
-	req, err := c.newRequest("GET", path, nil)
+	req, err := c.newRequest("GET", keyRingPath, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func WithForce(force bool) DeleteKeyRingQueryOption {
 // For information please refer to the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-managing-key-rings#delete-key-ring-api
 func (c *Client) DeleteKeyRing(ctx context.Context, id string, opts ...DeleteKeyRingQueryOption) error {
-	req, err := c.newRequest("DELETE", fmt.Sprintf(path+"/%s", id), nil)
+	req, err := c.newRequest("DELETE", fmt.Sprintf(keyRingPath+"/%s", id), nil)
 	for _, opt := range opts {
 		opt(req)
 	}
