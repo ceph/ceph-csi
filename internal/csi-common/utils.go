@@ -116,6 +116,43 @@ func NewMiddlewareServerOption() grpc.ServerOption {
 	return grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(middleWare...))
 }
 
+// GetIDFromReplication returns the volumeID for Replication.
+func GetIDFromReplication(req interface{}) string {
+	getID := func(r interface {
+		GetVolumeId() string
+		GetReplicationSource() *replication.ReplicationSource
+	},
+	) string {
+		reqID := ""
+		src := r.GetReplicationSource()
+		if src != nil && src.GetVolume() != nil {
+			reqID = src.GetVolume().GetVolumeId()
+		}
+		if reqID == "" {
+			reqID = r.GetVolumeId() //nolint:nolintlint,staticcheck // req.VolumeId is deprecated
+		}
+
+		return reqID
+	}
+
+	switch r := req.(type) {
+	case *replication.EnableVolumeReplicationRequest:
+		return getID(r)
+	case *replication.DisableVolumeReplicationRequest:
+		return getID(r)
+	case *replication.PromoteVolumeRequest:
+		return getID(r)
+	case *replication.DemoteVolumeRequest:
+		return getID(r)
+	case *replication.ResyncVolumeRequest:
+		return getID(r)
+	case *replication.GetVolumeReplicationInfoRequest:
+		return getID(r)
+	default:
+		return ""
+	}
+}
+
 func getReqID(req interface{}) string {
 	// if req is nil empty string will be returned
 	reqID := ""
@@ -156,17 +193,17 @@ func getReqID(req interface{}) string {
 
 	// Replication
 	case *replication.EnableVolumeReplicationRequest:
-		reqID = r.GetVolumeId()
+		reqID = GetIDFromReplication(r)
 	case *replication.DisableVolumeReplicationRequest:
-		reqID = r.GetVolumeId()
+		reqID = GetIDFromReplication(r)
 	case *replication.PromoteVolumeRequest:
-		reqID = r.GetVolumeId()
+		reqID = GetIDFromReplication(r)
 	case *replication.DemoteVolumeRequest:
-		reqID = r.GetVolumeId()
+		reqID = GetIDFromReplication(r)
 	case *replication.ResyncVolumeRequest:
-		reqID = r.GetVolumeId()
+		reqID = GetIDFromReplication(r)
 	case *replication.GetVolumeReplicationInfoRequest:
-		reqID = r.GetVolumeId()
+		reqID = GetIDFromReplication(r)
 	}
 
 	return reqID

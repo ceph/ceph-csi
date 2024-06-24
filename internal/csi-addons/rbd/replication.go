@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	corerbd "github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -247,7 +248,7 @@ func validateSchedulingInterval(interval string) error {
 func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	req *replication.EnableVolumeReplicationRequest,
 ) (*replication.EnableVolumeReplicationResponse, error) {
-	volumeID := req.GetVolumeId()
+	volumeID := csicommon.GetIDFromReplication(req)
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
@@ -329,7 +330,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	req *replication.DisableVolumeReplicationRequest,
 ) (*replication.DisableVolumeReplicationResponse, error) {
-	volumeID := req.GetVolumeId()
+	volumeID := csicommon.GetIDFromReplication(req)
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
@@ -404,7 +405,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	req *replication.PromoteVolumeRequest,
 ) (*replication.PromoteVolumeResponse, error) {
-	volumeID := req.GetVolumeId()
+	volumeID := csicommon.GetIDFromReplication(req)
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
@@ -504,7 +505,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	req *replication.DemoteVolumeRequest,
 ) (*replication.DemoteVolumeResponse, error) {
-	volumeID := req.GetVolumeId()
+	volumeID := csicommon.GetIDFromReplication(req)
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
@@ -622,7 +623,7 @@ func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirro
 func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	req *replication.ResyncVolumeRequest,
 ) (*replication.ResyncVolumeResponse, error) {
-	volumeID := req.GetVolumeId()
+	volumeID := csicommon.GetIDFromReplication(req)
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
@@ -836,7 +837,7 @@ func getGRPCError(err error) error {
 func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	req *replication.GetVolumeReplicationInfoRequest,
 ) (*replication.GetVolumeReplicationInfoResponse, error) {
-	volumeID := req.GetVolumeId()
+	volumeID := csicommon.GetIDFromReplication(req)
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
