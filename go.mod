@@ -9,7 +9,7 @@ require (
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.28.0
 	github.com/container-storage-interface/spec v1.9.0
-	github.com/csi-addons/spec v0.2.1-0.20230606140122-d20966d2e444
+	github.com/csi-addons/spec v0.2.1-0.20240619103729-12c61f25a2a5
 	github.com/gemalto/kmip-go v0.0.10
 	github.com/golang/protobuf v1.5.4
 	github.com/google/fscrypt v0.3.6-0.20240502174735-068b9f8f5dec
