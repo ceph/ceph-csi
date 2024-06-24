@@ -37,7 +37,7 @@ require (
 	k8s.io/apimachinery v0.30.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.30.2
-	k8s.io/klog/v2 v2.130.0
+	k8s.io/klog/v2 v2.130.1
 	k8s.io/kubernetes v1.30.2
 	k8s.io/mount-utils v0.30.2
 	k8s.io/pod-security-admission v0.30.2
