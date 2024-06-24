@@ -221,6 +221,9 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 
 		rcs := casrbd.NewReplicationServer(NewControllerServer(r.cd))
 		r.cas.RegisterService(rcs)
+
+		vgcs := casrbd.NewVolumeGroupServer(NewControllerServer(r.cd))
+		r.cas.RegisterService(vgcs)
 	}
 
 	if conf.IsNodeServer {
