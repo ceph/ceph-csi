@@ -94,6 +94,62 @@ func TestGetReqID(t *testing.T) {
 		&replication.GetVolumeReplicationInfoRequest{
 			VolumeId: fakeID,
 		},
+
+		// volumeId is set in ReplicationSource
+		&replication.EnableVolumeReplicationRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volume{
+					Volume: &replication.ReplicationSource_VolumeSource{
+						VolumeId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.DisableVolumeReplicationRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volume{
+					Volume: &replication.ReplicationSource_VolumeSource{
+						VolumeId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.PromoteVolumeRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volume{
+					Volume: &replication.ReplicationSource_VolumeSource{
+						VolumeId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.DemoteVolumeRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volume{
+					Volume: &replication.ReplicationSource_VolumeSource{
+						VolumeId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.ResyncVolumeRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volume{
+					Volume: &replication.ReplicationSource_VolumeSource{
+						VolumeId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.GetVolumeReplicationInfoRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volume{
+					Volume: &replication.ReplicationSource_VolumeSource{
+						VolumeId: fakeID,
+					},
+				},
+			},
+		},
 	}
 	for _, r := range req {
 		if got := getReqID(r); got != fakeID {
