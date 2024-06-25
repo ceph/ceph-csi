@@ -186,7 +186,7 @@ More details are available [here](https://github.com/ceph/ceph-csi/issues/463)
 
 ## Dev standup
 
-A regular dev standup takes place every [Tuesday at
+A regular dev standup takes place every [Monday at
 12:00 PM UTC](https://meet.google.com/vit-qdhw-nyh) Convert to your local
 timezone by executing command `date -d "12:00 UTC"` on terminal
 
