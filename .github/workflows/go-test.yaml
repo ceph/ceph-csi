@@ -9,6 +9,13 @@ permissions:
   contents: read
 
 jobs:
+  e2e-build-test:
+    name: e2e-build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: e2e-build-test
+        run: make containerized-build TARGET=e2e.test
   go-test:
     name: go-test
     runs-on: ubuntu-latest
