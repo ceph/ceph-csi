@@ -23,6 +23,8 @@ import (
 	"os"
 	"path"
 	"strings"
+	"syscall"
+	"time"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
@@ -127,13 +129,70 @@ func maybeUnlockFileEncryption(
 	stagingTargetPath string,
 	volID fsutil.VolumeID,
 ) error {
-	if volOptions.IsEncrypted() {
-		log.DebugLog(ctx, "cephfs: unlocking fscrypt on volume %q path %s", volID, stagingTargetPath)
+	if !volOptions.IsEncrypted() {
+		return nil
+	}
 
-		return fscrypt.Unlock(ctx, volOptions.Encryption, stagingTargetPath, string(volID))
+	// Define Mutex Lock variables
+	lockName := string(volID) + "-mutexLock"
+	lockDesc := "Lock for " + string(volID)
+	lockDuration := 150 * time.Second
+	// Generate a consistent lock cookie for the client using hostname and process ID
+	lockCookie := generateLockCookie()
+	var flags byte = 0
+
+	log.DebugLog(ctx, "Creating lock for the following volume ID %s", volID)
+
+	ioctx, err := volOptions.GetConnection().GetIoctx(volOptions.MetadataPool)
+	if err != nil {
+		log.ErrorLog(ctx, "Failed to create ioctx: %s", err)
+
+		return err
+	}
+	defer ioctx.Destroy()
+
+	res, err := ioctx.LockExclusive(volOptions.VolID, lockName, lockCookie, lockDesc, lockDuration, &flags)
+	if res != 0 {
+		switch res {
+		case -int(syscall.EBUSY):
+			return fmt.Errorf("Lock is already held by another client and cookie pair for %v volume", volID)
+		case -int(syscall.EEXIST):
+			return fmt.Errorf("Lock is already held by the same client and cookie pair for %v volume", volID)
+		default:
+			return fmt.Errorf("Failed to lock volume ID %v: %w", volID, err)
+		}
+	}
+	log.DebugLog(ctx, "Lock successfully created for volume ID %s", volID)
+
+	log.DebugLog(ctx, "cephfs: unlocking fscrypt on volume %q path %s", volID, stagingTargetPath)
+	err = fscrypt.Unlock(ctx, volOptions.Encryption, stagingTargetPath, string(volID))
+	if err != nil {
+		return err
+	}
+
+	ret, err := ioctx.Unlock(string(volID), lockName, lockCookie)
+	switch ret {
+	case 0:
+		log.DebugLog(ctx, "Lock %s successfully released ", lockName)
+	case -int(syscall.ENOENT):
+		log.DebugLog(ctx, "Lock is not held by the specified %s, %s pair", lockCookie, lockName)
+	default:
+		log.ErrorLog(ctx, "Failed to release following lock, this will lead to orphan lock %s: %v",
+			lockName, err)
 	}
 
 	return nil
+}
+
+// generateLockCookie generates a consistent lock cookie for the client.
+func generateLockCookie() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown-host"
+	}
+	pid := os.Getpid()
+
+	return fmt.Sprintf("%s-%d", hostname, pid)
 }
 
 // maybeInitializeFileEncryption initializes KMS and node specifics, if volContext enables encryption.
