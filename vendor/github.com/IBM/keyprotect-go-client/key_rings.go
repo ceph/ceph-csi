@@ -59,9 +59,9 @@ func (c *Client) GetKeyRings(ctx context.Context) (*KeyRings, error) {
 	return &rings, nil
 }
 
-type DeleteKeyRingQueryOption func(*http.Request)
+type RequestOpt func(*http.Request)
 
-func WithForce(force bool) DeleteKeyRingQueryOption {
+func WithForce(force bool) RequestOpt {
 	return func(req *http.Request) {
 		query := req.URL.Query()
 		query.Add("force", strconv.FormatBool(force))
@@ -72,7 +72,7 @@ func WithForce(force bool) DeleteKeyRingQueryOption {
 // DeleteRing method deletes the key ring with the provided name in the instance
 // For information please refer to the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-managing-key-rings#delete-key-ring-api
-func (c *Client) DeleteKeyRing(ctx context.Context, id string, opts ...DeleteKeyRingQueryOption) error {
+func (c *Client) DeleteKeyRing(ctx context.Context, id string, opts ...RequestOpt) error {
 	req, err := c.newRequest("DELETE", fmt.Sprintf(keyRingPath+"/%s", id), nil)
 	for _, opt := range opts {
 		opt(req)
