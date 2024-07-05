@@ -239,32 +239,46 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	return rbdVol, nil
 }
 
-func buildCreateVolumeResponse(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) *csi.CreateVolumeResponse {
-	volumeContext := util.GetVolumeContext(req.GetParameters())
-	volumeContext["pool"] = rbdVol.Pool
-	volumeContext["journalPool"] = rbdVol.JournalPool
-	volumeContext["imageName"] = rbdVol.RbdImageName
+func (rbdVol *rbdVolume) ToCSI(ctx context.Context) *csi.Volume {
+	vol := &csi.Volume{
+		VolumeId:      rbdVol.VolID,
+		CapacityBytes: rbdVol.VolSize,
+		VolumeContext: map[string]string{
+			"pool":        rbdVol.Pool,
+			"journalPool": rbdVol.JournalPool,
+			"imageName":   rbdVol.RbdImageName,
+		},
+	}
+
 	if rbdVol.RadosNamespace != "" {
-		volumeContext["radosNamespace"] = rbdVol.RadosNamespace
+		vol.VolumeContext["radosNamespace"] = rbdVol.RadosNamespace
 	}
 
 	if rbdVol.DataPool != "" {
-		volumeContext["dataPool"] = rbdVol.DataPool
-	}
-
-	volume := &csi.Volume{
-		VolumeId:      rbdVol.VolID,
-		CapacityBytes: rbdVol.VolSize,
-		VolumeContext: volumeContext,
-		ContentSource: req.GetVolumeContentSource(),
+		vol.VolumeContext["dataPool"] = rbdVol.DataPool
 	}
 
 	if rbdVol.Topology != nil {
-		volume.AccessibleTopology = []*csi.Topology{
+		vol.AccessibleTopology = []*csi.Topology{
 			{
 				Segments: rbdVol.Topology,
 			},
 		}
+	}
+
+	return vol
+}
+
+func buildCreateVolumeResponse(
+	ctx context.Context,
+	req *csi.CreateVolumeRequest,
+	rbdVol *rbdVolume,
+) *csi.CreateVolumeResponse {
+	volume := rbdVol.ToCSI(ctx)
+	volume.ContentSource = req.GetVolumeContentSource()
+
+	for param, value := range util.GetVolumeContext(req.GetParameters()) {
+		volume.VolumeContext[param] = value
 	}
 
 	return &csi.CreateVolumeResponse{Volume: volume}
@@ -410,7 +424,7 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return buildCreateVolumeResponse(req, rbdVol), nil
+	return buildCreateVolumeResponse(ctx, req, rbdVol), nil
 }
 
 // flattenParentImage is to be called before proceeding with creating volume,
@@ -545,7 +559,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		return nil, err
 	}
 
-	return buildCreateVolumeResponse(req, rbdVol), nil
+	return buildCreateVolumeResponse(ctx, req, rbdVol), nil
 }
 
 // check snapshots on the rbd image, as we have limit from krbd that an image
