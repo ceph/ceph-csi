@@ -18,13 +18,20 @@ package types
 
 import (
 	"context"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 type Volume interface {
 	// Destroy frees the resources used by the Volume.
 	Destroy(ctx context.Context)
 
+	// Delete removes the volume from the storage backend.
 	Delete(ctx context.Context) error
 
+	// GetID returns the CSI VolumeID for the volume.
 	GetID(ctx context.Context) (string, error)
+
+	// ToCSI creates a CSI protocol formatted struct of the volume.
+	ToCSI(ctx context.Context) *csi.Volume
 }
