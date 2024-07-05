@@ -141,7 +141,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	defer func() {
 		if err != nil {
 			log.DebugLog(ctx, "Removing clone image %q", rv)
-			errDefer := rv.deleteImage(ctx)
+			errDefer := rv.Delete(ctx)
 			if errDefer != nil {
 				log.ErrorLog(ctx, "failed to delete clone image %q: %v", rv, errDefer)
 			}

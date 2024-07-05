@@ -56,7 +56,7 @@ func createRBDClone(
 	errSnap := parentVol.deleteSnapshot(ctx, snap)
 	if errSnap != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot: %v", errSnap)
-		delErr := cloneRbdVol.deleteImage(ctx)
+		delErr := cloneRbdVol.Delete(ctx)
 		if delErr != nil {
 			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
 		}
@@ -85,7 +85,7 @@ func cleanUpSnapshot(
 	}
 
 	if rbdVol != nil {
-		err := rbdVol.deleteImage(ctx)
+		err := rbdVol.Delete(ctx)
 		if err != nil {
 			if !errors.Is(err, ErrImageNotFound) {
 				log.ErrorLog(ctx, "failed to delete rbd image %q with error: %v", rbdVol, err)
