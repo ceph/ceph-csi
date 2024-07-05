@@ -403,7 +403,7 @@ func (cs *ControllerServer) CreateVolume(
 	metadata := k8s.GetVolumeMetadata(req.GetParameters())
 	err = rbdVol.setAllMetadata(metadata)
 	if err != nil {
-		if deleteErr := rbdVol.deleteImage(ctx); deleteErr != nil {
+		if deleteErr := rbdVol.Delete(ctx); deleteErr != nil {
 			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", rbdVol, deleteErr)
 		}
 
@@ -621,7 +621,7 @@ func checkFlatten(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) 
 		if errors.Is(err, ErrFlattenInProgress) {
 			return status.Error(codes.Aborted, err.Error())
 		}
-		if errDefer := rbdVol.deleteImage(ctx); errDefer != nil {
+		if errDefer := rbdVol.Delete(ctx); errDefer != nil {
 			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", rbdVol, errDefer)
 
 			return status.Error(codes.Internal, err.Error())
@@ -681,7 +681,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 	defer func() {
 		if err != nil {
 			log.DebugLog(ctx, "Removing clone image %q", rbdVol)
-			errDefer := rbdVol.deleteImage(ctx)
+			errDefer := rbdVol.Delete(ctx)
 			if errDefer != nil {
 				log.ErrorLog(ctx, "failed to delete clone image %q: %v", rbdVol, errDefer)
 			}
@@ -764,7 +764,7 @@ func (cs *ControllerServer) createBackingImage(
 
 	defer func() {
 		if err != nil {
-			if deleteErr := rbdVol.deleteImage(ctx); deleteErr != nil {
+			if deleteErr := rbdVol.Delete(ctx); deleteErr != nil {
 				log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", rbdVol, deleteErr)
 			}
 		}
@@ -1029,7 +1029,7 @@ func cleanupRBDImage(ctx context.Context,
 
 	// Deleting rbd image
 	log.DebugLog(ctx, "deleting image %s", rbdVol.RbdImageName)
-	if err = rbdVol.deleteImage(ctx); err != nil {
+	if err = rbdVol.Delete(ctx); err != nil {
 		log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v",
 			rbdVol, err)
 
@@ -1188,7 +1188,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	defer func() {
 		if err != nil {
 			log.DebugLog(ctx, "Removing clone image %q", rbdVol)
-			errDefer := rbdVol.deleteImage(ctx)
+			errDefer := rbdVol.Delete(ctx)
 			if errDefer != nil {
 				log.ErrorLog(ctx, "failed to delete clone image %q: %v", rbdVol, errDefer)
 			}

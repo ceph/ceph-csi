@@ -627,8 +627,8 @@ func (ri *rbdImage) ensureImageCleanup(ctx context.Context) error {
 	return nil
 }
 
-// deleteImage deletes a ceph image with provision and volume options.
-func (ri *rbdImage) deleteImage(ctx context.Context) error {
+// Delete deletes a ceph image with provision and volume options.
+func (ri *rbdImage) Delete(ctx context.Context) error {
 	image := ri.RbdImageName
 
 	log.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, ri.Monitors, ri.Pool)
@@ -706,7 +706,7 @@ func (ri *rbdImage) trashRemoveImage(ctx context.Context) error {
 // DeleteTempImage deletes the temporary image created for volume datasource.
 func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
 	tempClone := rv.generateTempClone()
-	err := tempClone.deleteImage(ctx)
+	err := tempClone.Delete(ctx)
 	if err != nil {
 		if errors.Is(err, ErrImageNotFound) {
 			return tempClone.ensureImageCleanup(ctx)
