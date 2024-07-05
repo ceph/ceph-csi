@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	types "github.com/ceph/ceph-csi/internal/rbd_types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -149,6 +150,9 @@ type rbdImage struct {
 	// ParentInTrash indicates the parent image is in trash.
 	ParentInTrash bool
 }
+
+// check that rbdVolume implements the types.Volume interface.
+var _ types.Volume = &rbdVolume{}
 
 // rbdVolume represents a CSI volume and its RBD image specifics.
 type rbdVolume struct {
@@ -416,6 +420,11 @@ func (rs *rbdSnapshot) String() string {
 	}
 
 	return fmt.Sprintf("%s/%s@%s", rs.Pool, rs.RbdImageName, rs.RbdSnapName)
+}
+
+// GetID returns the CSI volume handle of the image.
+func (ri *rbdImage) GetID(ctx context.Context) (string, error) {
+	return ri.VolID, nil
 }
 
 // createImage creates a new ceph image with provision and volume options.
