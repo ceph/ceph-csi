@@ -201,6 +201,7 @@ charts and their default values.
 | `CSIDriver.fsGroupPolicy` | Specifies the fsGroupPolicy for the CSI driver object | `File` |
 | `CSIDriver.seLinuxMount` | Specify for efficient SELinux volume relabeling | `true` |
 | `instanceID`                                   | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning. | ` ` |
+| `radosNamespaceCephFS`                         | CephFS RadosNamespace used to store CSI specific objects and keys. | ` ` |
 
 ### Command Line
 
