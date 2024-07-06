@@ -101,6 +101,11 @@ func init() {
 		"",
 		"Comma separated string of mount options accepted by cephfs kernel mounter")
 	flag.StringVar(
+		&conf.RadosNamespaceCephFS,
+		"radosnamespacecephfs",
+		"",
+		"CephFS RadosNamespace used to store CSI specific objects and keys.")
+	flag.StringVar(
 		&conf.FuseMountOptions,
 		"fusemountoptions",
 		"",
