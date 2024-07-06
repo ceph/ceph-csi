@@ -82,6 +82,9 @@ spec:
 {{- if .Values.instanceID }}
             - "--instanceid={{ .Values.instanceID }}"
 {{- end }}
+{{- if .Values.radosNamespaceCephFS }}
+            - "--radosnamespacecephfs={{ .Values.radosNamespaceCephFS }}"
+{{- end }}
 {{- if .Values.provisioner.profiling.enabled }}
             - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
 {{- end }}

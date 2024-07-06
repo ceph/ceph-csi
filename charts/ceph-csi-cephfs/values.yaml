@@ -372,6 +372,8 @@ configMapName: ceph-csi-config
 externallyManagedConfigmap: false
 # Name of the configmap used for ceph.conf
 cephConfConfigMapName: ceph-config
+# CephFS RadosNamespace used to store CSI specific objects and keys.
+# radosNamespaceCephFS: csi
 # Unique ID distinguishing this instance of Ceph CSI among other instances,
 # when sharing Ceph clusters across CSI instances for provisioning
 # instanceID: default
