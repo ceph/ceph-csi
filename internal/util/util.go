@@ -142,9 +142,9 @@ type Config struct {
 	SkipForceFlatten bool
 
 	// cephfs related flags
-	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
-
-	SetMetadata bool // set metadata on the volume
+	ForceKernelCephFS    bool   // force to use the ceph kernel client even if the kernel is < 4.17
+	RadosNamespaceCephFS string // RadosNamespace used to store CSI specific objects and keys
+	SetMetadata          bool   // set metadata on the volume
 
 	// Read affinity related options
 	EnableReadAffinity  bool   // enable OSD read affinity.

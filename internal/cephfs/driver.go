@@ -110,6 +110,11 @@ func (fs *Driver) Run(conf *util.Config) {
 		CSIInstanceID = conf.InstanceID
 	}
 
+	// Use passed in radosNamespace, if provided for storing CSI specific objects and keys.
+	if conf.RadosNamespaceCephFS != "" {
+		fsutil.RadosNamespace = conf.RadosNamespaceCephFS
+	}
+
 	if conf.IsNodeServer && k8s.RunsOnKubernetes() {
 		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
 		if err != nil {
