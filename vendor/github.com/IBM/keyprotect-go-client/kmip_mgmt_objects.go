@@ -26,6 +26,7 @@ type KMIPObject struct {
 	DestroyedByCertID string     `json:"destroyed_by_kmip_client_cert_id,omitempty"`
 	DestroyedBy       string     `json:"destroyed_by,omitempty"`
 	DestroyedAt       *time.Time `json:"destroyed_at,omitempty"`
+	Recoverable       *bool      `json:"recoverable,omitempty"`
 }
 
 type KMIPObjects struct {
