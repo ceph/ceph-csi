@@ -105,7 +105,7 @@ func (is *IdentityServer) GetCapabilities(
 			}, &identity.Capability{
 				Type: &identity.Capability_VolumeGroup_{
 					VolumeGroup: &identity.Capability_VolumeGroup{
-						Type: identity.Capability_VolumeGroup_MODIFY_VOLUME_GROUP,
+						Type: identity.Capability_VolumeGroup_DO_NOT_ALLOW_VG_TO_DELETE_VOLUMES,
 					},
 				},
 			}, &identity.Capability{
