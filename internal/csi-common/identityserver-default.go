@@ -28,7 +28,7 @@ import (
 
 // DefaultIdentityServer stores driver object.
 type DefaultIdentityServer struct {
-	csi.UnimplementedControllerServer
+	csi.UnimplementedIdentityServer
 	Driver *CSIDriver
 }
 
