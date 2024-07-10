@@ -211,7 +211,7 @@ func FindPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
 
 	return "", "", nil, fmt.Errorf("none of the topology constrained pools matched requested "+
 		"topology constraints : pools (%+v) requested topology (%+v)",
-		*topologyPools, *accessibilityRequirements)
+		*topologyPools, accessibilityRequirements)
 }
 
 // matchPoolToTopology loops through passed in pools, and for each pool checks if all
