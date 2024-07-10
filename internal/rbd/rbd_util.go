@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	types "github.com/ceph/ceph-csi/internal/rbd_types"
+	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
