@@ -178,7 +178,7 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 		CreationTime:    timestamppb.New(time.Now()),
 	}
 
-	for _, r := range *resp {
+	for _, r := range resp {
 		r.Snapshot.GroupSnapshotId = vgs.VolumeGroupSnapshotID
 		response.GroupSnapshot.Snapshots = append(response.GroupSnapshot.Snapshots, r.GetSnapshot())
 	}
@@ -260,7 +260,7 @@ func (cs *ControllerServer) releaseQuiesceAndGetVolumeGroupSnapshotResponse(
 			}
 		}
 	}()
-	snapshotResponses := make([]csi.CreateSnapshotResponse, 0)
+	snapshotResponses := make([]*csi.CreateSnapshotResponse, 0)
 	for _, volID := range req.GetSourceVolumeIds() {
 		// Create the snapshot for the volumeID
 		clusterID := getClusterIDForVolumeID(fsMap, volID)
@@ -281,7 +281,7 @@ func (cs *ControllerServer) releaseQuiesceAndGetVolumeGroupSnapshotResponse(
 				"failed to create snapshot and add to volume group journal: %v",
 				err)
 		}
-		snapshotResponses = append(snapshotResponses, *resp)
+		snapshotResponses = append(snapshotResponses, resp)
 	}
 
 	response := &csi.CreateVolumeGroupSnapshotResponse{}
@@ -314,13 +314,13 @@ func (cs *ControllerServer) createSnapshotAddToVolumeGroupJournal(
 	vgs *store.VolumeGroupSnapshotIdentifier,
 	cr *util.Credentials,
 	fsMap map[string]core.FSQuiesceClient) (
-	*[]csi.CreateSnapshotResponse,
+	[]*csi.CreateSnapshotResponse,
 	error,
 ) {
 	var err error
 	var resp *csi.CreateSnapshotResponse
 
-	responses := make([]csi.CreateSnapshotResponse, 0)
+	responses := make([]*csi.CreateSnapshotResponse, 0)
 	for _, volID := range req.GetSourceVolumeIds() {
 		err = fsQuiesceWithExpireTimeout(ctx, vgo.RequestName, fsMap)
 		if err != nil {
@@ -345,7 +345,7 @@ func (cs *ControllerServer) createSnapshotAddToVolumeGroupJournal(
 
 			return nil, err
 		}
-		responses = append(responses, *resp)
+		responses = append(responses, resp)
 	}
 
 	err = releaseFSQuiesce(ctx, vgo.RequestName, fsMap)
@@ -355,7 +355,7 @@ func (cs *ControllerServer) createSnapshotAddToVolumeGroupJournal(
 		return nil, err
 	}
 
-	return &responses, nil
+	return responses, nil
 }
 
 func formatCreateSnapshotRequest(volID, groupSnapshotName,
