@@ -48,6 +48,10 @@ func getCrushLocationMap(crushLocationLabels string, nodeLabels map[string]strin
 	// Determine values for requested labels from node labels
 	crushLocationMap := make(map[string]string, len(labelsIn))
 	for key, value := range nodeLabels {
+		// label with empty value is not considered.
+		if value == "" {
+			continue
+		}
 		if _, ok := labelsIn[key]; !ok {
 			continue
 		}
