@@ -100,6 +100,17 @@ func Test_getCrushLocationMap(t *testing.T) {
 			},
 			want: map[string]string{"host": "worker-1"},
 		},
+		{
+			name: "matching crushlocation and node labels with empty value",
+			args: input{
+				crushLocationLabels: "topology.io/region,topology.io/zone",
+				nodeLabels: map[string]string{
+					"topology.io/region": "region1",
+					"topology.io/zone":   "",
+				},
+			},
+			want: map[string]string{"region": "region1"},
+		},
 	}
 	for _, tt := range tests {
 		currentTT := tt
