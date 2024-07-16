@@ -77,10 +77,14 @@ type VolumeGroupJournalConfig struct {
 	Config
 }
 
-type VolumeGroupJournalConnection struct {
+type volumeGroupJournalConnection struct {
 	config     *VolumeGroupJournalConfig
 	connection *Connection
 }
+
+// assert that volumeGroupJournalConnection implements the VolumeGroupJournal
+// interface.
+var _ VolumeGroupJournal = &volumeGroupJournalConnection{}
 
 // NewCSIVolumeGroupJournal returns an instance of VolumeGroupJournal for groups.
 func NewCSIVolumeGroupJournal(suffix string) VolumeGroupJournalConfig {
@@ -116,7 +120,7 @@ func (vgc *VolumeGroupJournalConfig) Connect(
 	namespace string,
 	cr *util.Credentials,
 ) (VolumeGroupJournal, error) {
-	vgjc := &VolumeGroupJournalConnection{}
+	vgjc := &volumeGroupJournalConnection{}
 	vgjc.config = &VolumeGroupJournalConfig{
 		Config: vgc.Config,
 	}
@@ -130,7 +134,7 @@ func (vgc *VolumeGroupJournalConfig) Connect(
 }
 
 // Destroy frees any resources and invalidates the journal connection.
-func (vgjc *VolumeGroupJournalConnection) Destroy() {
+func (vgjc *volumeGroupJournalConnection) Destroy() {
 	vgjc.connection.Destroy()
 }
 
@@ -167,7 +171,7 @@ Return values:
     reservation found.
   - error: non-nil in case of any errors.
 */
-func (vgjc *VolumeGroupJournalConnection) CheckReservation(ctx context.Context,
+func (vgjc *volumeGroupJournalConnection) CheckReservation(ctx context.Context,
 	journalPool, reqName, namePrefix string,
 ) (*VolumeGroupData, error) {
 	var (
@@ -244,7 +248,7 @@ Input arguments:
   - groupID: ID of the volume group, generated from the UUID
   - reqName: Request name for the volume group
 */
-func (vgjc *VolumeGroupJournalConnection) UndoReservation(ctx context.Context,
+func (vgjc *volumeGroupJournalConnection) UndoReservation(ctx context.Context,
 	csiJournalPool, groupID, reqName string,
 ) error {
 	// delete volume UUID omap (first, inverse of create order)
@@ -303,7 +307,7 @@ Return values:
   - string: Contains the VolumeGroup name that was reserved for the passed in reqName
   - error: non-nil in case of any errors
 */
-func (vgjc *VolumeGroupJournalConnection) ReserveName(ctx context.Context,
+func (vgjc *volumeGroupJournalConnection) ReserveName(ctx context.Context,
 	journalPool, reqName, namePrefix string,
 ) (string, string, error) {
 	cj := vgjc.config
@@ -366,7 +370,7 @@ type VolumeGroupAttributes struct {
 	VolumeMap   map[string]string // Contains the volumeID and the corresponding value mapping
 }
 
-func (vgjc *VolumeGroupJournalConnection) GetVolumeGroupAttributes(
+func (vgjc *volumeGroupJournalConnection) GetVolumeGroupAttributes(
 	ctx context.Context,
 	pool, objectUUID string,
 ) (*VolumeGroupAttributes, error) {
@@ -401,7 +405,7 @@ func (vgjc *VolumeGroupJournalConnection) GetVolumeGroupAttributes(
 	return groupAttributes, nil
 }
 
-func (vgjc *VolumeGroupJournalConnection) AddVolumesMapping(
+func (vgjc *volumeGroupJournalConnection) AddVolumesMapping(
 	ctx context.Context,
 	pool,
 	reservedUUID string,
@@ -418,7 +422,7 @@ func (vgjc *VolumeGroupJournalConnection) AddVolumesMapping(
 	return nil
 }
 
-func (vgjc *VolumeGroupJournalConnection) RemoveVolumesMapping(
+func (vgjc *volumeGroupJournalConnection) RemoveVolumesMapping(
 	ctx context.Context,
 	pool,
 	reservedUUID string,
