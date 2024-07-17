@@ -37,12 +37,17 @@ type VolumeGroupServer struct {
 	// if volumegroup spec add more RPC services in the proto file, then we
 	// don't need to add all RPC methods leading to forward compatibility.
 	*volumegroup.UnimplementedControllerServer
+
+	// csiID is the unique ID for this CSI-driver deployment.
+	csiID string
 }
 
 // NewVolumeGroupServer creates a new VolumeGroupServer which handles the
 // VolumeGroup Service requests from the CSI-Addons specification.
-func NewVolumeGroupServer() *VolumeGroupServer {
-	return &VolumeGroupServer{}
+func NewVolumeGroupServer(instanceID string) *VolumeGroupServer {
+	return &VolumeGroupServer{
+		csiID: instanceID,
+	}
 }
 
 func (vs *VolumeGroupServer) RegisterService(server grpc.ServiceRegistrar) {
