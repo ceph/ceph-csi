@@ -33,5 +33,11 @@ type Volume interface {
 	GetID(ctx context.Context) (string, error)
 
 	// ToCSI creates a CSI protocol formatted struct of the volume.
-	ToCSI(ctx context.Context) *csi.Volume
+	ToCSI(ctx context.Context) (*csi.Volume, error)
+
+	// AddToGroup adds the Volume to the VolumeGroup.
+	AddToGroup(ctx context.Context, vg VolumeGroup) error
+
+	// RemoveFromGroup removes the Volume from the VolumeGroup.
+	RemoveFromGroup(ctx context.Context, vg VolumeGroup) error
 }

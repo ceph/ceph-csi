@@ -239,7 +239,7 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	return rbdVol, nil
 }
 
-func (rbdVol *rbdVolume) ToCSI(ctx context.Context) *csi.Volume {
+func (rbdVol *rbdVolume) ToCSI(ctx context.Context) (*csi.Volume, error) {
 	vol := &csi.Volume{
 		VolumeId:      rbdVol.VolID,
 		CapacityBytes: rbdVol.VolSize,
@@ -266,22 +266,29 @@ func (rbdVol *rbdVolume) ToCSI(ctx context.Context) *csi.Volume {
 		}
 	}
 
-	return vol
+	return vol, nil
 }
 
 func buildCreateVolumeResponse(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 	rbdVol *rbdVolume,
-) *csi.CreateVolumeResponse {
-	volume := rbdVol.ToCSI(ctx)
+) (*csi.CreateVolumeResponse, error) {
+	volume, err := rbdVol.ToCSI(ctx)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"BUG, can not happen: failed to convert volume %q to CSI type: %v",
+			rbdVol, err)
+	}
+
 	volume.ContentSource = req.GetVolumeContentSource()
 
 	for param, value := range util.GetVolumeContext(req.GetParameters()) {
 		volume.VolumeContext[param] = value
 	}
 
-	return &csi.CreateVolumeResponse{Volume: volume}
+	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }
 
 // getGRPCErrorForCreateVolume converts the returns the GRPC errors based on
@@ -424,7 +431,7 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return buildCreateVolumeResponse(ctx, req, rbdVol), nil
+	return buildCreateVolumeResponse(ctx, req, rbdVol)
 }
 
 // flattenParentImage is to be called before proceeding with creating volume,
@@ -559,7 +566,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		return nil, err
 	}
 
-	return buildCreateVolumeResponse(ctx, req, rbdVol), nil
+	return buildCreateVolumeResponse(ctx, req, rbdVol)
 }
 
 // check snapshots on the rbd image, as we have limit from krbd that an image
