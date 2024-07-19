@@ -23,9 +23,24 @@ import (
 	"github.com/csi-addons/spec/lib/go/volumegroup"
 )
 
-// VolumeGroup contains a number of volumes, and can be used to create a
-// VolumeGroupSnapshot.
+type journalledObject interface {
+	// GetID returns the CSI-Addons VolumeGroupId of the VolumeGroup.
+	GetID(ctx context.Context) (string, error)
+
+	// GetName returns the name in the backend storage for the VolumeGroup.
+	GetName(ctx context.Context) (string, error)
+
+	// GetPool returns the name of the pool that holds the VolumeGroup.
+	GetPool(ctx context.Context) (string, error)
+
+	// GetClusterID returns the ID of the cluster of the VolumeGroup.
+	GetClusterID(ctx context.Context) (string, error)
+}
+
+// VolumeGroup contains a number of volumes.
 type VolumeGroup interface {
+	journalledObject
+
 	// Destroy frees the resources used by the VolumeGroup.
 	Destroy(ctx context.Context)
 
@@ -33,12 +48,6 @@ type VolumeGroup interface {
 	// on the VolumeGroup. This is used by the rbdVolume struct when it
 	// needs to add/remove itself from the VolumeGroup.
 	GetIOContext(ctx context.Context) (*rados.IOContext, error)
-
-	// GetID returns the CSI-Addons VolumeGroupId of the VolumeGroup.
-	GetID(ctx context.Context) (string, error)
-
-	// GetName returns the name in the backend storage for the VolumeGroup.
-	GetName(ctx context.Context) (string, error)
 
 	// ToCSI creates a CSI-Addons type for the VolumeGroup.
 	ToCSI(ctx context.Context) (*volumegroup.VolumeGroup, error)
