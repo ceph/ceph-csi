@@ -18,14 +18,14 @@ the code and will be pointed out in the review process:
 
 ### Imports
 
-We use the following convention for specifying imports:
+We prefer the following convention for specifying imports:
 
 ```
 <import standard library packages>
 
-<import ceph-csi packages>
-
 <import third-party packages>
+
+<import ceph-csi packages>
 ```
 
 Example:
@@ -37,9 +37,9 @@ import (
  "strings"
  "time"
 
- "github.com/ceph/ceph-csi/internal/util"
-
  "github.com/pborman/uuid"
+
+ "github.com/ceph/ceph-csi/internal/util"
 )
 ```
 
