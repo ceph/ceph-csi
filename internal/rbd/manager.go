@@ -21,8 +21,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/go-ceph/rados"
+
 	"github.com/ceph/ceph-csi/internal/journal"
-	"github.com/ceph/ceph-csi/internal/rbd/group"
+	rbd_group "github.com/ceph/ceph-csi/internal/rbd/group"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -251,6 +253,40 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 }
 
 func (mgr *rbdManager) DeleteVolumeGroup(ctx context.Context, vg types.VolumeGroup) error {
-	// TODO: remove from journal
-	return vg.Delete(ctx)
+	err := vg.Delete(ctx)
+	if err != nil && !errors.Is(rados.ErrNotFound, err) {
+		return fmt.Errorf("failed to delete volume group %q: %w", vg, err)
+	}
+
+	clusterID, err := vg.GetClusterID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get cluster id for volume group %q: %w", vg, err)
+	}
+
+	vgJournal, err := mgr.getVolumeGroupJournal(clusterID)
+	if err != nil {
+		return err
+	}
+
+	name, err := vg.GetName(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get name for volume group %q: %w", vg, err)
+	}
+
+	csiID, err := vg.GetID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get id for volume group %q: %w", vg, err)
+	}
+
+	pool, err := vg.GetPool(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pool for volume group %q: %w", vg, err)
+	}
+
+	err = vgJournal.UndoReservation(ctx, pool, name, csiID)
+	if err != nil /* TODO? !errors.Is(..., err) */ {
+		return fmt.Errorf("failed to undo the reservation for volume group %q: %w", vg, err)
+	}
+
+	return nil
 }

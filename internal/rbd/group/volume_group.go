@@ -179,6 +179,24 @@ func (vg *volumeGroup) GetName(ctx context.Context) (string, error) {
 	return vg.name, nil
 }
 
+// GetPool returns the name of the pool that holds the VolumeGroup.
+func (vg *volumeGroup) GetPool(ctx context.Context) (string, error) {
+	if vg.pool == "" {
+		return "", errors.New("BUG: pool is not set")
+	}
+
+	return vg.pool, nil
+}
+
+// GetClusterID returns the name of the pool that holds the VolumeGroup.
+func (vg *volumeGroup) GetClusterID(ctx context.Context) (string, error) {
+	if vg.clusterID == "" {
+		return "", errors.New("BUG: clusterID is not set")
+	}
+
+	return vg.clusterID, nil
+}
+
 // ToCSI creates a CSI-Addons type for the VolumeGroup.
 func (vg *volumeGroup) ToCSI(ctx context.Context) (*volumegroup.VolumeGroup, error) {
 	volumes, err := vg.ListVolumes(ctx)
