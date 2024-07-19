@@ -19,6 +19,7 @@ package types
 import (
 	"context"
 
+	"github.com/ceph/go-ceph/rados"
 	"github.com/csi-addons/spec/lib/go/volumegroup"
 )
 
@@ -28,11 +29,22 @@ type VolumeGroup interface {
 	// Destroy frees the resources used by the VolumeGroup.
 	Destroy(ctx context.Context)
 
+	// GetIOContext returns the IOContext for performing librbd operations
+	// on the VolumeGroup. This is used by the rbdVolume struct when it
+	// needs to add/remove itself from the VolumeGroup.
+	GetIOContext(ctx context.Context) (*rados.IOContext, error)
+
 	// GetID returns the CSI-Addons VolumeGroupId of the VolumeGroup.
 	GetID(ctx context.Context) (string, error)
 
+	// GetName returns the name in the backend storage for the VolumeGroup.
+	GetName(ctx context.Context) (string, error)
+
 	// ToCSI creates a CSI-Addons type for the VolumeGroup.
-	ToCSI(ctx context.Context) *volumegroup.VolumeGroup
+	ToCSI(ctx context.Context) (*volumegroup.VolumeGroup, error)
+
+	// Create makes a new group in the backend storage.
+	Create(ctx context.Context, name string) error
 
 	// Delete removes the VolumeGroup from the backend storage.
 	Delete(ctx context.Context) error
