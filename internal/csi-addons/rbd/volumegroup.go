@@ -18,7 +18,6 @@ package rbd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
@@ -103,7 +102,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 		volumes[i] = vol
 	}
 
-	log.DebugLog(ctx, fmt.Sprintf("all %d Volumes for VolumeGroup %q have been found", len(volumes), req.GetName()))
+	log.DebugLog(ctx, "all %d Volumes for VolumeGroup %q have been found", len(volumes), req.GetName())
 
 	// create a RBDVolumeGroup
 	vg, err := mgr.CreateVolumeGroup(ctx, req.GetName())
@@ -115,7 +114,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 			err.Error())
 	}
 
-	log.DebugLog(ctx, fmt.Sprintf("VolumeGroup %q had been created", req.GetName()))
+	log.DebugLog(ctx, "VolumeGroup %q has been created: %+v", req.GetName(), vg)
 
 	// add each rbd-image to the RBDVolumeGroup
 	for _, vol := range volumes {
@@ -130,7 +129,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 		}
 	}
 
-	log.DebugLog(ctx, fmt.Sprintf("all %d Volumes have been added to for VolumeGroup %q", len(volumes), req.GetName()))
+	log.DebugLog(ctx, "all %d Volumes have been added to for VolumeGroup %q", len(volumes), req.GetName())
 
 	csiVG, err := vg.ToCSI(ctx)
 	if err != nil {
@@ -182,7 +181,7 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 	}
 	defer vg.Destroy(ctx)
 
-	log.DebugLog(ctx, fmt.Sprintf("VolumeGroup %q has been found", req.GetVolumeGroupId()))
+	log.DebugLog(ctx, "VolumeGroup %q has been found", req.GetVolumeGroupId())
 
 	// verify that the volume group is empty
 	volumes, err := vg.ListVolumes(ctx)
@@ -194,7 +193,7 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 			err.Error())
 	}
 
-	log.DebugLog(ctx, fmt.Sprintf("VolumeGroup %q contains %d volumes", req.GetVolumeGroupId(), len(volumes)))
+	log.DebugLog(ctx, "VolumeGroup %q contains %d volumes", req.GetVolumeGroupId(), len(volumes))
 
 	if len(volumes) != 0 {
 		return nil, status.Errorf(
@@ -212,7 +211,7 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 			err.Error())
 	}
 
-	log.DebugLog(ctx, fmt.Sprintf("VolumeGroup %q has been deleted", req.GetVolumeGroupId()))
+	log.DebugLog(ctx, "VolumeGroup %q has been deleted", req.GetVolumeGroupId())
 
 	return &volumegroup.DeleteVolumeGroupResponse{}, nil
 }
