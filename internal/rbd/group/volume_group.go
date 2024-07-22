@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package group
+package rbd_group
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -56,11 +57,17 @@ type volumeGroup struct {
 	pool      string
 	namespace string
 
+	journal journal.VolumeGroupJournal
+
 	// volumes is a list of rbd-images that are part of the group. The ID
 	// of each volume is stored in the journal.
 	volumes []types.Volume
 
-	journal journal.VolumeGroupJournal
+	// volumeToFree contains Volumes that were resolved during
+	// GetVolumeGroup. The volumes slice can be updated independently of
+	// this by calling AddVolume (Volumes are allocated elsewhere), and
+	// RemoveVolume (need to keep track of the allocated Volume).
+	volumesToFree []types.Volume
 }
 
 // verify that volumeGroup implements the VolumeGroup and Stringer interfaces.
@@ -71,11 +78,14 @@ var (
 
 // GetVolumeGroup initializes a new VolumeGroup object that can be used
 // to manage an `rbd group`.
+// If the .GetName() function returns an error, the VolumeGroup does not exist
+// yet. It is needed to call .Create() in that case first.
 func GetVolumeGroup(
 	ctx context.Context,
 	id string,
 	j journal.VolumeGroupJournal,
 	creds *util.Credentials,
+	volumeResolver types.VolumeResolver,
 ) (types.VolumeGroup, error) {
 	csiID := util.CSIIdentifier{}
 	err := csiID.DecomposeCSIID(id)
@@ -100,10 +110,27 @@ func GetVolumeGroup(
 
 	attrs, err := j.GetVolumeGroupAttributes(ctx, pool, csiID.ObjectUUID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get attributes for volume group id %q: %w", id, err)
+		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
+			return nil, fmt.Errorf("failed to get attributes for volume group id %q: %w", id, err)
+		}
+
+		attrs = &journal.VolumeGroupAttributes{}
 	}
 
-	// TODO: get the volumes that are part of this volume group
+	var volumes []types.Volume
+	for volID := range attrs.VolumeMap {
+		vol, err := volumeResolver.GetVolumeByID(ctx, volID)
+		if err != nil {
+			// free the previously allocated volumes
+			for _, v := range volumes {
+				v.Destroy(ctx)
+			}
+
+			return nil, fmt.Errorf("failed to get attributes for volume group id %q: %w", id, err)
+		}
+
+		volumes = append(volumes, vol)
+	}
 
 	return &volumeGroup{
 		journal:     j,
@@ -114,6 +141,9 @@ func GetVolumeGroup(
 		monitors:    mons,
 		pool:        pool,
 		namespace:   namespace,
+		volumes:     volumes,
+		// all allocated volumes need to be free'd at Destroy() time
+		volumesToFree: volumes,
 	}, nil
 }
 
@@ -229,6 +259,14 @@ func (vg *volumeGroup) GetIOContext(ctx context.Context) (*rados.IOContext, erro
 
 // Destroy frees the resources used by the volumeGroup.
 func (vg *volumeGroup) Destroy(ctx context.Context) {
+	// free the volumes that were allocated in GetVolumeGroup()
+	if len(vg.volumesToFree) > 0 {
+		for _, volume := range vg.volumesToFree {
+			volume.Destroy(ctx)
+		}
+		vg.volumesToFree = make([]types.Volume, 0)
+	}
+
 	if vg.ioctx != nil {
 		vg.ioctx.Destroy()
 		vg.ioctx = nil
@@ -244,7 +282,6 @@ func (vg *volumeGroup) Destroy(ctx context.Context) {
 		vg.credentials = nil
 	}
 
-	// FIXME: maybe need to .Destroy() all vg.volumes?
 	log.DebugLog(ctx, "destroyed volume group instance with id %q", vg.id)
 }
 
@@ -257,26 +294,32 @@ func (vg *volumeGroup) Create(ctx context.Context, name string) error {
 
 	err = librbd.GroupCreate(ioctx, name)
 	if err != nil {
-		if !errors.Is(rados.ErrObjectExists, err) {
+		if !errors.Is(rados.ErrObjectExists, err) && !strings.Contains(err.Error(), "rbd: ret=-17, File exists") {
 			return fmt.Errorf("failed to create volume group %q: %w", name, err)
 		}
 
 		log.DebugLog(ctx, "ignoring error while creating volume group %q: %v", vg, err)
 	}
 
-	log.DebugLog(ctx, "volume group %q has been created", name)
+	vg.name = name
+	log.DebugLog(ctx, "volume group %q has been created", vg)
 
 	return nil
 }
 
 func (vg *volumeGroup) Delete(ctx context.Context) error {
+	name, err := vg.GetName(ctx)
+	if err != nil {
+		return err
+	}
+
 	ioctx, err := vg.GetIOContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = librbd.GroupRemove(ioctx, vg.name)
-	if err != nil {
+	err = librbd.GroupRemove(ioctx, name)
+	if err != nil && !errors.Is(rados.ErrNotFound, err) {
 		return fmt.Errorf("failed to remove volume group %q: %w", vg, err)
 	}
 

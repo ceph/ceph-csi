@@ -82,7 +82,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 	ctx context.Context,
 	req *volumegroup.CreateVolumeGroupRequest,
 ) (*volumegroup.CreateVolumeGroupResponse, error) {
-	mgr := rbd.NewManager(req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(vs.csiID, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve all volumes
@@ -132,8 +132,17 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 
 	log.DebugLog(ctx, fmt.Sprintf("all %d Volumes have been added to for VolumeGroup %q", len(volumes), req.GetName()))
 
+	csiVG, err := vg.ToCSI(ctx)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"failed to convert volume group %q to CSI type: %s",
+			req.GetName(),
+			err.Error())
+	}
+
 	return &volumegroup.CreateVolumeGroupResponse{
-		VolumeGroup: vg.ToCSI(ctx),
+		VolumeGroup: csiVG,
 	}, nil
 }
 
@@ -159,7 +168,7 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 	ctx context.Context,
 	req *volumegroup.DeleteVolumeGroupRequest,
 ) (*volumegroup.DeleteVolumeGroupResponse, error) {
-	mgr := rbd.NewManager(nil, req.GetSecrets())
+	mgr := rbd.NewManager(vs.csiID, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve the volume group
