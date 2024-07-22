@@ -356,12 +356,6 @@ func (vg *volumeGroup) Delete(ctx context.Context) error {
 func (vg *volumeGroup) AddVolume(ctx context.Context, vol types.Volume) error {
 	err := vol.AddToGroup(ctx, vg)
 	if err != nil {
-		// rados.ErrObjectExists does not match the rbd error (there is no EEXISTS error)
-		if errors.Is(rados.ErrObjectExists, err) || strings.Contains(err.Error(), "ret=-17") {
-			log.DebugLog(ctx, "volume %q is already part of volume group %q: %v", vol, vg, err)
-			return nil
-		}
-
 		return fmt.Errorf("failed to add volume %q to volume group %q: %w", vol, vg, err)
 	}
 
