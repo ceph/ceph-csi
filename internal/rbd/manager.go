@@ -237,16 +237,9 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 		}
 	}()
 
-	// check if the volume group exists in the backend
-	existingName, err := vg.GetName(ctx)
+	err = vg.Create(ctx)
 	if err != nil {
-		// the volume group does not exist yet
-		err = vg.Create(ctx, vgName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create volume group %q: %w", name, err)
-		}
-	} else if existingName != vgName {
-		return nil, fmt.Errorf("volume group id %q has a name mismatch, expected %q, not %q", name, vgName, existingName)
+		return nil, fmt.Errorf("failed to create volume group %q: %w", name, err)
 	}
 
 	return vg, nil

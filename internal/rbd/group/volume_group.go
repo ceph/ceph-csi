@@ -132,7 +132,7 @@ func GetVolumeGroup(
 		volumes = append(volumes, vol)
 	}
 
-	return &volumeGroup{
+	vg := &volumeGroup{
 		journal:     j,
 		credentials: creds,
 		id:          id,
@@ -144,7 +144,11 @@ func GetVolumeGroup(
 		volumes:     volumes,
 		// all allocated volumes need to be free'd at Destroy() time
 		volumesToFree: volumes,
-	}, nil
+	}
+
+	log.DebugLog(ctx, "GetVolumeGroup(%s) returns %+v", id, *vg)
+
+	return vg, nil
 }
 
 // String makes it easy to include the volumeGroup object in log and error
@@ -303,8 +307,12 @@ func (vg *volumeGroup) Destroy(ctx context.Context) {
 	log.DebugLog(ctx, "destroyed volume group instance with id %q", vg.id)
 }
 
-func (vg *volumeGroup) Create(ctx context.Context, name string) error {
-	// TODO: if the group already exists, resolve details and use that
+func (vg *volumeGroup) Create(ctx context.Context) error {
+	name, err := vg.GetName(ctx)
+	if err != nil {
+		return fmt.Errorf("missing name to create volume group: %w", err)
+	}
+
 	ioctx, err := vg.GetIOContext(ctx)
 	if err != nil {
 		return err
@@ -319,7 +327,6 @@ func (vg *volumeGroup) Create(ctx context.Context, name string) error {
 		log.DebugLog(ctx, "ignoring error while creating volume group %q: %v", vg, err)
 	}
 
-	vg.name = name
 	log.DebugLog(ctx, "volume group %q has been created", vg)
 
 	return nil
@@ -401,6 +408,10 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 
 	err := vol.RemoveFromGroup(ctx, vg)
 	if err != nil {
+		if errors.Is(librbd.ErrNotExist, err) {
+			return nil
+		}
+
 		return fmt.Errorf("failed to remove volume %q from volume group %q: %w", vol, vg, err)
 	}
 

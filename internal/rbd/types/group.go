@@ -53,7 +53,7 @@ type VolumeGroup interface {
 	ToCSI(ctx context.Context) (*volumegroup.VolumeGroup, error)
 
 	// Create makes a new group in the backend storage.
-	Create(ctx context.Context, name string) error
+	Create(ctx context.Context) error
 
 	// Delete removes the VolumeGroup from the backend storage.
 	Delete(ctx context.Context) error
