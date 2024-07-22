@@ -20,15 +20,21 @@ import (
 	"context"
 )
 
+// VolumeResolver can be used to construct a Volume from a CSI VolumeId.
+type VolumeResolver interface {
+	// GetVolumeByID uses the CSI VolumeId to resolve the returned Volume.
+	GetVolumeByID(ctx context.Context, id string) (Volume, error)
+}
+
 // Manager provides a way for other packages to get Volumes and VolumeGroups.
 // It handles the operations on the backend, and makes sure the journal
 // reflects the expected state.
 type Manager interface {
+	// VolumeResolver is fully implemented by the Manager.
+	VolumeResolver
+
 	// Destroy frees all resources that the Manager allocated.
 	Destroy(ctx context.Context)
-
-	// GetVolumeByID uses the CSI VolumeId to resolve the returned Volume.
-	GetVolumeByID(ctx context.Context, id string) (Volume, error)
 
 	// GetVolumeGroupByID uses the CSI-Addons VolumeGroupId to resolve the
 	// returned VolumeGroup.
