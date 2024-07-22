@@ -81,7 +81,7 @@ github.com/antlr/antlr4/runtime/Go/antlr/v4
 # github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 ## explicit
 github.com/asaskevich/govalidator
-# github.com/aws/aws-sdk-go v1.54.19
+# github.com/aws/aws-sdk-go v1.55.0
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/auth/bearer
@@ -568,7 +568,7 @@ github.com/pkg/browser
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/pkg/xattr v0.4.9
+# github.com/pkg/xattr v0.4.10
 ## explicit; go 1.14
 github.com/pkg/xattr
 # github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
