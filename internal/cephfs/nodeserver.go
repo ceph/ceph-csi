@@ -164,21 +164,23 @@ func maybeUnlockFileEncryption(
 	}
 	log.DebugLog(ctx, "Lock successfully created for volume ID %s", volID)
 
+	defer func() {
+		ret, unlockErr := ioctx.Unlock(string(volID), lockName, lockCookie)
+		switch ret {
+		case 0:
+			log.DebugLog(ctx, "Lock %s successfully released ", lockName)
+		case -int(syscall.ENOENT):
+			log.DebugLog(ctx, "Lock is not held by the specified %s, %s pair", lockCookie, lockName)
+		default:
+			log.ErrorLog(ctx, "Failed to release following lock, this will lead to orphan lock %s: %v",
+				lockName, unlockErr)
+		}
+	}()
+
 	log.DebugLog(ctx, "cephfs: unlocking fscrypt on volume %q path %s", volID, stagingTargetPath)
 	err = fscrypt.Unlock(ctx, volOptions.Encryption, stagingTargetPath, string(volID))
 	if err != nil {
 		return err
-	}
-
-	ret, err := ioctx.Unlock(string(volID), lockName, lockCookie)
-	switch ret {
-	case 0:
-		log.DebugLog(ctx, "Lock %s successfully released ", lockName)
-	case -int(syscall.ENOENT):
-		log.DebugLog(ctx, "Lock is not held by the specified %s, %s pair", lockCookie, lockName)
-	default:
-		log.ErrorLog(ctx, "Failed to release following lock, this will lead to orphan lock %s: %v",
-			lockName, err)
 	}
 
 	return nil
