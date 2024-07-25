@@ -97,6 +97,7 @@ spec:
             - "--clustername={{ .Values.provisioner.clustername }}"
             {{- end }}
             - "--setmetadata={{ .Values.provisioner.setmetadata }}"
+            - "--enable-topology={{ .Values.topology.enabled | default false }}"
           env:
             - name: POD_IP
               valueFrom:
