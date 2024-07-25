@@ -151,7 +151,7 @@ func maybeUnlockFileEncryption(
 	}
 	defer ioctx.Destroy()
 
-	res, err := ioctx.LockExclusive(volOptions.VolID, lockName, lockCookie, lockDesc, lockDuration, &flags)
+	res, err := ioctx.LockExclusive(string(volID), lockName, lockCookie, lockDesc, lockDuration, &flags)
 	if res != 0 {
 		switch res {
 		case -int(syscall.EBUSY):
