@@ -192,7 +192,7 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 	}
 
 	var uuid string
-	if vgData != nil && vgData.GroupName != "" {
+	if vgData != nil && vgData.GroupUUID != "" {
 		uuid = vgData.GroupUUID
 	} else {
 		log.DebugLog(ctx, "the journal does not contain a reservation for a volume group with name %q yet", name)
