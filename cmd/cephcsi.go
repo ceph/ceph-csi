@@ -75,6 +75,7 @@ func init() {
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
 	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
+	flag.BoolVar(&conf.EnableTopology, "enable-topology", false, "enable for topology aware provisioning")
 	flag.StringVar(
 		&conf.DomainLabels,
 		"domainlabels",

@@ -132,6 +132,7 @@ type Config struct {
 	PollTime    time.Duration // time interval in seconds between each poll
 	PoolTimeout time.Duration // probe timeout in seconds
 
+	EnableTopology     bool // flag to enable topology aware provisioning
 	EnableProfiling    bool // flag to enable profiling
 	IsControllerServer bool // if set to true start provisioner server
 	IsNodeServer       bool // if set to true start node server
