@@ -363,3 +363,41 @@ func (vs *VolumeGroupServer) ModifyVolumeGroupMembership(
 		VolumeGroup: csiVG,
 	}, nil
 }
+
+// ControllerGetVolumeGroup RPC call to get a volume group.
+//
+// From the spec:
+// ControllerGetVolumeGroupResponse should contain current information of a
+// volume group if it exists. If the volume group does not exist any more,
+// ControllerGetVolumeGroup should return gRPC error code NOT_FOUND.
+func (vs *VolumeGroupServer) ControllerGetVolumeGroup(
+	ctx context.Context,
+	req *volumegroup.ControllerGetVolumeGroupRequest,
+) (*volumegroup.ControllerGetVolumeGroupResponse, error) {
+	mgr := rbd.NewManager(vs.csiID, nil, req.GetSecrets())
+	defer mgr.Destroy(ctx)
+
+	// resolve the volume group
+	vg, err := mgr.GetVolumeGroupByID(ctx, req.GetVolumeGroupId())
+	if err != nil {
+		return nil, status.Errorf(
+			codes.NotFound,
+			"could not find volume group %q: %s",
+			req.GetVolumeGroupId(),
+			err.Error())
+	}
+	defer vg.Destroy(ctx)
+
+	csiVG, err := vg.ToCSI(ctx)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"failed to convert volume group %q to CSI format: %v",
+			vg,
+			err)
+	}
+
+	return &volumegroup.ControllerGetVolumeGroupResponse{
+		VolumeGroup: csiVG,
+	}, nil
+}

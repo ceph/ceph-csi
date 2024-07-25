@@ -120,6 +120,12 @@ func (is *IdentityServer) GetCapabilities(
 						Type: identity.Capability_VolumeGroup_MODIFY_VOLUME_GROUP,
 					},
 				},
+			}, &identity.Capability{
+				Type: &identity.Capability_VolumeGroup_{
+					VolumeGroup: &identity.Capability_VolumeGroup{
+						Type: identity.Capability_VolumeGroup_GET_VOLUME_GROUP,
+					},
+				},
 			})
 	}
 
