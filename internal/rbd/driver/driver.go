@@ -49,9 +49,10 @@ func NewDriver() *Driver {
 }
 
 // NewIdentityServer initialize a identity server for rbd CSI driver.
-func NewIdentityServer(d *csicommon.CSIDriver) *rbd.IdentityServer {
+func NewIdentityServer(d *csicommon.CSIDriver, config *util.Config) *rbd.IdentityServer {
 	return &rbd.IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
+		Config:                config,
 	}
 }
 
@@ -137,7 +138,7 @@ func (r *Driver) Run(conf *util.Config) {
 	}
 
 	// Create GRPC servers
-	r.ids = NewIdentityServer(r.cd)
+	r.ids = NewIdentityServer(r.cd, conf)
 
 	if conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)

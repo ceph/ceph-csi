@@ -20,6 +20,7 @@ import (
 	"context"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
@@ -28,6 +29,8 @@ import (
 // identity server spec.
 type IdentityServer struct {
 	*csicommon.DefaultIdentityServer
+
+	Config *util.Config
 }
 
 // GetPluginCapabilities returns available capabilities of the rbd driver.
@@ -35,29 +38,32 @@ func (is *IdentityServer) GetPluginCapabilities(
 	ctx context.Context,
 	req *csi.GetPluginCapabilitiesRequest,
 ) (*csi.GetPluginCapabilitiesResponse, error) {
-	return &csi.GetPluginCapabilitiesResponse{
-		Capabilities: []*csi.PluginCapability{
-			{
-				Type: &csi.PluginCapability_Service_{
-					Service: &csi.PluginCapability_Service{
-						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
-					},
-				},
-			},
-			{
-				Type: &csi.PluginCapability_VolumeExpansion_{
-					VolumeExpansion: &csi.PluginCapability_VolumeExpansion{
-						Type: csi.PluginCapability_VolumeExpansion_ONLINE,
-					},
-				},
-			},
-			{
-				Type: &csi.PluginCapability_Service_{
-					Service: &csi.PluginCapability_Service{
-						Type: csi.PluginCapability_Service_VOLUME_ACCESSIBILITY_CONSTRAINTS,
-					},
+	pluginCapabilities := []*csi.PluginCapability{
+		{
+			Type: &csi.PluginCapability_Service_{
+				Service: &csi.PluginCapability_Service{
+					Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
 				},
 			},
 		},
-	}, nil
+		{
+			Type: &csi.PluginCapability_VolumeExpansion_{
+				VolumeExpansion: &csi.PluginCapability_VolumeExpansion{
+					Type: csi.PluginCapability_VolumeExpansion_ONLINE,
+				},
+			},
+		},
+	}
+
+	if is.Config.EnableTopology {
+		pluginCapabilities = append(pluginCapabilities, &csi.PluginCapability{
+			Type: &csi.PluginCapability_Service_{
+				Service: &csi.PluginCapability_Service{
+					Type: csi.PluginCapability_Service_VOLUME_ACCESSIBILITY_CONSTRAINTS,
+				},
+			},
+		})
+	}
+
+	return &csi.GetPluginCapabilitiesResponse{Capabilities: pluginCapabilities}, nil
 }
