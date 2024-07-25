@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"context"
+	"slices"
 
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
@@ -214,4 +215,151 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 	log.DebugLog(ctx, "VolumeGroup %q has been deleted", req.GetVolumeGroupId())
 
 	return &volumegroup.DeleteVolumeGroupResponse{}, nil
+}
+
+// ModifyVolumeGroupMembership RPC call to modify a volume group.
+//
+// From the spec:
+// This RPC will be called by the CO to modify an existing volume group on
+// behalf of a user. volume_ids provided in the
+// ModifyVolumeGroupMembershipRequest will be compared to the ones in the
+// existing volume group. New volume_ids in the modified volume group will be
+// added to the volume group. Existing volume_ids not in the modified volume
+// group will be removed from the volume group. If volume_ids is empty, the
+// volume group will be removed of all existing volumes. This operation MUST be
+// idempotent.
+//
+// File-based storage systems usually do not support this PRC. Block-based
+// storage systems usually support this PRC.
+//
+// By adding an existing volume to a group, however, there is no way to pass in
+// parameters to influence placement when provisioning a volume.
+//
+// It is out of the scope of the CSI spec to determine whether a group is
+// consistent or not. It is up to the storage provider to clarify that in the
+// vendor specific documentation. This is true either when creating a new
+// volume with a group id or adding an existing volume to a group.
+//
+// CSI drivers supporting MODIFY_VOLUME_GROUP_MEMBERSHIP MUST implement
+// ModifyVolumeGroupMembership RPC.
+//
+// Note:
+//
+// The implementation works as the following:
+// - resolve the existing volume group
+// - get the CSI-IDs of all volumes
+// - create a list of volumes that should be removed
+// - create a list of volume IDs that should be added
+// - remove the volumes from the group
+// - add the volumes to the group
+//
+// Also, MODIFY_VOLUME_GROUP_MEMBERSHIP does not exist, it is called
+// MODIFY_VOLUME_GROUP instead.
+func (vs *VolumeGroupServer) ModifyVolumeGroupMembership(
+	ctx context.Context,
+	req *volumegroup.ModifyVolumeGroupMembershipRequest,
+) (*volumegroup.ModifyVolumeGroupMembershipResponse, error) {
+	mgr := rbd.NewManager(vs.csiID, nil, req.GetSecrets())
+	defer mgr.Destroy(ctx)
+
+	// resolve the volume group
+	vg, err := mgr.GetVolumeGroupByID(ctx, req.GetVolumeGroupId())
+	if err != nil {
+		return nil, status.Errorf(
+			codes.NotFound,
+			"could not find volume group %q: %s",
+			req.GetVolumeGroupId(),
+			err.Error())
+	}
+	defer vg.Destroy(ctx)
+
+	beforeVolumes, err := vg.ListVolumes(ctx)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"failed to list volumes of volume group %q: %v",
+			vg,
+			err)
+	}
+
+	// beforeIDs contains the csiID as key, volume as value
+	beforeIDs := make(map[string]types.Volume, len(beforeVolumes))
+	for _, vol := range beforeVolumes {
+		id, idErr := vol.GetID(ctx)
+		if idErr != nil {
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"failed to get the CSI ID of volume %q: %v",
+				vol,
+				err)
+		}
+
+		beforeIDs[id] = vol
+	}
+
+	// check which volumes should not be part of the group
+	afterIDs := req.GetVolumeIds()
+	toRemove := make([]string, 0)
+	for id := range beforeIDs {
+		if !slices.Contains(afterIDs, id) {
+			toRemove = append(toRemove, id)
+		}
+	}
+
+	// check which volumes are new to the group
+	toAdd := make([]string, 0)
+	for _, id := range afterIDs {
+		if _, ok := beforeIDs[id]; !ok {
+			toAdd = append(toAdd, id)
+		}
+	}
+
+	// remove the volume that should not be part of the group
+	for _, id := range toRemove {
+		vol := beforeIDs[id]
+		err = vg.RemoveVolume(ctx, vol)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"failed to remove volume %q from volume group %q: %v",
+				vol,
+				vg,
+				err)
+		}
+	}
+
+	// add the new volumes to the group
+	for _, id := range toAdd {
+		vol, getErr := mgr.GetVolumeByID(ctx, id)
+		if getErr != nil {
+			return nil, status.Errorf(
+				codes.NotFound,
+				"failed to find a volume with CSI ID %q: %v",
+				id,
+				err)
+		}
+
+		err = vg.AddVolume(ctx, vol)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"failed to add volume %q to volume group %q: %v",
+				vol,
+				vg,
+				err)
+		}
+	}
+
+	csiVG, err := vg.ToCSI(ctx)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"failed to convert volume group %q to CSI format: %v",
+			vg,
+			err)
+	}
+
+	return &volumegroup.ModifyVolumeGroupMembershipResponse{
+		VolumeGroup: csiVG,
+	}, nil
 }
