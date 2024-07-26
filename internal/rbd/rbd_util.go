@@ -413,6 +413,10 @@ func (ri *rbdImage) String() string {
 	return fmt.Sprintf("%s/%s", ri.Pool, ri.RbdImageName)
 }
 
+func (ri *rbdImage) GetPoolName() string {
+	return ri.Pool
+}
+
 // String returns the snap-spec (pool/{namespace/}image@snap) format of the snapshot.
 func (rs *rbdSnapshot) String() string {
 	if rs.RadosNamespace != "" {
@@ -1594,9 +1598,9 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 	return nil
 }
 
-// GetImageCreationTime returns the creation time of the image. if the image
+// GetCreationTime returns the creation time of the image. if the image
 // creation time is not set, it queries the image info and returns the creation time.
-func (ri *rbdImage) GetImageCreationTime() (*timestamppb.Timestamp, error) {
+func (ri *rbdImage) GetCreationTime() (*timestamppb.Timestamp, error) {
 	if ri.CreatedAt != nil {
 		return ri.CreatedAt, nil
 	}

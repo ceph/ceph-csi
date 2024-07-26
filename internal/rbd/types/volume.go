@@ -59,4 +59,7 @@ type Volume interface {
 	// if the parent image is in trash, it returns an error.
 	// if the parent image exists and is not enabled for mirroring, it returns an error.
 	HandleParentImageExistence(ctx context.Context, flattenMode FlattenMode) error
+
+	// ToMirror converts the Volume to a Mirror.
+	ToMirror() (Mirror, error)
 }

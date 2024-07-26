@@ -77,3 +77,7 @@ func (rv *rbdVolume) RemoveFromGroup(ctx context.Context, vg types.VolumeGroup) 
 
 	return librbd.GroupImageRemove(ioctx, name, rv.ioctx, rv.RbdImageName)
 }
+
+func (rv *rbdVolume) ToMirror() (types.Mirror, error) {
+	return rv, nil
+}
