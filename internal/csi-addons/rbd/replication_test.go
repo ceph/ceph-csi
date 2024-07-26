@@ -26,6 +26,7 @@ import (
 	"time"
 
 	corerbd "github.com/ceph/ceph-csi/internal/rbd"
+	"github.com/ceph/ceph-csi/internal/rbd/types"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
@@ -219,30 +220,36 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		args    librbd.SiteMirrorImageStatus
+		args    corerbd.SiteMirrorImageStatus
 		wantErr bool
 	}{
 		{
 			name: "test when local_snapshot_timestamp is non zero",
-			args: librbd.SiteMirrorImageStatus{
-				//nolint:lll // sample output cannot be split into multiple lines.
-				Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+			args: corerbd.SiteMirrorImageStatus{
+				SiteMirrorImageStatus: librbd.SiteMirrorImageStatus{
+					//nolint:lll // sample output cannot be split into multiple lines.
+					Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "test when local_snapshot_timestamp is zero",
 			//nolint:lll // sample output cannot be split into multiple lines.
-			args: librbd.SiteMirrorImageStatus{
-				Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":0,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+			args: corerbd.SiteMirrorImageStatus{
+				SiteMirrorImageStatus: librbd.SiteMirrorImageStatus{
+					Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":0,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "test when local_snapshot_timestamp is not present",
 			//nolint:lll // sample output cannot be split into multiple lines.
-			args: librbd.SiteMirrorImageStatus{
-				Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+			args: corerbd.SiteMirrorImageStatus{
+				SiteMirrorImageStatus: librbd.SiteMirrorImageStatus{
+					Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+				},
 			},
 			wantErr: true,
 		},
@@ -261,17 +268,19 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name      string
-		args      *librbd.GlobalMirrorImageStatus
+		args      corerbd.GlobalMirrorStatus
 		wantReady bool
 	}{
 		{
 			name: "Test a single peer in sync",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{
-					{
-						MirrorUUID: "remote",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         true,
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "remote",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         true,
+						},
 					},
 				},
 			},
@@ -279,17 +288,19 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test a single peer in sync, including a local instance",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{
-					{
-						MirrorUUID: "remote",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         true,
-					},
-					{
-						MirrorUUID: "",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         true,
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "remote",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         true,
+						},
+						{
+							MirrorUUID: "",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         true,
+						},
 					},
 				},
 			},
@@ -297,17 +308,19 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test a multiple peers in sync",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{
-					{
-						MirrorUUID: "remote1",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         true,
-					},
-					{
-						MirrorUUID: "remote2",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         true,
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "remote1",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         true,
+						},
+						{
+							MirrorUUID: "remote2",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         true,
+						},
 					},
 				},
 			},
@@ -315,19 +328,23 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test no remote peers",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{},
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{},
+				},
 			},
 			wantReady: false,
 		},
 		{
 			name: "Test single peer not in sync",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{
-					{
-						MirrorUUID: "remote",
-						State:      librbd.MirrorImageStatusStateReplaying,
-						Up:         true,
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "remote",
+							State:      librbd.MirrorImageStatusStateReplaying,
+							Up:         true,
+						},
 					},
 				},
 			},
@@ -335,12 +352,14 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test single peer not up",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{
-					{
-						MirrorUUID: "remote",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         false,
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "remote",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         false,
+						},
 					},
 				},
 			},
@@ -348,17 +367,19 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test multiple peers, when first peer is not in sync",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{
-					{
-						MirrorUUID: "remote1",
-						State:      librbd.MirrorImageStatusStateStoppingReplay,
-						Up:         true,
-					},
-					{
-						MirrorUUID: "remote2",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         true,
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "remote1",
+							State:      librbd.MirrorImageStatusStateStoppingReplay,
+							Up:         true,
+						},
+						{
+							MirrorUUID: "remote2",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         true,
+						},
 					},
 				},
 			},
@@ -366,17 +387,19 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 		},
 		{
 			name: "Test multiple peers, when second peer is not up",
-			args: &librbd.GlobalMirrorImageStatus{
-				SiteStatuses: []librbd.SiteMirrorImageStatus{
-					{
-						MirrorUUID: "remote1",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         true,
-					},
-					{
-						MirrorUUID: "remote2",
-						State:      librbd.MirrorImageStatusStateUnknown,
-						Up:         false,
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "remote1",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         true,
+						},
+						{
+							MirrorUUID: "remote2",
+							State:      librbd.MirrorImageStatusStateUnknown,
+							Up:         false,
+						},
 					},
 				},
 			},
@@ -386,7 +409,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if ready := checkRemoteSiteStatus(context.TODO(), tt.args); ready != tt.wantReady {
+			if ready := checkRemoteSiteStatus(context.TODO(), tt.args.GetAllSitesStatus()); ready != tt.wantReady {
 				t.Errorf("checkRemoteSiteStatus() ready = %v, expect ready = %v", ready, tt.wantReady)
 			}
 		})
@@ -651,7 +674,7 @@ func Test_getFlattenMode(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    corerbd.FlattenMode
+		want    types.FlattenMode
 		wantErr bool
 	}{
 		{
@@ -660,27 +683,27 @@ func Test_getFlattenMode(t *testing.T) {
 				ctx:        context.TODO(),
 				parameters: map[string]string{},
 			},
-			want: corerbd.FlattenModeNever,
+			want: types.FlattenModeNever,
 		},
 		{
 			name: "flattenMode option set to never",
 			args: args{
 				ctx: context.TODO(),
 				parameters: map[string]string{
-					flattenModeKey: string(corerbd.FlattenModeNever),
+					flattenModeKey: string(types.FlattenModeNever),
 				},
 			},
-			want: corerbd.FlattenModeNever,
+			want: types.FlattenModeNever,
 		},
 		{
 			name: "flattenMode option set to force",
 			args: args{
 				ctx: context.TODO(),
 				parameters: map[string]string{
-					flattenModeKey: string(corerbd.FlattenModeForce),
+					flattenModeKey: string(types.FlattenModeForce),
 				},
 			},
-			want: corerbd.FlattenModeForce,
+			want: types.FlattenModeForce,
 		},
 
 		{

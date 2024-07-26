@@ -988,7 +988,7 @@ func (cs *ControllerServer) DeleteVolume(
 func cleanupRBDImage(ctx context.Context,
 	rbdVol *rbdVolume, cr *util.Credentials,
 ) (*csi.DeleteVolumeResponse, error) {
-	mirroringInfo, err := rbdVol.GetImageMirroringInfo()
+	info, err := rbdVol.GetMirroringInfo()
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
 
@@ -998,7 +998,7 @@ func cleanupRBDImage(ctx context.Context,
 	// Mirroring is enabled on the image
 	// Local image is secondary
 	// Local image is in up+replaying state
-	if mirroringInfo.State == librbd.MirrorImageEnabled && !mirroringInfo.Primary {
+	if info.GetState() == librbd.MirrorImageEnabled.String() && !info.IsPrimary() {
 		// If the image is in a secondary state and its up+replaying means its
 		// an healthy secondary and the image is primary somewhere in the
 		// remote cluster and the local image is getting replayed. Delete the
@@ -1007,11 +1007,18 @@ func cleanupRBDImage(ctx context.Context,
 		// the image on all the remote (secondary) clusters will get
 		// auto-deleted. This helps in garbage collecting the OMAP, PVC and PV
 		// objects after failback operation.
-		localStatus, rErr := rbdVol.GetLocalState()
+		sts, rErr := rbdVol.GetGlobalMirroringStatus()
 		if rErr != nil {
 			return nil, status.Error(codes.Internal, rErr.Error())
 		}
-		if localStatus.Up && localStatus.State == librbd.MirrorImageStatusStateReplaying {
+
+		localStatus, rErr := sts.GetLocalSiteStatus()
+		if rErr != nil {
+			log.ErrorLog(ctx, "failed to get local status for volume %s: %w", rbdVol.RbdImageName, rErr)
+
+			return nil, status.Error(codes.Internal, rErr.Error())
+		}
+		if localStatus.IsUP() && localStatus.GetState() == librbd.MirrorImageStatusStateReplaying.String() {
 			if err = undoVolReservation(ctx, rbdVol, cr); err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for volume (%s) with backing image (%s) (%s)",
 					rbdVol.RequestName, rbdVol.RbdImageName, err)
@@ -1023,8 +1030,8 @@ func cleanupRBDImage(ctx context.Context,
 		}
 		log.ErrorLog(ctx,
 			"secondary image status is up=%t and state=%s",
-			localStatus.Up,
-			localStatus.State)
+			localStatus.IsUP(),
+			localStatus.GetState())
 	}
 
 	inUse, err := rbdVol.isInUse()

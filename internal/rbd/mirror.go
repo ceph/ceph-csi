@@ -20,19 +20,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
-)
-
-// FlattenMode is used to indicate the flatten mode for an RBD image.
-type FlattenMode string
-
-const (
-	// FlattenModeNever indicates that the image should never be flattened.
-	FlattenModeNever FlattenMode = "never"
-	// FlattenModeForce indicates that the image with the parent must be flattened.
-	FlattenModeForce FlattenMode = "force"
 )
 
 // HandleParentImageExistence checks the image's parent.
@@ -42,13 +34,12 @@ const (
 // if the parent image exists and is not enabled for mirroring, it returns an error.
 func (rv *rbdVolume) HandleParentImageExistence(
 	ctx context.Context,
-	flattenMode FlattenMode,
+	mode types.FlattenMode,
 ) error {
 	if rv.ParentName == "" && !rv.ParentInTrash {
 		return nil
 	}
-
-	if flattenMode == FlattenModeForce {
+	if mode == types.FlattenModeForce {
 		// Delete temp image that exists for volume datasource since
 		// it is no longer required when the live image is flattened.
 		err := rv.DeleteTempImage(ctx)
@@ -72,14 +63,13 @@ func (rv *rbdVolume) HandleParentImageExistence(
 	if err != nil {
 		return err
 	}
-	parentMirroringInfo, err := parent.GetImageMirroringInfo()
+	parentMirroringInfo, err := parent.GetMirroringInfo()
 	if err != nil {
 		return fmt.Errorf(
 			"failed to get mirroring info of parent %q of image %q: %w",
 			parent, rv, err)
 	}
-
-	if parentMirroringInfo.State != librbd.MirrorImageEnabled {
+	if parentMirroringInfo.GetState() != librbd.MirrorImageEnabled.String() {
 		return fmt.Errorf("%w: failed to enable mirroring on image %q: "+
 			"parent image %q is not enabled for mirroring",
 			ErrFailedPrecondition, rv, parent)
@@ -88,8 +78,11 @@ func (rv *rbdVolume) HandleParentImageExistence(
 	return nil
 }
 
-// EnableImageMirroring enables mirroring on an image.
-func (ri *rbdImage) EnableImageMirroring(mode librbd.ImageMirrorMode) error {
+// check that rbdVolume implements the types.Mirror interface.
+var _ types.Mirror = &rbdVolume{}
+
+// EnableMirroring enables mirroring on an image.
+func (ri *rbdImage) EnableMirroring(mode librbd.ImageMirrorMode) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -104,8 +97,8 @@ func (ri *rbdImage) EnableImageMirroring(mode librbd.ImageMirrorMode) error {
 	return nil
 }
 
-// DisableImageMirroring disables mirroring on an image.
-func (ri *rbdImage) DisableImageMirroring(force bool) error {
+// DisableMirroring disables mirroring on an image.
+func (ri *rbdImage) DisableMirroring(force bool) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -120,8 +113,8 @@ func (ri *rbdImage) DisableImageMirroring(force bool) error {
 	return nil
 }
 
-// GetImageMirroringInfo gets mirroring information of an image.
-func (ri *rbdImage) GetImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
+// GetMirroringInfo gets mirroring information of an image.
+func (ri *rbdImage) GetMirroringInfo() (types.MirrorInfo, error) {
 	image, err := ri.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -133,11 +126,11 @@ func (ri *rbdImage) GetImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
 		return nil, fmt.Errorf("failed to get mirroring info of %q with error: %w", ri, err)
 	}
 
-	return info, nil
+	return ImageStatus{MirrorImageInfo: info}, nil
 }
 
-// PromoteImage promotes image to primary.
-func (ri *rbdImage) PromoteImage(force bool) error {
+// Promote promotes image to primary.
+func (ri *rbdImage) Promote(force bool) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -151,10 +144,10 @@ func (ri *rbdImage) PromoteImage(force bool) error {
 	return nil
 }
 
-// ForcePromoteImage promotes image to primary with force option with 2 minutes
+// ForcePromote promotes image to primary with force option with 2 minutes
 // timeout. If there is no response within 2 minutes,the rbd CLI process will be
 // killed and an error is returned.
-func (rv *rbdVolume) ForcePromoteImage(cr *util.Credentials) error {
+func (rv *rbdVolume) ForcePromote(cr *util.Credentials) error {
 	promoteArgs := []string{
 		"mirror", "image", "promote",
 		rv.String(),
@@ -181,8 +174,8 @@ func (rv *rbdVolume) ForcePromoteImage(cr *util.Credentials) error {
 	return nil
 }
 
-// DemoteImage demotes image to secondary.
-func (ri *rbdImage) DemoteImage() error {
+// Demote demotes image to secondary.
+func (ri *rbdImage) Demote() error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -196,8 +189,8 @@ func (ri *rbdImage) DemoteImage() error {
 	return nil
 }
 
-// resyncImage resync image to correct the split-brain.
-func (ri *rbdImage) resyncImage() error {
+// Resync resync image to correct the split-brain.
+func (ri *rbdImage) Resync() error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -208,11 +201,14 @@ func (ri *rbdImage) resyncImage() error {
 		return fmt.Errorf("failed to resync image %q with error: %w", ri, err)
 	}
 
-	return nil
+	// If we issued a resync, return a non-final error as image needs to be recreated
+	// locally. Caller retries till RBD syncs an initial version of the image to
+	// report its status in the resync request.
+	return fmt.Errorf("%w: awaiting initial resync due to split brain", ErrUnavailable)
 }
 
-// GetImageMirroringStatus get the mirroring status of an image.
-func (ri *rbdImage) GetImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, error) {
+// GetGlobalMirroringStatus get the mirroring status of an image.
+func (ri *rbdImage) GetGlobalMirroringStatus() (types.GlobalStatus, error) {
 	image, err := ri.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -223,26 +219,110 @@ func (ri *rbdImage) GetImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, 
 		return nil, fmt.Errorf("failed to get image mirroring status %q with error: %w", ri, err)
 	}
 
-	return &statusInfo, nil
+	return GlobalMirrorStatus{GlobalMirrorImageStatus: statusInfo}, nil
 }
 
-// GetLocalState returns the local state of the image.
-func (ri *rbdImage) GetLocalState() (librbd.SiteMirrorImageStatus, error) {
-	localStatus := librbd.SiteMirrorImageStatus{}
-	image, err := ri.open()
-	if err != nil {
-		return localStatus, fmt.Errorf("failed to open image %q with error: %w", ri, err)
-	}
-	defer image.Close()
+// ImageStatus is a wrapper around librbd.MirrorImageInfo that contains the
+// image mirror status.
+type ImageStatus struct {
+	*librbd.MirrorImageInfo
+}
 
-	statusInfo, err := image.GetGlobalMirrorStatus()
+func (status ImageStatus) GetState() string {
+	return status.State.String()
+}
+
+func (status ImageStatus) IsPrimary() bool {
+	return status.Primary
+}
+
+// GlobalMirrorStatus is a wrapper around librbd.GlobalMirrorImageStatus that contains the
+// global mirror image status.
+type GlobalMirrorStatus struct {
+	librbd.GlobalMirrorImageStatus
+}
+
+func (status GlobalMirrorStatus) GetState() string {
+	return status.GlobalMirrorImageStatus.Info.State.String()
+}
+
+func (status GlobalMirrorStatus) IsPrimary() bool {
+	return status.GlobalMirrorImageStatus.Info.Primary
+}
+
+func (status GlobalMirrorStatus) GetLocalSiteStatus() (types.SiteStatus, error) {
+	s, err := status.GlobalMirrorImageStatus.LocalStatus()
 	if err != nil {
-		return localStatus, fmt.Errorf("failed to get image mirroring status %q with error: %w", ri, err)
-	}
-	localStatus, err = statusInfo.LocalStatus()
-	if err != nil {
-		return localStatus, fmt.Errorf("failed to get local status: %w", err)
+		err = fmt.Errorf("failed to get local site status: %w", err)
 	}
 
-	return localStatus, nil
+	return SiteMirrorImageStatus{
+		SiteMirrorImageStatus: s,
+	}, err
+}
+
+func (status GlobalMirrorStatus) GetAllSitesStatus() []types.SiteStatus {
+	var siteStatuses []types.SiteStatus
+	for _, ss := range status.SiteStatuses {
+		siteStatuses = append(siteStatuses, SiteMirrorImageStatus{SiteMirrorImageStatus: ss})
+	}
+
+	return siteStatuses
+}
+
+// RemoteStatus returns one SiteMirrorImageStatus item from the SiteStatuses
+// slice that corresponds to the remote site's status. If the remote status
+// is not found than the error ErrNotExist will be returned.
+func (status GlobalMirrorStatus) GetRemoteSiteStatus(ctx context.Context) (types.SiteStatus, error) {
+	var (
+		ss  librbd.SiteMirrorImageStatus
+		err error = librbd.ErrNotExist
+	)
+
+	for i := range status.SiteStatuses {
+		log.DebugLog(
+			ctx,
+			"Site status of MirrorUUID: %s, state: %s, description: %s, lastUpdate: %v, up: %t",
+			status.SiteStatuses[i].MirrorUUID,
+			status.SiteStatuses[i].State,
+			status.SiteStatuses[i].Description,
+			status.SiteStatuses[i].LastUpdate,
+			status.SiteStatuses[i].Up)
+
+		if status.SiteStatuses[i].MirrorUUID != "" {
+			ss = status.SiteStatuses[i]
+			err = nil
+
+			break
+		}
+	}
+
+	return SiteMirrorImageStatus{SiteMirrorImageStatus: ss}, err
+}
+
+// SiteMirrorImageStatus is a wrapper around librbd.SiteMirrorImageStatus that contains the
+// site mirror image status.
+type SiteMirrorImageStatus struct {
+	librbd.SiteMirrorImageStatus
+}
+
+func (status SiteMirrorImageStatus) GetMirrorUUID() string {
+	return status.MirrorUUID
+}
+
+func (status SiteMirrorImageStatus) GetState() string {
+	return status.State.String()
+}
+
+func (status SiteMirrorImageStatus) GetDescription() string {
+	return status.Description
+}
+
+func (status SiteMirrorImageStatus) IsUP() bool {
+	return status.Up
+}
+
+func (status SiteMirrorImageStatus) GetLastUpdate() time.Time {
+	// convert the last update time to UTC
+	return time.Unix(status.LastUpdate, 0).UTC()
 }
