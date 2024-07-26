@@ -23,7 +23,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"syscall"
 	"time"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
@@ -34,6 +33,7 @@ import (
 	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/fscrypt"
+	iolock "github.com/ceph/ceph-csi/internal/util/lock"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -134,12 +134,12 @@ func maybeUnlockFileEncryption(
 	}
 
 	// Define Mutex Lock variables
-	lockName := string(volID) + "-mutexLock"
-	lockDesc := "Lock for " + string(volID)
+	volIDStr := string(volID)
+	lockName := volIDStr + "-mutexLock"
+	lockDesc := "Lock for " + volIDStr
 	lockDuration := 150 * time.Second
 	// Generate a consistent lock cookie for the client using hostname and process ID
 	lockCookie := generateLockCookie()
-	var flags byte = 0
 
 	log.DebugLog(ctx, "Creating lock for the following volume ID %s", volID)
 
@@ -151,31 +151,15 @@ func maybeUnlockFileEncryption(
 	}
 	defer ioctx.Destroy()
 
-	res, err := ioctx.LockExclusive(string(volID), lockName, lockCookie, lockDesc, lockDuration, &flags)
-	if res != 0 {
-		switch res {
-		case -int(syscall.EBUSY):
-			return fmt.Errorf("Lock is already held by another client and cookie pair for %v volume", volID)
-		case -int(syscall.EEXIST):
-			return fmt.Errorf("Lock is already held by the same client and cookie pair for %v volume", volID)
-		default:
-			return fmt.Errorf("Failed to lock volume ID %v: %w", volID, err)
-		}
-	}
-	log.DebugLog(ctx, "Lock successfully created for volume ID %s", volID)
+	lock := iolock.NewLock(ioctx, volIDStr, lockName, lockCookie, lockDesc, lockDuration)
+	err = lock.LockExclusive(ctx)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to create lock for volume ID %s: %v", volID, err)
 
-	defer func() {
-		ret, unlockErr := ioctx.Unlock(string(volID), lockName, lockCookie)
-		switch ret {
-		case 0:
-			log.DebugLog(ctx, "Lock %s successfully released ", lockName)
-		case -int(syscall.ENOENT):
-			log.DebugLog(ctx, "Lock is not held by the specified %s, %s pair", lockCookie, lockName)
-		default:
-			log.ErrorLog(ctx, "Failed to release following lock, this will lead to orphan lock %s: %v",
-				lockName, unlockErr)
-		}
-	}()
+		return err
+	}
+	defer lock.Unlock(ctx)
+	log.DebugLog(ctx, "Lock successfully created for volume ID %s", volID)
 
 	log.DebugLog(ctx, "cephfs: unlocking fscrypt on volume %q path %s", volID, stagingTargetPath)
 	err = fscrypt.Unlock(ctx, volOptions.Encryption, stagingTargetPath, string(volID))
