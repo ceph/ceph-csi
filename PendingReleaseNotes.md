@@ -10,5 +10,6 @@
 - rbd: add support for flattenMode option for replication in [PR](https://github.com/ceph/ceph-csi/pull/4678)
 - cephfs: support omap data store in radosnamespace via cli argument in [PR](https://github.com/ceph/ceph-csi/pull/4652)
 - deploy: radosNamespaceCephFS can be configured for ceph-csi-cephfs chart in [PR](https://github.com/ceph/ceph-csi/pull/4652)
+- build: update ceph release to squid in [PR](https://github.com/ceph/ceph-csi/pull/4735)
 
 ## NOTE
