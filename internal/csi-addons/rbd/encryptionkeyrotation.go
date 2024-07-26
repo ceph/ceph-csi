@@ -20,12 +20,10 @@ import (
 	"context"
 	"errors"
 
-	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
 	ekr "github.com/csi-addons/spec/lib/go/encryptionkeyrotation"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -53,12 +51,6 @@ func (ekrs *EncryptionKeyRotationServer) EncryptionKeyRotate(
 	volID := req.GetVolumeId()
 	if volID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
-	}
-
-	// Block key rotation for RWX/ROX volumes
-	_, isMultiNode := csicommon.IsBlockMultiNode([]*csi.VolumeCapability{req.GetVolumeCapability()})
-	if isMultiNode {
-		return nil, status.Error(codes.Unimplemented, "multi-node key rotation is not supported")
 	}
 
 	if acquired := ekrs.volLock.TryAcquire(volID); !acquired {

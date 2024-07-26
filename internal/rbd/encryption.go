@@ -22,9 +22,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/lock"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -462,6 +464,28 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 	if currState != rbdImageEncrypted {
 		return errors.New("key rotation not supported for unencrypted device")
 	}
+
+	// Call open Ioctx to create a new ioctx object
+	// if the obj already exists, no error is returned
+	err = rv.openIoctx()
+	if err != nil {
+		return fmt.Errorf("failed to open ioctx, err: %w", err)
+	}
+
+	// Lock params
+	lockName := rv.VolID + "-mutexlock"
+	lockDesc := "Key rotation mutex lock for " + rv.VolID
+	lockDuration := 3 * time.Minute
+	lockCookie := rv.VolID + "-enc-key-rotate"
+
+	// Acquire the exclusive lock based on vol id
+	lck := lock.NewLock(rv.ioctx, rv.VolID, lockName, lockCookie, lockDesc, lockDuration)
+	err = lck.LockExclusive(ctx)
+	if err != nil {
+		return err
+	}
+	defer lck.Unlock(ctx)
+	log.DebugLog(ctx, "acquired ioctx lock for vol id: %s", rv.VolID)
 
 	// Get the device path for the underlying image
 	useNbd := rv.Mounter == rbdNbdMounter && hasNBD
