@@ -10,24 +10,6 @@
 docker.io/rook/ceph:v1.12.1      rook/ceph:v1.12.1
 quay.io/ceph/ceph:v18            ceph/ceph:v18
 
-# ceph-csi v3.9
-docker.io/rook/ceph:v1.10.9      rook/ceph:v1.10.9
-
-# ceph-csi v3.7
-docker.io/rook/ceph:v1.9.8      rook/ceph:v1.9.8
-
-# ceph-csi v3.6
-docker.io/rook/ceph:v1.8.2	rook/ceph:v1.8.2
-quay.io/ceph/ceph:v17		quay.io/ceph/ceph:v17
-
-# ceph-csi v3.5
-quay.io/ceph/ceph:v16		quay.io/ceph/ceph:v16
-docker.io/rook/ceph:v1.6.2	rook/ceph:v1.6.2
-
-# ceph-csi v3.3
-quay.io/ceph/ceph:v15		quay.io/ceph/ceph:v15
-docker.io/rook/ceph:v1.4.9	rook/ceph:v1.4.9
-
 # e2e testing
 docker.io/library/busybox:1.29	library/busybox:1.29
 docker.io/library/nginx:latest	library/nginx:latest
