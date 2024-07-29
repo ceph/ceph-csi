@@ -139,7 +139,7 @@ node('cico-workspace') {
 				podman_login(ci_registry, '$CREDS_USER', '$CREDS_PASSWD')
 			}
 
-			// base_image is like ceph/ceph:v15 or quay.io/ceph/ceph:v15, strip "quay.io/"
+			// base_image is like quay.io/ceph/ceph:v19, strip "quay.io/"
 			podman_pull(ci_registry, "quay.io", "${base_image}" - q_io_regex)
 			// cephcsi:devel is used with 'make containerized-build'
 			podman_pull(ci_registry, ci_registry, "ceph-csi:devel")
@@ -163,11 +163,11 @@ node('cico-workspace') {
 				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${ROOK_CEPH_CLUSTER_IMAGE}\'',
 				returnStdout: true
 			).trim()
-			def d_io_regex = ~"^docker.io/"
+			def q_io_regex = ~"^quay.io/"
 
 			if (rook_ceph_cluster_image != '') {
 				// single-node-k8s.sh pushes the image into minikube
-				podman_pull(ci_registry, "docker.io", rook_ceph_cluster_image - d_io_regex)
+				podman_pull(ci_registry, "docker.io", rook_ceph_cluster_image - q_io_regex)
 			}
 
 			timeout(time: 30, unit: 'MINUTES') {
