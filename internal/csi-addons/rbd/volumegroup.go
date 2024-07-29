@@ -346,17 +346,44 @@ func (vs *VolumeGroupServer) ModifyVolumeGroupMembership(
 		}
 	}
 
-	// add the new volumes to the group
-	for _, id := range toAdd {
-		vol, getErr := mgr.GetVolumeByID(ctx, id)
-		if getErr != nil {
+	// resolve all volumes
+	volumes := make([]types.Volume, len(toAdd))
+	defer func() {
+		for _, vol := range volumes {
+			vol.Destroy(ctx)
+		}
+	}()
+	for i, id := range toAdd {
+		var vol types.Volume
+		vol, err = mgr.GetVolumeByID(ctx, id)
+		if err != nil {
 			return nil, status.Errorf(
 				codes.NotFound,
 				"failed to find a volume with CSI ID %q: %v",
 				id,
 				err)
 		}
+		volumes[i] = vol
+	}
 
+	// extract the flatten mode
+	flattenMode, err := getFlattenMode(ctx, req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
+	// Flatten the image if the flatten mode is set to FlattenModeForce
+	// before adding it to the volume group.
+	for _, vol := range volumes {
+		err = vol.HandleParentImageExistence(ctx, flattenMode)
+		if err != nil {
+			err = fmt.Errorf("failed to handle parent image for volume group %q: %w", vg, err)
+
+			return nil, getGRPCError(err)
+		}
+	}
+
+	// add the new volumes to the group
+	for _, vol := range volumes {
 		err = vg.AddVolume(ctx, vol)
 		if err != nil {
 			return nil, status.Errorf(
