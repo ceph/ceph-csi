@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/ceph/ceph-csi/internal/rbd"
@@ -87,6 +88,11 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 
 	// resolve all volumes
 	volumes := make([]types.Volume, len(req.GetVolumeIds()))
+	defer func() {
+		for _, vol := range volumes {
+			vol.Destroy(ctx)
+		}
+	}()
 	for i, id := range req.GetVolumeIds() {
 		vol, err := mgr.GetVolumeByID(ctx, id)
 		if err != nil {
@@ -97,9 +103,6 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 				req.GetName(),
 				err.Error())
 		}
-
-		//nolint:gocritic // need to call .Destroy() for all volumes
-		defer vol.Destroy(ctx)
 		volumes[i] = vol
 	}
 
@@ -117,6 +120,21 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 
 	log.DebugLog(ctx, "VolumeGroup %q has been created: %+v", req.GetName(), vg)
 
+	// extract the flatten mode
+	flattenMode, err := getFlattenMode(ctx, req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
+	// Flatten the image if the flatten mode is set to FlattenModeForce
+	// before adding it to the volume group.
+	for _, v := range volumes {
+		err = v.HandleParentImageExistence(ctx, flattenMode)
+		if err != nil {
+			err = fmt.Errorf("failed to handle parent image for volume group %q: %w", vg, err)
+
+			return nil, getGRPCError(err)
+		}
+	}
 	// add each rbd-image to the RBDVolumeGroup
 	for _, vol := range volumes {
 		err = vg.AddVolume(ctx, vol)
