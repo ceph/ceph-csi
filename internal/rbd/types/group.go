@@ -24,16 +24,16 @@ import (
 )
 
 type journalledObject interface {
-	// GetID returns the CSI-Addons VolumeGroupId of the VolumeGroup.
+	// GetID returns the ID in the backend storage for the object.
 	GetID(ctx context.Context) (string, error)
 
-	// GetName returns the name in the backend storage for the VolumeGroup.
+	// GetName returns the name of the object in the backend storage.
 	GetName(ctx context.Context) (string, error)
 
-	// GetPool returns the name of the pool that holds the VolumeGroup.
+	// GetPool returns the name of the pool that holds the object.
 	GetPool(ctx context.Context) (string, error)
 
-	// GetClusterID returns the ID of the cluster of the VolumeGroup.
+	// GetClusterID returns the ID of the cluster of the object.
 	GetClusterID(ctx context.Context) (string, error)
 }
 

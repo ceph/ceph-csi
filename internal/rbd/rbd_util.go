@@ -426,11 +426,6 @@ func (rs *rbdSnapshot) String() string {
 	return fmt.Sprintf("%s/%s@%s", rs.Pool, rs.RbdImageName, rs.RbdSnapName)
 }
 
-// GetID returns the CSI volume handle of the image.
-func (ri *rbdImage) GetID(ctx context.Context) (string, error) {
-	return ri.VolID, nil
-}
-
 // createImage creates a new ceph image with provision and volume options.
 func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(pOpts.VolSize))
@@ -2186,4 +2181,40 @@ func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
 	}
 
 	return nil
+}
+
+// GetID returns the ID of the volume.
+func (ri *rbdImage) GetID(ctx context.Context) (string, error) {
+	if ri.VolID == "" {
+		return "", errors.New("BUG: VolID is not set")
+	}
+
+	return ri.VolID, nil
+}
+
+// GetName returns the name of the rbd image.
+func (ri *rbdImage) GetName(ctx context.Context) (string, error) {
+	if ri.RbdImageName == "" {
+		return "", errors.New("BUG: name is not set")
+	}
+
+	return ri.RbdImageName, nil
+}
+
+// GetPool returns the name of the pool that holds the Volume.
+func (ri *rbdImage) GetPool(ctx context.Context) (string, error) {
+	if ri.Pool == "" {
+		return "", errors.New("BUG: pool is not set")
+	}
+
+	return ri.Pool, nil
+}
+
+// GetClusterID returns the clusterID the volume belongs to.
+func (ri *rbdImage) GetClusterID(ctx context.Context) (string, error) {
+	if ri.ClusterID == "" {
+		return "", errors.New("BUG: clusterID is not set")
+	}
+
+	return ri.ClusterID, nil
 }

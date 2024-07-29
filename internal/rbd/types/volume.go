@@ -25,14 +25,12 @@ import (
 
 //nolint:interfacebloat // more than 10 methods are needed for the interface
 type Volume interface {
+	journalledObject
 	// Destroy frees the resources used by the Volume.
 	Destroy(ctx context.Context)
 
 	// Delete removes the volume from the storage backend.
 	Delete(ctx context.Context) error
-
-	// GetID returns the CSI VolumeID for the volume.
-	GetID(ctx context.Context) (string, error)
 
 	// ToCSI creates a CSI protocol formatted struct of the volume.
 	ToCSI(ctx context.Context) (*csi.Volume, error)
@@ -43,8 +41,6 @@ type Volume interface {
 	// RemoveFromGroup removes the Volume from the VolumeGroup.
 	RemoveFromGroup(ctx context.Context, vg VolumeGroup) error
 
-	// GetPoolName returns the name of the pool where the volume is stored.
-	GetPoolName() string
 	// GetCreationTime returns the creation time of the volume.
 	GetCreationTime() (*timestamppb.Timestamp, error)
 	// GetMetadata returns the value of the metadata key from the volume.
