@@ -151,18 +151,17 @@ func GetVolumeGroup(
 	return vg, nil
 }
 
-// String makes it easy to include the volumeGroup object in log and error
-// messages.
+// String returns the image-spec (pool/{namespace}/{name}) format of the group.
 func (vg *volumeGroup) String() string {
-	if vg.name != "" {
-		return vg.name
+	if vg.namespace != "" && vg.pool != "" && vg.name != "" {
+		return fmt.Sprintf("%s/%s/%s", vg.pool, vg.namespace, vg.name)
 	}
 
-	if vg.id != "" {
-		return vg.id
+	if vg.name != "" && vg.pool != "" {
+		return fmt.Sprintf("%s/%s", vg.pool, vg.name)
 	}
 
-	return fmt.Sprintf("<unidentified volume %v>", *vg)
+	return fmt.Sprintf("<unidentified group %v>", *vg)
 }
 
 // GetID returns the CSI-Addons VolumeGroupId of the VolumeGroup.
