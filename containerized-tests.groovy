@@ -155,7 +155,7 @@ node('cico-workspace') {
 					).trim()
 					def q_io_regex = ~"^quay.io/"
 
-					// base_image is like ceph/ceph:v15 or quay.io/ceph/ceph:v15, strip "quay.io/"
+					// base_image is like quay.io/ceph/ceph:v19, strip "quay.io/"
 					podman_pull(ci_registry, "quay.io", "${base_image}" - q_io_regex)
 				}
 			}
