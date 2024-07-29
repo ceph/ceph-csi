@@ -124,7 +124,18 @@ func (mgr *rbdManager) GetVolumeByID(ctx context.Context, id string) (types.Volu
 
 	volume, err := GenVolFromVolID(ctx, id, creds, mgr.secrets)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get volume from id %q: %w", id, err)
+		switch {
+		case errors.Is(err, ErrImageNotFound):
+			err = fmt.Errorf("volume %s not found: %w", id, err)
+
+			return nil, err
+		case errors.Is(err, util.ErrPoolNotFound):
+			err = fmt.Errorf("pool %s not found for %s: %w", volume.Pool, id, err)
+
+			return nil, err
+		default:
+			return nil, fmt.Errorf("failed to get volume from id %q: %w", id, err)
+		}
 	}
 
 	return volume, nil
