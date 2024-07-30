@@ -360,6 +360,10 @@ type ModifyVolumeGroupMembershipRequest struct {
 	// This field is OPTIONAL. Refer to the `Secrets Requirements`
 	// section on how to use this field.
 	Secrets map[string]string `protobuf:"bytes,3,rep,name=secrets,proto3" json:"secrets,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// parameters passed to the plugin to modify the volume group
+	// or to modify the volumes in the group.
+	// This field is OPTIONAL.
+	Parameters map[string]string `protobuf:"bytes,4,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *ModifyVolumeGroupMembershipRequest) Reset() {
@@ -411,6 +415,13 @@ func (x *ModifyVolumeGroupMembershipRequest) GetVolumeIds() []string {
 func (x *ModifyVolumeGroupMembershipRequest) GetSecrets() map[string]string {
 	if x != nil {
 		return x.Secrets
+	}
+	return nil
+}
+
+func (x *ModifyVolumeGroupMembershipRequest) GetParameters() map[string]string {
+	if x != nil {
+		return x.Parameters
 	}
 	return nil
 }
@@ -737,7 +748,7 @@ type ListVolumeGroupsResponse_Entry struct {
 func (x *ListVolumeGroupsResponse_Entry) Reset() {
 	*x = ListVolumeGroupsResponse_Entry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_volumegroup_volumegroup_proto_msgTypes[18]
+		mi := &file_volumegroup_volumegroup_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -750,7 +761,7 @@ func (x *ListVolumeGroupsResponse_Entry) String() string {
 func (*ListVolumeGroupsResponse_Entry) ProtoMessage() {}
 
 func (x *ListVolumeGroupsResponse_Entry) ProtoReflect() protoreflect.Message {
-	mi := &file_volumegroup_volumegroup_proto_msgTypes[18]
+	mi := &file_volumegroup_volumegroup_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -843,7 +854,7 @@ var file_volumegroup_volumegroup_proto_rawDesc = []byte{
 	0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x1b,
 	0x0a, 0x19, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x47, 0x72,
-	0x6f, 0x75, 0x70, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x84, 0x02, 0x0a, 0x22,
+	0x6f, 0x75, 0x70, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0xa4, 0x03, 0x0a, 0x22,
 	0x4d, 0x6f, 0x64, 0x69, 0x66, 0x79, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x47, 0x72, 0x6f, 0x75,
 	0x70, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65,
 	0x73, 0x74, 0x12, 0x26, 0x0a, 0x0f, 0x76, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x5f, 0x67, 0x72, 0x6f,
@@ -856,7 +867,17 @@ var file_volumegroup_volumegroup_proto_rawDesc = []byte{
 	0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72,
 	0x73, 0x68, 0x69, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x53, 0x65, 0x63, 0x72,
 	0x65, 0x74, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x42, 0x03, 0x98, 0x42, 0x01, 0x52, 0x07, 0x73,
-	0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x1a, 0x3a, 0x0a, 0x0c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x12, 0x5f, 0x0a, 0x0a, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x65,
+	0x74, 0x65, 0x72, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3f, 0x2e, 0x76, 0x6f, 0x6c,
+	0x75, 0x6d, 0x65, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x2e, 0x4d, 0x6f, 0x64, 0x69, 0x66, 0x79, 0x56,
+	0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72,
+	0x73, 0x68, 0x69, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x50, 0x61, 0x72, 0x61,
+	0x6d, 0x65, 0x74, 0x65, 0x72, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x0a, 0x70, 0x61, 0x72,
+	0x61, 0x6d, 0x65, 0x74, 0x65, 0x72, 0x73, 0x1a, 0x3a, 0x0a, 0x0c, 0x53, 0x65, 0x63, 0x72, 0x65,
+	0x74, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a,
+	0x02, 0x38, 0x01, 0x1a, 0x3d, 0x0a, 0x0f, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x65, 0x74, 0x65, 0x72,
 	0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75,
 	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02,
@@ -966,7 +987,7 @@ func file_volumegroup_volumegroup_proto_rawDescGZIP() []byte {
 	return file_volumegroup_volumegroup_proto_rawDescData
 }
 
-var file_volumegroup_volumegroup_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_volumegroup_volumegroup_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_volumegroup_volumegroup_proto_goTypes = []interface{}{
 	(*CreateVolumeGroupRequest)(nil),            // 0: volumegroup.CreateVolumeGroupRequest
 	(*CreateVolumeGroupResponse)(nil),           // 1: volumegroup.CreateVolumeGroupResponse
@@ -984,40 +1005,42 @@ var file_volumegroup_volumegroup_proto_goTypes = []interface{}{
 	nil,                                         // 13: volumegroup.VolumeGroup.VolumeGroupContextEntry
 	nil,                                         // 14: volumegroup.DeleteVolumeGroupRequest.SecretsEntry
 	nil,                                         // 15: volumegroup.ModifyVolumeGroupMembershipRequest.SecretsEntry
-	nil,                                         // 16: volumegroup.ControllerGetVolumeGroupRequest.SecretsEntry
-	nil,                                         // 17: volumegroup.ListVolumeGroupsRequest.SecretsEntry
-	(*ListVolumeGroupsResponse_Entry)(nil),      // 18: volumegroup.ListVolumeGroupsResponse.Entry
-	(*csi.Volume)(nil),                          // 19: csi.v1.Volume
+	nil,                                         // 16: volumegroup.ModifyVolumeGroupMembershipRequest.ParametersEntry
+	nil,                                         // 17: volumegroup.ControllerGetVolumeGroupRequest.SecretsEntry
+	nil,                                         // 18: volumegroup.ListVolumeGroupsRequest.SecretsEntry
+	(*ListVolumeGroupsResponse_Entry)(nil),      // 19: volumegroup.ListVolumeGroupsResponse.Entry
+	(*csi.Volume)(nil),                          // 20: csi.v1.Volume
 }
 var file_volumegroup_volumegroup_proto_depIdxs = []int32{
 	11, // 0: volumegroup.CreateVolumeGroupRequest.parameters:type_name -> volumegroup.CreateVolumeGroupRequest.ParametersEntry
 	12, // 1: volumegroup.CreateVolumeGroupRequest.secrets:type_name -> volumegroup.CreateVolumeGroupRequest.SecretsEntry
 	2,  // 2: volumegroup.CreateVolumeGroupResponse.volume_group:type_name -> volumegroup.VolumeGroup
 	13, // 3: volumegroup.VolumeGroup.volume_group_context:type_name -> volumegroup.VolumeGroup.VolumeGroupContextEntry
-	19, // 4: volumegroup.VolumeGroup.volumes:type_name -> csi.v1.Volume
+	20, // 4: volumegroup.VolumeGroup.volumes:type_name -> csi.v1.Volume
 	14, // 5: volumegroup.DeleteVolumeGroupRequest.secrets:type_name -> volumegroup.DeleteVolumeGroupRequest.SecretsEntry
 	15, // 6: volumegroup.ModifyVolumeGroupMembershipRequest.secrets:type_name -> volumegroup.ModifyVolumeGroupMembershipRequest.SecretsEntry
-	2,  // 7: volumegroup.ModifyVolumeGroupMembershipResponse.volume_group:type_name -> volumegroup.VolumeGroup
-	16, // 8: volumegroup.ControllerGetVolumeGroupRequest.secrets:type_name -> volumegroup.ControllerGetVolumeGroupRequest.SecretsEntry
-	2,  // 9: volumegroup.ControllerGetVolumeGroupResponse.volume_group:type_name -> volumegroup.VolumeGroup
-	17, // 10: volumegroup.ListVolumeGroupsRequest.secrets:type_name -> volumegroup.ListVolumeGroupsRequest.SecretsEntry
-	18, // 11: volumegroup.ListVolumeGroupsResponse.entries:type_name -> volumegroup.ListVolumeGroupsResponse.Entry
-	2,  // 12: volumegroup.ListVolumeGroupsResponse.Entry.volume_group:type_name -> volumegroup.VolumeGroup
-	0,  // 13: volumegroup.Controller.CreateVolumeGroup:input_type -> volumegroup.CreateVolumeGroupRequest
-	5,  // 14: volumegroup.Controller.ModifyVolumeGroupMembership:input_type -> volumegroup.ModifyVolumeGroupMembershipRequest
-	3,  // 15: volumegroup.Controller.DeleteVolumeGroup:input_type -> volumegroup.DeleteVolumeGroupRequest
-	9,  // 16: volumegroup.Controller.ListVolumeGroups:input_type -> volumegroup.ListVolumeGroupsRequest
-	7,  // 17: volumegroup.Controller.ControllerGetVolumeGroup:input_type -> volumegroup.ControllerGetVolumeGroupRequest
-	1,  // 18: volumegroup.Controller.CreateVolumeGroup:output_type -> volumegroup.CreateVolumeGroupResponse
-	6,  // 19: volumegroup.Controller.ModifyVolumeGroupMembership:output_type -> volumegroup.ModifyVolumeGroupMembershipResponse
-	4,  // 20: volumegroup.Controller.DeleteVolumeGroup:output_type -> volumegroup.DeleteVolumeGroupResponse
-	10, // 21: volumegroup.Controller.ListVolumeGroups:output_type -> volumegroup.ListVolumeGroupsResponse
-	8,  // 22: volumegroup.Controller.ControllerGetVolumeGroup:output_type -> volumegroup.ControllerGetVolumeGroupResponse
-	18, // [18:23] is the sub-list for method output_type
-	13, // [13:18] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	16, // 7: volumegroup.ModifyVolumeGroupMembershipRequest.parameters:type_name -> volumegroup.ModifyVolumeGroupMembershipRequest.ParametersEntry
+	2,  // 8: volumegroup.ModifyVolumeGroupMembershipResponse.volume_group:type_name -> volumegroup.VolumeGroup
+	17, // 9: volumegroup.ControllerGetVolumeGroupRequest.secrets:type_name -> volumegroup.ControllerGetVolumeGroupRequest.SecretsEntry
+	2,  // 10: volumegroup.ControllerGetVolumeGroupResponse.volume_group:type_name -> volumegroup.VolumeGroup
+	18, // 11: volumegroup.ListVolumeGroupsRequest.secrets:type_name -> volumegroup.ListVolumeGroupsRequest.SecretsEntry
+	19, // 12: volumegroup.ListVolumeGroupsResponse.entries:type_name -> volumegroup.ListVolumeGroupsResponse.Entry
+	2,  // 13: volumegroup.ListVolumeGroupsResponse.Entry.volume_group:type_name -> volumegroup.VolumeGroup
+	0,  // 14: volumegroup.Controller.CreateVolumeGroup:input_type -> volumegroup.CreateVolumeGroupRequest
+	5,  // 15: volumegroup.Controller.ModifyVolumeGroupMembership:input_type -> volumegroup.ModifyVolumeGroupMembershipRequest
+	3,  // 16: volumegroup.Controller.DeleteVolumeGroup:input_type -> volumegroup.DeleteVolumeGroupRequest
+	9,  // 17: volumegroup.Controller.ListVolumeGroups:input_type -> volumegroup.ListVolumeGroupsRequest
+	7,  // 18: volumegroup.Controller.ControllerGetVolumeGroup:input_type -> volumegroup.ControllerGetVolumeGroupRequest
+	1,  // 19: volumegroup.Controller.CreateVolumeGroup:output_type -> volumegroup.CreateVolumeGroupResponse
+	6,  // 20: volumegroup.Controller.ModifyVolumeGroupMembership:output_type -> volumegroup.ModifyVolumeGroupMembershipResponse
+	4,  // 21: volumegroup.Controller.DeleteVolumeGroup:output_type -> volumegroup.DeleteVolumeGroupResponse
+	10, // 22: volumegroup.Controller.ListVolumeGroups:output_type -> volumegroup.ListVolumeGroupsResponse
+	8,  // 23: volumegroup.Controller.ControllerGetVolumeGroup:output_type -> volumegroup.ControllerGetVolumeGroupResponse
+	19, // [19:24] is the sub-list for method output_type
+	14, // [14:19] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_volumegroup_volumegroup_proto_init() }
@@ -1158,7 +1181,7 @@ func file_volumegroup_volumegroup_proto_init() {
 				return nil
 			}
 		}
-		file_volumegroup_volumegroup_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
+		file_volumegroup_volumegroup_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ListVolumeGroupsResponse_Entry); i {
 			case 0:
 				return &v.state
@@ -1177,7 +1200,7 @@ func file_volumegroup_volumegroup_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_volumegroup_volumegroup_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
