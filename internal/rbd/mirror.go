@@ -44,12 +44,12 @@ func (rv *rbdVolume) HandleParentImageExistence(
 		// it is no longer required when the live image is flattened.
 		err := rv.DeleteTempImage(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to delete temporary rbd image: %w", err)
+			return fmt.Errorf("failed to delete temporary rbd image %s: %w", rv, err)
 		}
 
 		err = rv.flattenRbdImage(ctx, true, 0, 0)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to flatten image %s: %w", rv, err)
 		}
 	}
 
@@ -61,7 +61,7 @@ func (rv *rbdVolume) HandleParentImageExistence(
 
 	parent, err := rv.getParent()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get parent of image %s: %w", rv, err)
 	}
 	parentMirroringInfo, err := parent.GetMirroringInfo()
 	if err != nil {
