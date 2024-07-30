@@ -63,7 +63,7 @@ func (rv *rbdVolume) HandleParentImageExistence(
 	if err != nil {
 		return fmt.Errorf("failed to get parent of image %s: %w", rv, err)
 	}
-	parentMirroringInfo, err := parent.GetMirroringInfo()
+	parentMirroringInfo, err := parent.GetMirroringInfo(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to get mirroring info of parent %q of image %q: %w",
@@ -82,7 +82,7 @@ func (rv *rbdVolume) HandleParentImageExistence(
 var _ types.Mirror = &rbdVolume{}
 
 // EnableMirroring enables mirroring on an image.
-func (ri *rbdImage) EnableMirroring(mode librbd.ImageMirrorMode) error {
+func (ri *rbdImage) EnableMirroring(_ context.Context, mode librbd.ImageMirrorMode) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -98,7 +98,7 @@ func (ri *rbdImage) EnableMirroring(mode librbd.ImageMirrorMode) error {
 }
 
 // DisableMirroring disables mirroring on an image.
-func (ri *rbdImage) DisableMirroring(force bool) error {
+func (ri *rbdImage) DisableMirroring(_ context.Context, force bool) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -114,7 +114,7 @@ func (ri *rbdImage) DisableMirroring(force bool) error {
 }
 
 // GetMirroringInfo gets mirroring information of an image.
-func (ri *rbdImage) GetMirroringInfo() (types.MirrorInfo, error) {
+func (ri *rbdImage) GetMirroringInfo(_ context.Context) (types.MirrorInfo, error) {
 	image, err := ri.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -130,7 +130,7 @@ func (ri *rbdImage) GetMirroringInfo() (types.MirrorInfo, error) {
 }
 
 // Promote promotes image to primary.
-func (ri *rbdImage) Promote(force bool) error {
+func (ri *rbdImage) Promote(_ context.Context, force bool) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -147,7 +147,7 @@ func (ri *rbdImage) Promote(force bool) error {
 // ForcePromote promotes image to primary with force option with 2 minutes
 // timeout. If there is no response within 2 minutes,the rbd CLI process will be
 // killed and an error is returned.
-func (rv *rbdVolume) ForcePromote(cr *util.Credentials) error {
+func (rv *rbdVolume) ForcePromote(ctx context.Context, cr *util.Credentials) error {
 	promoteArgs := []string{
 		"mirror", "image", "promote",
 		rv.String(),
@@ -157,7 +157,7 @@ func (rv *rbdVolume) ForcePromote(cr *util.Credentials) error {
 		"--keyfile=" + cr.KeyFile,
 	}
 	_, stderr, err := util.ExecCommandWithTimeout(
-		context.TODO(),
+		ctx,
 		// 2 minutes timeout as the Replication RPC timeout is 2.5 minutes.
 		2*time.Minute,
 		"rbd",
@@ -175,7 +175,7 @@ func (rv *rbdVolume) ForcePromote(cr *util.Credentials) error {
 }
 
 // Demote demotes image to secondary.
-func (ri *rbdImage) Demote() error {
+func (ri *rbdImage) Demote(_ context.Context) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -190,7 +190,7 @@ func (ri *rbdImage) Demote() error {
 }
 
 // Resync resync image to correct the split-brain.
-func (ri *rbdImage) Resync() error {
+func (ri *rbdImage) Resync(_ context.Context) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -208,7 +208,7 @@ func (ri *rbdImage) Resync() error {
 }
 
 // GetGlobalMirroringStatus get the mirroring status of an image.
-func (ri *rbdImage) GetGlobalMirroringStatus() (types.GlobalStatus, error) {
+func (ri *rbdImage) GetGlobalMirroringStatus(_ context.Context) (types.GlobalStatus, error) {
 	image, err := ri.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)

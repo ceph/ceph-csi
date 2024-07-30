@@ -988,7 +988,7 @@ func (cs *ControllerServer) DeleteVolume(
 func cleanupRBDImage(ctx context.Context,
 	rbdVol *rbdVolume, cr *util.Credentials,
 ) (*csi.DeleteVolumeResponse, error) {
-	info, err := rbdVol.GetMirroringInfo()
+	info, err := rbdVol.GetMirroringInfo(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
 
@@ -1007,7 +1007,7 @@ func cleanupRBDImage(ctx context.Context,
 		// the image on all the remote (secondary) clusters will get
 		// auto-deleted. This helps in garbage collecting the OMAP, PVC and PV
 		// objects after failback operation.
-		sts, rErr := rbdVol.GetGlobalMirroringStatus()
+		sts, rErr := rbdVol.GetGlobalMirroringStatus(ctx)
 		if rErr != nil {
 			return nil, status.Error(codes.Internal, rErr.Error())
 		}
