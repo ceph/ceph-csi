@@ -150,6 +150,61 @@ func TestGetReqID(t *testing.T) {
 				},
 			},
 		},
+		// volumeGroupId is set in ReplicationSource
+		&replication.EnableVolumeReplicationRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volumegroup{
+					Volumegroup: &replication.ReplicationSource_VolumeGroupSource{
+						VolumeGroupId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.DisableVolumeReplicationRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volumegroup{
+					Volumegroup: &replication.ReplicationSource_VolumeGroupSource{
+						VolumeGroupId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.PromoteVolumeRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volumegroup{
+					Volumegroup: &replication.ReplicationSource_VolumeGroupSource{
+						VolumeGroupId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.DemoteVolumeRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volumegroup{
+					Volumegroup: &replication.ReplicationSource_VolumeGroupSource{
+						VolumeGroupId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.ResyncVolumeRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volumegroup{
+					Volumegroup: &replication.ReplicationSource_VolumeGroupSource{
+						VolumeGroupId: fakeID,
+					},
+				},
+			},
+		},
+		&replication.GetVolumeReplicationInfoRequest{
+			ReplicationSource: &replication.ReplicationSource{
+				Type: &replication.ReplicationSource_Volumegroup{
+					Volumegroup: &replication.ReplicationSource_VolumeGroupSource{
+						VolumeGroupId: fakeID,
+					},
+				},
+			},
+		},
 	}
 	for _, r := range req {
 		if got := getReqID(r); got != fakeID {
@@ -159,6 +214,11 @@ func TestGetReqID(t *testing.T) {
 
 	// test for nil request
 	if got := getReqID(nil); got != "" {
+		t.Errorf("getReqID() = %v, want empty string", got)
+	}
+
+	// test when both volume and group id not set
+	if got := getReqID(&replication.EnableVolumeReplicationRequest{}); got != "" {
 		t.Errorf("getReqID() = %v, want empty string", got)
 	}
 }
