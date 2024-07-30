@@ -129,6 +129,11 @@ func GetIDFromReplication(req interface{}) string {
 			reqID = src.GetVolume().GetVolumeId()
 		}
 		if reqID == "" {
+			if src != nil && src.GetVolumegroup() != nil {
+				reqID = src.GetVolumegroup().GetVolumeGroupId()
+			}
+		}
+		if reqID == "" {
 			reqID = r.GetVolumeId() //nolint:nolintlint,staticcheck // req.VolumeId is deprecated
 		}
 
