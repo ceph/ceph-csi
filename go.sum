@@ -913,6 +913,8 @@ github.com/creack/pty v1.1.11/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
 github.com/csi-addons/spec v0.2.1-0.20240718113938-dc98b454ba65 h1:i9JGGQTEmRQXSpQQPR96+DV4D4o+V1+gjAWf+bpxQxk=
 github.com/csi-addons/spec v0.2.1-0.20240718113938-dc98b454ba65/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
+github.com/csi-addons/spec v0.2.1-0.20240730084235-3958a5b17d24 h1:tJETaYbnnzlCSaqDXQzbszYyuAtG/sFzm6DargeVzJA=
+github.com/csi-addons/spec v0.2.1-0.20240730084235-3958a5b17d24/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
