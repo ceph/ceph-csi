@@ -27,6 +27,7 @@ import (
 
 	corerbd "github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
+	"github.com/ceph/ceph-csi/internal/util"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
@@ -593,6 +594,16 @@ func TestGetGRPCError(t *testing.T) {
 			name:        "NilError",
 			err:         nil,
 			expectedErr: status.Error(codes.OK, "ok string"),
+		},
+		{
+			name:        "ErrImageNotFound",
+			err:         corerbd.ErrImageNotFound,
+			expectedErr: status.Error(codes.NotFound, corerbd.ErrImageNotFound.Error()),
+		},
+		{
+			name:        "ErrPoolNotFound",
+			err:         util.ErrPoolNotFound,
+			expectedErr: status.Error(codes.NotFound, util.ErrPoolNotFound.Error()),
 		},
 	}
 
