@@ -39,21 +39,21 @@ const (
 // Mirror is the interface for managing mirroring on an RBD image or a group.
 type Mirror interface {
 	// EnableMirroring enables mirroring on the resource with the specified mode.
-	EnableMirroring(mode librbd.ImageMirrorMode) error
+	EnableMirroring(ctx context.Context, mode librbd.ImageMirrorMode) error
 	// DisableMirroring disables mirroring on the resource with the option to force the operation
-	DisableMirroring(force bool) error
+	DisableMirroring(ctx context.Context, force bool) error
 	// Promote promotes the resource to primary status with the option to force the operation
-	Promote(force bool) error
+	Promote(ctx context.Context, force bool) error
 	// ForcePromote promotes the resource to primary status with a timeout
-	ForcePromote(cr *util.Credentials) error
+	ForcePromote(ctx context.Context, cr *util.Credentials) error
 	// Demote demotes the resource to secondary status
-	Demote() error
+	Demote(ctx context.Context) error
 	// Resync resynchronizes the resource
-	Resync() error
+	Resync(ctx context.Context) error
 	// GetMirroringInfo returns the mirroring information of the resource
-	GetMirroringInfo() (MirrorInfo, error)
+	GetMirroringInfo(ctx context.Context) (MirrorInfo, error)
 	// GetMirroringInfo returns the mirroring information of the resource
-	GetGlobalMirroringStatus() (GlobalStatus, error)
+	GetGlobalMirroringStatus(ctx context.Context) (GlobalStatus, error)
 	// AddSnapshotScheduling adds a snapshot scheduling to the resource
 	AddSnapshotScheduling(interval admin.Interval, startTime admin.StartTime) error
 }

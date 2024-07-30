@@ -46,6 +46,7 @@ func (rv *rbdVolume) RepairResyncedImageID(ctx context.Context, ready bool) erro
 }
 
 func DisableVolumeReplication(mirror types.Mirror,
+	ctx context.Context,
 	primary,
 	force bool,
 ) error {
@@ -62,7 +63,7 @@ func DisableVolumeReplication(mirror types.Mirror,
 		// disabled the image on all the remote (secondary) clusters will get
 		// auto-deleted. This helps in garbage collecting the volume
 		// replication Kubernetes artifacts after failback operation.
-		sts, rErr := mirror.GetGlobalMirroringStatus()
+		sts, rErr := mirror.GetGlobalMirroringStatus(ctx)
 		if rErr != nil {
 			return fmt.Errorf("failed to get global state: %w", rErr)
 		}
@@ -78,13 +79,13 @@ func DisableVolumeReplication(mirror types.Mirror,
 		return fmt.Errorf("%w: secondary image status is up=%t and state=%s",
 			ErrInvalidArgument, localStatus.IsUP(), localStatus.GetState())
 	}
-	err := mirror.DisableMirroring(force)
+	err := mirror.DisableMirroring(ctx, force)
 	if err != nil {
 		return fmt.Errorf("failed to disable image mirroring: %w", err)
 	}
 	// the image state can be still disabling once we disable the mirroring
 	// check the mirroring is disabled or not
-	info, err := mirror.GetMirroringInfo()
+	info, err := mirror.GetMirroringInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get mirroring info of image: %w", err)
 	}
