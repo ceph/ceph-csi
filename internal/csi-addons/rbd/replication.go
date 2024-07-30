@@ -282,16 +282,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
-		switch {
-		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Errorf(codes.NotFound, "volume %s not found", volumeID)
-		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Errorf(codes.NotFound, "pool %s not found for %s", rbdVol.GetPoolName(), volumeID)
-		default:
-			err = status.Errorf(codes.Internal, err.Error())
-		}
-
-		return nil, err
+		return nil, getGRPCError(err)
 	}
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
@@ -361,16 +352,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
-		switch {
-		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Errorf(codes.NotFound, "volume %s not found", volumeID)
-		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Errorf(codes.NotFound, "pool %s not found for %s", rbdVol.GetPoolName(), volumeID)
-		default:
-			err = status.Errorf(codes.Internal, err.Error())
-		}
-
-		return nil, err
+		return nil, getGRPCError(err)
 	}
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
@@ -438,16 +420,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
-		switch {
-		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Errorf(codes.NotFound, "volume %s not found", volumeID)
-		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Errorf(codes.NotFound, "pool %s not found for %s", rbdVol.GetPoolName(), volumeID)
-		default:
-			err = status.Errorf(codes.Internal, err.Error())
-		}
-
-		return nil, err
+		return nil, getGRPCError(err)
 	}
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
@@ -540,16 +513,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
-		switch {
-		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Errorf(codes.NotFound, "volume %s not found", volumeID)
-		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Errorf(codes.NotFound, "pool %s not found for %s", rbdVol.GetPoolName(), volumeID)
-		default:
-			err = status.Errorf(codes.Internal, err.Error())
-		}
-
-		return nil, err
+		return nil, getGRPCError(err)
 	}
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
@@ -659,16 +623,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
-		switch {
-		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Errorf(codes.NotFound, "volume %s not found", volumeID)
-		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Errorf(codes.NotFound, "pool %s not found for %s", rbdVol.GetPoolName(), volumeID)
-		default:
-			err = status.Errorf(codes.Internal, err.Error())
-		}
-
-		return nil, err
+		return nil, getGRPCError(err)
 	}
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
@@ -830,6 +785,8 @@ func getGRPCError(err error) error {
 	}
 
 	errorStatusMap := map[error]codes.Code{
+		corerbd.ErrImageNotFound:      codes.NotFound,
+		util.ErrPoolNotFound:          codes.NotFound,
 		corerbd.ErrInvalidArgument:    codes.InvalidArgument,
 		corerbd.ErrFlattenInProgress:  codes.Aborted,
 		corerbd.ErrAborted:            codes.Aborted,
@@ -875,9 +832,9 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Errorf(codes.NotFound, "volume %s not found", volumeID)
+			err = status.Errorf(codes.NotFound, err.Error())
 		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Errorf(codes.NotFound, "pool %s not found for %s", rbdVol.GetPoolName(), volumeID)
+			err = status.Errorf(codes.NotFound, err.Error())
 		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
