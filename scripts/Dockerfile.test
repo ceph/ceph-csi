@@ -8,7 +8,7 @@
 # little different.
 #
 
-FROM registry.fedoraproject.org/fedora:latest
+FROM quay.ceph.io/ceph-ci/ceph:wip-pkalever-rbd-group-snap-mirror
 
 ARG GOPATH=/go
 ARG GOROOT=/usr/local/go
