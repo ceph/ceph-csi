@@ -66,4 +66,7 @@ type VolumeGroup interface {
 
 	// ListVolumes returns a slice with all Volumes in the VolumeGroup.
 	ListVolumes(ctx context.Context) ([]Volume, error)
+
+	// ToMirror converts the VolumeGroup to a Mirror.
+	ToMirror() (Mirror, error)
 }

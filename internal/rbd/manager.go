@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/ceph/go-ceph/rados"
+	"github.com/csi-addons/spec/lib/go/replication"
 
 	"github.com/ceph/ceph-csi/internal/journal"
 	rbd_group "github.com/ceph/ceph-csi/internal/rbd/group"
@@ -293,4 +294,79 @@ func (mgr *rbdManager) DeleteVolumeGroup(ctx context.Context, vg types.VolumeGro
 	}
 
 	return nil
+}
+
+func (mgr *rbdManager) GetMirrorSource(ctx context.Context, reqID string,
+	rep *replication.ReplicationSource,
+) ([]types.Volume, types.Mirror, error) {
+	switch {
+	// Backward compatibility: if rep is nil, we assume that the sidecar is still old and
+	// setting only volumeId not the replication source.
+	case rep == nil || rep.GetVolume() != nil:
+		rbdVol, err := mgr.GetVolumeByID(ctx, reqID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get volume by id %q: %w", reqID, err)
+		}
+		defer func() {
+			if err != nil {
+				rbdVol.Destroy(ctx)
+			}
+		}()
+		var mir types.Mirror
+		mir, err = rbdVol.ToMirror()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to convert volume %s to mirror: %w", rbdVol, err)
+		}
+
+		return []types.Volume{rbdVol}, mir, nil
+	case rep.GetVolumegroup() != nil:
+		rbdGroup, err := mgr.GetVolumeGroupByID(ctx, reqID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get volume group by id %q: %w", reqID, err)
+		}
+		defer func() {
+			if err != nil {
+				rbdGroup.Destroy(ctx)
+			}
+		}()
+		var mir types.Mirror
+		mir, err = rbdGroup.ToMirror()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to convert volume group %s to mirror: %w", rbdGroup, err)
+		}
+		var vols []types.Volume
+		vols, err = rbdGroup.ListVolumes(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to list volumes in volume group %q: %w", rbdGroup, err)
+		}
+		// Get all the volume with connection and return it
+		volumes := make([]types.Volume, len(vols))
+		// Destroy connections if there is any error
+		defer func() {
+			if err != nil {
+				for _, vol := range vols {
+					vol.Destroy(ctx)
+				}
+			}
+		}()
+
+		for i, vol := range vols {
+			var id string
+			id, err = vol.GetID(ctx)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to get id for volume %q in group %q: %w", vol, rbdGroup, err)
+			}
+			var v types.Volume
+			v, err = mgr.GetVolumeByID(ctx, id)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to get volume by id %q in group %q: %w", id, rbdGroup, err)
+			}
+			volumes[i] = v
+		}
+
+		return volumes, mir, nil
+
+	default:
+		return nil, nil, errors.New("replication source is not set")
+	}
 }
