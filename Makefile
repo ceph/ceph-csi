@@ -32,6 +32,11 @@ ifeq ($(HAVE_CPUSET),1)
     CPUSET ?= --cpuset-cpus=0-${CPUS}
 endif
 
+ifneq ($(GITHUB_ACTION),)
+    # see https://github.com/containers/podman/issues/21012
+    SECURITY_OPT ?= --security-opt seccomp=unconfined
+endif
+
 CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/cephcsi)
 CSI_IMAGE_VERSION=$(shell . $(CURDIR)/build.env ; echo $${CSI_IMAGE_VERSION})
 CSI_IMAGE=$(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
@@ -229,7 +234,7 @@ ifeq ($(USE_PULLED_IMAGE),no)
 .test-container-id: .container-cmd build.env scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
 	$(RM) .test-container-id
-	$(CONTAINER_CMD) build $(CPUSET) --build-arg GOARCH=$(GOARCH) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
+	$(CONTAINER_CMD) build $(CPUSET) $(SECURITY_OPT) --build-arg GOARCH=$(GOARCH) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 else
 # create the .test-container-id file based on the pulled image
