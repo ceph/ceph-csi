@@ -30,6 +30,11 @@ type CSIDriver struct {
 	name    string
 	nodeID  string
 	version string
+
+	// instance is the instance ID that is unique to an instance of CSI, used when sharing
+	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
+	instance string
+
 	// topology constraints that this nodeserver will advertise
 	topology          map[string]string
 	capabilities      []*csi.ControllerServiceCapability
@@ -40,7 +45,7 @@ type CSIDriver struct {
 // NewCSIDriver Creates a NewCSIDriver object. Assumes vendor
 // version is equal to driver version &  does not support optional
 // driver plugin info manifest field. Refer to CSI spec for more details.
-func NewCSIDriver(name, v, nodeID string) *CSIDriver {
+func NewCSIDriver(name, v, nodeID, instance string) *CSIDriver {
 	if name == "" {
 		klog.Errorf("Driver name missing")
 
@@ -59,13 +64,25 @@ func NewCSIDriver(name, v, nodeID string) *CSIDriver {
 		return nil
 	}
 
+	if instance == "" {
+		klog.Errorf("Instance argument missing")
+
+		return nil
+	}
+
 	driver := CSIDriver{
-		name:    name,
-		version: v,
-		nodeID:  nodeID,
+		name:     name,
+		version:  v,
+		nodeID:   nodeID,
+		instance: instance,
 	}
 
 	return &driver
+}
+
+// GetInstance returns the instance identification of the CSI driver.
+func (d *CSIDriver) GetInstanceID() string {
+	return d.instance
 }
 
 // ValidateControllerServiceRequest validates the controller

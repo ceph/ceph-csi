@@ -23,10 +23,6 @@ import (
 )
 
 var (
-	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
-	CSIInstanceID = "default"
-
 	// volJournal and snapJournal are used to maintain RADOS based journals for CO generated
 	// VolumeName to backing RBD images.
 	volJournal  *journal.Config
@@ -91,11 +87,6 @@ func SetGlobalBool(name string, value bool) {
 // NodeService where appropriate. Using global journals limits the ability to
 // configure these options based on the Ceph cluster or StorageClass.
 func InitJournals(instance string) {
-	// Use passed in instance ID, if provided for omap suffix naming
-	if instance != "" {
-		CSIInstanceID = instance
-	}
-
-	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
-	snapJournal = journal.NewCSISnapshotJournal(CSIInstanceID)
+	volJournal = journal.NewCSIVolumeJournal(instance)
+	snapJournal = journal.NewCSISnapshotJournal(instance)
 }

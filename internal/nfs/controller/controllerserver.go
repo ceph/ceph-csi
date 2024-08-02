@@ -45,8 +45,8 @@ type Server struct {
 // NewControllerServer initialize a controller server for ceph CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver) *Server {
 	// global instance of the volume journal, yuck
-	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(cephfs.CSIInstanceID, fsutil.RadosNamespace)
-	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(cephfs.CSIInstanceID, fsutil.RadosNamespace)
+	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
+	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
 
 	return &Server{
 		backendServer: cephfs.NewControllerServer(d),

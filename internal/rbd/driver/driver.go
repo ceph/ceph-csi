@@ -100,7 +100,7 @@ func (r *Driver) Run(conf *util.Config) {
 	rbd.InitJournals(conf.InstanceID)
 
 	// Initialize default library driver
-	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
+	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID)
 	if r.cd == nil {
 		log.FatalLogMsg("Failed to initialize CSI Driver.")
 	}
@@ -217,7 +217,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 		fcs := casrbd.NewFenceControllerServer()
 		r.cas.RegisterService(fcs)
 
-		rcs := casrbd.NewReplicationServer(rbd.CSIInstanceID, NewControllerServer(r.cd))
+		rcs := casrbd.NewReplicationServer(conf.InstanceID, NewControllerServer(r.cd))
 		r.cas.RegisterService(rcs)
 
 		vgcs := casrbd.NewVolumeGroupServer(conf.InstanceID)
