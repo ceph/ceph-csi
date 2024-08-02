@@ -547,7 +547,8 @@ func RegenerateJournal(
 	volumeID,
 	requestName,
 	owner,
-	clusterName string,
+	clusterName,
+	instanceID string,
 	setMetadata bool,
 	cr *util.Credentials,
 ) (string, error) {
@@ -595,7 +596,7 @@ func RegenerateJournal(
 	if rbdVol.JournalPool == "" {
 		rbdVol.JournalPool = rbdVol.Pool
 	}
-	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
+	volJournal = journal.NewCSIVolumeJournal(instanceID)
 	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
 		return "", err

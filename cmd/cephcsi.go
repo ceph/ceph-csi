@@ -70,8 +70,8 @@ func init() {
 	flag.StringVar(&conf.StagingPath, "stagingpath", defaultStagingPath, "staging path")
 	flag.StringVar(&conf.ClusterName, "clustername", "", "name of the cluster")
 	flag.BoolVar(&conf.SetMetadata, "setmetadata", false, "set metadata on the volume")
-	flag.StringVar(&conf.InstanceID, "instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
-		" instances, when sharing Ceph clusters across CSI instances for provisioning")
+	flag.StringVar(&conf.InstanceID, "instanceid", "default", "Unique ID distinguishing this instance of Ceph-CSI"+
+		" among other instances, when sharing Ceph clusters across CSI instances for provisioning")
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
 	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
@@ -249,6 +249,7 @@ func main() {
 			DriverName:  dname,
 			Namespace:   conf.DriverNamespace,
 			ClusterName: conf.ClusterName,
+			InstanceID:  conf.InstanceID,
 			SetMetadata: conf.SetMetadata,
 		}
 		// initialize all controllers before starting.

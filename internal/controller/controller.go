@@ -39,6 +39,7 @@ type Config struct {
 	DriverName  string
 	Namespace   string
 	ClusterName string
+	InstanceID  string
 	SetMetadata bool
 }
 

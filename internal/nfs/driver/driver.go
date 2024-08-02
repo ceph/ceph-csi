@@ -39,7 +39,7 @@ func NewDriver() *Driver {
 // ceph CSI driver which can serve multiple parallel requests.
 func (fs *Driver) Run(conf *util.Config) {
 	// Initialize default library driver
-	cd := csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
+	cd := csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID)
 	if cd == nil {
 		log.FatalLogMsg("failed to initialize CSI driver")
 	}

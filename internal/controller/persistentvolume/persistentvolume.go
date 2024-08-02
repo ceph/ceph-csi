@@ -189,6 +189,7 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 		requestName,
 		pvcNamespace,
 		r.config.ClusterName,
+		r.config.InstanceID,
 		r.config.SetMetadata,
 		cr)
 	if err != nil {
