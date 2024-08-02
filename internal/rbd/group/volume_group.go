@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rbd_group
+package group
 
 import (
 	"context"
@@ -37,27 +37,7 @@ var ErrRBDGroupNotConnected = errors.New("RBD group is not connected")
 
 // volumeGroup handles all requests for 'rbd group' operations.
 type volumeGroup struct {
-	// id is a unique value for this volume group in the Ceph cluster, it
-	// is used to find the group in the journal.
-	id string
-
-	// name is used in RBD API calls as the name of this object
-	name string
-
-	clusterID string
-
-	credentials *util.Credentials
-
-	// temporary connection attributes
-	conn  *util.ClusterConnection
-	ioctx *rados.IOContext
-
-	// required details to perform operations on the group
-	monitors  string
-	pool      string
-	namespace string
-
-	journal journal.VolumeGroupJournal
+	*commonVolumeGroup
 
 	// volumes is a list of rbd-images that are part of the group. The ID
 	// of each volume is stored in the journal.
@@ -87,117 +67,45 @@ func GetVolumeGroup(
 	creds *util.Credentials,
 	volumeResolver types.VolumeResolver,
 ) (types.VolumeGroup, error) {
-	csiID := util.CSIIdentifier{}
-	err := csiID.DecomposeCSIID(id)
+	vg := &volumeGroup{}
+	err := vg.initCommonVolumeGroup(ctx, id, j, creds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decompose volume group id %q: %w", id, err)
+		return nil, fmt.Errorf("failed to initialize volume group with id %q: %w", id, err)
 	}
 
-	mons, err := util.Mons(util.CsiConfigFile, csiID.ClusterID)
+	attrs, err := vg.getVolumeGroupAttributes(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get MONs for cluster id %q: %w", csiID.ClusterID, err)
-	}
-
-	namespace, err := util.GetRadosNamespace(util.CsiConfigFile, csiID.ClusterID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get RADOS namespace for cluster id %q: %w", csiID.ClusterID, err)
-	}
-
-	pool, err := util.GetPoolName(mons, creds, csiID.LocationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pool for volume group id %q: %w", id, err)
-	}
-
-	attrs, err := j.GetVolumeGroupAttributes(ctx, pool, csiID.ObjectUUID)
-	if err != nil {
-		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
-			return nil, fmt.Errorf("failed to get attributes for volume group id %q: %w", id, err)
-		}
-
-		attrs = &journal.VolumeGroupAttributes{}
+		return nil, fmt.Errorf("failed to get volume attributes for id %q: %w", vg, err)
 	}
 
 	var volumes []types.Volume
+	// it is needed to free the previously allocated volumes
+	defer func() {
+		// volumesToFree is empty in case of an error, let .Destroy() handle it otherwise
+		if len(vg.volumesToFree) > 0 {
+			return
+		}
+
+		for _, v := range volumes {
+			v.Destroy(ctx)
+		}
+	}()
 	for volID := range attrs.VolumeMap {
 		vol, err := volumeResolver.GetVolumeByID(ctx, volID)
 		if err != nil {
-			// free the previously allocated volumes
-			for _, v := range volumes {
-				v.Destroy(ctx)
-			}
-
 			return nil, fmt.Errorf("failed to get attributes for volume group id %q: %w", id, err)
 		}
 
 		volumes = append(volumes, vol)
 	}
 
-	vg := &volumeGroup{
-		journal:     j,
-		credentials: creds,
-		id:          id,
-		name:        attrs.GroupName,
-		clusterID:   csiID.ClusterID,
-		monitors:    mons,
-		pool:        pool,
-		namespace:   namespace,
-		volumes:     volumes,
-		// all allocated volumes need to be free'd at Destroy() time
-		volumesToFree: volumes,
-	}
+	vg.volumes = volumes
+	// all allocated volumes need to be free'd at Destroy() time
+	vg.volumesToFree = volumes
 
 	log.DebugLog(ctx, "GetVolumeGroup(%s) returns %+v", id, *vg)
 
 	return vg, nil
-}
-
-// String returns the image-spec (pool/{namespace}/{name}) format of the group.
-func (vg *volumeGroup) String() string {
-	if vg.namespace != "" && vg.pool != "" && vg.name != "" {
-		return fmt.Sprintf("%s/%s/%s", vg.pool, vg.namespace, vg.name)
-	}
-
-	if vg.name != "" && vg.pool != "" {
-		return fmt.Sprintf("%s/%s", vg.pool, vg.name)
-	}
-
-	return fmt.Sprintf("<unidentified group %v>", *vg)
-}
-
-// GetID returns the CSI-Addons VolumeGroupId of the VolumeGroup.
-func (vg *volumeGroup) GetID(ctx context.Context) (string, error) {
-	if vg.id == "" {
-		return "", errors.New("BUG: ID is not set")
-	}
-
-	return vg.id, nil
-}
-
-// GetName returns the name in the backend storage for the VolumeGroup.
-func (vg *volumeGroup) GetName(ctx context.Context) (string, error) {
-	if vg.name == "" {
-		return "", errors.New("BUG: name is not set")
-	}
-
-	return vg.name, nil
-}
-
-// GetPool returns the name of the pool that holds the VolumeGroup.
-func (vg *volumeGroup) GetPool(ctx context.Context) (string, error) {
-	if vg.pool == "" {
-		return "", errors.New("BUG: pool is not set")
-	}
-
-	return vg.pool, nil
-}
-
-// GetClusterID returns the name of the pool that holds the VolumeGroup.
-func (vg *volumeGroup) GetClusterID(ctx context.Context) (string, error) {
-	if vg.clusterID == "" {
-		return "", errors.New("BUG: clusterID is not set")
-	}
-
-	return vg.clusterID, nil
 }
 
 // ToCSI creates a CSI-Addons type for the VolumeGroup.
@@ -230,54 +138,6 @@ func (vg *volumeGroup) ToCSI(ctx context.Context) (*volumegroup.VolumeGroup, err
 	}, nil
 }
 
-// getConnection returns the ClusterConnection for the volume group if it
-// exists, otherwise it will open a new one.
-// Destroy should be used to close the ClusterConnection.
-func (vg *volumeGroup) getConnection(ctx context.Context) (*util.ClusterConnection, error) {
-	if vg.conn != nil {
-		return vg.conn, nil
-	}
-
-	conn := &util.ClusterConnection{}
-	err := conn.Connect(vg.monitors, vg.credentials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MONs %q: %w", vg.monitors, err)
-	}
-
-	vg.conn = conn
-	log.DebugLog(ctx, "connection established for volume group %q", vg.id)
-
-	return conn, nil
-}
-
-// GetIOContext returns the IOContext for the volume group if it exists,
-// otherwise it will allocate a new one.
-// Destroy should be used to free the IOContext.
-func (vg *volumeGroup) GetIOContext(ctx context.Context) (*rados.IOContext, error) {
-	if vg.ioctx != nil {
-		return vg.ioctx, nil
-	}
-
-	conn, err := vg.getConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to connect: %w", ErrRBDGroupNotConnected, err)
-	}
-
-	ioctx, err := conn.GetIoctx(vg.pool)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to get IOContext: %w", ErrRBDGroupNotConnected, err)
-	}
-
-	if vg.namespace != "" {
-		ioctx.SetNamespace(vg.namespace)
-	}
-
-	vg.ioctx = ioctx
-	log.DebugLog(ctx, "iocontext created for volume group %q in pool %q", vg.id, vg.pool)
-
-	return ioctx, nil
-}
-
 // Destroy frees the resources used by the volumeGroup.
 func (vg *volumeGroup) Destroy(ctx context.Context) {
 	// free the volumes that were allocated in GetVolumeGroup()
@@ -288,22 +148,7 @@ func (vg *volumeGroup) Destroy(ctx context.Context) {
 		vg.volumesToFree = make([]types.Volume, 0)
 	}
 
-	if vg.ioctx != nil {
-		vg.ioctx.Destroy()
-		vg.ioctx = nil
-	}
-
-	if vg.conn != nil {
-		vg.conn.Destroy()
-		vg.conn = nil
-	}
-
-	if vg.credentials != nil {
-		vg.credentials.DeleteCredentials()
-		vg.credentials = nil
-	}
-
-	log.DebugLog(ctx, "destroyed volume group instance with id %q", vg.id)
+	vg.commonVolumeGroup.Destroy(ctx)
 }
 
 func (vg *volumeGroup) Create(ctx context.Context) error {
