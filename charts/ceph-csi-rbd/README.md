@@ -134,7 +134,6 @@ charts and their default values.
 | `nodeplugin.podSecurityContext`                | Specifies pod-level security context.                                                                                                                | `{}`                                               |
 | `nodeplugin.nodeSelector`                      | Kubernetes `nodeSelector` to add to the Daemonset                                                                                                    | `{}`                                               |
 | `nodeplugin.tolerations`                       | List of Kubernetes `tolerations` to add to the Daemonset                                                                                             | `{}`                                               |
-| `nodeplugin.podSecurityPolicy.enabled`         | If true, create & use [Pod Security Policy resources](https://kubernetes.io/docs/concepts/policy/pod-security-policy/).                              | `false`                                            |
 | `provisioner.name`                             | Specifies the name of provisioner                                                                                                                    | `provisioner`                                      |
 | `provisioner.replicaCount`                     | Specifies the replicaCount                                                                                                                           | `3`                                                |
 | `provisioner.defaultFSType`                    | Specifies the default Fstype                                                                                                                         | `ext4`                                             |
@@ -176,7 +175,6 @@ charts and their default values.
 | `provisioner.nodeSelector`                     | Specifies the node selector for provisioner deployment                                                                                               | `{}`                                               |
 | `provisioner.tolerations`                      | Specifies the tolerations for provisioner deployment                                                                                                 | `{}`                                               |
 | `provisioner.affinity`                         | Specifies the affinity for provisioner deployment                                                                                                    | `{}`                                               |
-| `provisioner.podSecurityPolicy.enabled`        | Specifies whether podSecurityPolicy is enabled                                                                                                       | `false`                                            |
 | `topology.enabled`                             | Specifies whether topology based provisioning support should be exposed by CSI                                                                       | `false`                                            |
 | `topology.domainLabels`                        | DomainLabels define which node labels to use as domains for CSI nodeplugins to advertise their domains                                               | `{}`                                               |
 | `readAffinity.enabled` | Enable read affinity for RBD volumes. Recommended to set to true if running kernel 5.8 or newer. | `false` |
@@ -238,5 +236,5 @@ Specify each parameter using the --set key=value argument to helm install.
 For Example:
 
 ```bash
-helm install --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true
+helm install --set configMapName=ceph-csi-config
 ```
