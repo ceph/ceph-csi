@@ -135,7 +135,6 @@ charts and their default values.
 | `nodeplugin.forcecephkernelclient`             | Set to true to enable Ceph Kernel clients on kernel < 4.17 which support quotas                                                                      | `true`                                             |
 | `nodeplugin.kernelmountoptions`                | Comma separated string of mount options accepted by cephfs kernel mounter quotas                                                                      | `""`                                               |
 | `nodeplugin.fusemountoptions`                  | Comma separated string of mount options accepted by ceph-fuse mounter quotas                                                                      | `""`                                               |
-| `nodeplugin.podSecurityPolicy.enabled`         | If true, create & use [Pod Security Policy resources](https://kubernetes.io/docs/concepts/policy/pod-security-policy/).                              | `false`                                            |
 | `provisioner.name`                             | Specifies the name of provisioner                                                                                                                    | `provisioner`                                      |
 | `provisioner.replicaCount`                     | Specifies the replicaCount                                                                                                                           | `3`                                                |
 | `provisioner.timeout`                          | GRPC timeout for waiting for creation or deletion of a volume                                                                                        | `60s`                                              |
@@ -163,7 +162,6 @@ charts and their default values.
 | `provisioner.nodeSelector`                     | Specifies the node selector for provisioner deployment                                                                                               | `{}`                                               |
 | `provisioner.tolerations`                      | Specifies the tolerations for provisioner deployment                                                                                                 | `{}`                                               |
 | `provisioner.affinity`                         | Specifies the affinity for provisioner deployment                                                                                                    | `{}`                                               |
-| `provisioner.podSecurityPolicy.enabled`        | Specifies whether podSecurityPolicy is enabled                                                                                                       | `false`                                            |
 | `provisioner.podSecurityContext`               | Specifies pod-level security context.                                                                                                                | `{}`                                               |
 | `provisionerSocketFile`                        | The filename of the provisioner socket                                                                                                               | `csi-provisioner.sock`                             |
 | `pluginSocketFile`                             | The filename of the plugin socket                                                                                                                    | `csi.sock`                                         |
@@ -210,5 +208,5 @@ Specify each parameter using the --set key=value argument to helm install.
 For Example:
 
 ```bash
-helm install --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true
+helm install --set configMapName=ceph-csi-config
 ```
