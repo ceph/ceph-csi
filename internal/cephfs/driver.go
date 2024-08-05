@@ -45,10 +45,6 @@ type Driver struct {
 	cas *csiaddons.CSIAddonsServer
 }
 
-// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
-var CSIInstanceID = "default"
-
 // NewDriver returns new ceph driver.
 func NewDriver() *Driver {
 	return &Driver{}
@@ -105,11 +101,6 @@ func (fs *Driver) Run(conf *util.Config) {
 		log.FatalLogMsg("cephfs: failed to load ceph mounters: %v", err)
 	}
 
-	// Use passed in instance ID, if provided for omap suffix naming
-	if conf.InstanceID != "" {
-		CSIInstanceID = conf.InstanceID
-	}
-
 	// Use passed in radosNamespace, if provided for storing CSI specific objects and keys.
 	if conf.RadosNamespaceCephFS != "" {
 		fsutil.RadosNamespace = conf.RadosNamespaceCephFS
@@ -127,16 +118,16 @@ func (fs *Driver) Run(conf *util.Config) {
 	}
 
 	// Create an instance of the volume journal
-	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
+	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(conf.InstanceID, fsutil.RadosNamespace)
 
-	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
+	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(conf.InstanceID, fsutil.RadosNamespace)
 
 	store.VolumeGroupJournal = journal.NewCSIVolumeGroupJournalWithNamespace(
-		CSIInstanceID,
+		conf.InstanceID,
 		fsutil.RadosNamespace)
 	// Initialize default library driver
 
-	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
+	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID)
 	if fs.cd == nil {
 		log.FatalLogMsg("failed to initialize CSI driver")
 	}
