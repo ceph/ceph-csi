@@ -1519,6 +1519,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.11/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
+github.com/csi-addons/kubernetes-csi-addons v0.9.0 h1:Hhb44WcrxtbzmpLY+uqX+DBWCI6HgA/rwQMPyvsyCc8=
+github.com/csi-addons/kubernetes-csi-addons v0.9.0/go.mod h1:/YROZDdEi1N/1Ls9rdU5W2VNjm8MK7HHApl8W4Sqt9s=
 github.com/csi-addons/spec v0.2.1-0.20241104111131-27825f744db5 h1:j9NaWj5KmzEVarmsjxS/NDAhes6Uzq1qhkUGHvDlVBk=
 github.com/csi-addons/spec v0.2.1-0.20241104111131-27825f744db5/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
 github.com/cyphar/filepath-securejoin v0.3.4 h1:VBWugsJh2ZxJmLFSM06/0qzQyiQX2Qs0ViKrUAcqdZ8=

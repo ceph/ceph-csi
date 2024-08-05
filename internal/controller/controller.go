@@ -20,7 +20,10 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 
-	"k8s.io/apimachinery/pkg/runtime"
+	replicationv1alpha1 "github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1"
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -62,6 +65,9 @@ func addToManager(mgr manager.Manager, config Config) error {
 
 // Start will start all the registered managers.
 func Start(config Config) error {
+	scheme := apiruntime.NewScheme()
+	utilruntime.Must(replicationv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	electionID := config.DriverName + "-" + config.Namespace
 	opts := manager.Options{
 		LeaderElection: true,
@@ -70,11 +76,12 @@ func Start(config Config) error {
 		LeaderElectionNamespace:    config.Namespace,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaderElectionID:           electionID,
+		Scheme:                     scheme,
 	}
 
 	kubeConfig := clientConfig.GetConfigOrDie()
 	coreKubeConfig := rest.CopyConfig(kubeConfig)
-	coreKubeConfig.ContentType = runtime.ContentTypeProtobuf
+	coreKubeConfig.ContentType = apiruntime.ContentTypeProtobuf
 	mgr, err := manager.New(coreKubeConfig, opts)
 	if err != nil {
 		log.ErrorLogMsg("failed to create manager %s", err)
