@@ -18,9 +18,9 @@ package types
 
 import (
 	"context"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 //nolint:interfacebloat // more than 10 methods are needed for the interface
@@ -42,7 +42,8 @@ type Volume interface {
 	RemoveFromGroup(ctx context.Context, vg VolumeGroup) error
 
 	// GetCreationTime returns the creation time of the volume.
-	GetCreationTime() (*timestamppb.Timestamp, error)
+	GetCreationTime(ctx context.Context) (*time.Time, error)
+
 	// GetMetadata returns the value of the metadata key from the volume.
 	GetMetadata(key string) (string, error)
 	// SetMetadata sets the value of the metadata key on the volume.
