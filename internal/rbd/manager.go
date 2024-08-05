@@ -144,7 +144,7 @@ func (mgr *rbdManager) getGroupUUID(
 	} else {
 		log.DebugLog(ctx, "the journal does not contain a reservation for group %q yet", name)
 
-		uuid, _ /*vgsName*/, err = vgJournal.ReserveName(ctx, journalPool, name, prefix)
+		uuid, _ /*vgsName*/, err = vgJournal.ReserveName(ctx, journalPool, name, uuid, prefix)
 		if err != nil {
 			return "", nothingToUndo, fmt.Errorf("failed to reserve a UUID for group %q: %w", name, err)
 		}
@@ -273,7 +273,7 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 		log.DebugLog(ctx, "the journal does not contain a reservation for a volume group with name %q yet", name)
 
 		var vgName string
-		uuid, vgName, err = vgJournal.ReserveName(ctx, journalPool, name, prefix)
+		uuid, vgName, err = vgJournal.ReserveName(ctx, journalPool, name, uuid, prefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to reserve volume group for name %q: %w", name, err)
 		}

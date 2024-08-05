@@ -255,7 +255,7 @@ func ReserveVolumeGroup(
 	defer j.Destroy()
 
 	groupUUID, vgsi.FsVolumeGroupSnapshotName, err = j.ReserveName(
-		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix)
+		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.ReservedID, volOptions.NamePrefix)
 	if err != nil {
 		return nil, err
 	}
