@@ -32,6 +32,7 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -1240,7 +1241,7 @@ func (cs *ControllerServer) CreateSnapshot(
 			SizeBytes:      vol.VolSize,
 			SnapshotId:     vol.VolID,
 			SourceVolumeId: req.GetSourceVolumeId(),
-			CreationTime:   vol.CreatedAt,
+			CreationTime:   timestamppb.New(*vol.CreatedAt),
 			ReadyToUse:     true,
 		},
 	}, nil
@@ -1300,7 +1301,7 @@ func cloneFromSnapshot(
 			SizeBytes:      rbdSnap.VolSize,
 			SnapshotId:     rbdSnap.VolID,
 			SourceVolumeId: rbdSnap.SourceVolumeID,
-			CreationTime:   rbdSnap.CreatedAt,
+			CreationTime:   timestamppb.New(*rbdSnap.CreatedAt),
 			ReadyToUse:     true,
 		},
 	}, nil

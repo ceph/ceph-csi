@@ -617,7 +617,7 @@ func TestGetGRPCError(t *testing.T) {
 }
 
 func Test_timestampFromString(t *testing.T) {
-	tm := timestamppb.Now()
+	tm := time.Now()
 	t.Parallel()
 	tests := []struct {
 		name      string
@@ -627,8 +627,8 @@ func Test_timestampFromString(t *testing.T) {
 	}{
 		{
 			name:      "valid timestamp",
-			timestamp: timestampToString(tm),
-			want:      tm.AsTime().Local(),
+			timestamp: timestampToString(&tm),
+			want:      tm,
 			wantErr:   false,
 		},
 		{
@@ -669,8 +669,8 @@ func Test_timestampFromString(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("timestampFromString() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("timestampFromString() = %v, want %v", got, tt.want)
+			if !tt.want.Equal(got) {
+				t.Errorf("timestampFromString() = %q, want %q", got, tt.want)
 			}
 		})
 	}

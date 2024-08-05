@@ -36,8 +36,6 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
 	mount "k8s.io/mount-utils"
@@ -138,7 +136,7 @@ type rbdImage struct {
 	// fileEncryption provides access to optional VolumeEncryption functions (e.g fscrypt)
 	fileEncryption *util.VolumeEncryption
 
-	CreatedAt *timestamp.Timestamp
+	CreatedAt *time.Time
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
@@ -1595,7 +1593,7 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 
 // GetCreationTime returns the creation time of the image. if the image
 // creation time is not set, it queries the image info and returns the creation time.
-func (ri *rbdImage) GetCreationTime() (*timestamppb.Timestamp, error) {
+func (ri *rbdImage) GetCreationTime(ctx context.Context) (*time.Time, error) {
 	if ri.CreatedAt != nil {
 		return ri.CreatedAt, nil
 	}
@@ -1648,8 +1646,9 @@ func (ri *rbdImage) getImageInfo() error {
 	if err != nil {
 		return err
 	}
+
 	t := time.Unix(tm.Sec, tm.Nsec)
-	ri.CreatedAt = timestamppb.New(t)
+	ri.CreatedAt = &t
 
 	return nil
 }

@@ -20,6 +20,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -116,6 +119,16 @@ func (rbdSnap *rbdSnapshot) toVolume() *rbdVolume {
 			fileEncryption:  rbdSnap.fileEncryption,
 		},
 	}
+}
+
+func (rbdSnap *rbdSnapshot) ToCSI(ctx context.Context) (*csi.Snapshot, error) {
+	return &csi.Snapshot{
+		SizeBytes:      rbdSnap.VolSize,
+		SnapshotId:     rbdSnap.VolID,
+		SourceVolumeId: rbdSnap.SourceVolumeID,
+		CreationTime:   timestamppb.New(*rbdSnap.CreatedAt),
+		ReadyToUse:     true,
+	}, nil
 }
 
 func undoSnapshotCloning(

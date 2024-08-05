@@ -520,7 +520,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	creationTime, err := rbdVol.GetCreationTime()
+	creationTime, err := rbdVol.GetCreationTime(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
 
@@ -693,7 +693,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		ready = checkRemoteSiteStatus(ctx, sts.GetAllSitesStatus())
 	}
 
-	creationTime, err := rbdVol.GetCreationTime()
+	creationTime, err := rbdVol.GetCreationTime(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get image info for %s: %s", rbdVol, err.Error())
 	}
@@ -717,8 +717,8 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		if sErr != nil {
 			return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", sErr.Error())
 		}
-		log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime.AsTime())
-		if req.GetForce() && st.Equal(creationTime.AsTime()) {
+		log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime)
+		if req.GetForce() && st.Equal(*creationTime) {
 			err = mirror.Resync(ctx)
 			if err != nil {
 				return nil, getGRPCError(err)
@@ -746,8 +746,8 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 }
 
 // timestampToString converts the time.Time object to string.
-func timestampToString(st *timestamppb.Timestamp) string {
-	return fmt.Sprintf("seconds:%d nanos:%d", st.GetSeconds(), st.GetNanos())
+func timestampToString(st *time.Time) string {
+	return fmt.Sprintf("seconds:%d nanos:%d", st.Unix(), st.Nanosecond())
 }
 
 // timestampFromString parses the timestamp string and returns the time.Time
