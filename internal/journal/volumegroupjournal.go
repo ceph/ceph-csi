@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -75,6 +76,11 @@ type VolumeGroupJournal interface {
 // VolumeGroupJournalConfig contains the configuration.
 type VolumeGroupJournalConfig struct {
 	Config
+
+	// csiCreationTimeKey can hold the key for the time a group was
+	// created. At least RBD groups do not provide the creation time
+	// through API calls.
+	csiCreationTimeKey string
 }
 
 type volumeGroupJournalConnection struct {
@@ -97,6 +103,7 @@ func NewCSIVolumeGroupJournal(suffix string) VolumeGroupJournalConfig {
 			csiNameKey:              "csi.volname",
 			namespace:               "",
 		},
+		csiCreationTimeKey: "csi.creationtime",
 	}
 }
 
@@ -229,6 +236,7 @@ func (vgjc *volumeGroupJournalConnection) CheckReservation(ctx context.Context,
 	volGroupData.VolumeGroupAttributes = &VolumeGroupAttributes{}
 	volGroupData.VolumeGroupAttributes.RequestName = savedVolumeGroupAttributes.RequestName
 	volGroupData.VolumeGroupAttributes.VolumeMap = savedVolumeGroupAttributes.VolumeMap
+	volGroupData.VolumeGroupAttributes.CreationTime = savedVolumeGroupAttributes.CreationTime
 
 	return volGroupData, nil
 }
@@ -354,6 +362,12 @@ func (vgjc *volumeGroupJournalConnection) ReserveName(ctx context.Context,
 	omapValues[cj.csiNameKey] = reqName
 	omapValues[cj.csiImageKey] = groupName
 
+	t, err := time.Now().MarshalText()
+	if err != nil {
+		return "", "", err
+	}
+	omapValues[cj.csiCreationTimeKey] = string(t)
+
 	err = setOMapKeys(ctx, vgjc.connection, journalPool, cj.namespace, oid, omapValues)
 	if err != nil {
 		return "", "", err
@@ -365,9 +379,10 @@ func (vgjc *volumeGroupJournalConnection) ReserveName(ctx context.Context,
 // VolumeGroupAttributes contains the request name and the volumeID's and
 // the corresponding snapshotID's.
 type VolumeGroupAttributes struct {
-	RequestName string            // Contains the request name for the passed in UUID
-	GroupName   string            // Contains the group name
-	VolumeMap   map[string]string // Contains the volumeID and the corresponding value mapping
+	RequestName  string            // Contains the request name for the passed in UUID
+	GroupName    string            // Contains the group name
+	CreationTime *time.Time        // Contains the time of creation of the group
+	VolumeMap    map[string]string // Contains the volumeID and the corresponding value mapping
 }
 
 func (vgjc *volumeGroupJournalConnection) GetVolumeGroupAttributes(
@@ -390,13 +405,21 @@ func (vgjc *volumeGroupJournalConnection) GetVolumeGroupAttributes(
 		log.WarningLog(ctx, "unable to read omap values: pool missing: %v", err)
 	}
 
+	t := &time.Time{}
+	err = t.UnmarshalText([]byte(values[cj.csiCreationTimeKey]))
+	if err != nil {
+		t = nil
+	}
+
 	groupAttributes.RequestName = values[cj.csiNameKey]
 	groupAttributes.GroupName = values[cj.csiImageKey]
+	groupAttributes.CreationTime = t
 
 	// Remove request name key and group name key from the omap, as we are
 	// looking for volumeID/snapshotID mapping
 	delete(values, cj.csiNameKey)
 	delete(values, cj.csiImageKey)
+	delete(values, cj.csiCreationTimeKey)
 	groupAttributes.VolumeMap = map[string]string{}
 	for k, v := range values {
 		groupAttributes.VolumeMap[k] = v
