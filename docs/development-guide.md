@@ -278,8 +278,11 @@ need to be met before it will be merged:
   on the PR. The bot will merge the PR if it's having one approval and the
   label `ready-to-merge`.
 
-When the criteria are met, a project maintainer can merge your changes into
-the project's devel branch.
+When the criteria are met, a project maintainer can instruct the Mergify bot to
+queue the PR for merging. This usually is done by leaving two comments:
+
+* `@mergifyio rebase` to rebase on the latest HEAD of the branch
+* `@mergifyio queue` once the rebasing is done, to add the PR to the merge queue
 
 ### Backport a Fix to a Release Branch
 
