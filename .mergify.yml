@@ -464,3 +464,17 @@ pull_request_rules:
           - Repo activity
           - ci/skip/e2e
           - ci/skip/multi-arch-build
+
+  # A [skip ci] in the PR description prevents Jenkins jobs from running, mark
+  # the PR as Draft so that CI jobs do not automatically run anymore.
+  - name: detect [skip ci] in the PR description
+    conditions:
+      - "body-raw~=[skip ci]"
+    actions:
+      edit:
+        draft: true
+      comment:
+        # yamllint disable-line rule:truthy
+        message: "The PR description contains the unsupported `[skip ci]`
+        command, please update the description and mark the PR ready for review
+        again."
