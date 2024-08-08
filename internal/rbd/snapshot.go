@@ -101,6 +101,27 @@ func cleanUpSnapshot(
 	return nil
 }
 
+func (rv *rbdVolume) toSnapshot() *rbdSnapshot {
+	return &rbdSnapshot{
+		rbdImage: rbdImage{
+			ClusterID:      rv.ClusterID,
+			VolID:          rv.VolID,
+			Monitors:       rv.Monitors,
+			Pool:           rv.Pool,
+			JournalPool:    rv.JournalPool,
+			RadosNamespace: rv.RadosNamespace,
+			RbdImageName:   rv.RbdImageName,
+			ImageID:        rv.ImageID,
+			CreatedAt:      rv.CreatedAt,
+			// copyEncryptionConfig cannot be used here because the volume and the
+			// snapshot will have the same volumeID which cases the panic in
+			// copyEncryptionConfig function.
+			blockEncryption: rv.blockEncryption,
+			fileEncryption:  rv.fileEncryption,
+		},
+	}
+}
+
 func (rbdSnap *rbdSnapshot) toVolume() *rbdVolume {
 	return &rbdVolume{
 		rbdImage: rbdImage{
@@ -112,6 +133,7 @@ func (rbdSnap *rbdSnapshot) toVolume() *rbdVolume {
 			RadosNamespace: rbdSnap.RadosNamespace,
 			RbdImageName:   rbdSnap.RbdSnapName,
 			ImageID:        rbdSnap.ImageID,
+			CreatedAt:      rbdSnap.CreatedAt,
 			// copyEncryptionConfig cannot be used here because the volume and the
 			// snapshot will have the same volumeID which cases the panic in
 			// copyEncryptionConfig function.

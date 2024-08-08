@@ -32,7 +32,6 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -1236,14 +1235,13 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	csiSnap, err := vol.toSnapshot().ToCSI(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	return &csi.CreateSnapshotResponse{
-		Snapshot: &csi.Snapshot{
-			SizeBytes:      vol.VolSize,
-			SnapshotId:     vol.VolID,
-			SourceVolumeId: req.GetSourceVolumeId(),
-			CreationTime:   timestamppb.New(*vol.CreatedAt),
-			ReadyToUse:     true,
-		},
+		Snapshot: csiSnap,
 	}, nil
 }
 
@@ -1296,14 +1294,13 @@ func cloneFromSnapshot(
 		}
 	}
 
+	csiSnap, err := rbdSnap.ToCSI(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	return &csi.CreateSnapshotResponse{
-		Snapshot: &csi.Snapshot{
-			SizeBytes:      rbdSnap.VolSize,
-			SnapshotId:     rbdSnap.VolID,
-			SourceVolumeId: rbdSnap.SourceVolumeID,
-			CreationTime:   timestamppb.New(*rbdSnap.CreatedAt),
-			ReadyToUse:     true,
-		},
+		Snapshot: csiSnap,
 	}, nil
 }
 
