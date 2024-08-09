@@ -469,7 +469,8 @@ pull_request_rules:
   # the PR as Draft so that CI jobs do not automatically run anymore.
   - name: detect [skip ci] in the PR description
     conditions:
-      - "body-raw~=[skip ci]"
+      # this should be \[skip\W+ci\], but Mergify does not accept that
+      - "body-raw~=skip ci"
     actions:
       edit:
         draft: true
