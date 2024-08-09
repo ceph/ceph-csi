@@ -190,6 +190,8 @@ replace (
 	code.cloudfoundry.org/gofileutils => github.com/cloudfoundry/gofileutils v0.0.0-20170111115228-4d0c80011a0f
 	github.com/ceph/ceph-csi/api => ./api
 
+	github.com/ceph/go-ceph => github.com/sp98/go-ceph v0.0.0-20240718045739-2a7b9501c66c
+
 	// Required for kubernetes 1.26
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 

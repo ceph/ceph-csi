@@ -38,6 +38,8 @@ const (
 
 // Mirror is the interface for managing mirroring on an RBD image or a group.
 type Mirror interface {
+	// Destroy frees the resources used by the Mirror.
+	Destroy(ctx context.Context)
 	// EnableMirroring enables mirroring on the resource with the specified mode.
 	EnableMirroring(ctx context.Context, mode librbd.ImageMirrorMode) error
 	// DisableMirroring disables mirroring on the resource with the option to force the operation

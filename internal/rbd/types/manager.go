@@ -18,6 +18,8 @@ package types
 
 import (
 	"context"
+
+	"github.com/csi-addons/spec/lib/go/replication"
 )
 
 // VolumeResolver can be used to construct a Volume from a CSI VolumeId.
@@ -47,4 +49,8 @@ type Manager interface {
 	// DeleteVolumeGroup removes VolumeGroup from the backend storage and
 	// any details from the journal.
 	DeleteVolumeGroup(ctx context.Context, vg VolumeGroup) error
+
+	// GetMirrorSource returns the source of the mirror for the given volume or group.
+	GetMirrorSource(ctx context.Context, volumeID string,
+		rep *replication.ReplicationSource) ([]Volume, Mirror, error)
 }

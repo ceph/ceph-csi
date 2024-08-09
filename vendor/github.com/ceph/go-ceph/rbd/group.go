@@ -110,7 +110,9 @@ func GroupImageAdd(groupIoctx *rados.IOContext, groupName string,
 		cephIoctx(groupIoctx),
 		cGroupName,
 		cephIoctx(imageIoctx),
-		cImageName)
+		cImageName,
+		C.uint32_t(0),
+	)
 	return getError(ret)
 }
 
@@ -135,7 +137,8 @@ func GroupImageRemove(groupIoctx *rados.IOContext, groupName string,
 		cephIoctx(groupIoctx),
 		cGroupName,
 		cephIoctx(imageIoctx),
-		cImageName)
+		cImageName,
+		C.uint32_t(0))
 	return getError(ret)
 }
 
@@ -160,7 +163,8 @@ func GroupImageRemoveByID(groupIoctx *rados.IOContext, groupName string,
 		cephIoctx(groupIoctx),
 		cGroupName,
 		cephIoctx(imageIoctx),
-		cid)
+		cid,
+		C.uint32_t(0))
 	return getError(ret)
 }
 

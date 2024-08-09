@@ -465,3 +465,7 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 func (vg *volumeGroup) ListVolumes(ctx context.Context) ([]types.Volume, error) {
 	return vg.volumes, nil
 }
+
+func (vg *volumeGroup) ToMirror() (types.Mirror, error) {
+	return volumeGroupMirror{vg}, nil
+}
