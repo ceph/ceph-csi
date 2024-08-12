@@ -129,7 +129,8 @@ func (vgc *VolumeGroupJournalConfig) Connect(
 ) (VolumeGroupJournal, error) {
 	vgjc := &volumeGroupJournalConnection{}
 	vgjc.config = &VolumeGroupJournalConfig{
-		Config: vgc.Config,
+		Config:             vgc.Config,
+		csiCreationTimeKey: vgc.csiCreationTimeKey,
 	}
 	conn, err := vgc.Config.Connect(monitors, namespace, cr)
 	if err != nil {
