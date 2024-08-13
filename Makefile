@@ -184,6 +184,10 @@ generate-deploy:
 	go mod vendor
 	$(MAKE) -C deploy
 
+.PHONY: check-all-committed
+check-all-committed: ## Fail in case there are uncommitted changes
+	test -z "$(shell git status --short)" || (echo "files were modified: " ; git status --short ; false)
+
 #
 # e2e testing by compiling e2e.test in case it does not exist and running the
 # executable. The e2e.test executable is not checked as a dependency in the
