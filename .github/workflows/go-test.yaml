@@ -9,6 +9,22 @@ permissions:
   contents: read
 
 jobs:
+  uncommitted-code-check:
+    name: uncommitted-code-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Check generated deploy code
+        run: make generate-deploy
+
+      - name: Check for uncommitted changes
+        run: make check-all-committed
+
+      - name: Show the uncommitted "git diff"
+        if: ${{ failure() }}
+        run: git diff ; false
   e2e-build-test:
     name: e2e-build-test
     runs-on: ubuntu-latest
