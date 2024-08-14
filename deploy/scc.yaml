@@ -27,6 +27,8 @@ allowHostPID: true
 allowHostIPC: true
 # Set to false as we write to RootFilesystem inside csi containers
 readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
 runAsUser:
   type: RunAsAny
 seLinuxContext:
