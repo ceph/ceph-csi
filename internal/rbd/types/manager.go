@@ -67,4 +67,8 @@ type Manager interface {
 	// VolumeGroup was paused, the snapshots in the group are crash
 	// consistent.
 	CreateVolumeGroupSnapshot(ctx context.Context, vg VolumeGroup, name string) (VolumeGroupSnapshot, error)
+
+	// RegenerateVolumeGroupJournal regenerate the omap data for the volume group.
+	// returns the volume group handle
+	RegenerateVolumeGroupJournal(ctx context.Context, groupID, requestName string, volumeIds []string) (string, error)
 }
