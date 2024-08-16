@@ -26,8 +26,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:canary
+          image: quay.io/cephcsi/cephcsi:v3.12.0
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=nfs"
