@@ -206,7 +206,7 @@ github.com/ceph/ceph-csi/api/deploy/kubernetes/cephfs
 github.com/ceph/ceph-csi/api/deploy/kubernetes/nfs
 github.com/ceph/ceph-csi/api/deploy/kubernetes/rbd
 github.com/ceph/ceph-csi/api/deploy/ocp
-# github.com/ceph/go-ceph v0.28.0
+# github.com/ceph/go-ceph v0.29.0
 ## explicit; go 1.19
 github.com/ceph/go-ceph/cephfs
 github.com/ceph/go-ceph/cephfs/admin
@@ -216,6 +216,7 @@ github.com/ceph/go-ceph/common/commands
 github.com/ceph/go-ceph/internal/callbacks
 github.com/ceph/go-ceph/internal/commands
 github.com/ceph/go-ceph/internal/cutil
+github.com/ceph/go-ceph/internal/dlsym
 github.com/ceph/go-ceph/internal/errutil
 github.com/ceph/go-ceph/internal/log
 github.com/ceph/go-ceph/internal/retry
