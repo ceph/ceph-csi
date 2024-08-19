@@ -75,6 +75,8 @@ var (
 const (
 	// ErrNotExist indicates a non-specific missing resource.
 	ErrNotExist = rbdError(-C.ENOENT)
+	// ErrNotImplemented indicates a function is not implemented in by librbd.
+	ErrNotImplemented = rbdError(-C.ENOSYS)
 )
 
 // Private errors:
