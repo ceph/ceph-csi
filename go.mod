@@ -194,11 +194,6 @@ replace (
 	// Required for kubernetes 1.26
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 
-	// k8s.io/component-base/metrics/testutil depends on v0.47
-	// client_golang v1.18.0 is the last version compatible with common v0.47
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.18.0
-	github.com/prometheus/common => github.com/prometheus/common v0.47.0
-
 	// FIXME: why is this required?
 	gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
 
