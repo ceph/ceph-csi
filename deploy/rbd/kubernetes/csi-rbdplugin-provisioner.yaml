@@ -115,6 +115,7 @@ spec:
             # if fstype is not specified in storageclass, ext4 is default
             - "--default-fstype=ext4"
             - "--extra-create-metadata=true"
+            - "--immediate-topology=false"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
