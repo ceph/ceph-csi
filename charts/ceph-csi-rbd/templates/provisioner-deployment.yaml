@@ -148,6 +148,7 @@ spec:
             - "--extra-create-metadata=true"
             - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
+            - "--immediate-topology=false"
 {{- range .Values.provisioner.provisioner.extraArgs }}
             - "--{{ . }}"
 {{- end }}
