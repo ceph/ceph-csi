@@ -1,29 +1,7 @@
 ---
-defaults:
-  actions:
-    queue:
-      # merge_bot_account: ceph-csi-bot #mergify[bot] will be merging prs.
-      # update_bot_account: ceph-csi-bot #mergify will randomly pick and use
-      # credentials of users with write access to repo to rebase prs.
-      name: default
-      method: rebase
-      update_method: rebase
-      # For rebasing Mergify uses the author of the PR. Ideally we use the
-      # ceph-csi-bot for that, but this is a feature that needs a paid
-      # subscription.
-      #
-      # rebase:
-      # Use ceph-csi-bot for rebasing, not the account of the PR owner.
-      # bot_account: ceph-csi-bot
-
-      # by default Mergify requires manual merging of PRs that modify its own
-      # configuration (this file), allowing this makes it easier to prepare for
-      # releases (new branches added here)
-      allow_merging_configuration_change: true
-
 queue_rules:
   - name: default
-    conditions:
+    merge_conditions:
       # Conditions to get out of the queue (= merged)
       - or:
           - and:
@@ -92,6 +70,8 @@ queue_rules:
               - base=ci/centos
               - "status-success=ci/centos/job-validation"
               - "status-success=ci/centos/jjb-validate"
+    merge_method: rebase
+    update_method: rebase
 
 pull_request_rules:
   - name: start CI jobs for PRs in the merge queue
@@ -124,10 +104,8 @@ pull_request_rules:
       - author!=dependabot[bot]
     actions:
       comment:
-        # yamllint disable-line rule:truthy
-        message: "This pull request now has conflicts with the target branch.
-        Could you please resolve conflicts and force push the corrected
-        changes? 🙏"
+        # yamllint disable-line rule:truthy rule:line-length
+        message: "This pull request now has conflicts with the target branch. Could you please resolve conflicts and force push the corrected changes? 🙏"
 
   - name: update dependencies by dependabot (skip commitlint)
     conditions:
@@ -479,7 +457,5 @@ pull_request_rules:
       edit:
         draft: true
       comment:
-        # yamllint disable-line rule:truthy
-        message: "The PR description contains the unsupported `[skip ci]`
-        command, please update the description and mark the PR ready for review
-        again."
+        # yamllint disable-line rule:truthy rule:line-length
+        message: "The PR description contains the unsupported `[skip ci]` command, please update the description and mark the PR ready for review again."
