@@ -106,6 +106,7 @@ func (rv *rbdVolume) toSnapshot() *rbdSnapshot {
 		rbdImage: rbdImage{
 			ClusterID:      rv.ClusterID,
 			VolID:          rv.VolID,
+			VolSize:        rv.VolSize,
 			Monitors:       rv.Monitors,
 			Pool:           rv.Pool,
 			JournalPool:    rv.JournalPool,
