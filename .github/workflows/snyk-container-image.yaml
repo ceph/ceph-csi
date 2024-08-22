@@ -33,7 +33,7 @@ jobs:
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
         with:
           image: quay.io/cephcsi/cephcsi:${{ github.base_ref }}
           args: --file=Dockerfilei
