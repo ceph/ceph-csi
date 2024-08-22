@@ -81,14 +81,12 @@ rules:
     resources: ["persistentvolumeclaims/status"]
     verbs: ["update", "patch"]
 {{- end }}
-{{- if .Values.topology.domainLabels }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list","watch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
-{{- end }}
   - apiGroups: [""]
     resources: ["serviceaccounts/token"]
     verbs: ["create"]
