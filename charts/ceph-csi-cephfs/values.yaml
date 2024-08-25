@@ -331,6 +331,9 @@ secret:
   # specified in the storage class
   adminID: <plaintext ID>
   adminKey: <Ceph auth key corresponding to ID above>
+  # User credentials are required for the static provisioned PVC.
+  userID: ""
+  userKey: ""
 
 # This is a sample configmap that helps define a Ceph configuration as required
 # by the CSI plugins.
