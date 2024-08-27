@@ -209,7 +209,7 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 		log.DebugLog(ctx, "the journal does not contain a reservation for a volume group with name %q yet", name)
 
 		var vgName string
-		uuid, vgName, err = vgJournal.ReserveName(ctx, journalPool, name, prefix)
+		uuid, vgName, err = vgJournal.ReserveName(ctx, journalPool, name, vgData.GroupUUID, prefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to reserve volume group for name %q: %w", name, err)
 		}
@@ -293,4 +293,135 @@ func (mgr *rbdManager) DeleteVolumeGroup(ctx context.Context, vg types.VolumeGro
 	}
 
 	return nil
+}
+
+// RegenerateVolumeGroupJournal regenerate the omap data for the volume group.
+// This performs the following operations:
+//   - extracts clusterID and Mons from the cluster mapping
+//   - Retrieves pool and journalPool parameters from the VolumeGroupReplicationClass
+//   - Reserves omap data
+//   - Add volumeIDs mapping to the reserved volume group omap object
+//   - Generate new volume group handler
+//
+// Returns the generated volume group handle.
+//
+// Note: The new volume group handler will differ from the original as it includes
+// poolID and clusterID, which vary between clusters.
+func (mgr *rbdManager) RegenerateVolumeGroupJournal(
+	ctx context.Context,
+	groupID, requestName string,
+	volumeIds []string,
+) (string, error) {
+	var (
+		clusterID   string
+		monitors    string
+		pool        string
+		journalPool string
+		namePrefix  string
+		groupUUID   string
+		vgName      string
+
+		gi  util.CSIIdentifier
+		ok  bool
+		err error
+	)
+
+	err = gi.DecomposeCSIID(groupID)
+	if err != nil {
+		return "", fmt.Errorf("%w: error decoding volume group ID (%w) (%s)", ErrInvalidVolID, err, groupID)
+	}
+
+	monitors, clusterID, err = util.FetchMappedClusterIDAndMons(ctx, gi.ClusterID)
+	if err != nil {
+		return "", err
+	}
+
+	pool, ok = mgr.parameters["pool"]
+	if !ok {
+		return "", errors.New("required 'pool' parameter missing in parameters")
+	}
+
+	journalPool = mgr.parameters["journalPool"]
+	if journalPool == "" {
+		journalPool = pool
+	}
+
+	vgJournal, err := mgr.getVolumeGroupJournal(clusterID)
+	if err != nil {
+		return "", err
+	}
+	defer vgJournal.Destroy()
+
+	namePrefix = mgr.parameters["volumeNamePrefix"]
+	vgData, err := vgJournal.CheckReservation(ctx, journalPool, requestName, namePrefix)
+	if err != nil {
+		return "", err
+	}
+
+	if vgData != nil {
+		groupUUID = vgData.GroupUUID
+		vgName = vgData.GroupName
+	} else {
+		log.DebugLog(ctx, "the journal does not contain a reservation for a volume group with name %q yet", requestName)
+		groupUUID, vgName, err = vgJournal.ReserveName(ctx, journalPool, requestName, gi.ObjectUUID, namePrefix)
+		if err != nil {
+			return "", fmt.Errorf("failed to reserve volume group for name %q: %w", requestName, err)
+		}
+		defer func() {
+			if err != nil {
+				err = vgJournal.UndoReservation(ctx, journalPool, vgName, requestName)
+				if err != nil {
+					log.ErrorLog(ctx, "failed to undo the reservation for volume group %q: %w", requestName, err)
+				}
+			}
+		}()
+	}
+
+	volumes := make([]types.Volume, len(volumeIds))
+	defer func() {
+		for _, v := range volumes {
+			v.Destroy(ctx)
+		}
+	}()
+	var volume types.Volume
+	for i, id := range volumeIds {
+		volume, err = mgr.GetVolumeByID(ctx, id)
+		if err != nil {
+			return "", fmt.Errorf("failed to find required volume %q for volume group id %q: %w", id, vgName, err)
+		}
+
+		volumes[i] = volume
+	}
+
+	var volID string
+	for _, vol := range volumes {
+		volID, err = vol.GetID(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to get VolumeID for %q: %w", vol, err)
+		}
+
+		toAdd := map[string]string{
+			volID: "",
+		}
+		log.DebugLog(ctx, "adding volume mapping for volume %q to volume group %q", volID, vgName)
+		err = mgr.vgJournal.AddVolumesMapping(ctx, pool, gi.ObjectUUID, toAdd)
+		if err != nil {
+			return "", fmt.Errorf("failed to add mapping for volume %q to volume group %q: %w", volID, vgName, err)
+		}
+	}
+
+	_, poolID, err := util.GetPoolIDs(ctx, monitors, journalPool, pool, mgr.creds)
+	if err != nil {
+		return "", fmt.Errorf("failed to get poolID for %q: %w", groupUUID, err)
+	}
+
+	groupHandle, err := util.GenerateVolID(ctx, monitors, mgr.creds, poolID, pool, clusterID, groupUUID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate a unique CSI volume group with uuid for %q: %w", groupUUID, err)
+	}
+
+	log.DebugLog(ctx, "re-generated Group ID (%s) and Group Name (%s) for request name (%s)",
+		groupHandle, vgName, requestName)
+
+	return groupHandle, nil
 }

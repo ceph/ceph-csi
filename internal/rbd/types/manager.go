@@ -47,4 +47,8 @@ type Manager interface {
 	// DeleteVolumeGroup removes VolumeGroup from the backend storage and
 	// any details from the journal.
 	DeleteVolumeGroup(ctx context.Context, vg VolumeGroup) error
+
+	// RegenerateVolumeGroupJournal regenerate the omap data for the volume group.
+	// returns the volume group handler
+	RegenerateVolumeGroupJournal(ctx context.Context, groupID, requestName string, volumeIds []string) (string, error)
 }
