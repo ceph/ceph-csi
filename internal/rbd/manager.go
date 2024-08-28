@@ -114,6 +114,54 @@ func (mgr *rbdManager) getVolumeGroupJournal(clusterID string) (journal.VolumeGr
 	return vgJournal, nil
 }
 
+// getGroupUUID checks if a UUID in the volume group journal is already
+// reserved. If none is reserved, a new reservation is made. Upon exit of
+// getGroupUUID, the function returns:
+// 1. the UUID that was reserved
+// 2. an undo() function that reverts the reservation (if that succeeded), should be called in a defer
+// 3. an error or nil.
+func (mgr *rbdManager) getGroupUUID(
+	ctx context.Context,
+	clusterID, journalPool, name, prefix string,
+) (string, func(), error) {
+	nothingToUndo := func() {
+		// the reservation was not done, no need to undo the reservation
+	}
+
+	vgJournal, err := mgr.getVolumeGroupJournal(clusterID)
+	if err != nil {
+		return "", nothingToUndo, err
+	}
+
+	vgsData, err := vgJournal.CheckReservation(ctx, journalPool, name, prefix)
+	if err != nil {
+		return "", nothingToUndo, fmt.Errorf("failed to reserve a UUID for group %q: %w", name, err)
+	}
+
+	var uuid string
+	if vgsData != nil && vgsData.GroupUUID != "" {
+		uuid = vgsData.GroupUUID
+	} else {
+		log.DebugLog(ctx, "the journal does not contain a reservation for group %q yet", name)
+
+		undo := func() {
+			err = vgJournal.UndoReservation(ctx, journalPool, uuid, name)
+			if err != nil {
+				log.ErrorLog(ctx, "failed to undo the reservation for group %q: %w", name, err)
+			}
+		}
+
+		uuid, _ /*vgsName*/, err = vgJournal.ReserveName(ctx, journalPool, name, prefix)
+		if err != nil {
+			return "", undo, fmt.Errorf("failed to reserve a UUID for group %q: %w", name, err)
+		}
+	}
+
+	log.DebugLog(ctx, "got UUID %q for group %q", uuid, name)
+
+	return uuid, nothingToUndo, nil
+}
+
 func (mgr *rbdManager) GetVolumeByID(ctx context.Context, id string) (types.Volume, error) {
 	creds, err := mgr.getCredentials()
 	if err != nil {
@@ -267,4 +315,109 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 	}
 
 	return vg, nil
+}
+
+func (mgr *rbdManager) CreateVolumeGroupSnapshot(
+	ctx context.Context,
+	vg types.VolumeGroup,
+	name string,
+) (types.VolumeGroupSnapshot, error) {
+	// TODO: reserve a unique name for the snapshot
+	pool, err := vg.GetPool(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// volumeNamePrefix is an optional parameter, can be an empty string
+	prefix := mgr.parameters["volumeNamePrefix"]
+
+	// journalPool is an optional parameter, use pool if it is not set
+	journalPool, ok := mgr.parameters["journalPool"]
+	if !ok || journalPool == "" {
+		journalPool = pool
+	}
+
+	clusterID, err := vg.GetClusterID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cluster id for volume group snapshot %q: %w", vg, err)
+	}
+
+	uuid, freeUUID, err := mgr.getGroupUUID(ctx, clusterID, journalPool, name, prefix)
+	defer func() {
+		// no error, no need to undo the reservation
+		if err == nil {
+			return
+		}
+
+		freeUUID()
+	}()
+
+	monitors, err := util.Mons(util.CsiConfigFile, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find MONs for cluster %q: %w", clusterID, err)
+	}
+
+	_ /*journalPoolID*/, poolID, err := util.GetPoolIDs(ctx, monitors, journalPool, pool, mgr.creds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate a unique CSI volume group with uuid for %q: %w", uuid, err)
+	}
+
+	csiID, err := util.GenerateVolID(ctx, monitors, mgr.creds, poolID, pool, clusterID, uuid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate a unique CSI volume group with uuid for %q: %w", uuid, err)
+	}
+
+	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, csiID, mgr.csiID, mgr.creds, mgr)
+	if vgs != nil {
+		log.DebugLog(ctx, "found existing volume group snapshot %q for id %q", vgs, csiID)
+
+		// validate the contents of the vgs
+		snapshots, vgsErr := vgs.ListSnapshots(ctx)
+		if vgsErr != nil {
+			return nil, fmt.Errorf("failed to list snapshots of existing volume group snapshot %q: %w", vgs, vgsErr)
+		}
+
+		volumes, vgErr := vg.ListVolumes(ctx)
+		if vgErr != nil {
+			return nil, fmt.Errorf("failed to list volumes of volume group %q: %w", vg, vgErr)
+		}
+
+		// contents matches, return the existing vgs
+		if len(snapshots) == len(volumes) {
+			log.DebugLog(ctx, "existing volume group snapshot %q contains %d snapshots", vgs, len(snapshots))
+
+			return vgs, nil
+		}
+	} else if err != nil && !errors.Is(ErrImageNotFound, err) {
+		return nil, fmt.Errorf("failed to check for existing volume group snapshot with id %q: %w", csiID, err)
+	}
+
+	snapshots, err := vg.CreateSnapshots(ctx, mgr.creds, csiID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create volume group snapshot %q: %w", name, err)
+	}
+	defer func() {
+		// cleanup created snapshots in case there was a failure
+		if err == nil {
+			return
+		}
+
+		for _, snap := range snapshots {
+			delErr := snap.Delete(ctx)
+			if delErr != nil {
+				log.ErrorLog(ctx, "failed to delete snapshot %q: %v", snap, delErr)
+			}
+		}
+	}()
+
+	log.DebugLog(ctx, "volume group snapshot %q contains %d snapshots: %v", name, len(snapshots), snapshots)
+
+	vgs, err = rbd_group.NewVolumeGroupSnapshot(ctx, csiID, mgr.csiID, mgr.creds, snapshots)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new volume group snapshot %q: %w", name, err)
+	}
+
+	log.DebugLog(ctx, "volume group snapshot %q has been created", vgs)
+
+	return vgs, nil
 }
