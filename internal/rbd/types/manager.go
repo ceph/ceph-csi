@@ -52,4 +52,11 @@ type Manager interface {
 	// CreateVolumeGroup allocates a new VolumeGroup in the backend storage
 	// and records details about it in the journal.
 	CreateVolumeGroup(ctx context.Context, name string) (VolumeGroup, error)
+
+	// CreateVolumeGroupSnapshot instructs the Manager to create a
+	// VolumeGroupSnapshot from the VolumeGroup. All snapshots in the
+	// returned VolumeGroupSnapshot have been taken while I/O on the
+	// VolumeGroup was paused, the snapshots in the group are crash
+	// consistent.
+	CreateVolumeGroupSnapshot(ctx context.Context, vg VolumeGroup, name string) (VolumeGroupSnapshot, error)
 }
