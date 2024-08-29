@@ -1,0 +1,17 @@
+---
+apiVersion: groupsnapshot.storage.k8s.io/v1alpha1
+kind: VolumeGroupSnapshotClass
+metadata:
+  name: csi-cephfsplugin-groupsnapclass
+driver: cephfs.csi.ceph.com
+parameters:
+  # String representing a Ceph cluster to provision storage from.
+  # Should be unique across all Ceph clusters in use for provisioning,
+  # cannot be greater than 36 bytes in length, and should remain immutable for
+  # the lifetime of the StorageClass in use
+  clusterID: <cluster-id>
+  # eg: fsName: myfs
+  fsName: <cephfs-name>
+  csi.storage.k8s.io/group-snapshotter-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/group-snapshotter-secret-namespace: default
+deletionPolicy: Delete
