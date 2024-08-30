@@ -200,7 +200,7 @@ if [[ "${VM_DRIVER}" == "kvm2" ]]; then
     DISK="vda1"
 fi
 
-if [[ "${VM_DRIVER}" == "kvm2" ]] || [[ "${VM_DRIVER}" == "hyperkit" ]]; then
+if [[ "${VM_DRIVER}" == "kvm2" ]] || [[ "${VM_DRIVER}" == "hyperkit" ]] || [[ "${VM_DRIVER}" == "qemu2" ]]; then
     # adding extra disks is only supported on kvm2 and hyperkit
     DISK_CONFIG=${DISK_CONFIG:-" --extra-disks=${NUM_DISKS} --disk-size=${DISK_SIZE} "}
 else
@@ -219,7 +219,7 @@ K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-""}
 
 # kubelet.resolv-conf needs to point to a file, not a symlink
 # the default minikube VM has /etc/resolv.conf -> /run/systemd/resolve/resolv.conf
-RESOLV_CONF='/run/systemd/resolve/resolv.conf'
+RESOLV_CONF="${RESOLV_CONF:-/run/systemd/resolve/resolv.conf}"
 if { [[ "${VM_DRIVER}" == "none" ]] || [[ "${VM_DRIVER}" == "podman" ]]; } && [[ ! -e "${RESOLV_CONF}" ]]; then
 	# in case /run/systemd/resolve/resolv.conf does not exist, use the
 	# standard /etc/resolv.conf (with symlink resolved)
