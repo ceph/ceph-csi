@@ -17,6 +17,7 @@ limitations under the License.
 package networkfence
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -135,6 +136,124 @@ func TestFetchID(t *testing.T) {
 			if actualID != tt.expectedID {
 				t.Errorf("expected ID %d but got %d", tt.expectedID, actualID)
 			}
+		})
+	}
+}
+
+func TestParseBlocklistEntry(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected IPWithNonce
+	}{
+		{
+			name:     "Valid IP and nonce",
+			input:    "192.168.1.1:6789/abcdef123456",
+			expected: IPWithNonce{IP: "192.168.1.1", Nonce: "abcdef123456"},
+		},
+		{
+			name:     "IPv6 address with full notation",
+			input:    "2001:0db8:0000:0000:0000:8a2e:0370:7334:6789/abc123",
+			expected: IPWithNonce{IP: "2001:0db8:0000:0000:0000:8a2e:0370:7334", Nonce: "abc123"},
+		},
+		{
+			name:     "IPv6 address with compressed zeros",
+			input:    "2001:db8::1428:57ab:6789/def456",
+			expected: IPWithNonce{IP: "2001:db8::1428:57ab", Nonce: "def456"},
+		},
+		{
+			name:     "IPv6 loopback address",
+			input:    "::1:6789/ghi789",
+			expected: IPWithNonce{IP: "::1", Nonce: "ghi789"},
+		},
+		{
+			name:     "IPv6 address with IPv4 mapping",
+			input:    "::ffff:192.0.2.128:6789/jkl012",
+			expected: IPWithNonce{IP: "::ffff:192.0.2.128", Nonce: "jkl012"},
+		},
+		{
+			name:     "IP without port",
+			input:    "10.0.0.1/nonce123",
+			expected: IPWithNonce{},
+		},
+		{
+			name:     "Extra whitespace",
+			input:    "  172.16.0.1:1234/abc123  extra info  ",
+			expected: IPWithNonce{IP: "172.16.0.1", Nonce: "abc123"},
+		},
+	}
+
+	nf := &NetworkFence{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := nf.parseBlocklistEntry(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestParseBlocklistForCIDR(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name      string
+		blocklist string
+		cidr      string
+		expected  []IPWithNonce
+	}{
+		{
+			name: "Single IPv4 in CIDR",
+			blocklist: `192.168.1.1:0/1234567 expires 2023-07-01 10:00:00.000000
+listed 1 entries`,
+			cidr:     "192.168.1.0/24",
+			expected: []IPWithNonce{{IP: "192.168.1.1", Nonce: "1234567"}},
+		},
+		{
+			name: "Multiple IPv4 in CIDR",
+			blocklist: `192.168.1.1:0/1234567 expires 2023-07-01 10:00:00.000000
+192.168.1.2:0/7654321 expires 2023-07-01 11:00:00.000000
+192.168.2.1:0/abcdefg expires 2023-07-01 12:00:00.000000
+listed 3 entries`,
+			cidr: "192.168.1.0/24",
+			expected: []IPWithNonce{
+				{IP: "192.168.1.1", Nonce: "1234567"},
+				{IP: "192.168.1.2", Nonce: "7654321"},
+			},
+		},
+		{
+			name: "IPv6 in CIDR",
+			blocklist: `2001:db8::1:0/fedcba expires 2023-07-01 10:00:00.000000
+2001:db8::2:0/abcdef expires 2023-07-01 11:00:00.000000
+listed 2 entries`,
+			cidr:     "2001:db8::/64",
+			expected: []IPWithNonce{{IP: "2001:db8::1", Nonce: "fedcba"}, {IP: "2001:db8::2", Nonce: "abcdef"}},
+		},
+		{
+			name:      "Empty blocklist",
+			blocklist: `listed 0 entries`,
+			cidr:      "192.168.1.0/24",
+			expected:  []IPWithNonce{},
+		},
+		{
+			name: "No matching IPs",
+			blocklist: `10.0.0.1:0/1234567 expires 2023-07-01 10:00:00.000000
+listed 1 entries`,
+			cidr:     "192.168.1.0/24",
+			expected: []IPWithNonce{},
+		},
+	}
+
+	nf := &NetworkFence{}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := nf.parseBlocklistForCIDR(context.TODO(), tc.blocklist, tc.cidr)
+			require.Equal(t, tc.expected, result)
 		})
 	}
 }
