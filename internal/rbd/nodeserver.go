@@ -1365,6 +1365,10 @@ func blockNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeG
 				Unit:  csi.VolumeUsage_BYTES,
 			},
 		},
+		VolumeCondition: &csi.VolumeCondition{
+			Abnormal: false,
+			Message:  "volume is in a healthy condition",
+		},
 	}, nil
 }
 
