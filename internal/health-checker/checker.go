@@ -37,7 +37,7 @@ type checker struct {
 	// timeout contains the delay (interval + timeout)
 	timeout time.Duration
 
-	// mutex protects against concurrent access to healty, err and
+	// mutex protects against concurrent access to healthy, err and
 	// lastUpdate
 	mutex *sync.RWMutex
 

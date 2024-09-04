@@ -60,7 +60,7 @@ func Test_getCrushLocationMap(t *testing.T) {
 			want: map[string]string{"zone": "zone1"},
 		},
 		{
-			name: "multuple matching crushlocation and node labels",
+			name: "multiple matching crushlocation and node labels",
 			args: input{
 				crushLocationLabels: "topology.io/zone,topology.io/rack",
 				nodeLabels: map[string]string{
