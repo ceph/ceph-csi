@@ -125,7 +125,7 @@ parameters:
    #   "file": Enable file encryption on the mounted filesystem
    #   "block": Encrypt RBD block device
    # When unspecified assume type "block". "file" and "block" are
-   # mutally exclusive.
+   # mutually exclusive.
    # encryptionType: "block"
 
    # (optional) Use external key management system for encryption passphrases by

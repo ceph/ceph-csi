@@ -22,8 +22,8 @@ curl -X GET http://10.109.65.142:8080/metrics 2>/dev/null | grep csi
 csi_liveness 1
 ```
 
-Promethues can be deployed through the promethues operator described [here](https://coreos.com/operators/prometheus/docs/latest/user-guides/getting-started.html).
-The [service-monitor](../deploy/service-monitor.yaml) will tell promethues how
+Prometheus can be deployed through the prometheus operator described [here](https://coreos.com/operators/prometheus/docs/latest/user-guides/getting-started.html).
+The [service-monitor](../deploy/service-monitor.yaml) will tell prometheus how
 to pull metrics out of CSI.
 
 Each CSI pod has a service to expose the endpoint to prometheus. By default, rbd
