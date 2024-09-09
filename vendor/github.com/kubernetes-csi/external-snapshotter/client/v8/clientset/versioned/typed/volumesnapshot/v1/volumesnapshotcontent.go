@@ -22,8 +22,8 @@ import (
 	"context"
 	"time"
 
-	v1 "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
-	scheme "github.com/kubernetes-csi/external-snapshotter/client/v7/clientset/versioned/scheme"
+	v1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
+	scheme "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
