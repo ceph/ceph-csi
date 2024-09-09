@@ -20,7 +20,7 @@ import (
 	core_v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 )
 
 // VolumeGroupSnapshotSpec defines the desired state of a volume group snapshot.
@@ -36,6 +36,7 @@ type VolumeGroupSnapshotSpec struct {
 	// class will be used.
 	// Empty string is not allowed for this field.
 	// +optional
+	// +kubebuilder:validation:XValidation:rule="size(self) > 0",message="volumeGroupSnapshotClassName must not be the empty string when set"
 	VolumeGroupSnapshotClassName *string `json:"volumeGroupSnapshotClassName,omitempty" protobuf:"bytes,2,opt,name=volumeGroupSnapshotClassName"`
 }
 
@@ -44,6 +45,9 @@ type VolumeGroupSnapshotSpec struct {
 // object should be used.
 // Exactly one of its members must be set.
 // Members in VolumeGroupSnapshotSource are immutable.
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.selector) || has(self.selector)", message="selector is required once set"
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.volumeGroupSnapshotContentName) || has(self.volumeGroupSnapshotContentName)", message="volumeGroupSnapshotContentName is required once set"
+// +kubebuilder:validation:XValidation:rule="(has(self.selector) && !has(self.volumeGroupSnapshotContentName)) || (!has(self.selector) && has(self.volumeGroupSnapshotContentName))", message="exactly one of selector and volumeGroupSnapshotContentName must be set"
 type VolumeGroupSnapshotSource struct {
 	// Selector is a label query over persistent volume claims that are to be
 	// grouped together for snapshotting.
@@ -53,6 +57,7 @@ type VolumeGroupSnapshotSource struct {
 	// Once a VolumeGroupSnapshotContent is created and the sidecar starts to process
 	// it, the volume list will not change with retries.
 	// +optional
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="selector is immutable"
 	Selector *metav1.LabelSelector `json:"selector,omitempty" protobuf:"bytes,1,opt,name=selector"`
 
 	// VolumeGroupSnapshotContentName specifies the name of a pre-existing VolumeGroupSnapshotContent
@@ -61,6 +66,7 @@ type VolumeGroupSnapshotSource struct {
 	// only needs a representation in Kubernetes.
 	// This field is immutable.
 	// +optional
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="volumeGroupSnapshotContentName is immutable"
 	VolumeGroupSnapshotContentName *string `json:"volumeGroupSnapshotContentName,omitempty" protobuf:"bytes,2,opt,name=volumeGroupSnapshotContentName"`
 }
 
@@ -103,11 +109,20 @@ type VolumeGroupSnapshotStatus struct {
 	// +optional
 	Error *snapshotv1.VolumeSnapshotError `json:"error,omitempty" protobuf:"bytes,4,opt,name=error,casttype=VolumeSnapshotError"`
 
-	// VolumeSnapshotRefList is the list of volume snapshot references for this
-	// group snapshot.
+	// VolumeSnapshotRefList is the list of PVC and VolumeSnapshot pairs that
+	// is part of this group snapshot.
 	// The maximum number of allowed snapshots in the group is 100.
 	// +optional
-	VolumeSnapshotRefList []core_v1.ObjectReference `json:"volumeSnapshotRefList,omitempty" protobuf:"bytes,5,opt,name=volumeSnapshotRefList"`
+	PVCVolumeSnapshotRefList []PVCVolumeSnapshotPair `json:"pvcVolumeSnapshotRefList,omitempty" protobuf:"bytes,5,opt,name=pvcVolumeSnapshotRefList"`
+}
+
+// PVCVolumeSnapshotPair defines a pair of a PVC reference and a Volume Snapshot Reference
+type PVCVolumeSnapshotPair struct {
+	// PersistentVolumeClaimRef is a reference to the PVC this pair is referring to
+	PersistentVolumeClaimRef core_v1.LocalObjectReference `json:"persistentVolumeClaimRef,omitempty" protobuf:"bytes,1,opt,name=persistentVolumeClaimRef"`
+
+	// VolumeSnapshotRef is a reference to the VolumeSnapshot this pair is referring to
+	VolumeSnapshotRef core_v1.LocalObjectReference `json:"volumeSnapshotRef,omitempty" protobuf:"bytes,2,opt,name=volumeSnapshotRef"`
 }
 
 //+genclient
@@ -265,6 +280,8 @@ type VolumeGroupSnapshotContentSpec struct {
 	// VolumeGroupSnapshot object MUST be provided for binding to happen.
 	// This field is immutable after creation.
 	// Required.
+	// +kubebuilder:validation:XValidation:rule="has(self.name) && has(self.__namespace__)",message="both volumeGroupSnapshotRef.name and volumeGroupSnapshotRef.namespace must be set"
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="volumeGroupSnapshotRef is immutable"
 	VolumeGroupSnapshotRef core_v1.ObjectReference `json:"volumeGroupSnapshotRef" protobuf:"bytes,1,opt,name=volumeGroupSnapshotRef"`
 
 	// DeletionPolicy determines whether this VolumeGroupSnapshotContent and the
@@ -337,21 +354,35 @@ type VolumeGroupSnapshotContentStatus struct {
 	// +optional
 	Error *snapshotv1.VolumeSnapshotError `json:"error,omitempty" protobuf:"bytes,4,opt,name=error,casttype=VolumeSnapshotError"`
 
-	// VolumeSnapshotContentRefList is the list of volume snapshot content references
-	// for this group snapshot.
+	// PVVolumeSnapshotContentList is the list of pairs of PV and
+	// VolumeSnapshotContent for this group snapshot
 	// The maximum number of allowed snapshots in the group is 100.
 	// +optional
-	VolumeSnapshotContentRefList []core_v1.ObjectReference `json:"volumeSnapshotContentRefList,omitempty" protobuf:"bytes,5,opt,name=volumeSnapshotContentRefList"`
+	PVVolumeSnapshotContentList []PVVolumeSnapshotContentPair `json:"pvVolumeSnapshotContentList,omitempty" protobuf:"bytes,5,opt,name=pvVolumeSnapshotContentRefList"`
+}
+
+// PVVolumeSnapshotContentPair represent a pair of PV names and
+// VolumeSnapshotContent names
+type PVVolumeSnapshotContentPair struct {
+	// PersistentVolumeRef is a reference to the persistent volume resource
+	PersistentVolumeRef core_v1.LocalObjectReference `json:"persistentVolumeRef,omitempty" protobuf:"bytes,1,opt,name=persistentVolumeRef"`
+
+	// VolumeSnapshotContentRef is a reference to the volume snapshot content resource
+	VolumeSnapshotContentRef core_v1.LocalObjectReference `json:"volumeSnapshotContentRef,omitempty" protobuf:"bytes,2,opt,name=volumeSnapshotContentRef"`
 }
 
 // VolumeGroupSnapshotContentSource represents the CSI source of a group snapshot.
 // Exactly one of its members must be set.
 // Members in VolumeGroupSnapshotContentSource are immutable.
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.volumeHandles) || has(self.volumeHandles)", message="volumeHandles is required once set"
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.groupSnapshotHandles) || has(self.groupSnapshotHandles)", message="groupSnapshotHandles is required once set"
+// +kubebuilder:validation:XValidation:rule="(has(self.volumeHandles) && !has(self.groupSnapshotHandles)) || (!has(self.volumeHandles) && has(self.groupSnapshotHandles))", message="exactly one of volumeHandles and groupSnapshotHandles must be set"
 type VolumeGroupSnapshotContentSource struct {
 	// VolumeHandles is a list of volume handles on the backend to be snapshotted
 	// together. It is specified for dynamic provisioning of the VolumeGroupSnapshot.
 	// This field is immutable.
 	// +optional
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="volumeHandles is immutable"
 	VolumeHandles []string `json:"volumeHandles,omitempty" protobuf:"bytes,1,opt,name=volumeHandles"`
 
 	// GroupSnapshotHandles specifies the CSI "group_snapshot_id" of a pre-existing
@@ -360,6 +391,7 @@ type VolumeGroupSnapshotContentSource struct {
 	// representation was (or should be) created.
 	// This field is immutable.
 	// +optional
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="groupSnapshotHandles is immutable"
 	GroupSnapshotHandles *GroupSnapshotHandles `json:"groupSnapshotHandles,omitempty" protobuf:"bytes,2,opt,name=groupSnapshotHandles"`
 }
 
