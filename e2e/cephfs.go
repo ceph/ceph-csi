@@ -2478,6 +2478,19 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("test volumeGroupSnapshot", func() {
+				scName := "csi-cephfs-sc"
+				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3)
+				if err != nil {
+					framework.Failf("failed to create volumeGroupSnapshot Base: %v", err)
+				}
+
+				err = snapshotter.TestVolumeGroupSnapshot()
+				if err != nil {
+					framework.Failf("failed to test volumeGroupSnapshot: %v", err)
+				}
+			})
+
 			// FIXME: in case NFS testing is done, prevent deletion
 			// of the CephFS filesystem and related pool. This can
 			// probably be addressed in a nicer way, making sure
