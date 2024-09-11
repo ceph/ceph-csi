@@ -75,6 +75,19 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		}
 
 		if pvc.Spec.VolumeName == "" {
+			var events *v1.EventList
+			// Log the events for the PVC if its not bound yet
+			events, err = c.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
+				FieldSelector: "involvedObject.kind=PersistentVolumeClaim,involvedObject.name=" + name,
+			})
+			if err == nil {
+				for i := range events.Items {
+					framework.Logf("PVC %s Event: %s - %s", name, events.Items[i].Reason, events.Items[i].Message)
+				}
+			} else {
+				framework.Logf("error getting events for PVC %s: %v", name, err)
+			}
+
 			return false, nil
 		}
 
