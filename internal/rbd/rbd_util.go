@@ -431,13 +431,11 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	log.DebugLog(ctx, "rbd: create %s size %s (features: %s) using mon %s",
 		pOpts, volSzMiB, pOpts.ImageFeatureSet.Names(), pOpts.Monitors)
 
-	options := librbd.NewRbdImageOptions()
-	defer options.Destroy()
-
-	err := pOpts.setImageOptions(ctx, options)
+	options, err := pOpts.constructImageOptions(ctx)
 	if err != nil {
 		return err
 	}
+	defer options.Destroy()
 
 	err = pOpts.Connect(cr)
 	if err != nil {
@@ -1494,12 +1492,11 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 		parentVol.ioctx = nil
 	}()
 
-	options := librbd.NewRbdImageOptions()
-	defer options.Destroy()
-	err = rv.setImageOptions(ctx, options)
+	options, err := rv.constructImageOptions(ctx)
 	if err != nil {
 		return err
 	}
+	defer options.Destroy()
 
 	err = options.SetUint64(librbd.ImageOptionCloneFormat, 2)
 	if err != nil {
@@ -1545,23 +1542,30 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 	return nil
 }
 
-// setImageOptions sets the image options.
-func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageOptions) error {
+// constructImageOptions constructs the ImageOptions that should get set on the
+// RBD-image at the time of its creation/cloning.
+func (rv *rbdVolume) constructImageOptions(ctx context.Context) (*librbd.ImageOptions, error) {
 	var err error
+	options := librbd.NewRbdImageOptions()
+	defer func() {
+		if err != nil {
+			options.Destroy()
+		}
+	}()
 
 	logMsg := fmt.Sprintf("setting image options on %s", rv)
 	if rv.DataPool != "" {
 		logMsg += ", data pool %s" + rv.DataPool
 		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
 		if err != nil {
-			return fmt.Errorf("failed to set data pool: %w", err)
+			return nil, fmt.Errorf("failed to set data pool: %w", err)
 		}
 	}
 
 	if rv.ImageFeatureSet != 0 {
 		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.ImageFeatureSet))
 		if err != nil {
-			return fmt.Errorf("failed to set image features: %w", err)
+			return nil, fmt.Errorf("failed to set image features: %w", err)
 		}
 	}
 
@@ -1569,11 +1573,11 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 		logMsg += fmt.Sprintf(", stripe count %d, stripe unit %d", rv.StripeCount, rv.StripeUnit)
 		err = options.SetUint64(librbd.RbdImageOptionStripeCount, rv.StripeCount)
 		if err != nil {
-			return fmt.Errorf("failed to set stripe count: %w", err)
+			return nil, fmt.Errorf("failed to set stripe count: %w", err)
 		}
 		err = options.SetUint64(librbd.RbdImageOptionStripeUnit, rv.StripeUnit)
 		if err != nil {
-			return fmt.Errorf("failed to set stripe unit: %w", err)
+			return nil, fmt.Errorf("failed to set stripe unit: %w", err)
 		}
 	}
 
@@ -1582,13 +1586,13 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 		logMsg += fmt.Sprintf(", object size %d, order %d", rv.ObjectSize, order)
 		err = options.SetUint64(librbd.RbdImageOptionOrder, order)
 		if err != nil {
-			return fmt.Errorf("failed to set object size: %w", err)
+			return nil, fmt.Errorf("failed to set object size: %w", err)
 		}
 	}
 
 	log.DebugLog(ctx, logMsg)
 
-	return nil
+	return options, nil
 }
 
 // GetCreationTime returns the creation time of the image. if the image
