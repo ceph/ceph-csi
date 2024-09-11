@@ -823,6 +823,15 @@ func oneReplicaDeployYaml(template string) string {
 	return re.ReplaceAllString(template, `$1 1`)
 }
 
+// replaceLogLevelInTemplate replaces the log level in the template file to 5.
+func replaceLogLevelInTemplate(template string) string {
+	// Regular expression to find --v=<number> arguments
+	re := regexp.MustCompile(`--v=\d+`)
+
+	// template can contain different log levels, replace it with --v=5
+	return re.ReplaceAllString(template, "--v=5")
+}
+
 func enableReadAffinityInTemplate(template string) string {
 	return strings.ReplaceAll(template, "# - \"--enable-read-affinity=true\"", "- \"--enable-read-affinity=true\"")
 }

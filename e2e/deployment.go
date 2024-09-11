@@ -250,6 +250,8 @@ func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
 		return fmt.Errorf("failed to read content from %q: %w", yrn.filename, err)
 	}
 
+	data = replaceLogLevelInTemplate(data)
+
 	if yrn.oneReplica {
 		data = oneReplicaDeployYaml(data)
 	}
