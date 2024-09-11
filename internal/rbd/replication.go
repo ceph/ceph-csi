@@ -90,8 +90,10 @@ func DisableVolumeReplication(mirror types.Mirror,
 		return fmt.Errorf("failed to get mirroring info of image: %w", err)
 	}
 
-	if info.GetState() == librbd.MirrorImageDisabling.String() {
-		return fmt.Errorf("%w: image is in disabling state", ErrAborted)
+	// error out if the image is not in disabled state.
+	if info.GetState() != librbd.MirrorImageDisabled.String() {
+		return fmt.Errorf("%w: image is in %q state, expected state %q", ErrAborted,
+			info.GetState(), librbd.MirrorImageDisabled.String())
 	}
 
 	return nil
