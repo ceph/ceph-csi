@@ -20,11 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
 
       - name: run Snyk to check for code vulnerabilities
-        uses: snyk/actions/golang@master
+        uses: snyk/actions/golang@cdb760004ba9ea4d525f2e043745dfe85bb9077e # master
         env:
           SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}

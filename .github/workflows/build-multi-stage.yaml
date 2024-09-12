@@ -13,7 +13,7 @@ jobs:
     name: multi-arch-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: multi-arch-build
         # yamllint disable-line rule:line-length
         if: ${{ ! contains(github.event.pull_request.labels.*.name, 'ci/skip/multi-arch-build') }}

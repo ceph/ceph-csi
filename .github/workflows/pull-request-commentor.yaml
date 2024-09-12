@@ -51,7 +51,7 @@ jobs:
           Add comment to trigger external storage tests for Kubernetes
           ${{ matrix.k8s }}
         if: ${{ github.base_ref == matrix.branch }}
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -62,7 +62,7 @@ jobs:
           Add comment to trigger helm E2E tests for Kubernetes
           ${{ matrix.k8s }}
         if: ${{ github.base_ref == matrix.branch }}
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -70,7 +70,7 @@ jobs:
             /test ci/centos/mini-e2e-helm/k8s-${{ matrix.k8s }}
 
       - name: Add comment to trigger E2E tests for Kubernetes ${{ matrix.k8s }}
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         if: ${{ github.base_ref == matrix.branch }}
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Add comment to trigger cephfs upgrade tests
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -95,7 +95,7 @@ jobs:
             /test ci/centos/upgrade-tests-cephfs
 
       - name: Add comment to trigger rbd upgrade tests
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -116,7 +116,7 @@ jobs:
 
     steps:
       - name: remove ok-to-test-label after commenting
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           script: |
