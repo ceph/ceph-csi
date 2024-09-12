@@ -11,7 +11,7 @@ set -e
 [ -n "${KUBE_VERSION}" ] || { echo "KUBE_VERSION not set" ; exit 1 ; }
 
 # download and extract the tests
-curl -LO "https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/kubernetes-test-linux-amd64.tar.gz"
+curl -LO "https://dl.k8s.io/${KUBE_VERSION}/kubernetes-test-linux-amd64.tar.gz"
 tar xzf kubernetes-test-linux-amd64.tar.gz kubernetes/test/bin/ginkgo kubernetes/test/bin/e2e.test
 
 # e2e depends on a self-contained KUBECONFIG for some reason
