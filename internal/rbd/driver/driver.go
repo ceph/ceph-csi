@@ -25,6 +25,7 @@ import (
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/rbd"
+	"github.com/ceph/ceph-csi/internal/rbd/features"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -123,6 +124,19 @@ func (r *Driver) Run(conf *util.Config) {
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
 			})
+
+		// GroupSnapGetInfo is used within the VolumeGroupSnapshot implementation
+		vgsSupported, vgsErr := features.SupportsGroupSnapGetInfo()
+		if vgsSupported {
+			r.cd.AddGroupControllerServiceCapabilities([]csi.GroupControllerServiceCapability_RPC_Type{
+				csi.GroupControllerServiceCapability_RPC_CREATE_DELETE_GET_VOLUME_GROUP_SNAPSHOT,
+			})
+		} else {
+			log.DefaultLog("not enabling VolumeGroupSnapshot service capability")
+		}
+		if vgsErr != nil {
+			log.ErrorLogMsg("failed detecting VolumeGroupSnapshot support: %v", vgsErr)
+		}
 	}
 
 	if k8s.RunsOnKubernetes() && conf.IsNodeServer {
@@ -178,6 +192,7 @@ func (r *Driver) Run(conf *util.Config) {
 		IS: r.ids,
 		CS: r.cs,
 		NS: r.ns,
+		GS: r.cs,
 	}
 	s.Start(conf.Endpoint, srv, csicommon.MiddlewareServerOptionConfig{
 		LogSlowOpInterval: conf.LogSlowOpInterval,
