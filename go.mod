@@ -16,7 +16,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
-	github.com/hashicorp/vault/api v1.14.0
+	github.com/hashicorp/vault/api v1.15.0
 	github.com/kubernetes-csi/csi-lib-utils v0.19.0
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.0.0
 	github.com/libopenstorage/secrets v0.0.0-20231011182615-5f4b25ceede1
@@ -68,7 +68,6 @@ require (
 	github.com/aws/smithy-go v1.20.4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
