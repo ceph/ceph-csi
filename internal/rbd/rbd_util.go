@@ -468,6 +468,10 @@ func (ri *rbdImage) openIoctx() error {
 		return nil
 	}
 
+	if ri.conn == nil {
+		return fmt.Errorf("can not get IOContext of unconnected image %q", ri)
+	}
+
 	ioctx, err := ri.conn.GetIoctx(ri.Pool)
 	if err != nil {
 		// GetIoctx() can return util.ErrPoolNotFound
