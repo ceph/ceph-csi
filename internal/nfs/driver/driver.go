@@ -77,7 +77,10 @@ func (fs *Driver) Run(conf *util.Config) {
 		srv.CS = controller.NewControllerServer(cd)
 	}
 
-	server.Start(conf.Endpoint, srv)
+	server.Start(conf.Endpoint, srv, csicommon.MiddlewareServerOptionConfig{
+		LogSlowOpInterval: conf.LogSlowOpInterval,
+	})
+
 	if conf.EnableProfiling {
 		go util.StartMetricsServer(conf)
 		log.DebugLogMsg("Registering profiling handler")

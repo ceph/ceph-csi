@@ -131,6 +131,9 @@ type Config struct {
 	MetricsPort int           // TCP port for liveness/grpc metrics requests
 	PollTime    time.Duration // time interval in seconds between each poll
 	PoolTimeout time.Duration // probe timeout in seconds
+	// Log interval for slow GRPC calls. Calls that outlive their context deadline
+	// are considered slow.
+	LogSlowOpInterval time.Duration
 
 	EnableProfiling    bool // flag to enable profiling
 	IsControllerServer bool // if set to true start provisioner server
