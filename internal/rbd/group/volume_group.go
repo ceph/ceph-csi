@@ -194,7 +194,7 @@ func (vg *volumeGroup) Delete(ctx context.Context) error {
 
 	log.DebugLog(ctx, "volume group %q has been removed", vg)
 
-	return nil
+	return vg.commonVolumeGroup.Delete(ctx)
 }
 
 func (vg *volumeGroup) AddVolume(ctx context.Context, vol types.Volume) error {

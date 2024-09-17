@@ -222,7 +222,7 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 	}
 
 	// delete the volume group
-	err = mgr.DeleteVolumeGroup(ctx, vg)
+	err = vg.Delete(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal,
 			"failed to delete volume group %q: %s",
