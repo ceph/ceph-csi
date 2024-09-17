@@ -120,6 +120,11 @@ func init() {
 		"path of prometheus endpoint where metrics will be available")
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
+	flag.DurationVar(
+		&conf.LogSlowOpInterval,
+		"logslowopinterval",
+		time.Second*30,
+		"how often to inform about slow gRPC calls")
 
 	flag.UintVar(
 		&conf.RbdHardMaxCloneDepth,

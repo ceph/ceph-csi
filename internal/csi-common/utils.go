@@ -23,6 +23,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -108,10 +109,35 @@ func NewGroupControllerServiceCapability(ctrlCap csi.GroupControllerServiceCapab
 	}
 }
 
+// MiddlewareServerOptionConfig contains configuration parameters
+// that are passed to the respective middleware interceptors that
+// are instantiated when starting gRPC servers.
+type MiddlewareServerOptionConfig struct {
+	LogSlowOpInterval time.Duration
+}
+
 // NewMiddlewareServerOption creates a new grpc.ServerOption that configures a
 // common format for log messages and other gRPC related handlers.
-func NewMiddlewareServerOption() grpc.ServerOption {
-	middleWare := []grpc.UnaryServerInterceptor{contextIDInjector, logGRPC, panicHandler}
+func NewMiddlewareServerOption(config MiddlewareServerOptionConfig) grpc.ServerOption {
+	middleWare := []grpc.UnaryServerInterceptor{
+		contextIDInjector,
+		logGRPC,
+	}
+
+	if config.LogSlowOpInterval > 0 {
+		middleWare = append(middleWare, func(
+			ctx context.Context,
+			req interface{},
+			info *grpc.UnaryServerInfo,
+			handler grpc.UnaryHandler,
+		) (interface{}, error) {
+			return logSlowGRPC(
+				config.LogSlowOpInterval, ctx, req, info, handler,
+			)
+		})
+	}
+
+	middleWare = append(middleWare, panicHandler)
 
 	return grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(middleWare...))
 }
@@ -246,6 +272,53 @@ func logGRPC(
 	} else {
 		log.TraceLog(ctx, "GRPC response: %s", protosanitizer.StripSecrets(resp))
 	}
+
+	return resp, err
+}
+
+func logSlowGRPC(
+	logInterval time.Duration,
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	handlerFinished := make(chan struct{})
+	callStartTime := time.Now()
+
+	// Ticks at a logInterval rate and logs a slow-call message until handler finishes.
+	// This is called once the handler outlives its context, see below.
+	doLogSlowGRPC := func() {
+		ticker := time.NewTicker(logInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case t := <-ticker.C:
+				timePassed := t.Sub(callStartTime).Truncate(time.Second)
+				log.ExtendedLog(ctx,
+					"Slow GRPC call %s (%s)", info.FullMethod, timePassed)
+				log.TraceLog(ctx,
+					"Slow GRPC request: %s", protosanitizer.StripSecrets(req))
+			case <-handlerFinished:
+				return
+			}
+		}
+	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			// The call (most likely) outlived its context. Start logging slow messages.
+			doLogSlowGRPC()
+		case <-handlerFinished:
+			// The call finished, exit.
+			return
+		}
+	}()
+
+	resp, err := handler(ctx, req)
+	close(handlerFinished)
 
 	return resp, err
 }

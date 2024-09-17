@@ -199,7 +199,9 @@ func (fs *Driver) Run(conf *util.Config) {
 		NS: fs.ns,
 		GS: fs.cs,
 	}
-	server.Start(conf.Endpoint, srv)
+	server.Start(conf.Endpoint, srv, csicommon.MiddlewareServerOptionConfig{
+		LogSlowOpInterval: conf.LogSlowOpInterval,
+	})
 
 	if conf.EnableProfiling {
 		go util.StartMetricsServer(conf)
@@ -230,7 +232,9 @@ func (fs *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	}
 
 	// start the server, this does not block, it runs a new go-routine
-	err = fs.cas.Start()
+	err = fs.cas.Start(csicommon.MiddlewareServerOptionConfig{
+		LogSlowOpInterval: conf.LogSlowOpInterval,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to start CSI-Addons server: %w", err)
 	}

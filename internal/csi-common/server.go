@@ -31,7 +31,7 @@ import (
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces.
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
-	Start(endpoint string, srv Servers)
+	Start(endpoint string, srv Servers, middlewareConfig MiddlewareServerOptionConfig)
 	// Waits for the service to stop
 	Wait()
 	// Stops the service gracefully
@@ -60,9 +60,13 @@ type nonBlockingGRPCServer struct {
 }
 
 // Start start service on endpoint.
-func (s *nonBlockingGRPCServer) Start(endpoint string, srv Servers) {
+func (s *nonBlockingGRPCServer) Start(
+	endpoint string,
+	srv Servers,
+	middlewareConfig MiddlewareServerOptionConfig,
+) {
 	s.wg.Add(1)
-	go s.serve(endpoint, srv)
+	go s.serve(endpoint, srv, middlewareConfig)
 }
 
 // Wait blocks until the WaitGroup counter.
@@ -80,7 +84,11 @@ func (s *nonBlockingGRPCServer) ForceStop() {
 	s.server.Stop()
 }
 
-func (s *nonBlockingGRPCServer) serve(endpoint string, srv Servers) {
+func (s *nonBlockingGRPCServer) serve(
+	endpoint string,
+	srv Servers,
+	middlewareConfig MiddlewareServerOptionConfig,
+) {
 	proto, addr, err := parseEndpoint(endpoint)
 	if err != nil {
 		klog.Fatal(err.Error())
@@ -98,7 +106,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, srv Servers) {
 		klog.Fatalf("Failed to listen: %v", err)
 	}
 
-	server := grpc.NewServer(NewMiddlewareServerOption())
+	server := grpc.NewServer(NewMiddlewareServerOption(middlewareConfig))
 	s.server = server
 
 	if srv.IS != nil {

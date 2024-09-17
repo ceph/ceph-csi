@@ -85,9 +85,9 @@ func (cas *CSIAddonsServer) RegisterService(svc CSIAddonsService) {
 // Start creates the internal gRPC server, and registers the CSIAddonsServices.
 // The internal gRPC server is started in it's own go-routine when no error is
 // returned.
-func (cas *CSIAddonsServer) Start() error {
+func (cas *CSIAddonsServer) Start(middlewareConfig csicommon.MiddlewareServerOptionConfig) error {
 	// create the gRPC server and register services
-	cas.server = grpc.NewServer(csicommon.NewMiddlewareServerOption())
+	cas.server = grpc.NewServer(csicommon.NewMiddlewareServerOption(middlewareConfig))
 
 	for _, svc := range cas.services {
 		svc.RegisterService(cas.server)
