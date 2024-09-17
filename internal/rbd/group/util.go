@@ -233,6 +233,31 @@ func (cvg *commonVolumeGroup) GetIOContext(ctx context.Context) (*rados.IOContex
 	return ioctx, nil
 }
 
+// Delete removes the volume group from the journal.
+func (cvg *commonVolumeGroup) Delete(ctx context.Context) error {
+	name, err := cvg.GetName(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get name for volume group %q: %w", cvg, err)
+	}
+
+	csiID, err := cvg.GetID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get id for volume group %q: %w", cvg, err)
+	}
+
+	pool, err := cvg.GetPool(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pool for volume group %q: %w", cvg, err)
+	}
+
+	err = cvg.journal.UndoReservation(ctx, pool, name, csiID)
+	if err != nil /* TODO? !errors.Is(..., err) */ {
+		return fmt.Errorf("failed to undo the reservation for volume group %q: %w", cvg, err)
+	}
+
+	return nil
+}
+
 // GetCreationTime fetches the creation time of the volume group from the
 // journal and returns it.
 func (cvg *commonVolumeGroup) GetCreationTime(ctx context.Context) (*time.Time, error) {

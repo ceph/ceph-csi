@@ -43,8 +43,4 @@ type Manager interface {
 	// CreateVolumeGroup allocates a new VolumeGroup in the backend storage
 	// and records details about it in the journal.
 	CreateVolumeGroup(ctx context.Context, name string) (VolumeGroup, error)
-
-	// DeleteVolumeGroup removes VolumeGroup from the backend storage and
-	// any details from the journal.
-	DeleteVolumeGroup(ctx context.Context, vg VolumeGroup) error
 }
