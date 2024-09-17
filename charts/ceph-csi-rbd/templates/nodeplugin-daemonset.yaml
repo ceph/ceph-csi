@@ -70,6 +70,7 @@ spec:
 {{- if and .Values.readAffinity .Values.readAffinity.enabled }}
             - "--crush-location-labels={{ .Values.readAffinity.crushLocationLabels | join "," }}"
 {{- end }}
+            - "--logslowopinterval={{ .Values.logSlowOperationInterval }}"
           env:
             - name: POD_IP
               valueFrom:
