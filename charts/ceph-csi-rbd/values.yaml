@@ -69,6 +69,9 @@ commonLabels: {}
 logLevel: 5
 # sidecarLogLevel is the variable for Kubernetes sidecar container's log level
 sidecarLogLevel: 1
+# Log slow operations at the specified rate.
+# Operation is considered slow if it outlives its deadline.
+logSlowOperationInterval: 30s
 
 # Set fsGroupPolicy for CSI Driver object spec
 # https://kubernetes-csi.github.io/docs/support-fsgroup.html

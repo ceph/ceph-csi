@@ -92,6 +92,7 @@ spec:
             - "--clustername={{ .Values.provisioner.clustername }}"
 {{- end }}
             - "--setmetadata={{ .Values.provisioner.setmetadata }}"
+            - "--logslowopinterval={{ .Values.logSlowOperationInterval }}"
           env:
             - name: POD_IP
               valueFrom:
