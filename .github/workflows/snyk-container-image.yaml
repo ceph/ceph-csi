@@ -26,18 +26,21 @@ jobs:
     if: github.repository == 'ceph/ceph-csi'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # yamllint disable-line rule:line-length
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
       - name: Build a Docker image
         run: make image-cephcsi
       - name: Run Snyk to check Docker image for vulnerabilities
         continue-on-error: true
-        uses: snyk/actions/docker@master
+        # yamllint disable-line rule:line-length
+        uses: snyk/actions/docker@cdb760004ba9ea4d525f2e043745dfe85bb9077e  # master
         env:
           SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
         with:
           image: quay.io/cephcsi/cephcsi:${{ github.base_ref }}
           args: --file=Dockerfilei
       - name: Upload result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        # yamllint disable-line rule:line-length
+        uses: github/codeql-action/upload-sarif@8214744c546c1e5c8f03dde8fab3a7353211988d  # v3.26.7
         with:
           sarif_file: snyk.sarif

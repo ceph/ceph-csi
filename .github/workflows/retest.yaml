@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # path to the retest action
-      - uses: ceph/ceph-csi/actions/retest@devel
+      # yamllint disable-line rule:line-length
+      - uses: ceph/ceph-csi/actions/retest@28dc64dcae3cec8d11d84bdf525bda0ef757c688  # devel
         with:
           GITHUB_TOKEN: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           required-label: "ci/retry/e2e"
