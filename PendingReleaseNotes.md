@@ -12,5 +12,6 @@
 - deploy: radosNamespaceCephFS can be configured for ceph-csi-cephfs chart in [PR](https://github.com/ceph/ceph-csi/pull/4652)
 - build: update ceph release to squid in [PR](https://github.com/ceph/ceph-csi/pull/4735)
 - build: CentOS Stream 9 is used as OS in the container-images [PR](https://github.com/ceph/ceph-csi/pull/4735)
+- rbd: add additional space for encrypted volumes for Luks2 header in [PR](https://github.com/ceph/ceph-csi/pull/4582)
 
 ## NOTE
