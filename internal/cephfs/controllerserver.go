@@ -1067,7 +1067,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 	if acquired := cs.SnapshotLocks.TryAcquire(sid.RequestName); !acquired {
 		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, sid.RequestName)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, sid.RequestName)
+		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, sid.RequestName)
 	}
 	defer cs.SnapshotLocks.Release(sid.RequestName)
 
