@@ -352,29 +352,30 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	return true, nil
 }
 
-// repairImageID checks if rv.ImageID is already available (if so, it was
+// repairImageID checks if ri.ImageID is already available (if so, it was
 // fetched from the journal), in case it is missing, the imageID is obtained
 // and stored in the journal.
 // if the force is set to true, the latest imageID will get added/updated in OMAP.
-func (rv *rbdVolume) repairImageID(ctx context.Context, j *journal.Connection, force bool) error {
+func (ri *rbdImage) repairImageID(ctx context.Context, j *journal.Connection, force bool) error {
 	if force {
 		// reset the imageID so that we can fetch latest imageID from ceph cluster.
-		rv.ImageID = ""
+		ri.ImageID = ""
 	}
 
-	if rv.ImageID != "" {
+	if ri.ImageID != "" {
 		return nil
 	}
 
-	err := rv.getImageID()
+	err := ri.getImageID()
 	if err != nil {
-		log.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to get image id %s: %v", ri, err)
 
 		return err
 	}
-	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
+
+	err = j.StoreImageID(ctx, ri.JournalPool, ri.ReservedID, ri.ImageID)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to store volume id %s: %v", ri, err)
 
 		return err
 	}

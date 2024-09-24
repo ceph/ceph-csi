@@ -110,6 +110,7 @@ type rbdImage struct {
 	// This does not have a JSON tag as it is not stashed in JSON encoded
 	// config maps in v1.0.0
 	RequestName string
+	ReservedID  string
 	NamePrefix  string
 	// ParentName represents the parent image name of the image.
 	ParentName string
@@ -167,7 +168,6 @@ type rbdVolume struct {
 	AdminID            string
 	UserID             string
 	Mounter            string
-	ReservedID         string
 	MapOptions         string
 	UnmapOptions       string
 	LogDir             string
@@ -190,7 +190,6 @@ type rbdSnapshot struct {
 	// SourceVolumeID is the volume ID of RbdImageName, that is exchanged with CSI drivers
 	// RbdSnapName is the name of the RBD snapshot backing this rbdSnapshot
 	SourceVolumeID string
-	ReservedID     string
 	RbdSnapName    string
 }
 
