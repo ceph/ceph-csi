@@ -88,9 +88,9 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 	requestName := req.GetName()
 	// Existence and conflict checks
 	if acquired := cs.VolumeGroupLocks.TryAcquire(requestName); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, requestName)
+		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, requestName)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, requestName)
+		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, requestName)
 	}
 	defer cs.VolumeGroupLocks.Release(requestName)
 
@@ -708,9 +708,9 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
 	groupSnapshotID := req.GetGroupSnapshotId()
 	// Existence and conflict checks
 	if acquired := cs.VolumeGroupLocks.TryAcquire(groupSnapshotID); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, groupSnapshotID)
+		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, groupSnapshotID)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, groupSnapshotID)
+		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, groupSnapshotID)
 	}
 	defer cs.VolumeGroupLocks.Release(groupSnapshotID)
 
