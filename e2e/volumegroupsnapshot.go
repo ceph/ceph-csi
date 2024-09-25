@@ -117,3 +117,65 @@ func (c *cephFSVolumeGroupSnapshot) ValidateResourcesForDelete() error {
 
 	return nil
 }
+
+type rbdVolumeGroupSnapshot struct {
+	*volumeGroupSnapshotterBase
+}
+
+var _ VolumeGroupSnapshotter = &rbdVolumeGroupSnapshot{}
+
+func newRBDVolumeGroupSnapshot(f *framework.Framework, namespace,
+	storageClass string,
+	blockPVC bool,
+	timeout, totalPVCCount int,
+) (VolumeGroupSnapshotter, error) {
+	base, err := newVolumeGroupSnapshotBase(f, namespace, storageClass, blockPVC, timeout, totalPVCCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create volumeGroupSnapshotterBase: %w", err)
+	}
+
+	return &rbdVolumeGroupSnapshot{
+		volumeGroupSnapshotterBase: base,
+	}, nil
+}
+
+func (rvgs *rbdVolumeGroupSnapshot) TestVolumeGroupSnapshot() error {
+	return rvgs.volumeGroupSnapshotterBase.testVolumeGroupSnapshot(rvgs)
+}
+
+func (rvgs *rbdVolumeGroupSnapshot) GetVolumeGroupSnapshotClass() (*groupsnapapi.VolumeGroupSnapshotClass, error) {
+	vgscPath := fmt.Sprintf("%s/%s", rbdExamplePath, "groupsnapshotclass.yaml")
+	vgsc := &groupsnapapi.VolumeGroupSnapshotClass{}
+	err := unmarshal(vgscPath, vgsc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal VolumeGroupSnapshotClass: %w", err)
+	}
+
+	vgsc.Parameters["csi.storage.k8s.io/group-snapshotter-secret-namespace"] = cephCSINamespace
+	vgsc.Parameters["csi.storage.k8s.io/group-snapshotter-secret-name"] = rbdProvisionerSecretName
+	vgsc.Parameters["pool"] = defaultRBDPool
+
+	fsID, err := getClusterID(rvgs.framework)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get clusterID: %w", err)
+	}
+	vgsc.Parameters["clusterID"] = fsID
+
+	return vgsc, nil
+}
+
+func (rvgs *rbdVolumeGroupSnapshot) ValidateResourcesForCreate(vgs *groupsnapapi.VolumeGroupSnapshot) error {
+	sourcePVCCount := len(vgs.Status.PVCVolumeSnapshotRefList)
+	clonePVCCount := len(vgs.Status.PVCVolumeSnapshotRefList)
+	totalPVCCount := sourcePVCCount + clonePVCCount
+
+	validateOmapCount(rvgs.framework, totalPVCCount, rbdType, defaultRBDPool, volumesType)
+
+	return nil
+}
+
+func (rvgs *rbdVolumeGroupSnapshot) ValidateResourcesForDelete() error {
+	validateOmapCount(rvgs.framework, 0, rbdType, defaultRBDPool, volumesType)
+
+	return nil
+}
