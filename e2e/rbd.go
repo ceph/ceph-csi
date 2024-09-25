@@ -4745,6 +4745,19 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("test volumeGroupSnapshot", func() {
+				scName := "csi-rbd-sc"
+				snapshotter, err := newRBDVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3)
+				if err != nil {
+					framework.Failf("failed to create RBDVolumeGroupSnapshot: %v", err)
+				}
+
+				err = snapshotter.TestVolumeGroupSnapshot()
+				if err != nil {
+					framework.Failf("failed to test volumeGroupSnapshot: %v", err)
+				}
+			})
+
 			// delete RBD provisioner secret
 			err := deleteCephUser(f, keyringRBDProvisionerUsername)
 			if err != nil {
