@@ -390,15 +390,19 @@ func (ri *rbdImage) Connect(cr *util.Credentials) error {
 func (ri *rbdImage) Destroy(ctx context.Context) {
 	if ri.ioctx != nil {
 		ri.ioctx.Destroy()
+		ri.ioctx = nil
 	}
 	if ri.conn != nil {
 		ri.conn.Destroy()
+		ri.conn = nil
 	}
 	if ri.isBlockEncrypted() {
 		ri.blockEncryption.Destroy()
+		ri.blockEncryption = nil
 	}
 	if ri.isFileEncrypted() {
 		ri.fileEncryption.Destroy()
+		ri.fileEncryption = nil
 	}
 }
 
