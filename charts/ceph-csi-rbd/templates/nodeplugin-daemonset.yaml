@@ -57,6 +57,13 @@ spec:
             - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
+            - "--rbdhardmaxclonedepth={{ .Values.nodeplugin.hardMaxCloneDepth }}"
+            - "--rbdsoftmaxclonedepth={{ .Values.nodeplugin.softMaxCloneDepth }}"
+            - "--maxsnapshotsonimage={{ .Values.nodeplugin.maxSnapshotsOnImage }}"
+            - "--minsnapshotsonimage={{ .Values.nodeplugin.minSnapshotsOnImage }}"
+            {{- if .Values.nodeplugin.skipForceFlatten }}
+            - "--skipforceflatten={{ .Values.nodeplugin.skipForceFlatten }}"
+            {{- end }}
 {{- if .Values.topology.domainLabels }}
             - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
 {{- end }}
