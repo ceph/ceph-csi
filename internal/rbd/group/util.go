@@ -34,6 +34,9 @@ type commonVolumeGroup struct {
 	// is used to find the group in the journal.
 	id string
 
+	// requestName is passed by the caller when a group is created.
+	requestName string
+
 	// name is used in RBD API calls as the name of this object
 	name string
 
@@ -130,6 +133,7 @@ func (cvg *commonVolumeGroup) getVolumeGroupAttributes(ctx context.Context) (*jo
 		attrs = &journal.VolumeGroupAttributes{}
 	}
 
+	cvg.requestName = attrs.RequestName
 	cvg.name = attrs.GroupName
 	cvg.creationTime = attrs.CreationTime
 
