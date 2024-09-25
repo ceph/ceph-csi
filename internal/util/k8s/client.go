@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -47,6 +48,7 @@ func NewK8sClient() (*kubernetes.Clientset, error) {
 			return nil, fmt.Errorf("failed to get cluster config: %w", err)
 		}
 	}
+	cfg.ContentType = runtime.ContentTypeProtobuf
 	client, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)

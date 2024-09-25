@@ -20,6 +20,8 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -69,7 +71,11 @@ func Start(config Config) error {
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaderElectionID:           electionID,
 	}
-	mgr, err := manager.New(clientConfig.GetConfigOrDie(), opts)
+
+	kubeConfig := clientConfig.GetConfigOrDie()
+	coreKubeConfig := rest.CopyConfig(kubeConfig)
+	coreKubeConfig.ContentType = runtime.ContentTypeProtobuf
+	mgr, err := manager.New(coreKubeConfig, opts)
 	if err != nil {
 		log.ErrorLogMsg("failed to create manager %s", err)
 
