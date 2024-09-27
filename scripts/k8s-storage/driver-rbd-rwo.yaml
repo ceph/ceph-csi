@@ -6,7 +6,7 @@ StorageClass:
 
 SnapshotClass:
   # Must be set to enable snapshotting tests
-  FromName: true
+  FromExistingClassName: k8s-storage-e2e-rbd
 
 DriverInfo:
   # Internal name of the driver, display name in the test case and test objects
@@ -51,7 +51,7 @@ DriverInfo:
     volumeLimits: false
 
     # Support for volume expansion in controllers
-    controllerExpansion: false
+    controllerExpansion: true
 
     # Support for volume expansion in nodes
     nodeExpansion: true
@@ -66,7 +66,7 @@ DriverInfo:
     topology: false
 
     # Support populate data from snapshot
-    snapshotDataSource: false
+    snapshotDataSource: true
 
     # Support populated data from PVC
-    pvcDataSource: false
+    pvcDataSource: true
