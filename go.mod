@@ -5,7 +5,7 @@ go 1.22.5
 require (
 	github.com/IBM/keyprotect-go-client v0.15.1
 	github.com/aws/aws-sdk-go v1.55.5
-	github.com/aws/aws-sdk-go-v2/service/sts v1.31.1
+	github.com/aws/aws-sdk-go-v2/service/sts v1.31.3
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.29.0
 	github.com/container-storage-interface/spec v1.10.0
