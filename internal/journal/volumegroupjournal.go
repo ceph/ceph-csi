@@ -143,7 +143,10 @@ func (vgc *VolumeGroupJournalConfig) Connect(
 
 // Destroy frees any resources and invalidates the journal connection.
 func (vgjc *volumeGroupJournalConnection) Destroy() {
-	vgjc.connection.Destroy()
+	if vgjc.connection != nil {
+		vgjc.connection.Destroy()
+		vgjc.connection = nil
+	}
 }
 
 // VolumeGroupData contains the GroupUUID and VolumeGroupAttributes for a
