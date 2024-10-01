@@ -212,6 +212,11 @@ func (mgr *rbdManager) GetSnapshotByID(ctx context.Context, id string) (types.Sn
 		}
 	}
 
+	// FIXME: The snapshot will have RbdImageName set to the image that was
+	// used as source. This is not correct for group snapshots images, and
+	// need to be fixed. See rbdVolume.NewSnapshotByID() for more details.
+	snapshot.RbdImageName = snapshot.RbdSnapName
+
 	return snapshot, nil
 }
 
