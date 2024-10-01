@@ -70,3 +70,12 @@ DriverInfo:
 
     # Support populated data from PVC
     pvcDataSource: true
+
+    # multiple pods on a node can use the same volume concurrently
+    multipods: true
+
+    # support ReadWriteOncePod access mode
+    readWriteOncePod: true
+
+    # supports ROX AccessMode in PVC for PVC with Snapshot DataSource
+    capReadOnlyMany: true
