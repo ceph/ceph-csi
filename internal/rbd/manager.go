@@ -140,22 +140,12 @@ func (mgr *rbdManager) GetVolumeByID(ctx context.Context, id string) (types.Volu
 }
 
 func (mgr *rbdManager) GetVolumeGroupByID(ctx context.Context, id string) (types.VolumeGroup, error) {
-	vi := &util.CSIIdentifier{}
-	if err := vi.DecomposeCSIID(id); err != nil {
-		return nil, fmt.Errorf("failed to parse volume group id %q: %w", id, err)
-	}
-
-	vgJournal, err := mgr.getVolumeGroupJournal(vi.ClusterID)
-	if err != nil {
-		return nil, err
-	}
-
 	creds, err := mgr.getCredentials()
 	if err != nil {
 		return nil, err
 	}
 
-	vg, err := rbd_group.GetVolumeGroup(ctx, id, vgJournal, creds, mgr)
+	vg, err := rbd_group.GetVolumeGroup(ctx, id, mgr.csiID, creds, mgr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volume group with id %q: %w", id, err)
 	}
@@ -236,7 +226,7 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 		return nil, fmt.Errorf("failed to generate a unique CSI volume group with uuid for %q: %w", uuid, err)
 	}
 
-	vg, err := rbd_group.GetVolumeGroup(ctx, csiID, vgJournal, creds, mgr)
+	vg, err := rbd_group.GetVolumeGroup(ctx, csiID, mgr.csiID, creds, mgr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volume group %q at cluster %q: %w", name, clusterID, err)
 	}

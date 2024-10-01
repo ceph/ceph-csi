@@ -26,7 +26,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/volumegroup"
 
-	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -36,7 +35,7 @@ var ErrRBDGroupNotConnected = errors.New("RBD group is not connected")
 
 // volumeGroup handles all requests for 'rbd group' operations.
 type volumeGroup struct {
-	*commonVolumeGroup
+	commonVolumeGroup
 
 	// volumes is a list of rbd-images that are part of the group. The ID
 	// of each volume is stored in the journal.
@@ -62,12 +61,12 @@ var (
 func GetVolumeGroup(
 	ctx context.Context,
 	id string,
-	j journal.VolumeGroupJournal,
+	csiDriver string,
 	creds *util.Credentials,
 	volumeResolver types.VolumeResolver,
 ) (types.VolumeGroup, error) {
 	vg := &volumeGroup{}
-	err := vg.initCommonVolumeGroup(ctx, id, j, creds)
+	err := vg.initCommonVolumeGroup(ctx, id, csiDriver, creds)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize volume group with id %q: %w", id, err)
 	}
@@ -235,7 +234,12 @@ func (vg *volumeGroup) AddVolume(ctx context.Context, vol types.Volume) error {
 		volID: "",
 	}
 
-	err = vg.journal.AddVolumesMapping(ctx, pool, csiID.ObjectUUID, toAdd)
+	j, err := vg.getJournal(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = j.AddVolumesMapping(ctx, pool, csiID.ObjectUUID, toAdd)
 	if err != nil {
 		return fmt.Errorf("failed to add mapping for volume %q to volume group id %q: %w", volID, id, err)
 	}
@@ -304,7 +308,12 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 		toRemove,
 	}
 
-	err = vg.journal.RemoveVolumesMapping(ctx, pool, csiID.ObjectUUID, mapping)
+	j, err := vg.getJournal(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = j.RemoveVolumesMapping(ctx, pool, csiID.ObjectUUID, mapping)
 	if err != nil {
 		return fmt.Errorf("failed to remove mapping for volume %q to volume group id %q: %w", toRemove, id, err)
 	}
