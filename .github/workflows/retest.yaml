@@ -14,9 +14,11 @@ jobs:
     if: github.repository == 'ceph/ceph-csi'
     runs-on: ubuntu-latest
     steps:
-      # path to the retest action
-      # yamllint disable-line rule:line-length
-      - uses: ceph/ceph-csi/actions/retest@28dc64dcae3cec8d11d84bdf525bda0ef757c688  # devel
+      - name: Checkout the ceph-csi respository
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938  # v4.2.0
+      - name: Run local retest github action
+        uses: ./actions/retest  # path to the retest action
         with:
           GITHUB_TOKEN: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           required-label: "ci/retry/e2e"
