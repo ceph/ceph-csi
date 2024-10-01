@@ -881,9 +881,9 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 	}
 
 	if errors.Is(err, ErrImageNotFound) {
-		err = rbdVol.ensureImageCleanup(ctx)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		notFoundErr := rbdVol.ensureImageCleanup(ctx)
+		if notFoundErr != nil {
+			return nil, status.Errorf(codes.Internal, "failed to cleanup image %q: %v", rbdVol, notFoundErr)
 		}
 	} else {
 		// All errors other than ErrImageNotFound should return an error back to the caller
@@ -1537,11 +1537,6 @@ func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, c
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer rbdVol.Destroy(ctx)
-
-	err = rbdVol.openIoctx()
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
 
 	// cleanup the image from trash if the error is image not found.
 	err = rbdVol.ensureImageCleanup(ctx)

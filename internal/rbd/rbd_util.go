@@ -621,6 +621,11 @@ func isCephMgrSupported(ctx context.Context, clusterID string, err error) bool {
 // ensureImageCleanup finds image in trash and if found removes it
 // from trash.
 func (ri *rbdImage) ensureImageCleanup(ctx context.Context) error {
+	err := ri.openIoctx()
+	if err != nil {
+		return err
+	}
+
 	trashInfoList, err := librbd.GetTrashList(ri.ioctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to list images in trash: %v", err)
