@@ -1641,6 +1641,10 @@ func (ri *rbdImage) GetCreationTime(ctx context.Context) (*time.Time, error) {
 		return nil, err
 	}
 
+	if ri.CreatedAt == nil {
+		return nil, fmt.Errorf("failed to get creation time for image %q", ri)
+	}
+
 	return ri.CreatedAt, nil
 }
 
