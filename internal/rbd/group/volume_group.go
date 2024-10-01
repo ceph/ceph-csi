@@ -74,6 +74,12 @@ func GetVolumeGroup(
 
 	attrs, err := vg.getVolumeGroupAttributes(ctx)
 	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			log.ErrorLog(ctx, "%v, returning empty volume group %q", vg, err)
+
+			return vg, err
+		}
+
 		return nil, fmt.Errorf("failed to get volume attributes for id %q: %w", vg, err)
 	}
 
