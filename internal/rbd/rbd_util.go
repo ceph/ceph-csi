@@ -1214,8 +1214,7 @@ func GenVolFromVolID(
 	}
 
 	vol, err = generateVolumeFromVolumeID(ctx, volumeID, vi, cr, secrets)
-	if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) &&
-		!errors.Is(err, ErrImageNotFound) {
+	if !shouldRetryVolumeGeneration(err) {
 		return vol, err
 	}
 
@@ -1226,8 +1225,7 @@ func GenVolFromVolID(
 	}
 	if mapping != nil {
 		rbdVol, vErr := generateVolumeFromMapping(ctx, mapping, volumeID, vi, cr, secrets)
-		if !errors.Is(vErr, util.ErrKeyNotFound) && !errors.Is(vErr, util.ErrPoolNotFound) &&
-			!errors.Is(vErr, ErrImageNotFound) {
+		if !shouldRetryVolumeGeneration(vErr) {
 			return rbdVol, vErr
 		}
 	}
@@ -1280,8 +1278,7 @@ func generateVolumeFromMapping(
 					// Add mapping poolID to Identifier
 					nvi.LocationID = pID
 					vol, err = generateVolumeFromVolumeID(ctx, volumeID, nvi, cr, secrets)
-					if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) &&
-						!errors.Is(err, ErrImageNotFound) {
+					if !shouldRetryVolumeGeneration(err) {
 						return vol, err
 					}
 				}
@@ -1290,6 +1287,33 @@ func generateVolumeFromMapping(
 	}
 
 	return vol, util.ErrPoolNotFound
+}
+
+// shouldRetryVolumeGeneration determines whether the process of finding or generating
+// volumes should continue based on the type of error encountered.
+//
+// It checks if the given error matches any of the following known errors:
+//   - util.ErrKeyNotFound: The key required to locate the volume is missing in Rados omap.
+//   - util.ErrPoolNotFound: The rbd pool where the volume/omap is expected doesn't exist.
+//   - ErrImageNotFound: The image doesn't exist in the rbd pool.
+//   - rados.ErrPermissionDenied: Permissions to access the pool is denied.
+//
+// If any of these errors are encountered, the function returns `true`, indicating
+// that the volume search should continue because of known error. Otherwise, it
+// returns `false`, meaning the search should stop.
+//
+// This helper function is used in scenarios where multiple attempts may be made
+// to retrieve or generate volume information, and we want to gracefully handle
+// specific failure cases while retrying for others.
+func shouldRetryVolumeGeneration(err error) bool {
+	if err == nil {
+		return false // No error, do not retry
+	}
+	// Continue searching for specific known errors
+	return (errors.Is(err, util.ErrKeyNotFound) ||
+		errors.Is(err, util.ErrPoolNotFound) ||
+		errors.Is(err, ErrImageNotFound) ||
+		errors.Is(err, rados.ErrPermissionDenied))
 }
 
 func genVolFromVolumeOptions(
