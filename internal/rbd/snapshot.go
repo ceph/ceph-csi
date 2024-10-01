@@ -209,7 +209,12 @@ func (rv *rbdVolume) NewSnapshotByID(
 		return nil, fmt.Errorf("missing ReservedID for snapshot image %q", snap)
 	}
 
-	// a new snapshot image will be created, needs to have a unique name
+	// A new snapshot image will be created, and needs to have a unique
+	// name.
+	// FIXME: the journal contains rv.RbdImageName as SourceName. When
+	// resolving the snapshot image, snap.RbdImageName will be set to the
+	// original RbdImageName/SourceName (incorrect). This is fixed-up in
+	// rbdManager.GetSnapshotByID(), this needs to be done cleaner.
 	snap.RbdImageName = snap.RbdSnapName
 
 	err = rv.Connect(cr)
