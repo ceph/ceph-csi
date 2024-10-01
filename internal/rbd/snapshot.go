@@ -145,11 +145,16 @@ func (rbdSnap *rbdSnapshot) toVolume() *rbdVolume {
 }
 
 func (rbdSnap *rbdSnapshot) ToCSI(ctx context.Context) (*csi.Snapshot, error) {
+	created, err := rbdSnap.GetCreationTime(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &csi.Snapshot{
 		SizeBytes:      rbdSnap.VolSize,
 		SnapshotId:     rbdSnap.VolID,
 		SourceVolumeId: rbdSnap.SourceVolumeID,
-		CreationTime:   timestamppb.New(*rbdSnap.CreatedAt),
+		CreationTime:   timestamppb.New(*created),
 		ReadyToUse:     true,
 	}, nil
 }
