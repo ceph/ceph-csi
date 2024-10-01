@@ -1,7 +1,7 @@
 ---
-ShortName: cephcsi-rbd-rwo-test
+ShortName: cephcsi-rbd-test
 StorageClass:
-  FromExistingClassName: k8s-storage-e2e-rbd-rwo
+  FromExistingClassName: k8s-storage-e2e-rbd
   # FromFile: sc-rbd.yaml
 
 SnapshotClass:
@@ -10,7 +10,7 @@ SnapshotClass:
 
 DriverInfo:
   # Internal name of the driver, display name in the test case and test objects
-  Name: rbd-rwo.csi.ceph.com
+  Name: rbd.csi.ceph.com
 
   # The range of disk size supported by this driver
   SupportedSizeRange:
