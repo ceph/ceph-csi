@@ -187,7 +187,7 @@ func (vg *volumeGroup) Delete(ctx context.Context) error {
 	}
 
 	err = librbd.GroupRemove(ioctx, name)
-	if err != nil && !errors.Is(rados.ErrNotFound, err) {
+	if err != nil && !errors.Is(err, rados.ErrNotFound) {
 		return fmt.Errorf("failed to remove volume group %q: %w", vg, err)
 	}
 
@@ -245,7 +245,7 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 
 	err := vol.RemoveFromGroup(ctx, vg)
 	if err != nil {
-		if errors.Is(librbd.ErrNotExist, err) {
+		if errors.Is(err, librbd.ErrNotExist) {
 			return nil
 		}
 
