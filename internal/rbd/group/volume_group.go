@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -164,7 +163,7 @@ func (vg *volumeGroup) Create(ctx context.Context) error {
 
 	err = librbd.GroupCreate(ioctx, name)
 	if err != nil {
-		if !errors.Is(rados.ErrObjectExists, err) && !strings.Contains(err.Error(), "rbd: ret=-17, File exists") {
+		if !errors.Is(err, librbd.ErrExist) {
 			return fmt.Errorf("failed to create volume group %q: %w", name, err)
 		}
 
