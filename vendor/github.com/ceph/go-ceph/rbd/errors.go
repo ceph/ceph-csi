@@ -73,6 +73,8 @@ var (
 
 // Public general error
 const (
+	// ErrExist indicates a non-specific already existing resource.
+	ErrExist = rbdError(-C.EEXIST)
 	// ErrNotExist indicates a non-specific missing resource.
 	ErrNotExist = rbdError(-C.ENOENT)
 	// ErrNotImplemented indicates a function is not implemented in by librbd.

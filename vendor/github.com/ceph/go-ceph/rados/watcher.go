@@ -298,11 +298,11 @@ func (c *Conn) WatcherFlush() error {
 //
 // NOTE: starting with pacific this is implemented as a C function and this can
 // be replaced later
-func decodeNotifyResponse(response *C.char, len C.size_t) ([]NotifyAck, []NotifyTimeout) {
-	if len == 0 || response == nil {
+func decodeNotifyResponse(response *C.char, length C.size_t) ([]NotifyAck, []NotifyTimeout) {
+	if length == 0 || response == nil {
 		return nil, nil
 	}
-	b := (*[math.MaxInt32]byte)(unsafe.Pointer(response))[:len:len]
+	b := (*[math.MaxInt32]byte)(unsafe.Pointer(response))[:length:length]
 	pos := 0
 
 	num := binary.LittleEndian.Uint32(b[pos:])

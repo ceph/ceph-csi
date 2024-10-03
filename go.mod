@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.31.3
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
-	github.com/ceph/go-ceph v0.29.0
+	github.com/ceph/go-ceph v0.29.1-0.20240925141413-065319c78733
 	github.com/container-storage-interface/spec v1.10.0
 	github.com/csi-addons/spec v0.2.1-0.20240730084235-3958a5b17d24
 	github.com/gemalto/kmip-go v0.0.10

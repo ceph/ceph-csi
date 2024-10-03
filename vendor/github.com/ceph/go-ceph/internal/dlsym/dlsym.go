@@ -2,12 +2,10 @@ package dlsym
 
 // #cgo LDFLAGS: -ldl
 //
+// #define _GNU_SOURCE
+//
 // #include <stdlib.h>
 // #include <dlfcn.h>
-//
-// #ifndef RTLD_DEFAULT /* from dlfcn.h */
-// #define RTLD_DEFAULT ((void *) 0)
-// #endif
 import "C"
 
 import (

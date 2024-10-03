@@ -85,8 +85,8 @@ func (ioctx *IOContext) GetSnapName(snapID SnapID) (string, error) {
 		err error
 	)
 	// range from 1k to 64KiB
-	retry.WithSizes(1024, 1<<16, func(len int) retry.Hint {
-		cLen := C.int(len)
+	retry.WithSizes(1024, 1<<16, func(length int) retry.Hint {
+		cLen := C.int(length)
 		buf = make([]byte, cLen)
 		ret := C.rados_ioctx_snap_get_name(
 			ioctx.ioctx,
