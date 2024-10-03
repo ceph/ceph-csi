@@ -27,7 +27,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
-	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -455,7 +454,7 @@ func (cs *ControllerServer) createSnapshotAndAddMapping(
 
 		return nil, err
 	}
-	j, err := store.VolumeGroupJournal.Connect(vgo.Monitors, fsutil.RadosNamespace, cr)
+	j, err := store.VolumeGroupJournal.Connect(vgo.Monitors, vgo.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -637,7 +636,7 @@ func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Contex
 			return err
 		}
 
-		j, err := store.VolumeGroupJournal.Connect(vgo.Monitors, fsutil.RadosNamespace, cr)
+		j, err := store.VolumeGroupJournal.Connect(vgo.Monitors, vgo.RadosNamespace, cr)
 		if err != nil {
 			return err
 		}
