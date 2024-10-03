@@ -101,6 +101,7 @@ type SubVolume struct {
 	VolID          string   // subvolume id.
 	FsName         string   // filesystem name.
 	SubvolumeGroup string   // subvolume group name where subvolume will be created.
+	RadosNamespace string   // rados namespace where omap data will be stored.
 	Pool           string   // pool name where subvolume will be created.
 	Features       []string // subvolume features.
 	Size           int64    // subvolume size.

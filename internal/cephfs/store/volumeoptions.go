@@ -188,6 +188,13 @@ func GetClusterInformation(options map[string]string) (*cephcsi.ClusterInfo, err
 		return nil, err
 	}
 
+	radosNamespace, err := util.GetCephFSRadosNamespace(util.CsiConfigFile, clusterID)
+	if err != nil {
+		err = fmt.Errorf("failed to fetch rados namespace using clusterID (%s): %w", clusterID, err)
+
+		return nil, err
+	}
+
 	subvolumeGroup, err := util.CephFSSubvolumeGroup(util.CsiConfigFile, clusterID)
 	if err != nil {
 		err = fmt.Errorf("failed to fetch subvolumegroup using clusterID (%s): %w", clusterID, err)
@@ -199,6 +206,7 @@ func GetClusterInformation(options map[string]string) (*cephcsi.ClusterInfo, err
 		Monitors:  strings.Split(monitors, ","),
 	}
 	clusterData.CephFS.SubvolumeGroup = subvolumeGroup
+	clusterData.CephFS.RadosNamespace = radosNamespace
 
 	return clusterData, nil
 }
@@ -229,6 +237,7 @@ func getVolumeOptions(vo map[string]string) (*VolumeOptions, error) {
 	opts.ClusterID = clusterData.ClusterID
 	opts.Monitors = strings.Join(clusterData.Monitors, ",")
 	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
+	opts.RadosNamespace = clusterData.CephFS.RadosNamespace
 
 	if err = extractOption(&opts.FsName, "fsName", vo); err != nil {
 		return nil, err
@@ -405,6 +414,10 @@ func NewVolumeOptionsFromVolID(
 		return nil, nil, fmt.Errorf("failed to fetch subvolumegroup list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
+	if volOptions.RadosNamespace, err = util.GetCephFSRadosNamespace(util.CsiConfigFile, vi.ClusterID); err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch rados namespace using clusterID (%s): %w", vi.ClusterID, err)
+	}
+
 	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
 		return nil, nil, err
@@ -434,8 +447,7 @@ func NewVolumeOptionsFromVolID(
 		return nil, nil, err
 	}
 
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -788,6 +800,13 @@ func NewSnapshotOptionsFromID(
 			err)
 	}
 
+	if volOptions.RadosNamespace, err = util.GetCephFSRadosNamespace(util.CsiConfigFile, vi.ClusterID); err != nil {
+		return &volOptions, nil, &sid, fmt.Errorf(
+			"failed to fetch rados namespace using clusterID (%s): %w",
+			vi.ClusterID,
+			err)
+	}
+
 	err = volOptions.Connect(cr)
 	if err != nil {
 		return &volOptions, nil, &sid, err
@@ -812,8 +831,7 @@ func NewSnapshotOptionsFromID(
 		return &volOptions, nil, &sid, err
 	}
 
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := SnapJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
