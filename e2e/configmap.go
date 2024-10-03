@@ -60,6 +60,9 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 		RBD: cephcsi.RBD{
 			RadosNamespace: radosNamespace,
 		},
+		CephFS: cephcsi.CephFS{
+			RadosNamespace: radosNamespace,
+		},
 		ReadAffinity: cephcsi.ReadAffinity{
 			Enabled: true,
 			CrushLocationLabels: []string{

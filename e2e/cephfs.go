@@ -2491,6 +2491,122 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("verify rados objects are within a namespace", func() {
+				updateRadosNamespace := func(radosNamespaceName string) {
+					framework.Logf("updating configmap with rados namespace %s", radosNamespace)
+					radosNamespace = radosNamespaceName
+					err := deleteConfigMap(cephFSDirPath)
+					if err != nil {
+						framework.Failf("failed to delete configmap:: %v", err)
+					}
+					err = createConfigMap(cephFSDirPath, f.ClientSet, f)
+					if err != nil {
+						framework.Failf("failed to create configmap: %v", err)
+					}
+
+					// delete csi pods
+					err = deletePodWithLabel("app in (ceph-csi-cephfs, csi-cephfsplugin, csi-cephfsplugin-provisioner)",
+						cephCSINamespace, false)
+					if err != nil {
+						framework.Failf("failed to delete pods with labels: %v", err)
+					}
+					// wait for csi pods to come up
+					err = waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						framework.Failf("timeout waiting for daemonset pods: %v", err)
+					}
+					err = waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
+					if err != nil {
+						framework.Failf("timeout waiting for deployment pods: %v", err)
+					}
+				}
+
+				// radosNamespace is a global variable, so we need to save the old value
+				// and restore it after the test.
+				oldRadosNamespace := radosNamespace
+				newRadosNamespace := "cephfs-ns"
+
+				updateRadosNamespace(newRadosNamespace)
+				defer func() {
+					updateRadosNamespace(oldRadosNamespace)
+				}()
+
+				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+				err = createCephfsStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				// create a PVC and bind it to an app
+				pvc, pod, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+				}
+
+				// snapshot test
+				err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS snapshotclass: %v", err)
+				}
+				err = createCephFSSnapshotClass(f)
+				if err != nil {
+					framework.Failf("failed to create CephFS snapshot class: %v", err)
+				}
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				snap.Name = f.UniqueName
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+				}
+
+				// restore pvc test
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = snap.Name
+				// create PVC from the snapshot
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create pvc clone: %v", err)
+				}
+
+				// validate OMAP count
+				validateOmapCount(f, 2, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, 1, cephfsType, metadataPool, snapsType)
+
+				// delete resources
+				err = deletePod(pod.Name, pod.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete application: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete pvc clone: %v", err)
+				}
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
+				}
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+
+				// validate OMAP count
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
+			})
+
 			// FIXME: in case NFS testing is done, prevent deletion
 			// of the CephFS filesystem and related pool. This can
 			// probably be addressed in a nicer way, making sure
