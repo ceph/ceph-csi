@@ -19,7 +19,6 @@ package store
 import (
 	"context"
 
-	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 	"github.com/ceph/ceph-csi/internal/util/reftracker"
 	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
@@ -45,7 +44,7 @@ func AddSnapshotBackedVolumeRef(
 	}
 	defer ioctx.Destroy()
 
-	ioctx.SetNamespace(fsutil.RadosNamespace)
+	ioctx.SetNamespace(volOptions.RadosNamespace)
 
 	var (
 		backingSnapID = volOptions.BackingSnapshotID
@@ -90,7 +89,7 @@ func AddSnapshotBackedVolumeRef(
 
 		if created && !deleted {
 			log.ErrorLog(ctx, "orphaned reftracker object %s (pool %s, namespace %s)",
-				backingSnapID, volOptions.MetadataPool, fsutil.RadosNamespace)
+				backingSnapID, volOptions.MetadataPool, volOptions.RadosNamespace)
 		}
 	}()
 
@@ -118,7 +117,7 @@ func UnrefSnapshotBackedVolume(
 	}
 	defer ioctx.Destroy()
 
-	ioctx.SetNamespace(fsutil.RadosNamespace)
+	ioctx.SetNamespace(volOptions.RadosNamespace)
 
 	var (
 		backingSnapID = volOptions.BackingSnapshotID
@@ -159,7 +158,7 @@ func UnrefSelfInSnapshotBackedVolumes(
 	}
 	defer ioctx.Destroy()
 
-	ioctx.SetNamespace(fsutil.RadosNamespace)
+	ioctx.SetNamespace(snapParentVolOptions.RadosNamespace)
 
 	return reftracker.Remove(
 		radoswrapper.NewIOContext(ioctx),
