@@ -187,6 +187,15 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 	return nil
 }
 
+func cephfsOptions(pool string) string {
+	if radosNamespace != "" {
+		return "--pool=" + pool + " --namespace=" + radosNamespace
+	}
+
+	// default namespace is csi
+	return "--pool=" + pool + " --namespace=csi"
+}
+
 type cephfsSubVolume struct {
 	Name string `json:"name"`
 }
