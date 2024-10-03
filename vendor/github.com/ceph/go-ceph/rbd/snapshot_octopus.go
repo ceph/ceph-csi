@@ -50,8 +50,8 @@ func (image *Image) GetSnapByID(snapID uint64) (string, error) {
 		err error
 	)
 	// range from 1k to 64KiB
-	retry.WithSizes(1024, 1<<16, func(len int) retry.Hint {
-		cLen := C.size_t(len)
+	retry.WithSizes(1024, 1<<16, func(length int) retry.Hint {
+		cLen := C.size_t(length)
 		buf = make([]byte, cLen)
 		ret := C.rbd_snap_get_name(
 			image.image,
