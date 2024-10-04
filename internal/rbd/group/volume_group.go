@@ -49,11 +49,8 @@ type volumeGroup struct {
 	volumesToFree []types.Volume
 }
 
-// verify that volumeGroup implements the VolumeGroup and Stringer interfaces.
-var (
-	_ types.VolumeGroup = &volumeGroup{}
-	_ fmt.Stringer      = &volumeGroup{}
-)
+// verify that volumeGroup implements the VolumeGroup interface.
+var _ types.VolumeGroup = &volumeGroup{}
 
 // GetVolumeGroup initializes a new VolumeGroup object that can be used
 // to manage an `rbd group`.
