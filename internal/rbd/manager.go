@@ -139,6 +139,31 @@ func (mgr *rbdManager) GetVolumeByID(ctx context.Context, id string) (types.Volu
 	return volume, nil
 }
 
+func (mgr *rbdManager) GetSnapshotByID(ctx context.Context, id string) (types.Snapshot, error) {
+	creds, err := mgr.getCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	snapshot, err := genSnapFromSnapID(ctx, id, creds, mgr.secrets)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrImageNotFound):
+			err = fmt.Errorf("volume %s not found: %w", id, err)
+
+			return nil, err
+		case errors.Is(err, util.ErrPoolNotFound):
+			err = fmt.Errorf("pool %s not found for %s: %w", snapshot.Pool, id, err)
+
+			return nil, err
+		default:
+			return nil, fmt.Errorf("failed to get volume from id %q: %w", id, err)
+		}
+	}
+
+	return snapshot, nil
+}
+
 func (mgr *rbdManager) GetVolumeGroupByID(ctx context.Context, id string) (types.VolumeGroup, error) {
 	creds, err := mgr.getCredentials()
 	if err != nil {
