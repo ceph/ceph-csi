@@ -241,7 +241,8 @@ func (vg *volumeGroup) AddVolume(ctx context.Context, vol types.Volume) error {
 
 	err = j.AddVolumesMapping(ctx, pool, csiID.ObjectUUID, toAdd)
 	if err != nil {
-		return fmt.Errorf("failed to add mapping for volume %q to volume group id %q: %w", volID, id, err)
+		return fmt.Errorf("failed to add mapping for volume %q to volume group id %q: %w",
+			volID, id, err)
 	}
 
 	return nil
@@ -315,7 +316,8 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 
 	err = j.RemoveVolumesMapping(ctx, pool, csiID.ObjectUUID, mapping)
 	if err != nil {
-		return fmt.Errorf("failed to remove mapping for volume %q to volume group id %q: %w", toRemove, id, err)
+		return fmt.Errorf("failed to remove mapping for volume %q to volume group id %q: %w",
+			toRemove, id, err)
 	}
 
 	return nil
@@ -323,4 +325,89 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 
 func (vg *volumeGroup) ListVolumes(ctx context.Context) ([]types.Volume, error) {
 	return vg.volumes, nil
+}
+
+// CreateSnapshots makes consistent snapshots of all the volumes in the volume group.
+func (vg *volumeGroup) CreateSnapshots(
+	ctx context.Context,
+	cr *util.Credentials,
+	name string,
+) ([]types.Snapshot, error) {
+	group, err := vg.GetName(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ioctx, err := vg.GetIOContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = librbd.GroupSnapCreate(ioctx, group, name)
+	if err != nil {
+		if !errors.Is(err, librbd.ErrExist) {
+			return nil, fmt.Errorf("failed to create volume group snapshot %q: %w", name, err)
+		}
+
+		log.DebugLog(ctx, "ignoring error while creating volume group snapshot %q: %v", vg, err)
+	}
+	defer func() {
+		// always remove the groups-snapshot on function exit, it is not used anymore afterwards
+		cleanupErr := librbd.GroupSnapRemove(ioctx, group, name)
+		if cleanupErr != nil {
+			log.ErrorLog(ctx, "failed to remove temporary volume group snapshot %q: %v",
+				name, cleanupErr)
+		}
+	}()
+
+	info, err := librbd.GroupSnapGetInfo(ioctx, group, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get info for volume group snapshot %q: %w",
+			vg.String()+"@"+name, err)
+	}
+
+	snapshots := make([]types.Snapshot, len(info.Snapshots))
+	defer func() {
+		// free all created snapshot objects in case of a failure
+		if err == nil {
+			return
+		}
+
+		for _, snapshot := range snapshots {
+			snapshot.Destroy(ctx)
+		}
+	}()
+
+	// Loop though all the RBD-snapshots in the group, and find the volume
+	// that was used to create the snapshot. Once found, use the volume to
+	// create a new RBD-image from the RBD-snapshot.
+	for i, snap := range info.Snapshots {
+		for _, volume := range vg.volumes {
+			var volName string
+
+			volName, err = volume.GetName(ctx)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to get name for volume %q: %w", volume, err)
+			}
+			if volName != snap.Name {
+				// the volume isn't the snapshot-source, continue with the next one
+				continue
+			}
+
+			// yay, volume for the RBD-snapshot found!
+			snapName := fmt.Sprintf("%s-snap-%d", group, i)
+			snapshots[i], err = volume.NewSnapshotByID(ctx, cr, snapName, snap.SnapID)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to create snapshot for image %q with snapshot id %d: %w",
+					snap.Name, snap.SnapID, err)
+			}
+
+			// done, no need to try more volumes in the loop
+			break
+		}
+	}
+
+	return snapshots, nil
 }
