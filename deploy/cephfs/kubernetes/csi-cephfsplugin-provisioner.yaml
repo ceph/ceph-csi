@@ -102,10 +102,19 @@ spec:
             - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
             - "--extra-create-metadata=true"
+            - "--http-endpoint=$(POD_IP):8090"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 8090
+              name: http-endpoint
+              protocol: TCP
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -119,10 +128,19 @@ spec:
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
+            - "--http-endpoint=$(POD_IP):8091"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 8091
+              name: http-endpoint
+              protocol: TCP
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -135,10 +153,19 @@ spec:
             - "--leader-election=true"
             - "--extra-create-metadata=true"
             - "--enable-volume-group-snapshots=true"
+            - "--http-endpoint=$(POD_IP):8092"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 8092
+              name: http-endpoint
+              protocol: TCP
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -158,6 +185,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+          ports:
+            - containerPort: 8681
+              name: http-metrics
+              protocol: TCP
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

@@ -136,12 +136,25 @@ spec:
             - "--extra-create-metadata=true"
             - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
+{{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.provisioner.args.httpEndpointPort }}"
+{{- end }}
 {{- range .Values.provisioner.provisioner.extraArgs }}
             - "--{{ . }}"
 {{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.provisioner.args.httpEndpointPort }}
+              name: http-endpoint
+              protocol: TCP
+{{- end }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -157,12 +170,25 @@ spec:
             - "--leader-election=true"
             - "--extra-create-metadata=true"
             - "--enable-volume-group-snapshots={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
+{{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.snapshotter.args.httpEndpointPort }}"
+{{- end }}
 {{- range .Values.provisioner.snapshotter.extraArgs }}
             - "--{{ . }}"
 {{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.snapshotter.args.httpEndpointPort }}
+              name: http-endpoint
+              protocol: TCP
+{{- end }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -180,12 +206,25 @@ spec:
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
+{{- if and .Values.provisioner.resizer.args .Values.provisioner.resizer.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.resizer.args.httpEndpointPort }}"
+{{- end }}
 {{- range .Values.provisioner.resizer.extraArgs }}
             - "--{{ . }}"
 {{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.resizer.args .Values.provisioner.resizer.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.resizer.args.httpEndpointPort }}
+              name: http-endpoint
+              protocol: TCP
+{{- end }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
