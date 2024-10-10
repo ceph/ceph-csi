@@ -38,7 +38,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
         with:
           image: quay.io/cephcsi/cephcsi:${{ github.base_ref }}
-          args: --file=Dockerfilei
+          args: --file=./deploy/cephcsi/image/Dockerfile
       - name: Upload result to GitHub Code Scanning
         # yamllint disable-line rule:line-length
         uses: github/codeql-action/upload-sarif@c36620d31ac7c881962c3d9dd939c40ec9434f2b  # v3.26.12
