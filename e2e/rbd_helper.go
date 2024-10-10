@@ -693,6 +693,28 @@ func validateEncryptedFilesystem(f *framework.Framework, rbdImageSpec, pvName, a
 	return nil
 }
 
+// librbdSupportsVolumeGroupSnapshot checks for the rbd_group_snap_get_info in
+// librbd.so.* in a ceph-csi container. If this function is available,
+// VolumeGroupSnapshot support is available.
+func librbdSupportsVolumeGroupSnapshot(f *framework.Framework) (bool, error) {
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+	if err != nil {
+		return false, fmt.Errorf("failed to get labels: %w", err)
+	}
+	opt := metav1.ListOptions{
+		LabelSelector: selector,
+	}
+
+	// run a shell command (to expand the * in the filename), return 0 on stdout when successful
+	cmd := "sh -c 'grep -q rbd_group_snap_get_info /lib64/librbd.so.*; echo $?'"
+	stdout, _, err := execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
+	if err != nil {
+		return false, fmt.Errorf("error checking for rbd_group_snap_get_info in /lib64/librbd.so.*: %w", err)
+	}
+
+	return strings.TrimSpace(stdout) == "0", nil
+}
+
 func listRBDImages(f *framework.Framework, pool string) ([]string, error) {
 	var imgInfos []string
 
