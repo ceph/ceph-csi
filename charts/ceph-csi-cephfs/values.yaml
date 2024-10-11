@@ -130,7 +130,11 @@ nodeplugin:
 
   affinity: {}
 
+  annotations: {}
+
   podSecurityContext: {}
+
+  podAnnotations: {}
 
   # Set to true to enable Ceph Kernel clients
   # on kernel < 4.17 which support quotas
@@ -262,7 +266,11 @@ provisioner:
 
   affinity: {}
 
+  annotations: {}
+
   podSecurityContext: {}
+
+  podAnnotations: {}
 
 # readAffinity:
 # Enable read affinity for CephFS subvolumes. Recommended to

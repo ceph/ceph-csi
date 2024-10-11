@@ -10,6 +10,10 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- if .Values.nodeplugin.annotations }}
+  annotations:
+    {{- toYaml .Values.nodeplugin.annotations | nindent 4 -}}
+{{- end }}
 spec:
   selector:
     matchLabels:
@@ -27,6 +31,10 @@ spec:
         release: {{ .Release.Name }}
         heritage: {{ .Release.Service }}
         {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    {{- if .Values.nodeplugin.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.nodeplugin.podAnnotations | nindent 8 -}}
+    {{- end }}
     spec:
       securityContext: {{ toYaml .Values.nodeplugin.podSecurityContext | nindent 8 }}
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.nodeplugin" . }}

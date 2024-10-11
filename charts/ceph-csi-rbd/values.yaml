@@ -159,7 +159,11 @@ nodeplugin:
 
   affinity: {}
 
+  annotations: {}
+
   podSecurityContext: {}
+
+  podAnnotations: {}
 
 provisioner:
   name: provisioner
@@ -318,7 +322,11 @@ provisioner:
 
   affinity: {}
 
+  annotations: {}
+
   podSecurityContext: {}
+
+  podAnnotations: {}
 
 topology:
   # domainLabels define which node labels to use as domains

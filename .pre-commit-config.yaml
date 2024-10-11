@@ -20,6 +20,7 @@ repos:
       - id: check-json
       - id: check-yaml
         args: [--multi]
+        exclude: ^charts/ceph-csi-(cephfs|rbd)/templates/
 
       # Makes sure that files end in a new line.
       - id: end-of-file-fixer
