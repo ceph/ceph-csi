@@ -10,6 +10,10 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- if .Values.provisioner.annotations }}
+  annotations:
+    {{- toYaml .Values.provisioner.annotations | nindent 4 -}}
+{{- end }}
 spec:
   replicas: {{ .Values.provisioner.replicaCount }}
   strategy:
@@ -32,6 +36,10 @@ spec:
         release: {{ .Release.Name }}
         heritage: {{ .Release.Service }}
         {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    {{- if .Values.provisioner.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.provisioner.podAnnotations | nindent 8 -}}
+    {{- end }}
     spec:
 {{- if gt (int .Values.provisioner.replicaCount) 1 }}
       affinity:
