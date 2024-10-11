@@ -3,6 +3,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: rbd-pvc
+  labels:
+    group: test
 spec:
   accessModes:
     - ReadWriteOnce
