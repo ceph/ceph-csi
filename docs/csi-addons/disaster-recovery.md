@@ -17,91 +17,45 @@ This documentation assumes that `rbd mirroring` is set up between
 For more information on how to set up rbd mirroring, refer to
  [ceph documentation](https://docs.ceph.com/en/latest/rbd/rbd-mirroring/).
 
-## Deploy the Volume Replication CRD
+## Enable CSI-Addons Sidecar
 
-Volume Replication Operator is a kubernetes operator that provides common
- and reusable APIs for storage disaster recovery.
- It is based on [csi-addons/spec](https://github.com/csi-addons/spec)
- specification and can be used by any storage provider.
+CSI-Addons supports the Volume Replication feature that provides common
+and reusable APIs for storage disaster recovery.
+It is based on [csi-addons/spec](https://github.com/csi-addons/spec) specification
+and can be used by any storage provider.
 
-Volume Replication Operator follows controller pattern and provides
- extended APIs for storage disaster recovery.
- The extended APIs are provided via Custom Resource Definition (CRD).
-
->:bulb: For more information, please refer to the
-> [volume-replication-operator](https://github.com/csi-addons/volume-replication-operator).
-
-* Deploy the `VolumeReplicationClass` CRD
+Deploy the CSI-Addons controller
 
 ```bash
-    kubectl create -f https://raw.githubusercontent.com/csi-addons/volume-replication-operator/release-v0.1/config/crd/bases/replication.storage.openshift.io_volumereplicationclasses.yaml
-
- customresourcedefinition.apiextensions.k8s.io/volumereplicationclasses.replication.storage.openshift.io created
-
+kubectl create -f https://raw.githubusercontent.com/csi-addons/kubernetes-csi-addons/v0.10.0/deploy/controller/setup-controller.yaml
 ```
 
-* Deploy the `VolumeReplication` CRD
+Deploy the CSI-Addons CRD to create all related crds for volumereplication
 
 ```bash
-   kubectl create -f https://raw.githubusercontent.com/csi-addons/volume-replication-operator/release-v0.1/config/crd/bases/replication.storage.openshift.io_volumereplications.yaml
+  kubectl create -f https://raw.githubusercontent.com/csi-addons/kubernetes-csi-addons/v0.10.0/deploy/controller/crds.yaml
+```
 
- customresourcedefinition.apiextensions.k8s.io/volumereplications.replication.storage.openshift.io created created
- ```
+The following crds gets created
+
+```bash
+volumereplicationclasses.replication.storage.openshift.io
+volumereplications.replication.storage.openshift.io  
+```
 
 The VolumeReplicationClass and VolumeReplication CRDs are now created.
 
->:bulb: **Note:** Use the latest available release for Volume Replication Operator.
-> See [releases](https://github.com/csi-addons/volume-replication-operator/branches)
+>:bulb: **Note:** Use the latest available release for CSI Addons Operator.
+> See [releases](https://github.com/csi-addons/kubernetes-csi-addons/releases)
 > for more information.
 
-### Add RBAC rules for Volume Replication Operator
+### Add RBAC rules for CSI-Addons Operator
 
-Add the below mentioned rules to `rbd-external-provisioner-runner`
- ClusterRole in [csi-provisioner-rbac.yaml](https://github.com/ceph/ceph-csi/blob/release-v3.3/deploy/rbd/kubernetes/csi-provisioner-rbac.yaml)
+Add RBAC rules to enable the csi-addons operator which contains
+all related rbac rules to anable the volume replication feature
 
-```yaml
-  - apiGroups: ["replication.storage.openshift.io"]
-    resources: ["volumereplications", "volumereplicationclasses"]
-    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
-  - apiGroups: ["replication.storage.openshift.io"]
-    resources: ["volumereplications/finalizers"]
-    verbs: ["update"]
-  - apiGroups: ["replication.storage.openshift.io"]
-    resources: ["volumereplications/status"]
-    verbs: ["get", "patch", "update"]
-  - apiGroups: ["replication.storage.openshift.io"]
-    resources: ["volumereplicationclasses/status"]
-    verbs: ["get"]
-```
-
-### Deploy the Volume Replication Sidecar
-
-To deploy `volume-replication` sidecar container in `csi-rbdplugin-provisioner`
- pod, add the following yaml to
- [csi-rbdplugin-provisioner deployment](https://github.com/ceph/ceph-csi/blob/release-v3.3/deploy/rbd/kubernetes/csi-rbdplugin-provisioner.yaml).
-
-```yaml
-        - name: volume-replication
-          image: quay.io/csiaddons/volumereplication-operator:v0.1.0
-          args :
-            - "--metrics-bind-address=0"
-            - "--leader-election-namespace=$(NAMESPACE)"
-            - "--driver-name=rbd.csi.ceph.com"
-            - "--csi-address=$(ADDRESS)"
-            - "--rpc-timeout=150s"
-            - "--health-probe-bind-address=:9998"
-            - "--leader-elect=true"
-          env:
-            - name: ADDRESS
-              value: unix:///csi/csi-provisioner.sock
-            - name: NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
+```bash
+kubectl create -f https://raw.githubusercontent.com/csi-addons/kubernetes-csi-addons/v0.10.0/deploy/controller/rbac.yaml
 ```
 
 ## VolumeReplicationClass and VolumeReplication
@@ -117,9 +71,6 @@ To deploy `volume-replication` sidecar container in `csi-rbdplugin-provisioner`
 *VolumeReplication* is a namespaced resource that contains references
  to storage object to be replicated and VolumeReplicationClass
  corresponding to the driver providing replication.
-
->:bulb: For more information, please refer to the
-> [volume-replication-operator](https://github.com/csi-addons/volume-replication-operator).
 
 Let's say we have a *PVC* (rbd-pvc) in BOUND state; created using
  *StorageClass* with `Retain` reclaimPolicy.
