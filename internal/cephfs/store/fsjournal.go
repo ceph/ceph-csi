@@ -23,7 +23,6 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
-	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -87,8 +86,7 @@ func CheckVolExists(ctx context.Context,
 	setMetadata bool,
 ) (*VolumeIdentifier, error) {
 	var vid VolumeIdentifier
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -228,8 +226,7 @@ func UndoVolReservation(
 	}
 	defer cr.DeleteCredentials()
 
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -283,8 +280,7 @@ func ReserveVol(ctx context.Context, volOptions *VolumeOptions, secret map[strin
 		return nil, err
 	}
 
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -329,8 +325,7 @@ func ReserveSnap(
 		err       error
 	)
 
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := SnapJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -368,8 +363,7 @@ func UndoSnapReservation(
 	snapName string,
 	cr *util.Credentials,
 ) error {
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := SnapJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -403,8 +397,7 @@ func CheckSnapExists(
 	setMetadata bool,
 	cr *util.Credentials,
 ) (*SnapshotIdentifier, error) {
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := SnapJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}

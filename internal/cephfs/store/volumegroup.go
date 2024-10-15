@@ -22,7 +22,6 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
-	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -130,6 +129,13 @@ func NewVolumeGroupOptionsFromID(
 			err)
 	}
 
+	if volOptions.RadosNamespace, err = util.GetCephFSRadosNamespace(util.CsiConfigFile, vi.ClusterID); err != nil {
+		return nil, nil, fmt.Errorf(
+			"failed to fetch rados namespace using clusterID (%s): %w",
+			vi.ClusterID,
+			err)
+	}
+
 	err = volOptions.Connect(cr)
 	if err != nil {
 		return nil, nil, err
@@ -154,7 +160,7 @@ func NewVolumeGroupOptionsFromID(
 		return nil, nil, err
 	}
 
-	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -189,8 +195,7 @@ func CheckVolumeGroupSnapExists(
 	volOptions *VolumeGroupOptions,
 	cr *util.Credentials,
 ) (*VolumeGroupSnapshotIdentifier, error) {
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -237,8 +242,7 @@ func ReserveVolumeGroup(
 	)
 
 	vgsi.RequestName = volOptions.RequestName
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -271,8 +275,7 @@ func UndoVolumeGroupReservation(
 	vgsi *VolumeGroupSnapshotIdentifier,
 	cr *util.Credentials,
 ) error {
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
+	j, err := VolumeGroupJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}

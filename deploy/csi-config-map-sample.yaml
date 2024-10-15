@@ -32,6 +32,11 @@ kind: ConfigMap
 # The "cephFS.fuseMountOptions" fields are common separated mount options
 # for `Ceph FUSE driver`. Setting this will override the fusemountoptions
 # command line flag.
+# The "cephFS.radosNamespace" is optional and represents a radosNamespace in the
+# metadata pool. If any given, the omap data of cephFS will be stored within
+# this radosNamespace.
+# NOTE: Make sure you don't add radosNamespace option to a currently in use
+# configuration as it will cause issues.
 # network namespace specified by the "cephFS.netNamespaceFilePath".
 # The "nfs.netNamespaceFilePath" fields are the various network namespace
 # path for the Ceph cluster identified by the <cluster-id>, This will be used
@@ -78,7 +83,8 @@ data:
           "subvolumeGroup": "<subvolumegroup for cephFS volumes>"
           "netNamespaceFilePath": "<kubeletRootPath>/plugins/cephfs.csi.ceph.com/net",
           "kernelMountOptions": "<kernelMountOptions for cephFS volumes>",
-          "fuseMountOptions": "<fuseMountOptions for cephFS volumes>"
+          "fuseMountOptions": "<fuseMountOptions for cephFS volumes>",
+          "radosNamespace": "<rados-namespace>"
         }
         "nfs": {
           "netNamespaceFilePath": "<kubeletRootPath>/plugins/nfs.csi.ceph.com/net",

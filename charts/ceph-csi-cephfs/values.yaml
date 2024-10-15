@@ -28,6 +28,7 @@ serviceAccounts:
 #     cephFS:
 #       subvolumeGroup: "csi"
 #       netNamespaceFilePath: "{{ .kubeletDir }}/plugins/{{ .driverName }}/net"
+#       radosNamespace: "csi"
 csiConfig: []
 
 # Labels to apply to all resources
