@@ -320,6 +320,23 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 	return vg, nil
 }
 
+func (mgr *rbdManager) GetVolumeGroupSnapshotByID(
+	ctx context.Context,
+	id string,
+) (types.VolumeGroupSnapshot, error) {
+	creds, err := mgr.getCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, id, mgr.csiID, creds, mgr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get volume group with id %q: %w", id, err)
+	}
+
+	return vgs, nil
+}
+
 func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 	ctx context.Context,
 	vg types.VolumeGroup,
