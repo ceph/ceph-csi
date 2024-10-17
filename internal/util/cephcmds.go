@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/internal/util/stripsecrets"
 
 	"github.com/ceph/go-ceph/rados"
 )
@@ -49,7 +50,7 @@ func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, arg
 	}
 	//  nsenter --net=%s -- <program> <args>
 	args = append([]string{"--net=" + netPath, "--", program}, args...)
-	sanitizedArgs := StripSecretInArgs(args)
+	sanitizedArgs := stripsecrets.InArgs(args)
 	cmd := exec.Command(nsenter, args...) // #nosec:G204, commands executing not vulnerable.
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
@@ -80,7 +81,7 @@ func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, arg
 func ExecCommand(ctx context.Context, program string, args ...string) (string, string, error) {
 	var (
 		cmd           = exec.Command(program, args...) // #nosec:G204, commands executing not vulnerable.
-		sanitizedArgs = StripSecretInArgs(args)
+		sanitizedArgs = stripsecrets.InArgs(args)
 		stdoutBuf     bytes.Buffer
 		stderrBuf     bytes.Buffer
 	)
@@ -122,7 +123,7 @@ func ExecCommandWithTimeout(
 	error,
 ) {
 	var (
-		sanitizedArgs = StripSecretInArgs(args)
+		sanitizedArgs = stripsecrets.InArgs(args)
 		stdoutBuf     bytes.Buffer
 		stderrBuf     bytes.Buffer
 	)

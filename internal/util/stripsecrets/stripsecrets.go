@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package stripsecrets
 
 import (
 	"strings"
@@ -30,10 +30,10 @@ const (
 	strippedSecret      = "secret=***stripped***"
 )
 
-// StripSecretInArgs strips values of either "--key"/"--keyfile" or "secret=".
+// InArgs strips values of either "--key"/"--keyfile" or "secret=".
 // `args` is left unchanged.
 // Expects only one occurrence of either "--key"/"--keyfile" or "secret=".
-func StripSecretInArgs(args []string) []string {
+func InArgs(args []string) []string {
 	out := make([]string, len(args))
 	copy(out, args)
 

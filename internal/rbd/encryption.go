@@ -26,6 +26,7 @@ import (
 
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/ceph/ceph-csi/internal/util/lock"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -475,8 +476,14 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 	// Lock params
 	lockName := rv.VolID + "-mutexlock"
 	lockDesc := "Key rotation mutex lock for " + rv.VolID
-	lockDuration := 3 * time.Minute
 	lockCookie := rv.VolID + "-enc-key-rotate"
+
+	// Keep this a little more than ExecutionTimeout to have some buffer
+	// for cleanup. If this lock is a part of some gRPC call, the client
+	// should always timeout after the lockDuration to avoid issues.
+	lockDuration := cryptsetup.ExecutionTimeout + 30*time.Second
+	timedCtx, cancel := context.WithTimeout(ctx, cryptsetup.ExecutionTimeout)
+	defer cancel()
 
 	// Acquire the exclusive lock based on vol id
 	lck := lock.NewLock(rv.ioctx, rv.VolID, lockName, lockCookie, lockDesc, lockDuration)
@@ -500,8 +507,11 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch the current passphrase for %q: %w", rv, err)
 	}
 
+	// Create a new luks wrapper
+	luks := cryptsetup.NewLUKSWrapper(timedCtx)
+
 	// Step 2: Add current key to slot 1
-	err = util.LuksAddKey(devicePath, oldPassphrase, oldPassphrase, luksSlot1)
+	err = luks.AddKey(devicePath, oldPassphrase, oldPassphrase, luksSlot1)
 	if err != nil {
 		return fmt.Errorf("failed to add curr key to luksSlot1: %w", err)
 	}
@@ -513,20 +523,20 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 		return fmt.Errorf("failed to generate a new passphrase: %w", err)
 	}
 
-	err = util.LuksAddKey(devicePath, oldPassphrase, newPassphrase, luksSlot0)
+	err = luks.AddKey(devicePath, oldPassphrase, newPassphrase, luksSlot0)
 	if err != nil {
 		return fmt.Errorf("failed to add the new key to luksSlot0: %w", err)
 	}
 
 	// Step 4: Add the new key to KMS
-	err = rv.blockEncryption.StoreCryptoPassphrase(ctx, rv.VolID, newPassphrase)
+	err = rv.blockEncryption.StoreCryptoPassphrase(timedCtx, rv.VolID, newPassphrase)
 	if err != nil {
 		return fmt.Errorf("failed to update the new key into the KMS: %w", err)
 	}
 
 	// Step 5: Remove the old key from slot 1
 	// We use the newPassphrase to authenticate LUKS here
-	err = util.LuksRemoveKey(devicePath, newPassphrase, luksSlot1)
+	err = luks.RemoveKey(devicePath, newPassphrase, luksSlot1)
 	if err != nil {
 		return fmt.Errorf("failed to remove the backup key from luksSlot1: %w", err)
 	}
