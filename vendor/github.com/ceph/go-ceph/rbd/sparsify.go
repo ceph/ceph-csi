@@ -60,7 +60,7 @@ func (image *Image) SparsifyWithProgress(
 ) error {
 	// the provided callback must be a real function
 	if cb == nil {
-		return rbdError(C.EINVAL)
+		return getError(C.EINVAL)
 	}
 
 	if err := image.validate(imageIsOpen); err != nil {
