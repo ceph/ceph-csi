@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -475,11 +474,10 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 	// Lock params
 	lockName := rv.VolID + "-mutexlock"
 	lockDesc := "Key rotation mutex lock for " + rv.VolID
-	lockDuration := 3 * time.Minute
 	lockCookie := rv.VolID + "-enc-key-rotate"
 
 	// Acquire the exclusive lock based on vol id
-	lck := lock.NewLock(rv.ioctx, rv.VolID, lockName, lockCookie, lockDesc, lockDuration)
+	lck := lock.NewLock(rv.ioctx, rv.VolID, lockName, lockCookie, lockDesc, util.CryptSetupExecutionTimeout)
 	err = lck.LockExclusive(ctx)
 	if err != nil {
 		return err
