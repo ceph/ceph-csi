@@ -18,18 +18,26 @@ package util
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
-// Limit memory used by Argon2i PBKDF to 32 MiB.
-const cryptsetupPBKDFMemoryLimit = 32 << 10 // 32768 KiB
+const (
+	// Maximum time to wait for cryptsetup commands to complete.
+	CryptSetupExecutionTimeout = 3 * time.Minute
+
+	// Limit memory used by Argon2i PBKDF to 32 MiB.
+	cryptsetupPBKDFMemoryLimit = 32 << 10 // 32768 KiB
+)
 
 // LuksFormat sets up volume as an encrypted LUKS partition.
 func LuksFormat(devicePath, passphrase string) (string, string, error) {
@@ -200,9 +208,12 @@ func LuksVerifyKey(devicePath, passphrase, slot string) (bool, error) {
 }
 
 func execCryptsetupCommand(stdin *string, args ...string) (string, string, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), CryptSetupExecutionTimeout)
+	defer cancel()
+
 	var (
 		program       = "cryptsetup"
-		cmd           = exec.Command(program, args...) // #nosec:G204, commands executing not vulnerable.
+		cmd           = exec.CommandContext(timeoutCtx, program, args...) // #nosec:G204, commands executing not vulnerable.
 		sanitizedArgs = StripSecretInArgs(args)
 		stdoutBuf     bytes.Buffer
 		stderrBuf     bytes.Buffer
@@ -216,6 +227,10 @@ func execCryptsetupCommand(stdin *string, args ...string) (string, string, error
 	err := cmd.Run()
 	stdout := stdoutBuf.String()
 	stderr := stderrBuf.String()
+
+	if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+		return stdout, stderr, fmt.Errorf("timeout occurred while running %s args: %v", program, sanitizedArgs)
+	}
 
 	if err != nil {
 		return stdout, stderr, fmt.Errorf("an error (%v)"+
