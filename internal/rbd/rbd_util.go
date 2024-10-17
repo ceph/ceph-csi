@@ -676,7 +676,7 @@ func (ri *rbdImage) Delete(ctx context.Context) error {
 
 	rbdImage := librbd.GetImage(ri.ioctx, image)
 	err = rbdImage.Trash(0)
-	if err != nil {
+	if err != nil && !errors.Is(err, librbd.ErrNotFound) {
 		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", ri, err)
 
 		return err
@@ -699,7 +699,7 @@ func (ri *rbdImage) trashRemoveImage(ctx context.Context) error {
 	_, err = ta.AddTrashRemove(admin.NewImageSpec(ri.Pool, ri.RadosNamespace, ri.ImageID))
 
 	rbdCephMgrSupported := isCephMgrSupported(ctx, ri.ClusterID, err)
-	if rbdCephMgrSupported && err != nil {
+	if rbdCephMgrSupported && err != nil && !errors.Is(err, librbd.ErrNotFound) {
 		log.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", ri, err)
 
 		return err
