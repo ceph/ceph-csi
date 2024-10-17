@@ -26,7 +26,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/volumegroup"
 
-	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -36,7 +35,7 @@ var ErrRBDGroupNotConnected = errors.New("RBD group is not connected")
 
 // volumeGroup handles all requests for 'rbd group' operations.
 type volumeGroup struct {
-	*commonVolumeGroup
+	commonVolumeGroup
 
 	// volumes is a list of rbd-images that are part of the group. The ID
 	// of each volume is stored in the journal.
@@ -49,11 +48,8 @@ type volumeGroup struct {
 	volumesToFree []types.Volume
 }
 
-// verify that volumeGroup implements the VolumeGroup and Stringer interfaces.
-var (
-	_ types.VolumeGroup = &volumeGroup{}
-	_ fmt.Stringer      = &volumeGroup{}
-)
+// verify that volumeGroup implements the VolumeGroup interface.
+var _ types.VolumeGroup = &volumeGroup{}
 
 // GetVolumeGroup initializes a new VolumeGroup object that can be used
 // to manage an `rbd group`.
@@ -62,18 +58,24 @@ var (
 func GetVolumeGroup(
 	ctx context.Context,
 	id string,
-	j journal.VolumeGroupJournal,
+	csiDriver string,
 	creds *util.Credentials,
 	volumeResolver types.VolumeResolver,
 ) (types.VolumeGroup, error) {
 	vg := &volumeGroup{}
-	err := vg.initCommonVolumeGroup(ctx, id, j, creds)
+	err := vg.initCommonVolumeGroup(ctx, id, csiDriver, creds)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize volume group with id %q: %w", id, err)
 	}
 
 	attrs, err := vg.getVolumeGroupAttributes(ctx)
 	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			log.DebugLog(ctx, "%v, returning empty volume group %q", vg, err)
+
+			return vg, err
+		}
+
 		return nil, fmt.Errorf("failed to get volume attributes for id %q: %w", vg, err)
 	}
 
@@ -229,9 +231,15 @@ func (vg *volumeGroup) AddVolume(ctx context.Context, vol types.Volume) error {
 		volID: "",
 	}
 
-	err = vg.journal.AddVolumesMapping(ctx, pool, csiID.ObjectUUID, toAdd)
+	j, err := vg.getJournal()
 	if err != nil {
-		return fmt.Errorf("failed to add mapping for volume %q to volume group id %q: %w", volID, id, err)
+		return err
+	}
+
+	err = j.AddVolumesMapping(ctx, pool, csiID.ObjectUUID, toAdd)
+	if err != nil {
+		return fmt.Errorf("failed to add mapping for volume %q to volume group id %q: %w",
+			volID, id, err)
 	}
 
 	return nil
@@ -298,9 +306,15 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 		toRemove,
 	}
 
-	err = vg.journal.RemoveVolumesMapping(ctx, pool, csiID.ObjectUUID, mapping)
+	j, err := vg.getJournal()
 	if err != nil {
-		return fmt.Errorf("failed to remove mapping for volume %q to volume group id %q: %w", toRemove, id, err)
+		return err
+	}
+
+	err = j.RemoveVolumesMapping(ctx, pool, csiID.ObjectUUID, mapping)
+	if err != nil {
+		return fmt.Errorf("failed to remove mapping for volume %q to volume group id %q: %w",
+			toRemove, id, err)
 	}
 
 	return nil
@@ -308,4 +322,79 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 
 func (vg *volumeGroup) ListVolumes(ctx context.Context) ([]types.Volume, error) {
 	return vg.volumes, nil
+}
+
+// CreateSnapshots makes consistent snapshots of all the volumes in the volume group.
+func (vg *volumeGroup) CreateSnapshots(
+	ctx context.Context,
+	cr *util.Credentials,
+	name string,
+) ([]types.Snapshot, error) {
+	group, err := vg.GetName(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ioctx, err := vg.GetIOContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = librbd.GroupSnapCreate(ioctx, group, name)
+	if err != nil {
+		if !errors.Is(err, librbd.ErrExist) {
+			return nil, fmt.Errorf("failed to create volume group snapshot %q: %w", name, err)
+		}
+
+		log.DebugLog(ctx, "ignoring error while creating volume group snapshot %q: %v", vg, err)
+	}
+	defer func() {
+		cleanupErr := librbd.GroupSnapRemove(ioctx, group, name)
+		if cleanupErr != nil {
+			log.ErrorLog(ctx, "failed to remove temporary volume group snapshot %q: %v",
+				name, cleanupErr)
+		}
+	}()
+
+	info, err := librbd.GroupSnapGetInfo(ioctx, group, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get info for volume group snapshot %q: %w",
+			vg.String()+"@"+name, err)
+	}
+
+	snapshots := make([]types.Snapshot, len(info.Snapshots))
+	defer func() {
+		// free all created snapshot objects in case of a failure
+		if err == nil {
+			return
+		}
+
+		for _, snapshot := range snapshots {
+			snapshot.Destroy(ctx)
+		}
+	}()
+
+	for i, snap := range info.Snapshots {
+		for _, volume := range vg.volumes {
+			var volName string
+
+			volName, err = volume.GetName(ctx)
+			if volName != snap.Name {
+				continue
+			}
+
+			snapName := fmt.Sprintf("%s-snap-%d", group, i)
+			snapshots[i], err = volume.NewSnapshotByID(ctx, cr, snapName, snap.SnapID)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to create snapshot for image %q with snapshot id %d: %w",
+					snap.Name, snap.SnapID, err)
+			}
+
+			// done, no need to try more volumes in the loop
+			break
+		}
+	}
+
+	return snapshots, nil
 }

@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 //nolint:interfacebloat // more than 10 methods are needed for the interface
@@ -59,4 +61,7 @@ type Volume interface {
 
 	// ToMirror converts the Volume to a Mirror.
 	ToMirror() (Mirror, error)
+
+	// NewSnapshotByID creates a new Snapshot object based on the details of the Volume.
+	NewSnapshotByID(ctx context.Context, cr *util.Credentials, name string, id uint64) (Snapshot, error)
 }

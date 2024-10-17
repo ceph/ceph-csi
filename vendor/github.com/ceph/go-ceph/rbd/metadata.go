@@ -62,7 +62,7 @@ func (image *Image) SetMetadata(key string, value string) error {
 
 	ret := C.rbd_metadata_set(image.image, cKey, cValue)
 	if ret < 0 {
-		return rbdError(ret)
+		return getError(ret)
 	}
 
 	return nil
@@ -83,7 +83,7 @@ func (image *Image) RemoveMetadata(key string) error {
 
 	ret := C.rbd_metadata_remove(image.image, cKey)
 	if ret < 0 {
-		return rbdError(ret)
+		return getError(ret)
 	}
 
 	return nil
