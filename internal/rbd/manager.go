@@ -337,6 +337,68 @@ func (mgr *rbdManager) GetVolumeGroupSnapshotByID(
 	return vgs, nil
 }
 
+func (mgr *rbdManager) GetVolumeGroupSnapshotByName(
+	ctx context.Context,
+	name string,
+) (types.VolumeGroupSnapshot, error) {
+	pool, ok := mgr.parameters["pool"]
+	if !ok || pool == "" {
+		return nil, errors.New("required 'pool' option missing in volume group parameters")
+	}
+
+	// groupNamePrefix is an optional parameter, can be an empty string
+	prefix := mgr.parameters["groupNamePrefix"]
+
+	clusterID, err := util.GetClusterID(mgr.parameters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cluster-id: %w", err)
+	}
+
+	uuid, freeUUID, err := mgr.getGroupUUID(ctx, clusterID, pool, name, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get a UUID for volume group snapshot %q: %w", name, err)
+	}
+	defer func() {
+		// no error, no need to undo the reservation
+		if err == nil {
+			return
+		}
+
+		freeUUID()
+	}()
+
+	monitors, err := util.Mons(util.CsiConfigFile, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find MONs for cluster %q: %w", clusterID, err)
+	}
+
+	_ /*journalPoolID*/, poolID, err := util.GetPoolIDs(ctx, monitors, pool, pool, mgr.creds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the pool for volume group snapshot with uuid for %q: %w", uuid, err)
+	}
+
+	csiID, err := util.GenerateVolID(ctx, monitors, mgr.creds, poolID, pool, clusterID, uuid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate a unique CSI volume group with uuid %q: %w", uuid, err)
+	}
+
+	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, csiID, mgr.csiID, mgr.creds, mgr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing volume group snapshot with uuid %q: %w", uuid, err)
+	}
+
+	snapshots, err := vgs.ListSnapshots(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get snapshots for volume group snapshot %q: %w", vgs, err)
+	}
+
+	if len(snapshots) == 0 {
+		return nil, fmt.Errorf("volume group snapshot %q is incomplete, it has no snapshots", vgs)
+	}
+
+	return vgs, nil
+}
+
 func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 	ctx context.Context,
 	vg types.VolumeGroup,

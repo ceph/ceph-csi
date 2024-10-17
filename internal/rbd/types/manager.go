@@ -57,6 +57,10 @@ type Manager interface {
 	// CSI id/handle.
 	GetVolumeGroupSnapshotByID(ctx context.Context, id string) (VolumeGroupSnapshot, error)
 
+	// GetVolumeGroupSnapshotByName resolves the VolumeGroupSnapshot by the
+	// name (like the request-id).
+	GetVolumeGroupSnapshotByName(ctx context.Context, name string) (VolumeGroupSnapshot, error)
+
 	// CreateVolumeGroupSnapshot instructs the Manager to create a
 	// VolumeGroupSnapshot from the VolumeGroup. All snapshots in the
 	// returned VolumeGroupSnapshot have been taken while I/O on the
