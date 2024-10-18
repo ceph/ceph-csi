@@ -7,27 +7,17 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/ceph/go-ceph/internal/errutil"
 )
-
-// rbdError represents an error condition returned from the librbd APIs.
-type rbdError int
-
-func (e rbdError) Error() string {
-	return errutil.FormatErrorCode("rbd", int(e))
-}
-
-func (e rbdError) ErrorCode() int {
-	return int(e)
-}
 
 func getError(err C.int) error {
 	if err != 0 {
 		if err == -C.ENOENT {
 			return ErrNotFound
 		}
-		return rbdError(err)
+		return errutil.GetError("rbd", int(err))
 	}
 	return nil
 }
@@ -60,7 +50,7 @@ var (
 	ErrImageIsOpen = errors.New("RBD image is open")
 	// ErrNotFound may be returned from an api call when the requested item is
 	// missing.
-	ErrNotFound = errors.New("RBD image not found")
+	ErrNotFound = fmt.Errorf("RBD image not found: %w", errutil.GetError("rbd", -C.ENOENT))
 	// ErrNoNamespaceName maye be returned if an api call requires a namespace
 	// name and it is not provided.
 	ErrNoNamespaceName = errors.New("Namespace value is missing")
@@ -69,20 +59,15 @@ var (
 	RbdErrorImageNotOpen = ErrImageNotOpen
 	RbdErrorNotFound     = ErrNotFound
 	// revive:enable:exported
-)
 
-// Public general error
-const (
 	// ErrExist indicates a non-specific already existing resource.
-	ErrExist = rbdError(-C.EEXIST)
+	ErrExist = getError(-C.EEXIST)
 	// ErrNotExist indicates a non-specific missing resource.
-	ErrNotExist = rbdError(-C.ENOENT)
+	ErrNotExist = getError(-C.ENOENT)
 	// ErrNotImplemented indicates a function is not implemented in by librbd.
-	ErrNotImplemented = rbdError(-C.ENOSYS)
-)
+	ErrNotImplemented = getError(-C.ENOSYS)
 
-// Private errors:
+	// Private errors:
 
-const (
-	errRange = rbdError(-C.ERANGE)
+	errRange = getError(-C.ERANGE)
 )

@@ -21,6 +21,8 @@ import (
 
 	"github.com/ceph/go-ceph/rados"
 	"github.com/csi-addons/spec/lib/go/volumegroup"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 type journalledObject interface {
@@ -66,4 +68,6 @@ type VolumeGroup interface {
 
 	// ListVolumes returns a slice with all Volumes in the VolumeGroup.
 	ListVolumes(ctx context.Context) ([]Volume, error)
+
+	CreateSnapshots(ctx context.Context, cr *util.Credentials, name string) ([]Snapshot, error)
 }

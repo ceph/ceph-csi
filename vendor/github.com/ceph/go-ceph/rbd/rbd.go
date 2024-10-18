@@ -178,7 +178,7 @@ func Create(ioctx *rados.IOContext, name string, size uint64, order int,
 	}
 
 	if ret < 0 {
-		return nil, rbdError(ret)
+		return nil, getError(ret)
 	}
 
 	return &Image{
@@ -205,7 +205,7 @@ func Create2(ioctx *rados.IOContext, name string, size uint64, features uint64,
 	ret = C.rbd_create2(cephIoctx(ioctx), cName,
 		C.uint64_t(size), C.uint64_t(features), &cOrder)
 	if ret < 0 {
-		return nil, rbdError(ret)
+		return nil, getError(ret)
 	}
 
 	return &Image{
@@ -235,7 +235,7 @@ func Create3(ioctx *rados.IOContext, name string, size uint64, features uint64,
 		C.uint64_t(size), C.uint64_t(features), &cOrder,
 		C.uint64_t(stripeUnit), C.uint64_t(stripeCount))
 	if ret < 0 {
-		return nil, rbdError(ret)
+		return nil, getError(ret)
 	}
 
 	return &Image{
@@ -274,7 +274,7 @@ func (image *Image) Clone(snapname string, cIoctx *rados.IOContext, cName string
 		C.uint64_t(features),
 		&cOrder)
 	if ret < 0 {
-		return nil, rbdError(ret)
+		return nil, getError(ret)
 	}
 
 	return &Image{
@@ -325,9 +325,9 @@ func (image *Image) Rename(destname string) error {
 	defer C.free(unsafe.Pointer(cSrcName))
 	defer C.free(unsafe.Pointer(cDestName))
 
-	err := rbdError(C.rbd_rename(cephIoctx(image.ioctx),
+	err := getError(C.rbd_rename(cephIoctx(image.ioctx),
 		cSrcName, cDestName))
-	if err == 0 {
+	if err == nil {
 		image.name = destname
 		return nil
 	}
@@ -385,7 +385,7 @@ func (image *Image) Close() error {
 	}
 
 	if ret := C.rbd_close(image.image); ret != 0 {
-		return rbdError(ret)
+		return getError(ret)
 	}
 
 	image.image = nil
@@ -418,7 +418,7 @@ func (image *Image) Stat() (info *ImageInfo, err error) {
 	var cStat C.rbd_image_info_t
 
 	if ret := C.rbd_stat(image.image, &cStat, C.size_t(unsafe.Sizeof(info))); ret < 0 {
-		return info, rbdError(ret)
+		return info, getError(ret)
 	}
 
 	return &ImageInfo{
@@ -443,7 +443,7 @@ func (image *Image) IsOldFormat() (bool, error) {
 	ret := C.rbd_get_old_format(image.image,
 		&cOldFormat)
 	if ret < 0 {
-		return false, rbdError(ret)
+		return false, getError(ret)
 	}
 
 	return cOldFormat != 0, nil
@@ -460,7 +460,7 @@ func (image *Image) GetSize() (size uint64, err error) {
 	}
 
 	if ret := C.rbd_get_size(image.image, (*C.uint64_t)(&size)); ret < 0 {
-		return 0, rbdError(ret)
+		return 0, getError(ret)
 	}
 
 	return size, nil
@@ -478,7 +478,7 @@ func (image *Image) GetStripeUnit() (uint64, error) {
 
 	var stripeUnit uint64
 	if ret := C.rbd_get_stripe_unit(image.image, (*C.uint64_t)(&stripeUnit)); ret < 0 {
-		return 0, rbdError(ret)
+		return 0, getError(ret)
 	}
 
 	return stripeUnit, nil
@@ -496,7 +496,7 @@ func (image *Image) GetStripeCount() (uint64, error) {
 
 	var stripeCount uint64
 	if ret := C.rbd_get_stripe_count(image.image, (*C.uint64_t)(&stripeCount)); ret < 0 {
-		return 0, rbdError(ret)
+		return 0, getError(ret)
 	}
 
 	return stripeCount, nil
@@ -514,7 +514,7 @@ func (image *Image) GetOverlap() (overlap uint64, err error) {
 	}
 
 	if ret := C.rbd_get_overlap(image.image, (*C.uint64_t)(&overlap)); ret < 0 {
-		return overlap, rbdError(ret)
+		return overlap, getError(ret)
 	}
 
 	return overlap, nil
@@ -573,7 +573,7 @@ func (image *Image) DeepCopy(ioctx *rados.IOContext, destname string, rio *Image
 		return ErrNoName
 	}
 	if rio == nil {
-		return rbdError(C.EINVAL)
+		return getError(C.EINVAL)
 	}
 
 	cDestname := C.CString(destname)
@@ -644,8 +644,8 @@ func (image *Image) ListLockers() (tag string, lockers []Locker, err error) {
 	// and *0* means no locker held on rbd image.
 	// but *0* is unexpected here because first rbd_list_lockers already
 	// dealt with no locker case
-	if int(cLockerCount) <= 0 {
-		return "", nil, rbdError(cLockerCount)
+	if cLockerCount <= 0 {
+		return "", nil, getError(C.int(cLockerCount))
 	}
 
 	clients := cutil.SplitSparseBuffer(clientsBuf)
@@ -754,7 +754,7 @@ func (image *Image) Read(data []byte) (int, error) {
 		(*C.char)(unsafe.Pointer(&data[0]))))
 
 	if ret < 0 {
-		return 0, rbdError(ret)
+		return 0, getError(C.int(ret))
 	}
 
 	image.offset += int64(ret)
@@ -786,7 +786,7 @@ func (image *Image) Write(data []byte) (n int, err error) {
 	}
 
 	if ret != len(data) {
-		err = rbdError(-C.EPERM)
+		err = getError(-C.EPERM)
 	}
 
 	return ret, err
@@ -825,7 +825,7 @@ func (image *Image) Discard(ofs uint64, length uint64) (int, error) {
 
 	ret := C.rbd_discard(image.image, C.uint64_t(ofs), C.uint64_t(length))
 	if ret < 0 {
-		return 0, rbdError(ret)
+		return 0, getError(ret)
 	}
 
 	return int(ret), nil
@@ -848,7 +848,7 @@ func (image *Image) ReadAt(data []byte, off int64) (int, error) {
 		(*C.char)(unsafe.Pointer(&data[0]))))
 
 	if ret < 0 {
-		return 0, rbdError(ret)
+		return 0, getError(C.int(ret))
 	}
 
 	if ret < len(data) {
@@ -872,7 +872,7 @@ func (image *Image) WriteAt(data []byte, off int64) (n int, err error) {
 		C.size_t(len(data)), (*C.char)(unsafe.Pointer(&data[0]))))
 
 	if ret != len(data) {
-		err = rbdError(-C.EPERM)
+		err = getError(-C.EPERM)
 	}
 
 	return ret, err
@@ -938,7 +938,7 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	ret := C.rbd_snap_list(image.image, nil, &cMaxSnaps)
 	// bugfix index out of range(&cSnaps[0])
 	if cMaxSnaps < 1 {
-		return nil, rbdError(ret)
+		return nil, getError(ret)
 	}
 	cSnaps := make([]C.rbd_snap_info_t, cMaxSnaps)
 	snaps = make([]SnapInfo, cMaxSnaps)
@@ -946,7 +946,7 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	ret = C.rbd_snap_list(image.image,
 		&cSnaps[0], &cMaxSnaps)
 	if ret < 0 {
-		return nil, rbdError(ret)
+		return nil, getError(ret)
 	}
 
 	for i, s := range cSnaps {
@@ -1253,7 +1253,7 @@ func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *ImageOpt
 		return ErrNoName
 	}
 	if rio == nil {
-		return rbdError(C.EINVAL)
+		return getError(C.EINVAL)
 	}
 
 	cName := C.CString(name)
@@ -1294,7 +1294,7 @@ func CloneImage(ioctx *rados.IOContext, parentName, snapName string,
 	destctx *rados.IOContext, name string, rio *ImageOptions) error {
 
 	if rio == nil {
-		return rbdError(C.EINVAL)
+		return getError(C.EINVAL)
 	}
 
 	cParentName := C.CString(parentName)
