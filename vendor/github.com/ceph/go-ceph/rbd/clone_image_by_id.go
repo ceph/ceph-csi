@@ -52,7 +52,7 @@ var (
 func CloneImageByID(ioctx *rados.IOContext, parentName string, snapID uint64,
 	destctx *rados.IOContext, name string, rio *ImageOptions) error {
 	if rio == nil {
-		return rbdError(C.EINVAL)
+		return getError(C.EINVAL)
 	}
 
 	rbdClone4Once.Do(func() {

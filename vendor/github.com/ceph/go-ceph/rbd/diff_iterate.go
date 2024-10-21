@@ -96,7 +96,7 @@ func (image *Image) DiffIterate(config DiffIterateConfig) error {
 		return err
 	}
 	if config.Callback == nil {
-		return rbdError(C.EINVAL)
+		return getError(C.EINVAL)
 	}
 
 	var cSnapName *C.char

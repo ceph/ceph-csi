@@ -57,7 +57,7 @@ func resize2Callback(
 func (image *Image) Resize2(size uint64, allowShrink bool, cb Resize2ProgressCallback, data interface{}) error {
 	// the provided callback must be a real function
 	if cb == nil {
-		return rbdError(C.EINVAL)
+		return getError(C.EINVAL)
 	}
 
 	if err := image.validate(imageIsOpen); err != nil {
