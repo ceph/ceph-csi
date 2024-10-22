@@ -38,6 +38,9 @@ RUN source /build.env && \
 # test if the downloaded version of Golang works (different arch?)
 RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 
+# other/conflicting versions of protobuf get installed as dependency
+RUN dnf -y remove protobuf
+
 RUN dnf -y install --nodocs \
 	librados-devel librbd-devel libcephfs-devel \
 	/usr/bin/cc \
