@@ -25,6 +25,9 @@ RUN dnf config-manager --disable \
 
 RUN mkdir /etc/selinux || true && touch /etc/selinux/config
 
+# other/conflicting versions of protobuf get installed as dependency
+RUN dnf -y remove protobuf
+
 RUN dnf -y install \
 	git \
 	make \
