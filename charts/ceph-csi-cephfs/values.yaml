@@ -2,6 +2,9 @@
 rbac:
   # Specifies whether RBAC resources should be created
   create: true
+  # When possible try and reduce the scope of permission to only give
+  # access to resources defined in the config. See the README for more info
+  leastPrivileges: true
 
 serviceAccounts:
   nodeplugin:
@@ -30,6 +33,20 @@ serviceAccounts:
 #       netNamespaceFilePath: "{{ .kubeletDir }}/plugins/{{ .driverName }}/net"
 #       radosNamespace: "csi"
 csiConfig: []
+
+# Configuration for the encryption KMS
+# yamllint disable-line rule:line-length
+# Ref: https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-cephfs.md#cephfs-volume-encryption
+# Example:
+#   encryptionKMSConfig:
+#     encryptionKMSType: vault
+#     vaultAddress: https://vault.example.com
+#     vaultAuthPath: /v1/auth/kubernetes/login
+#     vaultRole: csi-kubernetes
+#     vaultPassphraseRoot: /v1/secret
+#     vaultPassphrasePath: ceph-csi/
+#     vaultCAVerify: "true"
+encryptionKMSConfig: {}
 
 # Labels to apply to all resources
 commonLabels: {}
@@ -329,6 +346,18 @@ storageClass:
   # If omitted, defaults to "csi-vol-".
   # volumeNamePrefix: "foo-bar-"
   volumeNamePrefix: ""
+
+  # (optional) Instruct the plugin it has to encrypt the volume
+  # By default it is disabled. Valid values are "true" or "false".
+  # A string is expected here, i.e. "true", not true.
+  # encrypted: "true"
+  encrypted: ""
+
+  # (optional) Use external key management system for encryption passphrases by
+  # specifying a unique ID matching KMS ConfigMap. The ID is only used for
+  # correlation to configmap entry.
+  encryptionKMSID: ""
+
   # The secrets have to contain user and/or Ceph admin credentials.
   provisionerSecret: csi-cephfs-secret
   # If the Namespaces are not specified, the secrets are assumed to

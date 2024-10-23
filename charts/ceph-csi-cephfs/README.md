@@ -66,6 +66,33 @@ version.
 We recommend not to use `--reuse-values` in case there are new defaults AND
 compare your currently used values with the new default values.
 
+### Enabling encryption support
+
+To enable FSCrypt support, you will need to include the KMS configuration in
+`encryptionKMSConfig`.
+
+Here is a `values.yaml` example using a Kubernetes secret (`kubernetes` KMS)
+
+```yaml
+encryptionKMSConfig:
+    encryptionKMSType: "metadata"
+    secretName: "cephfs-encryption-passphrase" # This secret needs to contain the passphrase as the key `encryptionPassphrase`
+    secretNamespace: "my-namespace"
+storageClass:
+    encrypted: true
+    encryptionKMSID: kubernetes
+```
+
+#### Least privilege secret access
+
+If you use the `metadata` and let RBAC created by the chart, permissions
+will be given to access **only** the secret referenced in the
+`encryptionKMSConfig`. This is something important to keep in mind, as a
+manual change to the config to point to another secret or add further KMS
+config will not be authorized. If you wish to give CephCSI a global secret
+access to the cluster, you may set `rbac.leastPrivileges` to `false`, and
+permissions will be granted globally via a *ClusterRole*.
+
 #### Known Issues Upgrading
 
 - When upgrading to version >=3.7.0, you might encounter an error that the
@@ -110,11 +137,13 @@ charts and their default values.
 | Parameter                                      | Description                                                                                                                                          | Default                                            |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | `rbac.create`                                  | Specifies whether RBAC resources should be created                                                                                                   | `true`                                             |
+| `rbac.leastPrivileges`                         | Specifies whether RBAC resources should be created with a restricted scope when supported (only secrets supported currently)                         | `true`                                             |
 | `serviceAccounts.nodeplugin.create`            | Specifies whether a nodeplugin ServiceAccount should be created                                                                                      | `true`                                             |
 | `serviceAccounts.nodeplugin.name`              | The name of the nodeplugin ServiceAccount to use. If not set and create is true, a name is generated using the fullname                              | ""                                                 |
 | `serviceAccounts.provisioner.create`           | Specifies whether a provisioner ServiceAccount should be created                                                                                     | `true`                                             |
 | `serviceAccounts.provisioner.name`             | The name of the provisioner ServiceAccount of provisioner to use. If not set and create is true, a name is generated using the fullname              | ""                                                 |
 | `csiConfig`                                    | Configuration for the CSI to connect to the cluster                                                                                                  | []                                                 |
+| `encryptionKMSConfig`                          | Configuration for the encryption KMS                                                                                                                 | `{}`                                               |
 | `commonLabels`                                 | Labels to apply to all resources                                                               | `{}`                                                  |
 | `logLevel`                                     | Set logging level for csi containers. Supported values from 0 to 5. 0 for general useful logs, 5 for trace level verbosity.                          | `5`                                                |
 | `sidecarLogLevel`                              | Set logging level for csi sidecar containers. Supported values from 0 to 5. 0 for general useful logs, 5 for trace level verbosity.                  | `1`                                                |
@@ -184,6 +213,8 @@ charts and their default values.
 | `storageClass.name`                            | Specifies the cephFS StorageClass name                                                                                                               | `csi-cephfs-sc`                                    |
 | `storageClass.annotations`                     | Specifies the annotations for the cephFS storageClass                                                                                                | `[]`                                               |
 | `storageClass.clusterID`                       | String representing a Ceph cluster to provision storage from                                                                                         | `<cluster-ID>`                                     |
+| `storageClass.encrypted`                       | Specifies whether volume should be encrypted. Set it to true if you want to enable encryption                                                        | `""`                                               |
+| `storageClass.encryptionKMSID`                 | Specifies the encryption kms id                                                                                                                      | `""`                                               |
 | `storageClass.fsName`                          | CephFS filesystem name into which the volume shall be created                                                                                        | `myfs`                                             |
 | `storageClass.pool`                            | Ceph pool into which volume data shall be stored                                                                                                     | `""`                                               |
 | `storageClass.fuseMountOptions`                | Comma separated string of Ceph-fuse mount options                                                                                                    | `""`                                               |

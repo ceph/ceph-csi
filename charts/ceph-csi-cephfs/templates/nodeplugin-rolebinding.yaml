@@ -1,0 +1,24 @@
+{{- if and .Values.rbac.create .Values.rbac.leastPrivileges -}}
+{{- if and .Values.encryptionKMSConfig (eq .Values.encryptionKMSConfig.encryptionKMSType "metadata") .Values.encryptionKMSConfig.secretNamespace -}}
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
+  namespace: {{ .Values.encryptionKMSConfig.secretNamespace }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ceph-csi-cephfs.serviceAccountName.nodeplugin" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end -}}
+{{- end -}}
