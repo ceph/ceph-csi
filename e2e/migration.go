@@ -63,7 +63,8 @@ func generateClusterIDConfigMapForMigration(f *framework.Framework, c kubernetes
 		return fmt.Errorf("failed to create configmap: %w", err)
 	}
 	// restart csi pods for the configmap to take effect.
-	err = recreateCSIPods(f, rbdPodLabels, rbdDaemonsetName, rbdDeploymentName)
+	err = recreateCSIPods(f,
+		rbdDeployment.getPodSelector(), rbdDeployment.getDaemonsetName(), rbdDeployment.getDeploymentName())
 	if err != nil {
 		return fmt.Errorf("failed to recreate rbd csi pods: %w", err)
 	}

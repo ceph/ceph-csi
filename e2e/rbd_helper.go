@@ -647,7 +647,7 @@ func validateEncryptedImage(f *framework.Framework, rbdImageSpec, pvName, appNam
 		"/var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount",
 		pod.UID,
 		pvName)
-	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDeployment.getDaemonsetName())
 	if err != nil {
 		return fmt.Errorf("failed to get labels: %w", err)
 	}
@@ -672,7 +672,7 @@ func validateEncryptedFilesystem(f *framework.Framework, rbdImageSpec, pvName, a
 		pod.UID,
 		pvName)
 
-	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDeployment.getDaemonsetName())
 	if err != nil {
 		return fmt.Errorf("failed to get labels: %w", err)
 	}
@@ -708,7 +708,7 @@ func validateEncryptedFilesystem(f *framework.Framework, rbdImageSpec, pvName, a
 // librbd.so.* in a ceph-csi container. If this function is available,
 // VolumeGroupSnapshot support is available.
 func librbdSupportsVolumeGroupSnapshot(f *framework.Framework) (bool, error) {
-	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDeployment.getDaemonsetName())
 	if err != nil {
 		return false, fmt.Errorf("failed to get labels: %w", err)
 	}

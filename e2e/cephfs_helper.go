@@ -161,7 +161,7 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 	stdErr, err := execCommandInDaemonsetPod(
 		f,
 		cmd,
-		cephFSDeamonSetName,
+		cephFSDeployment.getDaemonsetName(),
 		pod.Spec.NodeName,
 		cephFSContainerName,
 		cephCSINamespace)
@@ -396,7 +396,7 @@ func validateEncryptedCephfs(f *framework.Framework, pvName, appName string) err
 		pod.UID,
 		pvName)
 
-	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, cephFSDeamonSetName)
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, cephFSDeployment.getDaemonsetName())
 	if err != nil {
 		return fmt.Errorf("failed to get labels: %w", err)
 	}

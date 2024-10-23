@@ -46,7 +46,18 @@ var (
 	subvolumegroup        = "e2e"
 	fileSystemName        = "myfs"
 	fileSystemPoolName    = "myfs-replicated"
+
+	helmCephFSPodsLabel = "ceph-csi-cephfs"
+
+	operatorCephFSDeploymentName = "cephfs.csi.ceph.com-ctrlplugin"
+	operatorCephFSDaemonsetName  = "cephfs.csi.ceph.com-nodeplugin"
+
+	cephFSDeployment CephFSDeploymentMethod
 )
+
+type CephFSDeployment struct {
+	DriverInfo
+}
 
 func deployCephfsPlugin() {
 	// delete objects deployed by rook
@@ -165,6 +176,18 @@ func validateSubvolumePath(f *framework.Framework, pvcName, pvcNamespace, fileSy
 	return nil
 }
 
+func NewCephFSDeployment(c clientset.Interface) CephFSDeploymentMethod {
+	return &CephFSDeployment{
+		DriverInfo: DriverInfo{
+			clientSet:        c,
+			deploymentName:   cephFSDeploymentName,
+			daemonsetName:    cephFSDeamonSetName,
+			helmPodLabelName: helmCephFSPodsLabel,
+			driverContainers: []string{cephFSContainerName},
+		},
+	}
+}
+
 var _ = Describe(cephfsType, func() {
 	f := framework.NewDefaultFramework(cephfsType)
 	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
@@ -175,13 +198,20 @@ var _ = Describe(cephfsType, func() {
 			Skip("Skipping CephFS E2E")
 		}
 		c = f.ClientSet
-		if deployCephFS {
-			if cephCSINamespace != defaultNs {
-				err := createNamespace(c, cephCSINamespace)
-				if err != nil {
-					framework.Failf("failed to create namespace %s: %v", cephCSINamespace, err)
-				}
+		cephFSDeployment = NewCephFSDeployment(c)
+		if operatorDeployment {
+			cephFSDeployment = NewCephFSOperatorDeployment(c)
+		}
+
+		// No need to create the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+			err := createNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to create namespace %s: %v", cephCSINamespace, err)
 			}
+		}
+
+		if deployCephFS {
 			deployCephfsPlugin()
 		}
 		err := createConfigMap(cephFSDirPath, f.ClientSet, f)
@@ -208,12 +238,9 @@ var _ = Describe(cephfsType, func() {
 		}
 		deployVault(f.ClientSet, deployTimeout)
 
-		// wait for cluster name update in deployment
-		containers := []string{cephFSContainerName}
-		err = waitForContainersArgsUpdate(c, cephCSINamespace, cephFSDeploymentName,
-			"clustername", defaultClusterName, containers, deployTimeout)
+		err = cephFSDeployment.setClusterName(defaultClusterName)
 		if err != nil {
-			framework.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, cephFSDeploymentName, err)
+			framework.Failf("failed to set cluster name: %v", err)
 		}
 
 		err = createSubvolumegroup(f, fileSystemName, subvolumegroup)
@@ -226,13 +253,14 @@ var _ = Describe(cephfsType, func() {
 		if !testCephFS || upgradeTesting {
 			Skip("Skipping CephFS E2E")
 		}
+
 		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
-			logsCSIPods("app=ceph-csi-cephfs", c)
+			logsCSIPods("app="+helmCephFSPodsLabel, c)
 			// log provisioner
-			logsCSIPods("app=csi-cephfsplugin-provisioner", c)
+			logsCSIPods("app="+cephFSDeployment.getDeploymentName(), c)
 			// log node plugin
-			logsCSIPods("app=csi-cephfsplugin", c)
+			logsCSIPods("app="+cephFSDeployment.getDaemonsetName(), c)
 
 			// log all details from the namespace where Ceph-CSI is deployed
 			e2edebug.DumpAllNamespaceInfo(context.TODO(), c, cephCSINamespace)
@@ -266,11 +294,12 @@ var _ = Describe(cephfsType, func() {
 
 		if deployCephFS {
 			deleteCephfsPlugin()
-			if cephCSINamespace != defaultNs {
-				err = deleteNamespace(c, cephCSINamespace)
-				if err != nil {
-					framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
-				}
+		}
+		// No need to delete the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+			err = deleteNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
 			}
 		}
 	})
@@ -299,16 +328,16 @@ var _ = Describe(cephfsType, func() {
 			}
 
 			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
+				err := waitForDeploymentComplete(f.ClientSet, cephFSDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment %s: %v", cephFSDeploymentName, err)
+					framework.Failf("timeout waiting for deployment %s: %v", cephFSDeployment.getDeploymentName(), err)
 				}
 			})
 
 			By("checking nodeplugin daemonset pods are running", func() {
-				err := waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err := waitForDaemonSets(cephFSDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for daemonset %s: %v", cephFSDeamonSetName, err)
+					framework.Failf("timeout waiting for daemonset %s: %v", cephFSDeployment.getDaemonsetName(), err)
 				}
 			})
 
@@ -338,7 +367,7 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				err = verifySeLinuxMountOption(f, pvcPath, appPath,
-					cephFSDeamonSetName, cephFSContainerName, cephCSINamespace)
+					cephFSDeployment.getDaemonsetName(), cephFSContainerName, cephCSINamespace)
 				if err != nil {
 					framework.Failf("failed to verify mount options: %v", err)
 				}
@@ -764,7 +793,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				// Kill ceph-fuse in cephfs-csi node plugin Pods.
-				nodePluginSelector, err := getDaemonSetLabelSelector(f, cephCSINamespace, cephFSDeamonSetName)
+				nodePluginSelector, err := getDaemonSetLabelSelector(f, cephCSINamespace, cephFSDeployment.getDaemonsetName())
 				if err != nil {
 					framework.Failf("failed to get node plugin DaemonSet label selector: %v", err)
 				}
@@ -2498,20 +2527,11 @@ var _ = Describe(cephfsType, func() {
 						framework.Failf("failed to create configmap: %v", err)
 					}
 
-					// delete csi pods
-					err = deletePodWithLabel("app in (ceph-csi-cephfs, csi-cephfsplugin, csi-cephfsplugin-provisioner)",
-						cephCSINamespace, false)
+					// restart csi pods for the configmap to take effect.
+					err = recreateCSIPods(f, cephFSDeployment.getPodSelector(),
+						cephFSDeployment.getDaemonsetName(), cephFSDeployment.getDeploymentName())
 					if err != nil {
-						framework.Failf("failed to delete pods with labels: %v", err)
-					}
-					// wait for csi pods to come up
-					err = waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
-					if err != nil {
-						framework.Failf("timeout waiting for daemonset pods: %v", err)
-					}
-					err = waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
-					if err != nil {
-						framework.Failf("timeout waiting for deployment pods: %v", err)
+						framework.Failf("failed to recreate cephfs csi pods: %v", err)
 					}
 				}
 

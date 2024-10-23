@@ -50,9 +50,20 @@ var (
 
 	// FIXME: some tests change the subvolumegroup to "e2e".
 	defaultSubvolumegroup = "csi"
+
+	helmNFSPodsLabel = "ceph-csi-nfs"
+
+	operatorNFSDeploymentName = "nfs.csi.ceph.com-ctrlplugin"
+	operatorNFSDaemonsetName  = "nfs.csi.ceph.com-nodeplugin"
+
+	nfsDeployment NFSDeploymentMethod
 )
 
-func deployNFSPlugin(f *framework.Framework) {
+type NFSDeployment struct {
+	DriverInfo
+}
+
+func deployNFSPlugin() {
 	// delete objects deployed by rook
 
 	err := deleteResource(nfsDirPath + nfsProvisionerRBAC)
@@ -65,18 +76,35 @@ func deployNFSPlugin(f *framework.Framework) {
 		framework.Failf("failed to delete nodeplugin rbac %s: %v", nfsDirPath+nfsNodePluginRBAC, err)
 	}
 
-	// the pool should not be deleted, as it may contain configurations
-	// from non-e2e related CephNFS objects
-	err = createPool(f, nfsPoolName)
-	if err != nil {
-		framework.Failf("failed to create pool for NFS config %q: %v", nfsPoolName, err)
-	}
-
 	createORDeleteNFSResources(kubectlCreate)
 }
 
 func deleteNFSPlugin() {
 	createORDeleteNFSResources(kubectlDelete)
+}
+
+func createNFSPool(f *framework.Framework) {
+	// the pool should not be deleted, as it may contain configurations
+	// from non-e2e related CephNFS objects
+	err := createPool(f, nfsPoolName)
+	if err != nil {
+		framework.Failf("failed to create pool for NFS config %q: %v", nfsPoolName, err)
+	}
+
+	resources := []ResourceDeployer{
+		// NFS server deployment
+		&yamlResourceNamespaced{
+			filename:  nfsExamplePath + nfsRookCephNFS,
+			namespace: rookNamespace,
+		},
+	}
+
+	for _, r := range resources {
+		err := r.Do(kubectlCreate)
+		if err != nil {
+			framework.Failf("failed to %s resource: %v", kubectlCreate, err)
+		}
+	}
 }
 
 func createORDeleteNFSResources(action kubectlAction) {
@@ -221,7 +249,7 @@ func unmountNFSVolume(f *framework.Framework, appName, pvcName string) error {
 	stdErr, err := execCommandInDaemonsetPod(
 		f,
 		cmd,
-		nfsDeamonSetName,
+		nfsDeployment.getDaemonsetName(),
 		pod.Spec.NodeName,
 		"csi-nfsplugin", // name of the container
 		cephCSINamespace)
@@ -242,14 +270,36 @@ var _ = Describe("nfs", func() {
 			Skip("Skipping NFS E2E")
 		}
 		c = f.ClientSet
-		if deployNFS {
-			if cephCSINamespace != defaultNs {
-				err := createNamespace(c, cephCSINamespace)
-				if err != nil {
-					framework.Failf("failed to create namespace %s: %v", cephCSINamespace, err)
-				}
+		nfsDeployment = &NFSDeployment{
+			DriverInfo: DriverInfo{
+				clientSet:        c,
+				deploymentName:   nfsDeploymentName,
+				daemonsetName:    nfsDeamonSetName,
+				driverContainers: []string{nfsContainerName},
+			},
+		}
+		if operatorDeployment {
+			nfsDeployment = &OperatorDeployment{
+				DriverInfo: DriverInfo{
+					clientSet:        c,
+					deploymentName:   operatorNFSDeploymentName,
+					daemonsetName:    operatorNFSDaemonsetName,
+					helmPodLabelName: helmNFSPodsLabel,
+					driverContainers: []string{nfsContainerName},
+				},
 			}
-			deployNFSPlugin(f)
+		}
+		// No need to create the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
+			err := createNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to create namespace %s: %v", cephCSINamespace, err)
+			}
+		}
+
+		createNFSPool(f)
+		if deployNFS {
+			deployNFSPlugin()
 		}
 
 		// cephfs testing might have changed the default subvolumegroup
@@ -287,13 +337,14 @@ var _ = Describe("nfs", func() {
 		if !testNFS || upgradeTesting {
 			Skip("Skipping NFS E2E")
 		}
+
 		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
-			logsCSIPods("app=ceph-csi-nfs", c)
+			logsCSIPods("app="+helmNFSPodsLabel, c)
 			// log provisioner
-			logsCSIPods("app=csi-nfsplugin-provisioner", c)
+			logsCSIPods("app="+nfsDeployment.getDeploymentName(), c)
 			// log node plugin
-			logsCSIPods("app=csi-nfsplugin", c)
+			logsCSIPods("app="+nfsDeployment.getDaemonsetName(), c)
 
 			// log all details from the namespace where Ceph-CSI is deployed
 			e2edebug.DumpAllNamespaceInfo(context.TODO(), c, cephCSINamespace)
@@ -325,11 +376,12 @@ var _ = Describe("nfs", func() {
 
 		if deployNFS {
 			deleteNFSPlugin()
-			if cephCSINamespace != defaultNs {
-				err = deleteNamespace(c, cephCSINamespace)
-				if err != nil {
-					framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
-				}
+		}
+		// No need to delete the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
+			err = deleteNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
 			}
 		}
 	})
@@ -356,16 +408,16 @@ var _ = Describe("nfs", func() {
 			}
 
 			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(f.ClientSet, nfsDeploymentName, cephCSINamespace, deployTimeout)
+				err := waitForDeploymentComplete(f.ClientSet, nfsDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment %s: %v", nfsDeploymentName, err)
+					framework.Failf("timeout waiting for deployment %s: %v", nfsDeployment.getDeploymentName(), err)
 				}
 			})
 
 			By("checking nodeplugin deamonset pods are running", func() {
-				err := waitForDaemonSets(nfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err := waitForDaemonSets(nfsDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for daemonset %s: %v", nfsDeamonSetName, err)
+					framework.Failf("timeout waiting for daemonset %s: %v", nfsDeployment.getDaemonsetName(), err)
 				}
 			})
 
@@ -376,7 +428,7 @@ var _ = Describe("nfs", func() {
 				}
 
 				err = verifySeLinuxMountOption(f, pvcPath, appPath,
-					nfsDeamonSetName, nfsContainerName, cephCSINamespace)
+					nfsDeployment.getDaemonsetName(), nfsContainerName, cephCSINamespace)
 				if err != nil {
 					framework.Failf("failed to verify mount options: %v", err)
 				}

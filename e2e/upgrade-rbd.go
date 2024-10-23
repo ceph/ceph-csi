@@ -57,7 +57,12 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			Skip("Skipping RBD Upgrade Testing")
 		}
 		c = f.ClientSet
-		if cephCSINamespace != defaultNs {
+		rbdDeployment = NewRBDDeployment(c)
+		if operatorDeployment {
+			rbdDeployment = NewRBDOperatorDeployment(c)
+		}
+		// No need to create the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
 			err := createNamespace(c, cephCSINamespace)
 			if err != nil {
 				framework.Failf("failed to create namespace: %v", err)
@@ -158,11 +163,12 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		deleteVault()
 		if deployRBD {
 			deleteRBDPlugin()
-			if cephCSINamespace != defaultNs {
-				err = deleteNamespace(c, cephCSINamespace)
-				if err != nil {
-					framework.Failf("failed to delete namespace: %v", err)
-				}
+		}
+		// No need to delete the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+			err = deleteNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to delete namespace: %v", err)
 			}
 		}
 		err = deleteNodeLabels(c, []string{
@@ -184,16 +190,16 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			appPath := rbdExamplePath + "pod.yaml"
 
 			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
+				err := waitForDeploymentComplete(f.ClientSet, rbdDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment %s: %v", rbdDeploymentName, err)
+					framework.Failf("timeout waiting for deployment %s: %v", rbdDeployment.getDeploymentName(), err)
 				}
 			})
 
 			By("checking nodeplugin deamonset pods are running", func() {
-				err := waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err := waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for daemonset %s: %v", rbdDaemonsetName, err)
+					framework.Failf("timeout waiting for daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
 				}
 			})
 
@@ -277,14 +283,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 				deployRBDPlugin()
 
-				err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
+				err = waitForDeploymentComplete(f.ClientSet, rbdDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for upgraded deployment %s: %v", rbdDeploymentName, err)
+					framework.Failf("timeout waiting for upgraded deployment %s: %v", rbdDeployment.getDeploymentName(), err)
 				}
 
-				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for upgraded daemonset %s: %v", rbdDaemonsetName, err)
+					framework.Failf("timeout waiting for upgraded daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
 				}
 
 				// validate if the app gets bound to a pvc created by

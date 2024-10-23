@@ -67,10 +67,7 @@ const (
 	appLabel      = "write-data-in-pod"
 	appCloneLabel = "app-clone"
 
-	noError = ""
-	// labels/selector used to list/delete rbd pods.
-	rbdPodLabels = "app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)"
-
+	noError    = ""
 	exitOneErr = "command terminated with exit code 1"
 
 	// cluster Name, set by user.
@@ -80,31 +77,83 @@ const (
 
 var (
 	// cli flags.
-	deployTimeout     int
-	deployCephFS      bool
-	deployRBD         bool
-	deployNFS         bool
-	testCephFS        bool
-	testCephFSFscrypt bool
-	testRBD           bool
-	testRBDFSCrypt    bool
-	testNBD           bool
-	testNFS           bool
-	helmTest          bool
-	upgradeTesting    bool
-	upgradeVersion    string
-	cephCSINamespace  string
-	rookNamespace     string
-	radosNamespace    string
-	poll              = 2 * time.Second
-	isOpenShift       bool
-	clusterID         string
-	nfsDriverName     string
+	deployTimeout      int
+	deployCephFS       bool
+	deployRBD          bool
+	deployNFS          bool
+	testCephFS         bool
+	testCephFSFscrypt  bool
+	testRBD            bool
+	testRBDFSCrypt     bool
+	testNBD            bool
+	testNFS            bool
+	helmTest           bool
+	upgradeTesting     bool
+	upgradeVersion     string
+	cephCSINamespace   string
+	rookNamespace      string
+	radosNamespace     string
+	poll               = 2 * time.Second
+	isOpenShift        bool
+	clusterID          string
+	nfsDriverName      string
+	operatorDeployment bool
 )
 
 type cephfsFilesystem struct {
 	Name         string `json:"name"`
 	MetadataPool string `json:"metadata_pool"`
+}
+
+type DeploymentMethod interface {
+	getDeploymentName() string
+	getDaemonsetName() string
+	getPodSelector() string
+	setClusterName(clusterName string) error
+}
+type RBDDeploymentMethod interface {
+	DeploymentMethod
+	setDomainLabels(labels []string) error
+	setEnableMetadata(value bool) error
+}
+type CephFSDeploymentMethod interface {
+	DeploymentMethod
+}
+
+type NFSDeploymentMethod interface {
+	DeploymentMethod
+}
+
+var _ DeploymentMethod = &DriverInfo{}
+
+type DriverInfo struct {
+	clientSet        kubernetes.Interface
+	deploymentName   string
+	daemonsetName    string
+	helmPodLabelName string
+	driverContainers []string
+}
+
+func (d *DriverInfo) getDeploymentName() string {
+	return d.deploymentName
+}
+
+func (d *DriverInfo) getDaemonsetName() string {
+	return d.daemonsetName
+}
+
+func (d *DriverInfo) getPodSelector() string {
+	return fmt.Sprintf("app in (%s, %s, %s)", d.helmPodLabelName, d.deploymentName, d.daemonsetName)
+}
+
+func (d *DriverInfo) setClusterName(clusterName string) error {
+	err := waitForContainersArgsUpdate(d.clientSet, cephCSINamespace, d.deploymentName,
+		"clustername", clusterName, d.driverContainers, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for clustername arg update %s/%s: %v", cephCSINamespace, d.deploymentName, err)
+	}
+
+	return nil
 }
 
 // listCephFSFileSystems list CephFS filesystems in json format.
@@ -1643,6 +1692,8 @@ const (
 	kubectlCreate = kubectlAction("create")
 	// kubectlDelete tells retryKubectlInput() to run "delete".
 	kubectlDelete = kubectlAction("delete")
+	// kubectlPatch tells retryKubectlInput() to run "patch".
+	kubectlPatch = kubectlAction("patch")
 )
 
 // String returns the string format of the kubectlAction, this is automatically
@@ -1733,8 +1784,6 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 // retryKubectlArgs takes a namespace and action telling kubectl what to do
 // with the passed arguments. This function retries until no error occurred, or
 // the timeout passed.
-//
-//nolint:unparam // retryKubectlArgs will be used with kubectlDelete arg later on.
 func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
 	args = append([]string{string(action)}, args...)
@@ -1758,7 +1807,7 @@ func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...str
 				args,
 				int(time.Since(start).Seconds()))
 
-			return false, fmt.Errorf("failed to run kubectl: %w", err)
+			return false, fmt.Errorf("failed to run kubectl: %v, error: %w", args, err)
 		}
 
 		return true, nil

@@ -110,7 +110,33 @@ var (
 	volSnapNameKey        = "csi.storage.k8s.io/volumesnapshot/name"
 	volSnapNamespaceKey   = "csi.storage.k8s.io/volumesnapshot/namespace"
 	volSnapContentNameKey = "csi.storage.k8s.io/volumesnapshotcontent/name"
+
+	helmRBDPodsLabel = "ceph-csi-rbd"
+
+	operatorRBDDeploymentName = "rbd.csi.ceph.com-ctrlplugin"
+	operatorRBDDaemonsetName  = "rbd.csi.ceph.com-nodeplugin"
+	rbdContainersName         = []string{"csi-rbdplugin", "csi-rbdplugin-controller"}
+
+	rbdDeployment RBDDeploymentMethod
 )
+
+type RBDDeployment struct {
+	DriverInfo
+}
+
+func (r *RBDDeployment) setDomainLabels(labels []string) error {
+	return nil
+}
+
+func (r *RBDDeployment) setEnableMetadata(value bool) error {
+	err := waitForContainersArgsUpdate(r.clientSet, cephCSINamespace, r.deploymentName,
+		"setmetadata", strconv.FormatBool(value), r.driverContainers, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for setmetadata arg update %s/%s: %v", cephCSINamespace, r.deploymentName, err)
+	}
+
+	return nil
+}
 
 func deployRBDPlugin() {
 	// delete objects deployed by rook
@@ -294,6 +320,18 @@ func ByFileAndBlockEncryption(
 	})
 }
 
+func NewRBDDeployment(c clientset.Interface) RBDDeploymentMethod {
+	return &RBDDeployment{
+		DriverInfo: DriverInfo{
+			clientSet:        c,
+			deploymentName:   rbdDeploymentName,
+			daemonsetName:    rbdDaemonsetName,
+			helmPodLabelName: helmRBDPodsLabel,
+			driverContainers: rbdContainersName,
+		},
+	}
+}
+
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework(rbdType)
 	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
@@ -305,7 +343,20 @@ var _ = Describe("RBD", func() {
 			Skip("Skipping RBD E2E")
 		}
 		c = f.ClientSet
-		if deployRBD {
+		rbdDeployment = NewRBDDeployment(c)
+		if operatorDeployment {
+			rbdDeployment = NewRBDOperatorDeployment(c)
+		}
+
+		// No need to create the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+			err := createNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to create namespace: %v", err)
+			}
+		}
+		// helm script already adds node labels
+		if !helmTest {
 			err := addLabelsToNodes(f, map[string]string{
 				nodeRegionLabel:          regionValue,
 				nodeZoneLabel:            zoneValue,
@@ -315,12 +366,8 @@ var _ = Describe("RBD", func() {
 			if err != nil {
 				framework.Failf("failed to add node labels: %v", err)
 			}
-			if cephCSINamespace != defaultNs {
-				err = createNamespace(c, cephCSINamespace)
-				if err != nil {
-					framework.Failf("failed to create namespace: %v", err)
-				}
-			}
+		}
+		if deployRBD {
 			deployRBDPlugin()
 		}
 		err := createConfigMap(rbdDirPath, f.ClientSet, f)
@@ -356,18 +403,18 @@ var _ = Describe("RBD", func() {
 		deployVault(f.ClientSet, deployTimeout)
 
 		// wait for provisioner deployment
-		err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
+		err = waitForDeploymentComplete(f.ClientSet, rbdDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 		if err != nil {
-			framework.Failf("timeout waiting for deployment %s: %v", rbdDeploymentName, err)
+			framework.Failf("timeout waiting for deployment %s: %v", rbdDeployment.getDeploymentName(), err)
 		}
 
 		// wait for nodeplugin deamonset pods
-		err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+		err = waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 		if err != nil {
-			framework.Failf("timeout waiting for daemonset %s: %v", rbdDaemonsetName, err)
+			framework.Failf("timeout waiting for daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
 		}
 
-		kernelRelease, err = getKernelVersionFromDaemonset(f, cephCSINamespace, rbdDaemonsetName, "csi-rbdplugin")
+		kernelRelease, err = getKernelVersionFromDaemonset(f, cephCSINamespace, rbdDeployment.getDaemonsetName(), rbdContainerName)
 		if err != nil {
 			framework.Failf("failed to get the kernel version: %v", err)
 		}
@@ -376,12 +423,14 @@ var _ = Describe("RBD", func() {
 			nbdMapOptions = "nbd:debug-rbd=20,io-timeout=330"
 		}
 
-		// wait for cluster name update in deployment
-		containers := []string{"csi-rbdplugin", "csi-rbdplugin-controller"}
-		err = waitForContainersArgsUpdate(c, cephCSINamespace, rbdDeploymentName,
-			"clustername", defaultClusterName, containers, deployTimeout)
+		err = rbdDeployment.setDomainLabels([]string{nodeRegionLabel, nodeZoneLabel})
 		if err != nil {
-			framework.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, rbdDeploymentName, err)
+			framework.Failf("failed to set domain labels: %v", err)
+		}
+
+		err = rbdDeployment.setClusterName(defaultClusterName)
+		if err != nil {
+			framework.Failf("failed to set cluster name: %v", err)
 		}
 	})
 
@@ -389,13 +438,14 @@ var _ = Describe("RBD", func() {
 		if !testRBD || upgradeTesting {
 			Skip("Skipping RBD E2E")
 		}
+
 		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
-			logsCSIPods("app=ceph-csi-rbd", c)
+			logsCSIPods("app="+helmRBDPodsLabel, c)
 			// log provisioner
-			logsCSIPods("app=csi-rbdplugin-provisioner", c)
+			logsCSIPods("app="+rbdDeployment.getDeploymentName(), c)
 			// log node plugin
-			logsCSIPods("app=csi-rbdplugin", c)
+			logsCSIPods("app="+rbdDeployment.getDaemonsetName(), c)
 
 			// log all details from the namespace where Ceph-CSI is deployed
 			e2edebug.DumpAllNamespaceInfo(context.TODO(), c, cephCSINamespace)
@@ -425,11 +475,12 @@ var _ = Describe("RBD", func() {
 		deleteVault()
 		if deployRBD {
 			deleteRBDPlugin()
-			if cephCSINamespace != defaultNs {
-				err = deleteNamespace(c, cephCSINamespace)
-				if err != nil {
-					framework.Failf("failed to delete namespace: %v", err)
-				}
+		}
+		// No need to delete the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+			err = deleteNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to delete namespace: %v", err)
 			}
 		}
 		err = deleteNodeLabels(c, []string{
@@ -480,7 +531,7 @@ var _ = Describe("RBD", func() {
 
 			By("verify readAffinity support", func() {
 				err := verifyReadAffinity(f, pvcPath, appPath,
-					rbdDaemonsetName, rbdContainerName, cephCSINamespace)
+					rbdDeployment.getDaemonsetName(), rbdContainerName, cephCSINamespace)
 				if err != nil {
 					framework.Failf("failed to verify readAffinity: %v", err)
 				}
@@ -488,7 +539,7 @@ var _ = Describe("RBD", func() {
 
 			By("verify mountOptions support", func() {
 				err := verifySeLinuxMountOption(f, pvcPath, appPath,
-					rbdDaemonsetName, rbdContainerName, cephCSINamespace)
+					rbdDeployment.getDaemonsetName(), rbdContainerName, cephCSINamespace)
 				if err != nil {
 					framework.Failf("failed to verify mount options: %v", err)
 				}
@@ -1911,7 +1962,7 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 1, defaultRBDPool)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
-				selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+				selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDeployment.getDaemonsetName())
 				if err != nil {
 					framework.Failf("failed to get the labels: %v", err)
 				}
@@ -1922,7 +1973,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				// wait for nodeplugin pods to come up
-				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					framework.Failf("timeout waiting for daemonset pods: %v", err)
 				}
@@ -2847,12 +2898,16 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 1, defaultRBDPool)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				// delete rbd nodeplugin pods
-				err = deletePodWithLabel("app=csi-rbdplugin", cephCSINamespace, false)
+				selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDeployment.getDaemonsetName())
+				if err != nil {
+					framework.Failf("failed to get the labels: %v", err)
+				}
+				err = deletePodWithLabel(selector, cephCSINamespace, false)
 				if err != nil {
 					framework.Failf("fail to delete pod: %v", err)
 				}
 				// wait for nodeplugin pods to come up
-				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					framework.Failf("timeout waiting for daemonset pods: %v", err)
 				}
@@ -3926,20 +3981,11 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						framework.Failf("failed to create rados namespace: %v", err)
 					}
-					// delete csi pods
-					err = deletePodWithLabel("app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)",
-						cephCSINamespace, false)
+					// restart csi pods for the configmap to take effect.
+					err = recreateCSIPods(f,
+						rbdDeployment.getPodSelector(), rbdDeployment.getDaemonsetName(), rbdDeployment.getDeploymentName())
 					if err != nil {
-						framework.Failf("failed to delete pods with labels: %v", err)
-					}
-					// wait for csi pods to come up
-					err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
-					if err != nil {
-						framework.Failf("timeout waiting for daemonset pods: %v", err)
-					}
-					err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
-					if err != nil {
-						framework.Failf("timeout waiting for deployment to be in running state: %v", err)
+						framework.Failf("failed to recreate rbd csi pods: %v", err)
 					}
 				}
 
@@ -5023,13 +5069,12 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
-				// wait for cluster name update in deployment
-				containers := []string{"csi-rbdplugin", "csi-rbdplugin-controller"}
-				err = waitForContainersArgsUpdate(c, cephCSINamespace, rbdDeploymentName,
-					"setmetadata", "false", containers, deployTimeout)
+				err = rbdDeployment.setEnableMetadata(false)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, rbdDeploymentName, err)
+					framework.Failf("failed to update setmetadata arg in %s/%s: %v",
+						cephCSINamespace, rbdDeployment.getDeploymentName(), err)
 				}
+
 				pvcSmartClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
 					framework.Failf("failed to load PVC: %v", err)
@@ -5128,11 +5173,11 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0, defaultRBDPool)
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
-				// wait for cluster name update in deployment
-				err = waitForContainersArgsUpdate(c, cephCSINamespace, rbdDeploymentName,
-					"setmetadata", "true", containers, deployTimeout)
+
+				err = rbdDeployment.setEnableMetadata(true)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, rbdDeploymentName, err)
+					framework.Failf("failed to update setmetadata arg in %s/%s: %v",
+						cephCSINamespace, rbdDeployment.getDeploymentName(), err)
 				}
 			})
 

@@ -52,6 +52,7 @@ func init() {
 	flag.StringVar(&fileSystemName, "filesystem", "myfs", "CephFS filesystem to use")
 	flag.StringVar(&clusterID, "clusterid", "", "Ceph cluster ID to use (defaults to `ceph fsid` detection)")
 	flag.StringVar(&nfsDriverName, "nfs-driver", "nfs.csi.ceph.com", "name of the driver for NFS-volumes")
+	flag.BoolVar(&operatorDeployment, "operator-deployment", false, "test running on deployment via operator")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags
@@ -90,5 +91,9 @@ func handleFlags() {
 	if testCephFS {
 		testNFS = testCephFS
 		deployNFS = deployCephFS
+	}
+
+	if operatorDeployment {
+		cephCSINamespace = "ceph-csi-operator-system"
 	}
 }

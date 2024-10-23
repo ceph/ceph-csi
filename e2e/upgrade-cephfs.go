@@ -61,7 +61,12 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			Skip("Skipping CephFS Upgrade Test")
 		}
 		c = f.ClientSet
-		if cephCSINamespace != defaultNs {
+		cephFSDeployment = NewCephFSDeployment(c)
+		if operatorDeployment {
+			cephFSDeployment = NewCephFSOperatorDeployment(c)
+		}
+		// No need to create the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
 			err = createNamespace(c, cephCSINamespace)
 			if err != nil {
 				framework.Failf("failed to create namespace: %v", err)
@@ -154,13 +159,12 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		deleteVault()
 		if deployCephFS {
 			deleteCephfsPlugin()
-			if cephCSINamespace != defaultNs {
-				err = deleteNamespace(c, cephCSINamespace)
-				if err != nil {
-					if err != nil {
-						framework.Failf("failed to delete namespace: %v", err)
-					}
-				}
+		}
+		// No need to delete the namespace if ceph-csi is deployed via helm or operator.
+		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+			err = deleteNamespace(c, cephCSINamespace)
+			if err != nil {
+				framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
 			}
 		}
 	})
@@ -172,15 +176,15 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 
 		It("Cephfs Upgrade Test", func() {
 			By("checking provisioner deployment is running", func() {
-				err = waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
+				err = waitForDeploymentComplete(f.ClientSet, cephFSDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment %s: %v", cephFSDeploymentName, err)
+					framework.Failf("timeout waiting for deployment %s: %v", cephFSDeployment.getDeploymentName(), err)
 				}
 			})
 			By("checking nodeplugin deamonset pods are running", func() {
-				err = waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(cephFSDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for daemonset %s: %v", cephFSDeamonSetName, err)
+					framework.Failf("timeout waiting for daemonset %s: %v", cephFSDeployment.getDaemonsetName(), err)
 				}
 			})
 
@@ -269,14 +273,14 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				}
 				deployCephfsPlugin()
 
-				err = waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
+				err = waitForDeploymentComplete(f.ClientSet, cephFSDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for upgraded deployment %s: %v", cephFSDeploymentName, err)
+					framework.Failf("timeout waiting for upgraded deployment %s: %v", cephFSDeployment.getDeploymentName(), err)
 				}
 
-				err = waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(cephFSDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for upgraded daemonset %s: %v", cephFSDeamonSetName, err)
+					framework.Failf("timeout waiting for upgraded daemonset %s: %v", cephFSDeployment.getDaemonsetName(), err)
 				}
 
 				app.Labels = label
