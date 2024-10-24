@@ -29,11 +29,13 @@ import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	corerbd "github.com/ceph/ceph-csi/internal/rbd"
+	rbd_group "github.com/ceph/ceph-csi/internal/rbd/group"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
+
 	"github.com/ceph/go-ceph/rbd/admin"
 	"github.com/csi-addons/spec/lib/go/replication"
 	"google.golang.org/grpc"
@@ -785,13 +787,14 @@ func getGRPCError(err error) error {
 	}
 
 	errorStatusMap := map[error]codes.Code{
-		corerbd.ErrImageNotFound:      codes.NotFound,
-		util.ErrPoolNotFound:          codes.NotFound,
-		corerbd.ErrInvalidArgument:    codes.InvalidArgument,
-		corerbd.ErrFlattenInProgress:  codes.Aborted,
-		corerbd.ErrAborted:            codes.Aborted,
-		corerbd.ErrFailedPrecondition: codes.FailedPrecondition,
-		corerbd.ErrUnavailable:        codes.Unavailable,
+		corerbd.ErrImageNotFound:         codes.NotFound,
+		util.ErrPoolNotFound:             codes.NotFound,
+		corerbd.ErrInvalidArgument:       codes.InvalidArgument,
+		corerbd.ErrFlattenInProgress:     codes.Aborted,
+		corerbd.ErrAborted:               codes.Aborted,
+		corerbd.ErrFailedPrecondition:    codes.FailedPrecondition,
+		corerbd.ErrUnavailable:           codes.Unavailable,
+		rbd_group.ErrRBDGroupUnAvailable: codes.Unavailable,
 	}
 
 	for e, code := range errorStatusMap {
