@@ -98,6 +98,19 @@ nodeplugin:
   priorityClassName: system-node-critical
   # if you are using rbd-nbd client set this value to OnDelete
   updateStrategy: RollingUpdate
+  # Hard limit for maximum number of nested volume clones that are taken before
+  # a flatten occurs
+  hardMaxCloneDepth: 8
+  # Soft limit for maximum number of nested volume clones that are taken before
+  # a flatten occurs
+  softMaxCloneDepth: 4
+  # Maximum number of snapshots allowed on rbd image without flattening
+  maxSnapshotsOnImage: 450
+  # Minimum number of snapshots allowed on rbd image to trigger flattening
+  minSnapshotsOnImage: 250
+  # skip image flattening if kernel support mapping of rbd images
+  # which has the deep-flatten feature
+  # skipForceFlatten: false
 
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
