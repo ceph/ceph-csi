@@ -34,6 +34,9 @@ type commonVolumeGroup struct {
 	// is used to find the group in the journal.
 	id string
 
+	// requestName is passed by the caller when a group is created.
+	requestName string
+
 	// name is used in RBD API calls as the name of this object
 	name string
 
@@ -54,13 +57,16 @@ type commonVolumeGroup struct {
 	pool      string
 	namespace string
 
+	// csiDriver is the CSI drivername that is required to connect the journal
+	csiDriver string
+	// use getJournal() to make sure the journal is connected
 	journal journal.VolumeGroupJournal
 }
 
 func (cvg *commonVolumeGroup) initCommonVolumeGroup(
 	ctx context.Context,
 	id string,
-	j journal.VolumeGroupJournal,
+	csiDriver string,
 	creds *util.Credentials,
 ) error {
 	csiID := util.CSIIdentifier{}
@@ -84,7 +90,7 @@ func (cvg *commonVolumeGroup) initCommonVolumeGroup(
 		return fmt.Errorf("failed to get pool for volume group id %q: %w", id, err)
 	}
 
-	cvg.journal = j
+	cvg.csiDriver = csiDriver
 	cvg.credentials = creds
 	cvg.id = id
 	cvg.clusterID = csiID.ClusterID
@@ -110,18 +116,27 @@ func (cvg *commonVolumeGroup) Destroy(ctx context.Context) {
 	}
 
 	if cvg.credentials != nil {
-		cvg.credentials.DeleteCredentials()
+		// credentials should only be removed with DeleteCredentials()
+		// by the caller that allocated them
 		cvg.credentials = nil
 	}
 
-	log.DebugLog(ctx, "destroyed volume group instance with id %q", cvg.id)
+	if cvg.journal != nil {
+		cvg.journal.Destroy()
+		cvg.journal = nil
+	}
 }
 
 // getVolumeGroupAttributes fetches the attributes from the journal, sets some
 // of the common values for the VolumeGroup and returns the attributes struct
 // for further consumption (like checking the VolumeMap).
 func (cvg *commonVolumeGroup) getVolumeGroupAttributes(ctx context.Context) (*journal.VolumeGroupAttributes, error) {
-	attrs, err := cvg.journal.GetVolumeGroupAttributes(ctx, cvg.pool, cvg.objectUUID)
+	j, err := cvg.getJournal(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	attrs, err := j.GetVolumeGroupAttributes(ctx, cvg.pool, cvg.objectUUID)
 	if err != nil {
 		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
 			return nil, fmt.Errorf("failed to get attributes for volume group id %q: %w", cvg.id, err)
@@ -130,6 +145,7 @@ func (cvg *commonVolumeGroup) getVolumeGroupAttributes(ctx context.Context) (*jo
 		attrs = &journal.VolumeGroupAttributes{}
 	}
 
+	cvg.requestName = attrs.RequestName
 	cvg.name = attrs.GroupName
 	cvg.creationTime = attrs.CreationTime
 
@@ -193,6 +209,12 @@ func (cvg *commonVolumeGroup) getConnection(ctx context.Context) (*util.ClusterC
 		return cvg.conn, nil
 	}
 
+	if cvg.credentials == nil {
+		log.DebugLog(ctx, "missing credentials for common volume group %q: %s", cvg, util.CallStack())
+
+		return nil, errors.New("can not connect to cluster without credentials")
+	}
+
 	conn := &util.ClusterConnection{}
 	err := conn.Connect(cvg.monitors, cvg.credentials)
 	if err != nil {
@@ -203,6 +225,29 @@ func (cvg *commonVolumeGroup) getConnection(ctx context.Context) (*util.ClusterC
 	log.DebugLog(ctx, "connection established for volume group %q", cvg.id)
 
 	return conn, nil
+}
+
+func (cvg *commonVolumeGroup) getJournal(ctx context.Context) (journal.VolumeGroupJournal, error) {
+	if cvg.journal != nil {
+		return cvg.journal, nil
+	}
+
+	if cvg.credentials == nil {
+		log.DebugLog(ctx, "missing credentials for common volume group %q: %s", cvg, util.CallStack())
+
+		return nil, errors.New("can not connect the journal without credentials")
+	}
+
+	journalConfig := journal.NewCSIVolumeGroupJournalWithNamespace(cvg.csiDriver, cvg.namespace)
+
+	j, err := journalConfig.Connect(cvg.monitors, cvg.namespace, cvg.credentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to journal: %w", err)
+	}
+
+	cvg.journal = j
+
+	return j, nil
 }
 
 // GetIOContext returns the IOContext for the volume group if it exists,
@@ -250,7 +295,12 @@ func (cvg *commonVolumeGroup) Delete(ctx context.Context) error {
 		return fmt.Errorf("failed to get pool for volume group %q: %w", cvg, err)
 	}
 
-	err = cvg.journal.UndoReservation(ctx, pool, name, csiID)
+	j, err := cvg.getJournal(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = j.UndoReservation(ctx, pool, name, csiID)
 	if err != nil /* TODO? !errors.Is(..., err) */ {
 		return fmt.Errorf("failed to undo the reservation for volume group %q: %w", cvg, err)
 	}

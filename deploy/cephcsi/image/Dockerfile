@@ -2,7 +2,7 @@ ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
 ARG BASE_IMAGE
 
-FROM ${BASE_IMAGE} as updated_base
+FROM quay.ceph.io/ceph-ci/ceph:main as updated_base
 
 # TODO: remove the following cmd, when issues
 # https://github.com/ceph/ceph-container/issues/2034
