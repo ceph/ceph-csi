@@ -111,3 +111,21 @@ func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpan
 
 	return nil
 }
+
+// validateModifyVolumeRequest validates the Controller ModifyVolume request.
+func (cs *ControllerServer) validateModifyVolumeRequest(req *csi.ControllerModifyVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_MODIFY_VOLUME); err != nil {
+		return fmt.Errorf("invalid ModifyVolumeRequest: %w", err)
+	}
+
+	if req.GetVolumeId() == "" {
+		return status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	}
+
+	mutableParam := req.GetMutableParameters()
+	if mutableParam == nil {
+		return status.Error(codes.InvalidArgument, "MutableParameters cannot be empty")
+	}
+
+	return nil
+}

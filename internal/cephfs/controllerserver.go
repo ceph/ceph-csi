@@ -752,6 +752,67 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}, nil
 }
 
+// ControllerExpandVolume expands CephFS Volumes on demand based on resizer request.
+func (cs *ControllerServer) ControllerModifyVolume(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+) (*csi.ControllerModifyVolumeResponse, error) {
+	if err := cs.validateModifyVolumeRequest(req); err != nil {
+		log.ErrorLog(ctx, "ControllerModifyVolumeRequest validation failed: %v", err)
+
+		return nil, err
+	}
+
+	volID := req.GetVolumeId()
+	secret := req.GetSecrets()
+	params := req.GetMutableParameters()
+
+	// lock out parallel delete operations
+	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer cs.VolumeLocks.Release(volID)
+
+	// lock out volumeID for clone, delete, expand and restore operation
+	if err := cs.OperationLocks.GetModifyLock(volID); err != nil {
+		log.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+	defer cs.OperationLocks.ReleaseModifyLock(volID)
+
+	cr, err := util.NewAdminCredentials(secret)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	volOptions, volIdentifier, err := store.NewVolumeOptionsFromVolID(ctx, volID, params, secret,
+		cs.ClusterName, cs.SetMetadata)
+	if err != nil {
+		log.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
+
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer volOptions.Destroy()
+
+	if volOptions.BackingSnapshot {
+		return nil, status.Error(codes.InvalidArgument, "cannot modify snapshot-backed volume")
+	}
+
+	volClient := core.NewSubVolume(volOptions.GetConnection(),
+		&volOptions.SubVolume, volOptions.ClusterID, cs.ClusterName, cs.SetMetadata)
+	if err = volClient.CreateVolume(ctx); err != nil {
+		log.ErrorLog(ctx, "failed to modify volume %s: %v", fsutil.VolumeID(volIdentifier.FsSubvolName), err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.ControllerModifyVolumeResponse{}, nil
+}
+
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
 //

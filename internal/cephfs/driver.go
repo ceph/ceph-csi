@@ -139,6 +139,7 @@ func (fs *Driver) Run(conf *util.Config) {
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 			csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
+			csi.ControllerServiceCapability_RPC_MODIFY_VOLUME,
 		})
 
 		fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{

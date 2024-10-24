@@ -221,7 +221,7 @@ func fmtBackingSnapshotOptionMismatch(optName, expected, actual string) error {
 		optName, actual, expected)
 }
 
-// getVolumeOptions validates the basic required basic options provided in the
+// getVolumeOptions validates the required basic options provided in the
 // volume parameters and extract the volumeOptions from volume parameters.
 // It contains the following checks:
 // - clusterID must be set
