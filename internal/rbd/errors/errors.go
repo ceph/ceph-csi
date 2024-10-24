@@ -68,3 +68,11 @@ var (
 	// ErrGroupNotFound is returned when group is not found in the cluster on the given pool and/or namespace.
 	ErrGroupNotFound = fmt.Errorf("%w: RBD group not found", librbd.ErrNotFound)
 )
+
+// ErrorCode is an interface that defines a method to return an error code.
+// This interface is used to provide a consistent way to retrieve error codes
+// from functions that is expected to return an error with specific codes.
+type ErrorCode interface {
+	// ErrorCode returns the error code.
+	ErrorCode() int
+}

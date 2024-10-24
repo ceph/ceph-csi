@@ -190,10 +190,11 @@ func (r *Driver) Run(conf *util.Config) {
 
 	s := csicommon.NewNonBlockingGRPCServer()
 	srv := &csicommon.Servers{
-		IS: r.ids,
-		CS: r.cs,
-		NS: r.ns,
-		GS: r.cs,
+		IS:  r.ids,
+		CS:  r.cs,
+		NS:  r.ns,
+		GS:  r.cs,
+		SMS: r.cs,
 	}
 	s.Start(conf.Endpoint, srv, csicommon.MiddlewareServerOptionConfig{
 		LogSlowOpInterval: conf.LogSlowOpInterval,

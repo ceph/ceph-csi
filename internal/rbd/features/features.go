@@ -31,6 +31,10 @@ var (
 	groupGetSnapInfoOnce      sync.Once
 	errGroupGetSnapInfo       error
 	groupGetSnapInfoSupported = false
+
+	rbdSnapDiffByIDOnce      sync.Once
+	errRBDSnapDiffByID       error
+	rbdSnapDiffByIDSupported = false
 )
 
 // SupportsGroupSnapGetInfo detects if librbd has the rbd_group_snap_get_info
@@ -55,4 +59,28 @@ func SupportsGroupSnapGetInfo() (bool, error) {
 	})
 
 	return groupGetSnapInfoSupported, errGroupGetSnapInfo
+}
+
+// SupportsRBDSnapDiffByID detects if librbd has the rbd_diff_iterate3
+// function.
+func SupportsRBDSnapDiffByID() (bool, error) {
+	rbdSnapDiffByIDOnce.Do(func() {
+		// make sure librbd.so.x is loaded, might not (yet) be the case
+		// if no rbd functions are called
+		var opts C.rbd_image_options_t
+		//nolint:gocritic // ignore result of rbd_image_options functions
+		C.rbd_image_options_create(&opts)
+		C.rbd_image_options_destroy(opts)
+
+		// check for rbd_diff_iterate3() in loaded libs/symbols
+		errRBDSnapDiffByID = dlsym("rbd_diff_iterate3")
+
+		if errRBDSnapDiffByID == nil {
+			rbdSnapDiffByIDSupported = true
+		} else if strings.Contains(errRBDSnapDiffByID.Error(), "undefined symbol") {
+			errRBDSnapDiffByID = nil
+		}
+	})
+
+	return rbdSnapDiffByIDSupported, errRBDSnapDiffByID
 }

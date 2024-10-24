@@ -21,6 +21,7 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/rbd/features"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
@@ -62,7 +63,9 @@ func (is *IdentityServer) GetPluginCapabilities(
 
 	// GroupSnapGetInfo is used within the VolumeGroupSnapshot implementation
 	vgsSupported, err := features.SupportsGroupSnapGetInfo()
-	if err == nil && vgsSupported {
+	if err != nil {
+		log.WarningLog(ctx, "error checking for group snapshot support: %s", err)
+	} else if vgsSupported {
 		gcs := csi.PluginCapability{
 			Type: &csi.PluginCapability_Service_{
 				Service: &csi.PluginCapability_Service{
@@ -71,6 +74,21 @@ func (is *IdentityServer) GetPluginCapabilities(
 			},
 		}
 		caps = append(caps, &gcs)
+	}
+
+	// RBDSnapDiffByID is used within the SnapshotMetadata service
+	rbdSnapDiffByIDSupported, err := features.SupportsRBDSnapDiffByID()
+	if err != nil {
+		log.WarningLog(ctx, "error checking for snapshot diff by ID support: %s", err)
+	} else if rbdSnapDiffByIDSupported {
+		snapDiffCaps := csi.PluginCapability{
+			Type: &csi.PluginCapability_Service_{
+				Service: &csi.PluginCapability_Service{
+					Type: csi.PluginCapability_Service_SNAPSHOT_METADATA_SERVICE,
+				},
+			},
+		}
+		caps = append(caps, &snapDiffCaps)
 	}
 
 	return &csi.GetPluginCapabilitiesResponse{

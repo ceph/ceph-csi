@@ -30,6 +30,7 @@ import (
 type DefaultControllerServer struct {
 	csi.UnimplementedControllerServer
 	csi.UnimplementedGroupControllerServer
+	csi.UnimplementedSnapshotMetadataServer
 	Driver *CSIDriver
 }
 

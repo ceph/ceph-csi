@@ -42,10 +42,11 @@ type NonBlockingGRPCServer interface {
 
 // Servers holds the list of servers.
 type Servers struct {
-	IS csi.IdentityServer
-	CS csi.ControllerServer
-	NS csi.NodeServer
-	GS csi.GroupControllerServer
+	IS  csi.IdentityServer
+	CS  csi.ControllerServer
+	NS  csi.NodeServer
+	GS  csi.GroupControllerServer
+	SMS csi.SnapshotMetadataServer
 }
 
 // NewNonBlockingGRPCServer return non-blocking GRPC.
@@ -120,6 +121,9 @@ func (s *nonBlockingGRPCServer) serve(
 	}
 	if srv.GS != nil {
 		csi.RegisterGroupControllerServer(server, srv.GS)
+	}
+	if srv.SMS != nil {
+		csi.RegisterSnapshotMetadataServer(server, srv.SMS)
 	}
 
 	log.DefaultLog("Listening for connections on address: %#v", listener.Addr())

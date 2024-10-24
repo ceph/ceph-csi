@@ -17,8 +17,11 @@ limitations under the License.
 package rbd
 
 import (
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/ceph/ceph-csi/internal/rbd/types"
 )
 
 func TestToCSISnapshot(t *testing.T) {
@@ -78,7 +81,72 @@ func TestToCSISnapshot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if _, err := tt.rs.ToCSI(t.Context()); (err != nil) != tt.wantErr {
-				t.Errorf("ToCSI() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ToCSI() error = %v, unrecogniswantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_rbdSnapFromSnapshot(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		snap types.Snapshot
+	}
+
+	// Create test data
+	validRbdSnap := &rbdSnapshot{
+		rbdImage: rbdImage{
+			VolID:     "testVolID",
+			Pool:      "testPool",
+			ClusterID: "testClusterID",
+		},
+	}
+
+	// Mock types.Snapshot that's not an rbdSnapshot
+	mockSnap := struct{ types.Snapshot }{}
+
+	tests := []struct {
+		name    string
+		args    args
+		want    *rbdSnapshot
+		wantErr bool
+	}{
+		{
+			name: "valid rbdSnapshot",
+			args: args{
+				snap: validRbdSnap,
+			},
+			want:    validRbdSnap,
+			wantErr: false,
+		},
+		{
+			name: "nil snapshot",
+			args: args{
+				snap: nil,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "invalid snapshot type",
+			args: args{
+				snap: &mockSnap,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := rbdSnapFromSnapshot(tt.args.snap)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("rbdSnapFromSnapshot() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("rbdSnapFromSnapshot() = %v, want %v", got, tt.want)
 			}
 		})
 	}

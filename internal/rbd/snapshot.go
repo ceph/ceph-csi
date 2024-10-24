@@ -400,3 +400,48 @@ func (rbdSnap *rbdSnapshot) SetVolumeGroup(ctx context.Context, cr *util.Credent
 
 	return nil
 }
+
+// GetSize returns the size of the snapshot in bytes.
+func (rbdSnap *rbdSnapshot) GetSize() int64 {
+	return rbdSnap.VolSize
+}
+
+// rbdSnapFromSnapshot converts a types.Snapshot to a *rbdSnapshot.
+// It returns an error if the snapshot is nil or not of type *rbdSnapshot.
+func rbdSnapFromSnapshot(snap types.Snapshot) (*rbdSnapshot, error) {
+	if snap == nil {
+		return nil, errors.New("nil snapshot provided")
+	}
+
+	rbdSnap, ok := snap.(*rbdSnapshot)
+	if !ok {
+		return nil, errors.New("snapshot object is not of type rbdSnapshot")
+	}
+
+	return rbdSnap, nil
+}
+
+// getRBDSnapID returns the associated rbd snapshot ID.
+func (rbdSnap *rbdSnapshot) getRBDSnapID(ctx context.Context) (uint64, error) {
+	vol := rbdSnap.toVolume()
+	vol.conn = rbdSnap.conn.Copy()
+	defer vol.Destroy(ctx)
+
+	image, err := vol.open()
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
+
+	parentInfo, err := image.GetParent()
+	if err != nil {
+		return 0, err
+	}
+
+	return parentInfo.Snap.ID, nil
+}

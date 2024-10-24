@@ -82,8 +82,6 @@ const (
 // luks2HeaderSizeKey, so the default value is returned in that case
 // i.e, DefaultLuks2HeaderSize.
 // If the image is not block encrypted, 0 is returned.
-//
-//nolint:unused // Unused code will be used in future.
 func (ri *rbdImage) getLuksHeaderSizeMetadata() (uint64, error) {
 	if !ri.isBlockEncrypted() {
 		return 0, nil
