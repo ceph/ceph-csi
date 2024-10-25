@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 type Snapshot interface {
@@ -35,4 +37,7 @@ type Snapshot interface {
 	ToCSI(ctx context.Context) (*csi.Snapshot, error)
 
 	GetCreationTime(ctx context.Context) (*time.Time, error)
+
+	// SetVolumeGroup sets the CSI volume group ID in the snapshot.
+	SetVolumeGroup(ctx context.Context, creds *util.Credentials, vgID string) error
 }

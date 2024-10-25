@@ -155,6 +155,12 @@ func NewVolumeGroupSnapshot(
 		}
 
 		volumeMap[handle] = name
+
+		// store the CSI ID of the group in the snapshot attributes
+		snapErr = snapshot.SetVolumeGroup(ctx, creds, vgs.id)
+		if snapErr != nil {
+			return nil, fmt.Errorf("failed to set volume group ID %q for snapshot %q: %w", vgs.id, name, snapErr)
+		}
 	}
 
 	j, err := vgs.getJournal(ctx)

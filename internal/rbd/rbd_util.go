@@ -191,6 +191,9 @@ type rbdSnapshot struct {
 	// RbdSnapName is the name of the RBD snapshot backing this rbdSnapshot
 	SourceVolumeID string
 	RbdSnapName    string
+
+	// groupID is the CSI volume group ID where this snapshot belongs to
+	groupID string
 }
 
 // imageFeature represents required image features and value.
@@ -1052,6 +1055,15 @@ func genSnapFromSnapID(
 			// TODO: If pool is not found we may leak the image (as DeleteSnapshot will return success)
 			return rbdSnap, err
 		}
+	}
+
+	if imageAttributes.GroupID != "" {
+		rbdSnap.groupID = imageAttributes.GroupID
+		// FIXME: The snapshot will have RbdImageName set to the image
+		// that was used as source. This is not correct for group
+		// snapshots images, and need to be fixed. See
+		// rbdVolume.NewSnapshotByID() for more details.
+		rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 	}
 
 	err = rbdSnap.Connect(cr)

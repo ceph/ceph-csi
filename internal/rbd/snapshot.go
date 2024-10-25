@@ -153,11 +153,12 @@ func (rbdSnap *rbdSnapshot) ToCSI(ctx context.Context) (*csi.Snapshot, error) {
 	}
 
 	return &csi.Snapshot{
-		SizeBytes:      rbdSnap.VolSize,
-		SnapshotId:     rbdSnap.VolID,
-		SourceVolumeId: rbdSnap.SourceVolumeID,
-		CreationTime:   timestamppb.New(*created),
-		ReadyToUse:     true,
+		SizeBytes:       rbdSnap.VolSize,
+		SnapshotId:      rbdSnap.VolID,
+		SourceVolumeId:  rbdSnap.SourceVolumeID,
+		CreationTime:    timestamppb.New(*created),
+		ReadyToUse:      true,
+		GroupSnapshotId: rbdSnap.groupID,
 	}, nil
 }
 
@@ -314,4 +315,27 @@ func (rv *rbdVolume) NewSnapshotByID(
 	removeSnap = false
 
 	return snap, nil
+}
+
+func (rbdSnap *rbdSnapshot) SetVolumeGroup(ctx context.Context, cr *util.Credentials, groupID string) error {
+	vi := util.CSIIdentifier{}
+	err := vi.DecomposeCSIID(rbdSnap.VolID)
+	if err != nil {
+		return err
+	}
+
+	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
+	if err != nil {
+		return fmt.Errorf("snapshot %q failed to connect to journal: %w", rbdSnap, err)
+	}
+	defer j.Destroy()
+
+	err = j.StoreGroupID(ctx, rbdSnap.Pool, vi.ObjectUUID, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to set volume group ID for snapshot %q: %w", rbdSnap, err)
+	}
+
+	rbdSnap.groupID = groupID
+
+	return nil
 }
