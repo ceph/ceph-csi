@@ -28,16 +28,17 @@ import (
 
 // cephFSCloneState describes the status of the clone.
 type cephFSCloneState struct {
-	state    admin.CloneState
-	errno    string
-	errorMsg string
+	state          admin.CloneState
+	progressReport admin.CloneProgressReport
+	errno          string
+	errorMsg       string
 }
 
 // CephFSCloneError indicates that fetching the clone state returned an error.
-var CephFSCloneError = cephFSCloneState{}
+var CephFSCloneError = &cephFSCloneState{}
 
 // ToError checks the state of the clone if it's not cephFSCloneComplete.
-func (cs cephFSCloneState) ToError() error {
+func (cs *cephFSCloneState) ToError() error {
 	switch cs.state {
 	case admin.CloneComplete:
 		return nil
@@ -52,6 +53,14 @@ func (cs cephFSCloneState) ToError() error {
 	}
 
 	return nil
+}
+
+func (cs *cephFSCloneState) GetProgressReport() admin.CloneProgressReport {
+	return admin.CloneProgressReport{
+		PercentageCloned: cs.progressReport.PercentageCloned,
+		AmountCloned:     cs.progressReport.AmountCloned,
+		FilesCloned:      cs.progressReport.FilesCloned,
+	}
 }
 
 // CreateCloneFromSubvolume creates a clone from a subvolume.
@@ -87,7 +96,7 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 		return err
 	}
 
-	var cloneState cephFSCloneState
+	var cloneState *cephFSCloneState
 	cloneState, err = s.GetCloneState(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get clone state: %v", err)
@@ -157,7 +166,7 @@ func (s *subVolumeClient) CreateCloneFromSnapshot(
 			}
 		}
 	}()
-	var cloneState cephFSCloneState
+	var cloneState *cephFSCloneState
 	// avoid err variable shadowing
 	cloneState, err = s.GetCloneState(ctx)
 	if err != nil {
@@ -182,7 +191,7 @@ func (s *subVolumeClient) CreateCloneFromSnapshot(
 }
 
 // GetCloneState returns the clone state of the subvolume.
-func (s *subVolumeClient) GetCloneState(ctx context.Context) (cephFSCloneState, error) {
+func (s *subVolumeClient) GetCloneState(ctx context.Context) (*cephFSCloneState, error) {
 	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(
@@ -209,10 +218,11 @@ func (s *subVolumeClient) GetCloneState(ctx context.Context) (cephFSCloneState, 
 		errStr = failure.ErrStr
 	}
 
-	state := cephFSCloneState{
-		state:    cs.State,
-		errno:    errno,
-		errorMsg: errStr,
+	state := &cephFSCloneState{
+		state:          cs.State,
+		progressReport: cs.ProgressReport,
+		errno:          errno,
+		errorMsg:       errStr,
 	}
 
 	return state, nil

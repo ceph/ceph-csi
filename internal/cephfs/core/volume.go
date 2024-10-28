@@ -75,7 +75,7 @@ type SubVolumeClient interface {
 	// CreateCloneFromSubVolume creates a clone from the subvolume.
 	CreateCloneFromSubvolume(ctx context.Context, parentvolOpt *SubVolume) error
 	// GetCloneState returns the clone state of the subvolume.
-	GetCloneState(ctx context.Context) (cephFSCloneState, error)
+	GetCloneState(ctx context.Context) (*cephFSCloneState, error)
 	// CreateCloneFromSnapshot creates a clone from the subvolume snapshot.
 	CreateCloneFromSnapshot(ctx context.Context, snap Snapshot) error
 	// CleanupSnapshotFromSubvolume removes the snapshot from the subvolume.

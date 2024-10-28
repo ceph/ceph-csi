@@ -28,11 +28,11 @@ import (
 func TestCloneStateToError(t *testing.T) {
 	t.Parallel()
 	errorState := make(map[cephFSCloneState]error)
-	errorState[cephFSCloneState{fsa.CloneComplete, "", ""}] = nil
-	errorState[CephFSCloneError] = cerrors.ErrInvalidClone
-	errorState[cephFSCloneState{fsa.CloneInProgress, "", ""}] = cerrors.ErrCloneInProgress
-	errorState[cephFSCloneState{fsa.ClonePending, "", ""}] = cerrors.ErrClonePending
-	errorState[cephFSCloneState{fsa.CloneFailed, "", ""}] = cerrors.ErrCloneFailed
+	errorState[cephFSCloneState{fsa.CloneComplete, fsa.CloneProgressReport{}, "", ""}] = nil
+	errorState[*CephFSCloneError] = cerrors.ErrInvalidClone
+	errorState[cephFSCloneState{fsa.CloneInProgress, fsa.CloneProgressReport{}, "", ""}] = cerrors.ErrCloneInProgress
+	errorState[cephFSCloneState{fsa.ClonePending, fsa.CloneProgressReport{}, "", ""}] = cerrors.ErrClonePending
+	errorState[cephFSCloneState{fsa.CloneFailed, fsa.CloneProgressReport{}, "", ""}] = cerrors.ErrCloneFailed
 
 	for state, err := range errorState {
 		require.ErrorIs(t, state.ToError(), err)

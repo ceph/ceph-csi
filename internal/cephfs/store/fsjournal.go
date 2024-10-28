@@ -128,6 +128,17 @@ func CheckVolExists(ctx context.Context,
 		}
 		err = cloneState.ToError()
 		if errors.Is(err, cerrors.ErrCloneInProgress) {
+			progressReport := cloneState.GetProgressReport()
+			// append progress report only if the progress report parameters are present.
+			if progressReport.PercentageCloned != "" {
+				err = fmt.Errorf("%w. progress report: percentage cloned=%s, amount cloned=%s, files cloned=%s",
+					err,
+					progressReport.PercentageCloned,
+					progressReport.AmountCloned,
+					progressReport.FilesCloned)
+				log.ErrorLog(ctx, err.Error())
+			}
+
 			return nil, err
 		}
 		if errors.Is(err, cerrors.ErrClonePending) {
