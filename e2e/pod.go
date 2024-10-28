@@ -324,7 +324,7 @@ func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *met
 
 	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if err != nil {
-		framework.Logf("command %s failed: %v", c, err)
+		framework.Logf("command %s failed: error:%v. stderror:%v", c, err, stdErr)
 	}
 
 	return stdOut, stdErr
