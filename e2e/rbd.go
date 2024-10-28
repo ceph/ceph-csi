@@ -3235,7 +3235,7 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			By("create ROX PVC clone and mount it to multiple pods", func() {
+			By("create ROX PVC clone from snapshot and mount it to multiple pods", func() {
 				err := createRBDSnapshotClass(f)
 				if err != nil {
 					framework.Failf("failed to create storageclass: %v", err)
@@ -3365,6 +3365,117 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					framework.Failf("failed to delete snapshot: %v", err)
 				}
+				// delete parent pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
+			By("create ROX PVC-PVC clone and mount it to multiple pods", func() {
+				// create PVC and bind it to an app
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+
+				pvc.Namespace = f.UniqueName
+				app, err := loadApp(appPath)
+				if err != nil {
+					framework.Failf("failed to load application: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC and application: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+				// delete pod as we should not create PVC clone for in-use pvc
+				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete application: %v", err)
+				}
+
+				// create ROX clone PVC from parent PVC
+				smartClonePVC, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					framework.Failf("failed to load smart clone PVC: %v", err)
+				}
+
+				smartClonePVC.Namespace = f.UniqueName
+				smartClonePVC.Spec.DataSource.Name = pvc.Name
+				smartClonePVC.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				err = createPVCAndvalidatePV(f.ClientSet, smartClonePVC, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				// validate created backend rbd images
+				// parent pvc + tempClone + clone
+				validateRBDImageCount(f, 3, defaultRBDPool)
+				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+
+				appClone, err := loadApp(appClonePath)
+				if err != nil {
+					framework.Failf("failed to load application: %v", err)
+				}
+
+				totalCount := 3
+				appClone.Namespace = f.UniqueName
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = smartClonePVC.Name
+				for i := range totalCount {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					label := map[string]string{
+						"app": name,
+					}
+					appClone.Labels = label
+					appClone.Name = name
+					err = createApp(f.ClientSet, appClone, deployTimeout)
+					if err != nil {
+						framework.Failf("failed to create application: %v", err)
+					}
+				}
+
+				for i := range totalCount {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					opt := metav1.ListOptions{
+						LabelSelector: "app=" + name,
+					}
+
+					filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+					_, stdErr := execCommandInPodAndAllowFail(
+						f,
+						"echo 'Hello World' > "+filePath,
+						appClone.Namespace,
+						&opt)
+					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+					if !strings.Contains(stdErr, readOnlyErr) {
+						framework.Failf(stdErr)
+					}
+				}
+
+				// delete app
+				for i := range totalCount {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					appClone.Name = name
+					err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						framework.Failf("failed to delete application: %v", err)
+					}
+				}
+
+				// delete PVC clone
+				err = deletePVCAndValidatePV(f.ClientSet, smartClonePVC, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+
 				// delete parent pvc
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
