@@ -199,6 +199,70 @@ func (v *volumeGroupSnapshotterBase) CreatePVCClones(
 	return pvcs, nil
 }
 
+func (v *volumeGroupSnapshotterBase) CreatePods(pvcs []*v1.PersistentVolumeClaim) ([]*v1.Pod, error) {
+	pods := make([]*v1.Pod, len(pvcs))
+	for i, p := range pvcs {
+		pods[i] = &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("pod-%d", i),
+				Namespace: p.Namespace,
+			},
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Name:    "container",
+						Image:   "quay.io/centos/centos:latest",
+						Command: []string{"/bin/sleep", "999999"},
+					},
+				},
+			},
+		}
+		volName := "volume"
+		if p.Spec.VolumeMode != nil && *p.Spec.VolumeMode == v1.PersistentVolumeBlock {
+			pods[i].Spec.Containers[0].VolumeDevices = []v1.VolumeDevice{
+				{
+					Name:       volName,
+					DevicePath: "/dev/xvda",
+				},
+			}
+		} else {
+			pods[i].Spec.Containers[0].VolumeMounts = []v1.VolumeMount{
+				{
+					Name:      volName,
+					MountPath: "/mnt",
+				},
+			}
+		}
+		pods[i].Spec.Volumes = []v1.Volume{
+			{
+				Name: volName,
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: p.Name,
+					},
+				},
+			},
+		}
+		err := createApp(v.framework.ClientSet, pods[i], v.timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create pod: %w", err)
+		}
+	}
+
+	return pods, nil
+}
+
+func (v *volumeGroupSnapshotterBase) DeletePods(pods []*v1.Pod) error {
+	for _, pod := range pods {
+		err := deletePod(pod.Name, pod.Namespace, v.framework.ClientSet, deployTimeout)
+		if err != nil {
+			return fmt.Errorf("failed to delete pod: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (v volumeGroupSnapshotterBase) CreateVolumeGroupSnapshotClass(
 	groupSnapshotClass *groupsnapapi.VolumeGroupSnapshotClass,
 ) error {
@@ -396,12 +460,21 @@ func (v *volumeGroupSnapshotterBase) testVolumeGroupSnapshot(vol VolumeGroupSnap
 	if err != nil {
 		return fmt.Errorf("failed to create clones: %w", err)
 	}
+	// create pods using the cloned PVCs
+	pods, err := v.CreatePods(clonePVCs)
+	if err != nil {
+		return fmt.Errorf("failed to create pods: %w", err)
+	}
 	// validate the resources in the backend
 	err = vol.ValidateResourcesForCreate(volumeGroupSnapshot)
 	if err != nil {
 		return fmt.Errorf("failed to validate resources for create: %w", err)
 	}
-
+	// Delete the pods
+	err = v.DeletePods(pods)
+	if err != nil {
+		return fmt.Errorf("failed to delete pods: %w", err)
+	}
 	// Delete the clones
 	err = v.DeletePVCs(clonePVCs)
 	if err != nil {
