@@ -44,6 +44,7 @@ func (rv *rbdVolume) AddToGroup(ctx context.Context, vg types.VolumeGroup) error
 	if err != nil {
 		return fmt.Errorf("failed to open image %q: %w", rv, err)
 	}
+	defer image.Close()
 
 	info, err := image.GetGroup()
 	if err != nil {
