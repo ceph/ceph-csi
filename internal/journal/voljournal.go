@@ -199,6 +199,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 		cephSnapSourceKey:       "csi.source",
 		namespace:               "",
 		csiImageIDKey:           "csi.imageid",
+		csiGroupIDKey:           "csi.groupid",
 		encryptKMSKey:           "csi.volume.encryptKMS",
 		encryptionType:          "csi.volume.encryptionType",
 		ownerKey:                "csi.volume.owner",
@@ -805,7 +806,8 @@ func (conn *Connection) StoreAttribute(ctx context.Context, pool, reservedUUID, 
 
 // StoreGroupID stores an groupID in omap.
 func (conn *Connection) StoreGroupID(ctx context.Context, pool, reservedUUID, groupID string) error {
-	err := conn.StoreAttribute(ctx, pool, reservedUUID, conn.config.csiGroupIDKey, groupID)
+	err := setOMapKeys(ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
+		map[string]string{conn.config.csiGroupIDKey: groupID})
 	if err != nil {
 		return fmt.Errorf("failed to store groupID %w", err)
 	}
