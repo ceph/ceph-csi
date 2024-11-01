@@ -541,7 +541,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // The volume handler won't remain same as its contains poolID,clusterID etc
 // which are not same across clusters.
 //
-//nolint:gocyclo,cyclop,nestif // TODO: reduce complexity
+//nolint:gocyclo,cyclop // TODO: reduce complexity
 func RegenerateJournal(
 	volumeAttributes map[string]string,
 	claimName,
@@ -623,12 +623,12 @@ func RegenerateJournal(
 		rbdVol.ImageID = imageData.ImageAttributes.ImageID
 		rbdVol.Owner = imageData.ImageAttributes.Owner
 		rbdVol.RbdImageName = imageData.ImageAttributes.ImageName
-		if rbdVol.ImageID == "" {
-			err = rbdVol.storeImageID(ctx, j)
-			if err != nil {
-				return "", err
-			}
+
+		err = rbdVol.repairImageID(ctx, j, false)
+		if err != nil {
+			return "", err
 		}
+
 		if rbdVol.Owner != owner {
 			err = j.ResetVolumeOwner(ctx, rbdVol.JournalPool, rbdVol.ReservedID, owner)
 			if err != nil {
@@ -675,30 +675,11 @@ func RegenerateJournal(
 
 	log.DebugLog(ctx, "re-generated Volume ID (%s) and image name (%s) for request name (%s)",
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
-	if rbdVol.ImageID == "" {
-		err = rbdVol.storeImageID(ctx, j)
-		if err != nil {
-			return "", err
-		}
+
+	err = rbdVol.repairImageID(ctx, j, false)
+	if err != nil {
+		return "", err
 	}
 
 	return rbdVol.VolID, nil
-}
-
-// storeImageID retrieves the image ID and stores it in OMAP.
-func (rv *rbdVolume) storeImageID(ctx context.Context, j *journal.Connection) error {
-	err := rv.getImageID()
-	if err != nil {
-		log.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
-
-		return err
-	}
-	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
-
-		return err
-	}
-
-	return nil
 }

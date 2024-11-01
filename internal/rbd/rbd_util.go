@@ -1169,12 +1169,11 @@ func generateVolumeFromVolumeID(
 		}
 	}
 
-	if rbdVol.ImageID == "" {
-		err = rbdVol.storeImageID(ctx, j)
-		if err != nil {
-			return rbdVol, err
-		}
+	err = rbdVol.repairImageID(ctx, j, false)
+	if err != nil {
+		return rbdVol, err
 	}
+
 	err = rbdVol.getImageInfo()
 
 	return rbdVol, err

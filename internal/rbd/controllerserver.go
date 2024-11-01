@@ -790,7 +790,7 @@ func (cs *ControllerServer) createBackingImage(
 			}
 		}
 	}()
-	err = rbdVol.storeImageID(ctx, j)
+	err = rbdVol.repairImageID(ctx, j, true)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
