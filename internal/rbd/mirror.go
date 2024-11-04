@@ -91,6 +91,10 @@ func (ri *rbdImage) EnableMirroring(_ context.Context, mode librbd.ImageMirrorMo
 
 	err = image.MirrorEnable(mode)
 	if err != nil {
+		if ri.ParentName != "" {
+			return fmt.Errorf("failed to enable mirroring as image %q has a parent %q", ri.ImageID, ri.ParentName)
+		}
+
 		return fmt.Errorf("failed to enable mirroring on %q with error: %w", ri, err)
 	}
 
