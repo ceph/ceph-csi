@@ -151,3 +151,13 @@ func (cc *ClusterConnection) GetNFSAdmin() (*nfs.Admin, error) {
 
 	return nfs.NewFromConn(cc.conn), nil
 }
+
+// GetAddrs returns the addresses of the RADOS session,
+// suitable for blocklisting.
+func (cc *ClusterConnection) GetAddrs() (string, error) {
+	if cc.conn == nil {
+		return "", errors.New("cluster is not connected yet")
+	}
+
+	return cc.conn.GetAddrs()
+}
