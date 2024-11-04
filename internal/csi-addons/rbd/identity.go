@@ -152,6 +152,13 @@ func (is *IdentityServer) GetCapabilities(
 						Type: identity.Capability_EncryptionKeyRotation_ENCRYPTIONKEYROTATION,
 					},
 				},
+			},
+			&identity.Capability{
+				Type: &identity.Capability_NetworkFence_{
+					NetworkFence: &identity.Capability_NetworkFence{
+						Type: identity.Capability_NetworkFence_GET_CLIENTS_TO_FENCE,
+					},
+				},
 			})
 	}
 
