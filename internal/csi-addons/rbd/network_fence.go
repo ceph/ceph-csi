@@ -114,3 +114,59 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 
 	return &fence.UnfenceClusterNetworkResponse{}, nil
 }
+
+// GetFenceClients fetches the ceph cluster ID and the client address that need to be fenced.
+func (fcs *FenceControllerServer) GetFenceClients(
+	ctx context.Context,
+	req *fence.GetFenceClientsRequest,
+) (*fence.GetFenceClientsResponse, error) {
+	options := req.GetParameters()
+	clusterID, err := util.GetClusterID(options)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	cr, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	monitors, _ /* clusterID*/, err := util.GetMonsAndClusterID(ctx, clusterID, false)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Get the cluster ID of the ceph cluster.
+	conn := &util.ClusterConnection{}
+	err = conn.Connect(monitors, cr)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to connect to MONs %q: %s", monitors, err)
+	}
+	defer conn.Destroy()
+
+	fsID, err := conn.GetFSID()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get cephfs id: %s", err)
+	}
+
+	address, err := conn.GetAddrs()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get client address: %s", err)
+	}
+
+	resp := &fence.GetFenceClientsResponse{
+		Clients: []*fence.ClientDetails{
+			{
+				Id: fsID,
+				Addresses: []*fence.CIDR{
+					{
+						Cidr: address,
+					},
+				},
+			},
+		},
+	}
+
+	return resp, nil
+}
