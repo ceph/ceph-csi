@@ -24,6 +24,7 @@ const (
 	FenceController_FenceClusterNetwork_FullMethodName   = "/fence.FenceController/FenceClusterNetwork"
 	FenceController_UnfenceClusterNetwork_FullMethodName = "/fence.FenceController/UnfenceClusterNetwork"
 	FenceController_ListClusterFence_FullMethodName      = "/fence.FenceController/ListClusterFence"
+	FenceController_GetFenceClients_FullMethodName       = "/fence.FenceController/GetFenceClients"
 )
 
 // FenceControllerClient is the client API for FenceController service.
@@ -37,6 +38,9 @@ type FenceControllerClient interface {
 	UnfenceClusterNetwork(ctx context.Context, in *UnfenceClusterNetworkRequest, opts ...grpc.CallOption) (*UnfenceClusterNetworkResponse, error)
 	// ListClusterFence RPC call to provide a list of blocklisted/fenced clients.
 	ListClusterFence(ctx context.Context, in *ListClusterFenceRequest, opts ...grpc.CallOption) (*ListClusterFenceResponse, error)
+	// GetFenceClients RPC calls to get the client information to use in a
+	// FenceClusterNetwork or UnfenceClusterNetwork RPC.
+	GetFenceClients(ctx context.Context, in *GetFenceClientsRequest, opts ...grpc.CallOption) (*GetFenceClientsResponse, error)
 }
 
 type fenceControllerClient struct {
@@ -74,6 +78,15 @@ func (c *fenceControllerClient) ListClusterFence(ctx context.Context, in *ListCl
 	return out, nil
 }
 
+func (c *fenceControllerClient) GetFenceClients(ctx context.Context, in *GetFenceClientsRequest, opts ...grpc.CallOption) (*GetFenceClientsResponse, error) {
+	out := new(GetFenceClientsResponse)
+	err := c.cc.Invoke(ctx, FenceController_GetFenceClients_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FenceControllerServer is the server API for FenceController service.
 // All implementations must embed UnimplementedFenceControllerServer
 // for forward compatibility
@@ -85,6 +98,9 @@ type FenceControllerServer interface {
 	UnfenceClusterNetwork(context.Context, *UnfenceClusterNetworkRequest) (*UnfenceClusterNetworkResponse, error)
 	// ListClusterFence RPC call to provide a list of blocklisted/fenced clients.
 	ListClusterFence(context.Context, *ListClusterFenceRequest) (*ListClusterFenceResponse, error)
+	// GetFenceClients RPC calls to get the client information to use in a
+	// FenceClusterNetwork or UnfenceClusterNetwork RPC.
+	GetFenceClients(context.Context, *GetFenceClientsRequest) (*GetFenceClientsResponse, error)
 	mustEmbedUnimplementedFenceControllerServer()
 }
 
@@ -100,6 +116,9 @@ func (UnimplementedFenceControllerServer) UnfenceClusterNetwork(context.Context,
 }
 func (UnimplementedFenceControllerServer) ListClusterFence(context.Context, *ListClusterFenceRequest) (*ListClusterFenceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListClusterFence not implemented")
+}
+func (UnimplementedFenceControllerServer) GetFenceClients(context.Context, *GetFenceClientsRequest) (*GetFenceClientsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFenceClients not implemented")
 }
 func (UnimplementedFenceControllerServer) mustEmbedUnimplementedFenceControllerServer() {}
 
@@ -168,6 +187,24 @@ func _FenceController_ListClusterFence_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FenceController_GetFenceClients_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFenceClientsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FenceControllerServer).GetFenceClients(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FenceController_GetFenceClients_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FenceControllerServer).GetFenceClients(ctx, req.(*GetFenceClientsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FenceController_ServiceDesc is the grpc.ServiceDesc for FenceController service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -186,6 +223,10 @@ var FenceController_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListClusterFence",
 			Handler:    _FenceController_ListClusterFence_Handler,
+		},
+		{
+			MethodName: "GetFenceClients",
+			Handler:    _FenceController_GetFenceClients_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

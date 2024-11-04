@@ -40,7 +40,7 @@ type ControllerClient interface {
 	DeleteVolumeGroup(ctx context.Context, in *DeleteVolumeGroupRequest, opts ...grpc.CallOption) (*DeleteVolumeGroupResponse, error)
 	// ListVolumeGroups RPC call to list volume groups.
 	ListVolumeGroups(ctx context.Context, in *ListVolumeGroupsRequest, opts ...grpc.CallOption) (*ListVolumeGroupsResponse, error)
-	// CreateVolumeGroup RPC call to get a volume group.
+	// ControllerGetVolumeGroup RPC call to get a volume group.
 	ControllerGetVolumeGroup(ctx context.Context, in *ControllerGetVolumeGroupRequest, opts ...grpc.CallOption) (*ControllerGetVolumeGroupResponse, error)
 }
 
@@ -109,7 +109,7 @@ type ControllerServer interface {
 	DeleteVolumeGroup(context.Context, *DeleteVolumeGroupRequest) (*DeleteVolumeGroupResponse, error)
 	// ListVolumeGroups RPC call to list volume groups.
 	ListVolumeGroups(context.Context, *ListVolumeGroupsRequest) (*ListVolumeGroupsResponse, error)
-	// CreateVolumeGroup RPC call to get a volume group.
+	// ControllerGetVolumeGroup RPC call to get a volume group.
 	ControllerGetVolumeGroup(context.Context, *ControllerGetVolumeGroupRequest) (*ControllerGetVolumeGroupResponse, error)
 	mustEmbedUnimplementedControllerServer()
 }
