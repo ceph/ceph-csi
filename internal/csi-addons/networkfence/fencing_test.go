@@ -257,3 +257,45 @@ listed 1 entries`,
 		})
 	}
 }
+
+func TestParseClientIP(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		addr    string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "IPv4 address",
+			addr:    "10.244.0.1:0/2686266785",
+			want:    "10.244.0.1",
+			wantErr: false,
+		},
+		{
+			name:    "IPv6 address",
+			addr:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334:0/2686266785",
+			want:    "2001:db8:85a3::8a2e:370:7334",
+			wantErr: false,
+		},
+		{
+			name:    "Invalid address",
+			addr:    "invalid",
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := ParseClientIP(tt.addr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseClientIP() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if got != tt.want {
+				t.Errorf("ParseClientIP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

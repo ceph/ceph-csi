@@ -155,13 +155,23 @@ func (fcs *FenceControllerServer) GetFenceClients(
 		return nil, status.Errorf(codes.Internal, "failed to get client address: %s", err)
 	}
 
+	// The example address we get is 10.244.0.1:0/2686266785 from
+	// which we need to extract the IP address.
+	addr, err := nf.ParseClientIP(address)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to parse client address: %s", err)
+	}
+
+	// adding /32 to the IP address to make it a CIDR block.
+	addr += "/32"
+
 	resp := &fence.GetFenceClientsResponse{
 		Clients: []*fence.ClientDetails{
 			{
 				Id: fsID,
 				Addresses: []*fence.CIDR{
 					{
-						Cidr: address,
+						Cidr: addr,
 					},
 				},
 			},
