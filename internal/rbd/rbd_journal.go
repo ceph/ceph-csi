@@ -388,6 +388,18 @@ func (ri *rbdImage) repairImageID(ctx context.Context, j *journal.Connection, fo
 func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
 	var err error
 
+	// restore original values in case of an error
+	origReservedID := rbdSnap.ReservedID
+	origRbdSnapName := rbdSnap.RbdSnapName
+	origVolID := rbdSnap.VolID
+	defer func() {
+		if err != nil {
+			rbdSnap.ReservedID = origReservedID
+			rbdSnap.RbdSnapName = origRbdSnapName
+			rbdSnap.VolID = origVolID
+		}
+	}()
+
 	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdSnap.Monitors, rbdSnap.JournalPool, rbdSnap.Pool, cr)
 	if err != nil {
 		return err
@@ -405,6 +417,17 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
 		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, kmsID, rbdSnap.ReservedID, rbdVol.Owner,
 		"", encryptionType)
+	defer func() {
+		// only undo the reservation when an error occurred
+		if err == nil {
+			return
+		}
+
+		undoErr := undoSnapReservation(ctx, rbdSnap, cr)
+		if undoErr != nil {
+			log.WarningLog(ctx, "failed undoing reservation of snapshot %q: %v", rbdSnap, undoErr)
+		}
+	}()
 	if err != nil {
 		return err
 	}
