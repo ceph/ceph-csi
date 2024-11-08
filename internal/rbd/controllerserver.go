@@ -1388,7 +1388,8 @@ func (cs *ControllerServer) doSnapshotClone(
 		return cloneRbd, err
 	}
 
-	err = createRBDClone(ctx, parentVol, cloneRbd, rbdSnap)
+	// create snapshot, clone and delete snapshot
+	err = createRBDClone(ctx, parentVol, cloneRbd, rbdSnap, true)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create snapshot: %v", err)
 

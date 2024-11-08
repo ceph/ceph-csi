@@ -29,10 +29,14 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
+// createRBDClone creates a clone of the parentVol by creating a
+// snapshot of the parentVol and cloning the snapshot to the cloneRbdVol.
+// If deleteSnap is true, the snapshot is deleted after the clone is created.
 func createRBDClone(
 	ctx context.Context,
 	parentVol, cloneRbdVol *rbdVolume,
 	snap *rbdSnapshot,
+	deleteSnap bool,
 ) error {
 	// create snapshot
 	err := parentVol.createSnapshot(ctx, snap)
@@ -58,6 +62,10 @@ func createRBDClone(
 			snap.RbdSnapName,
 			err)
 	}
+	if !deleteSnap {
+		return nil
+	}
+
 	errSnap := parentVol.deleteSnapshot(ctx, snap)
 	if errSnap != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot: %v", errSnap)

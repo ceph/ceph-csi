@@ -34,13 +34,11 @@ import (
 // checkCloneImage check the cloned image exists, if the cloned image is not
 // found it will check the temporary cloned snapshot exists, and again it will
 // check the snapshot exists on the temporary cloned image, if yes it will
-// create a new cloned and delete the temporary snapshot and adds a task to
-// flatten the temp cloned image and return success.
+// create a new cloned and adds a task to flatten the temp cloned image and return success.
 //
 // if the temporary snapshot does not exists it creates a temporary snapshot on
 // temporary cloned image and creates  a new cloned with user-provided image
-// features and delete the temporary snapshot and adds a task to flatten the
-// temp cloned image and return success
+// features and adds a task to flatten the temp cloned image and return success
 //
 // if the temporary clone does not exist and if there is a temporary snapshot
 // present on the parent image it will delete the temporary snapshot and
@@ -59,9 +57,9 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrSnapNotFound):
-			// as the snapshot is not present, create new snapshot,clone and
-			// delete the temporary snapshot
-			err = createRBDClone(ctx, tempClone, rv, snap)
+			// as the snapshot is not present, create new snapshot, clone and
+			// don't delete the temporary snapshot
+			err = createRBDClone(ctx, tempClone, rv, snap, false)
 			if err != nil {
 				return false, err
 			}
@@ -97,12 +95,6 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	if err != nil {
 		log.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
 		err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %w", rv.RbdImageName, snap.RbdSnapName, err)
-
-		return false, err
-	}
-	err = tempClone.deleteSnapshot(ctx, snap)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to delete snapshot: %v", err)
 
 		return false, err
 	}
@@ -207,7 +199,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 	cloneSnap.Pool = rv.Pool
 
 	// create snapshot and temporary clone and delete snapshot
-	err := createRBDClone(ctx, parentVol, tempClone, tempSnap)
+	err := createRBDClone(ctx, parentVol, tempClone, tempSnap, true)
 	if err != nil {
 		return err
 	}
@@ -238,8 +230,8 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 
 	// create snap of temp clone from temporary cloned image
 	// create final clone
-	// delete snap of temp clone
-	errClone = createRBDClone(ctx, tempClone, rv, cloneSnap)
+	// don't delete snap of temp clone (needed for mirroring of PVC-PVC clone).
+	errClone = createRBDClone(ctx, tempClone, rv, cloneSnap, false)
 	if errClone != nil {
 		return errClone
 	}

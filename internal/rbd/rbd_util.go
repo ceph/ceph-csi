@@ -750,7 +750,21 @@ func (ri *rbdImage) trashRemoveImage(ctx context.Context) error {
 // DeleteTempImage deletes the temporary image created for volume datasource.
 func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
 	tempClone := rv.generateTempClone()
-	err := tempClone.Delete(ctx)
+	snap := &rbdSnapshot{}
+	defer snap.Destroy(ctx)
+
+	snap.RbdImageName = tempClone.RbdImageName
+	snap.RbdSnapName = rv.RbdImageName
+	snap.Pool = rv.Pool
+	snap.RadosNamespace = rv.RadosNamespace
+	err := tempClone.deleteSnapshot(ctx, snap)
+	if err != nil {
+		if !errors.Is(err, util.ErrImageNotFound) && !errors.Is(err, ErrSnapNotFound) {
+			return fmt.Errorf("failed to delete snapshot %q: %w", snap, err)
+		}
+	}
+
+	err = tempClone.Delete(ctx)
 	if err != nil {
 		if errors.Is(err, util.ErrImageNotFound) {
 			return tempClone.ensureImageCleanup(ctx)
