@@ -62,6 +62,7 @@ func NewControllerServer(d *csicommon.CSIDriver) *rbd.ControllerServer {
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		VolumeLocks:             util.NewVolumeLocks(),
 		SnapshotLocks:           util.NewVolumeLocks(),
+		VolumeGroupLocks:        util.NewVolumeLocks(),
 		OperationLocks:          util.NewOperationLock(),
 	}
 }

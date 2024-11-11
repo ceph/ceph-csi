@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/ceph/ceph-csi/internal/rbd/types"
+	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -49,6 +50,14 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 		vgName  = req.GetName() + "-vg" // stable temporary name
 		vgsName = req.GetName()
 	)
+
+	// Existence and conflict checks
+	if acquired := cs.VolumeGroupLocks.TryAcquire(vgsName); !acquired {
+		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, vgsName)
+
+		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, vgsName)
+	}
+	defer cs.VolumeGroupLocks.Release(vgsName)
 
 	mgr := NewManager(cs.Driver.GetInstanceID(), req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
@@ -166,15 +175,25 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(
 	// 1. verify that all snapshots in the request are all snapshots in the group
 	// 2. delete the group
 
+	groupSnapshotID := req.GetGroupSnapshotId()
+
+	// Existence and conflict checks
+	if acquired := cs.VolumeGroupLocks.TryAcquire(groupSnapshotID); !acquired {
+		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, groupSnapshotID)
+
+		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, groupSnapshotID)
+	}
+	defer cs.VolumeGroupLocks.Release(groupSnapshotID)
+
 	mgr := NewManager(cs.Driver.GetInstanceID(), nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, req.GetGroupSnapshotId())
+	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, groupSnapshotID)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.Internal,
 			"failed to get volume group snapshot with id %q: %v",
-			req.GetGroupSnapshotId(), err)
+			groupSnapshotID, err)
 	}
 	defer groupSnapshot.Destroy(ctx)
 
@@ -195,15 +214,25 @@ func (cs *ControllerServer) GetVolumeGroupSnapshot(
 	ctx context.Context,
 	req *csi.GetVolumeGroupSnapshotRequest,
 ) (*csi.GetVolumeGroupSnapshotResponse, error) {
+	groupSnapshotID := req.GetGroupSnapshotId()
+
+	// Existence and conflict checks
+	if acquired := cs.VolumeGroupLocks.TryAcquire(groupSnapshotID); !acquired {
+		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, groupSnapshotID)
+
+		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, groupSnapshotID)
+	}
+	defer cs.VolumeGroupLocks.Release(groupSnapshotID)
+
 	mgr := NewManager(cs.Driver.GetInstanceID(), nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, req.GetGroupSnapshotId())
+	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, groupSnapshotID)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.Internal,
 			"failed to get volume group snapshot with id %q: %v",
-			req.GetGroupSnapshotId(), err)
+			groupSnapshotID, err)
 	}
 	defer groupSnapshot.Destroy(ctx)
 

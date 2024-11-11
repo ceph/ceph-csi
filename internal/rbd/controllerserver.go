@@ -53,6 +53,10 @@ type ControllerServer struct {
 	// A map storing all volumes/snapshots with ongoing operations.
 	OperationLocks *util.OperationLock
 
+	// A map storing all volumes with ongoing operations so that additional operations
+	// for that same volume (as defined by volumegroup ID/volumegroup name) return an Aborted error
+	VolumeGroupLocks *util.VolumeLocks
+
 	// Cluster name
 	ClusterName string
 
