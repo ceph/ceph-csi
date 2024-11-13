@@ -37,6 +37,8 @@ import (
 // group snapshot and remove all images from the group again. This leaves the
 // group and its snapshot around, the group snapshot can be inspected to list
 // the snapshots of the images.
+//
+//nolint:gocyclo,cyclop // TODO: reduce complexity.
 func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 	ctx context.Context,
 	req *csi.CreateVolumeGroupSnapshotRequest,
@@ -128,6 +130,27 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 	if err != nil {
 		log.DebugLog(ctx, "need to create new volume group snapshot, "+
 			"failed to get existing one with name %q: %v", vgsName, err)
+	}
+
+	creds, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer creds.DeleteCredentials()
+
+	errList := make([]error, 0)
+	for _, volume := range volumes {
+		err = volume.PrepareVolumeForSnapshot(ctx, creds)
+		if err != nil {
+			errList = append(errList, err)
+		}
+	}
+	if len(errList) > 0 {
+		// FIXME: we should probably choose a error code that has more priority.
+		return nil, status.Errorf(
+			status.Code(errList[0]),
+			"failed to prepare volumes for snapshot: %v",
+			errList)
 	}
 
 	// create a temporary VolumeGroup with a different name
