@@ -389,7 +389,7 @@ func (cs *ControllerServer) CreateVolume(
 	if err != nil {
 		return nil, getGRPCErrorForCreateVolume(err)
 	} else if found {
-		return cs.repairExistingVolume(ctx, req, cr, rbdVol, rbdSnap)
+		return cs.repairExistingVolume(ctx, req, rbdVol, rbdSnap)
 	}
 
 	err = checkValidCreateVolumeRequest(rbdVol, parentVol, rbdSnap)
@@ -516,21 +516,14 @@ func flattenParentImage(
 // that the state is corrected to what was requested. It is needed to call this
 // when the process of creating a volume was interrupted.
 func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.CreateVolumeRequest,
-	cr *util.Credentials, rbdVol *rbdVolume, rbdSnap *rbdSnapshot,
+	rbdVol *rbdVolume, rbdSnap *rbdSnapshot,
 ) (*csi.CreateVolumeResponse, error) {
 	vcs := req.GetVolumeContentSource()
 
 	switch {
 	// rbdVol is a restore from snapshot, rbdSnap is passed
 	case vcs.GetSnapshot() != nil:
-		// restore from snapshot implies rbdSnap != nil
-		// check if image depth is reached limit and requires flatten
-		err := checkFlatten(ctx, rbdVol, cr)
-		if err != nil {
-			return nil, err
-		}
-
-		err = rbdSnap.repairEncryptionConfig(ctx, &rbdVol.rbdImage)
+		err := rbdSnap.repairEncryptionConfig(ctx, &rbdVol.rbdImage)
 		if err != nil {
 			return nil, err
 		}
@@ -631,32 +624,6 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
-	}
-
-	return nil
-}
-
-// checkFlatten ensures that the image chain depth is not reached
-// hardlimit or softlimit. if the softlimit is reached it adds a task and
-// return success,the hardlimit is reached it starts a task to flatten the
-// image and return Aborted.
-func checkFlatten(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	err := rbdVol.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-	if err != nil {
-		if errors.Is(err, ErrFlattenInProgress) {
-			return status.Error(codes.Aborted, err.Error())
-		}
-		if errDefer := rbdVol.Delete(ctx); errDefer != nil {
-			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", rbdVol, errDefer)
-
-			return status.Error(codes.Internal, err.Error())
-		}
-		errDefer := undoVolReservation(ctx, rbdVol, cr)
-		if errDefer != nil {
-			log.WarningLog(ctx, "failed undoing reservation of volume: %s (%s)", rbdVol.RequestName, errDefer)
-		}
-
-		return status.Error(codes.Internal, err.Error())
 	}
 
 	return nil
