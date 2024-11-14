@@ -461,9 +461,9 @@ func flattenParentImage(
 	hardLimit := rbdHardMaxCloneDepth
 	softLimit := rbdSoftMaxCloneDepth
 	if rbdVol != nil {
-		// choosing 2, since cloning image creates a temp clone and a final clone which
-		// will add a total depth of 2.
-		const depthToAvoidFlatten = 2
+		// choosing 3, since cloning image creates a temp clone and a final clone which
+		// will add a total depth of 2 and the parent image itself adds one depth.
+		const depthToAvoidFlatten = 3
 		if rbdHardMaxCloneDepth > depthToAvoidFlatten {
 			hardLimit = rbdHardMaxCloneDepth - depthToAvoidFlatten
 		}
