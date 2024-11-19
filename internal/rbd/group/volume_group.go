@@ -415,3 +415,7 @@ func (vg *volumeGroup) CreateSnapshots(
 
 	return snapshots, nil
 }
+
+func (vg *volumeGroup) ToMirror() (types.Mirror, error) {
+	return volumeGroupMirror{vg}, nil
+}

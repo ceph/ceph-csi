@@ -73,4 +73,7 @@ type VolumeGroup interface {
 	// The Snapshots are crash consistent, and created as a consistency
 	// group.
 	CreateSnapshots(ctx context.Context, cr *util.Credentials, name string) ([]Snapshot, error)
+
+	// ToMirror converts the VolumeGroup to a Mirror.
+	ToMirror() (Mirror, error)
 }

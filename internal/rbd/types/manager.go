@@ -18,6 +18,8 @@ package types
 
 import (
 	"context"
+
+	"github.com/csi-addons/spec/lib/go/replication"
 )
 
 // VolumeResolver can be used to construct a Volume from a CSI VolumeId.
@@ -71,4 +73,8 @@ type Manager interface {
 	// RegenerateVolumeGroupJournal regenerate the omap data for the volume group.
 	// returns the volume group handle
 	RegenerateVolumeGroupJournal(ctx context.Context, groupID, requestName string, volumeIds []string) (string, error)
+
+	// GetMirrorSource returns the source of the mirror for the given volume or group.
+	GetMirrorSource(ctx context.Context, volumeID string,
+		rep *replication.ReplicationSource) ([]Volume, Mirror, error)
 }
