@@ -636,7 +636,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 		isMnt = true
 	}
 	if !isMnt {
-		if err = os.RemoveAll(targetPath); err != nil {
+		if err = os.Remove(targetPath); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
