@@ -709,8 +709,12 @@ func (ns *NodeServer) NodePublishVolume(
 	volID := req.GetVolumeId()
 	stagingPath += "/" + volID
 
-	// Considering kubelet make sure the stage and publish operations
-	// are serialized, we dont need any extra locking in nodePublish
+	if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+		log.ErrorLog(ctx, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+
+		return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+	}
+	defer ns.VolumeLocks.Release(targetPath)
 
 	// Check if that target path exists properly
 	notMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
@@ -914,8 +918,14 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	}
 
 	targetPath := req.GetTargetPath()
-	// considering kubelet make sure node operations like unpublish/unstage...etc can not be called
-	// at same time, an explicit locking at time of nodeunpublish is not required.
+
+	if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+		log.ErrorLog(ctx, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+
+		return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+	}
+	defer ns.VolumeLocks.Release(targetPath)
+
 	isMnt, err := ns.Mounter.IsMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
