@@ -7,6 +7,7 @@ package rbd
 // #include <rbd/librbd.h>
 import "C"
 import (
+	"errors"
 	"fmt"
 	"unsafe"
 
@@ -156,11 +157,19 @@ func GetMirrorGroupInfo(groupIoctx *rados.IOContext, groupName string) (*MirrorG
 		cGroupName,
 		&cgInfo,
 		C.sizeof_rbd_mirror_group_info_t)
-
+	var err error
 	if ret < 0 {
-		return nil, getError(ret)
+		err = getError(ret)
 	}
-
+	if err != nil {
+		if errors.Is(err, ErrNotFound) || errors.Is(err, rados.RadosErrorNotFound) {
+			return &MirrorGroupInfo{
+				State:           MirrorGroupDisabled,
+				MirrorImageMode: ImageMirrorModeSnapshot,
+				Primary:         false,
+			}, nil
+		}
+	}
 	info := convertMirrorGroupInfo(&cgInfo)
 
 	// free C memory allocated by C.rbd_mirror_group_get_info call
@@ -279,54 +288,86 @@ func GetGlobalMirrorGroupStatus(ioctx *rados.IOContext, groupName string) (Globa
 	s := C.rbd_mirror_group_global_status_t{}
 	cGroupName := C.CString(groupName)
 	defer C.free(unsafe.Pointer(cGroupName))
-	// ret := C.rbd_mirror_group_get_global_status(
-	// 	cephIoctx(ioctx),
-	// 	(*C.char)(cGroupName),
-	// 	&s,
-	// 	C.sizeof_rbd_mirror_group_global_status_t)
-	// if err := getError(ret); err != nil {
-	// 	return GlobalMirrorGroupStatus{}, err
-	// }
+	ret := C.rbd_mirror_group_get_global_status(
+		cephIoctx(ioctx),
+		(*C.char)(cGroupName),
+		&s,
+		C.sizeof_rbd_mirror_group_global_status_t)
+	if err := getError(ret); err != nil {
+		return GlobalMirrorGroupStatus{}, err
+	}
 
 	status := newGlobalMirrorGroupStatus(&s)
 	return status, nil
 }
 
-func newGlobalMirrorGroupStatus(
-	s *C.rbd_mirror_group_global_status_t) GlobalMirrorGroupStatus {
-
+func newGlobalMirrorGroupStatus(s *C.rbd_mirror_group_global_status_t) GlobalMirrorGroupStatus {
+	// Initializing the status object
 	status := GlobalMirrorGroupStatus{
 		Name:              C.GoString(s.name),
 		Info:              convertMirrorGroupInfo(&s.info),
 		SiteStatusesCount: int(s.site_statuses_count),
 		SiteStatuses:      make([]SiteMirrorGroupStatus, s.site_statuses_count),
 	}
-	gsscs := (*groupSiteArray)(unsafe.Pointer(s.site_statuses))[:s.site_statuses_count:s.site_statuses_count]
-	for i := C.uint32_t(0); i < s.site_statuses_count; i++ {
-		gss := gsscs[i]
-		status.SiteStatuses[i] = SiteMirrorGroupStatus{
-			MirrorUUID:           C.GoString(gss.mirror_uuid),
-			MirrorImageGlobalIDs: C.GoString(*gss.mirror_image_global_ids),
-			MirrorImagePoolIDs:   int64(*gss.mirror_image_pool_ids),
-			State:                MirrorGroupStatusState(gss.state),
-			Description:          C.GoString(gss.description),
-			MirrorImageCount:     int(gss.mirror_image_count),
-			LastUpdate:           int64(gss.last_update),
-			MirrorImages:         make([]SiteMirrorImageStatus, gss.mirror_image_count),
-			Up:                   bool(gss.up),
-		}
 
-		sscs := (*siteArray)(unsafe.Pointer(gss.mirror_images))[:gss.mirror_image_count:gss.mirror_image_count]
-		for i := C.uint32_t(0); i < gss.mirror_image_count; i++ {
-			ss := sscs[i]
-			status.SiteStatuses[i].MirrorImages[i] = SiteMirrorImageStatus{
-				MirrorUUID:  C.GoString(ss.mirror_uuid),
-				State:       MirrorImageStatusState(ss.state),
-				Description: C.GoString(ss.description),
-				LastUpdate:  int64(ss.last_update),
-				Up:          bool(ss.up),
+	// Print the count of site statuses for debugging
+	fmt.Println("status.SiteStatusesCount: ", s.site_statuses_count)
+
+	fmt.Printf("s.site_statuses: %+v\n", s.site_statuses)
+	// Check if site statuses are not null before using them
+	if s.site_statuses != nil && s.site_statuses_count > 0 {
+		gsscs := (*groupSiteArray)(unsafe.Pointer(s.site_statuses))[:s.site_statuses_count:s.site_statuses_count]
+		for i := C.uint32_t(0); i < s.site_statuses_count; i++ {
+			gss := gsscs[i]
+			// Ensure that fields are valid before using them
+			if gss.mirror_uuid != nil && gss.mirror_image_global_ids != nil {
+				status.SiteStatuses[i] = SiteMirrorGroupStatus{
+					MirrorUUID:           C.GoString(gss.mirror_uuid),
+					MirrorImageGlobalIDs: C.GoString(*gss.mirror_image_global_ids),
+					MirrorImagePoolIDs:   int64(*gss.mirror_image_pool_ids),
+					State:                MirrorGroupStatusState(gss.state),
+					Description:          C.GoString(gss.description),
+					MirrorImageCount:     int(gss.mirror_image_count),
+					LastUpdate:           int64(gss.last_update),
+					MirrorImages:         make([]SiteMirrorImageStatus, gss.mirror_image_count),
+					Up:                   bool(gss.up),
+				}
+
+				// Check if the mirror_images pointer is valid
+				if gss.mirror_images != nil && gss.mirror_image_count > 0 {
+
+					sscs := (*siteArray)(unsafe.Pointer(gss.mirror_images))[:gss.mirror_image_count:gss.mirror_image_count]
+					fmt.Printf("sscs: siteArray %+v\n", sscs)
+					for j := C.uint32_t(0); j < gss.mirror_image_count; j++ {
+						ss := sscs[j]
+
+						// Ensure that fields are valid before using them
+						if ss.mirror_uuid != nil {
+							status.SiteStatuses[i].MirrorImages[j] = SiteMirrorImageStatus{
+								MirrorUUID:  C.GoString(ss.mirror_uuid),
+								State:       MirrorImageStatusState(ss.state),
+								Description: C.GoString(ss.description),
+								LastUpdate:  int64(ss.last_update),
+								Up:          bool(ss.up),
+							}
+						} else {
+							// Log if a field is invalid
+							fmt.Println("Warning: mirror_uuid is nil at index", i, j)
+						}
+					}
+				} else {
+					// Handle case where mirror_images is nil or mirror_image_count is 0
+					fmt.Println("Warning: mirror_images is nil or mirror_image_count is 0 at index", i)
+				}
+			} else {
+				// Handle case where mirror_uuid or mirror_image_global_ids is nil
+				fmt.Println("Warning: mirror_uuid or mirror_image_global_ids is nil at index", i)
 			}
 		}
+	} else {
+		// Handle case where site statuses are nil or count is 0
+		fmt.Println("Warning: site_statuses is nil or site_statuses_count is 0")
 	}
+	// Return the populated status
 	return status
 }

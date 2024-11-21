@@ -876,6 +876,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	log.DebugLog(ctx, "mirrorStatus: %+v", mirrorStatus)
 	remoteStatus, err := mirrorStatus.GetRemoteSiteStatus(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get remote site status for mirror %q: %v", mirror, err)
@@ -899,6 +900,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Errorf(codes.Internal, "failed to get last sync info: %v", err)
 	}
 
+	log.DebugLog(ctx, "Madhu the response is %v", resp)
 	return resp, nil
 }
 
@@ -923,7 +925,7 @@ func getLastSyncInfo(ctx context.Context, description string) (*replication.GetV
 	if description == "" {
 		return nil, fmt.Errorf("empty description: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
-	log.DebugLog(ctx, "description: %s", description)
+	log.DebugLog(ctx, "Madhu description: %s", description)
 	splittedString := strings.SplitN(description, ",", 2)
 	if len(splittedString) == 1 {
 		return nil, fmt.Errorf("no snapshot details: %w", corerbd.ErrLastSyncTimeNotFound)
@@ -940,6 +942,7 @@ func getLastSyncInfo(ctx context.Context, description string) (*replication.GetV
 		return nil, fmt.Errorf("failed to unmarshal local snapshot info: %w", err)
 	}
 
+	log.DebugLog(ctx, "Madhu the description after unmarshalling is %v", localSnapInfo)
 	// If the json unmarsal is successful but the local snapshot time is 0, we
 	// need to consider it as an error as the LastSyncTime is required.
 	if localSnapInfo.LocalSnapshotTime == 0 {
@@ -965,6 +968,7 @@ func getLastSyncInfo(ctx context.Context, description string) (*replication.GetV
 	response.LastSyncTime = lastSyncTime
 	response.LastSyncBytes = localSnapInfo.LastSnapshotBytes
 
+	log.DebugLog(ctx, "Madhu the return response is %v", response)
 	return &response, nil
 }
 

@@ -15,8 +15,10 @@ package group
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ceph/go-ceph/rados"
@@ -279,6 +281,12 @@ func (status globalMirrorGroupStatus) GetRemoteSiteStatus(ctx context.Context) (
 		err error = librbd.ErrNotExist
 	)
 
+	type localStatus struct {
+		LocalSnapshotTime    int64  `json:"local_snapshot_timestamp"`
+		LastSnapshotBytes    int64  `json:"last_snapshot_bytes"`
+		LastSnapshotDuration *int64 `json:"last_snapshot_sync_seconds"`
+	}
+
 	for i := range status.SiteStatuses {
 		log.DebugLog(
 			ctx,
@@ -291,8 +299,53 @@ func (status globalMirrorGroupStatus) GetRemoteSiteStatus(ctx context.Context) (
 
 		if status.SiteStatuses[i].MirrorUUID != "" {
 			ss = status.SiteStatuses[i]
-			err = nil
 
+			images := status.SiteStatuses[i].MirrorImages
+
+			totalSnpshotTime := int64(0)
+			totalSnapshotBytes := int64(0)
+			totalSnapshotDuration := int64(0)
+			totalImages := len(images)
+			for _, image := range images {
+				log.DebugLog(ctx, "Madhu image: %s, state: %s, description: %s, lastUpdate: %v, up: %t",
+					image.MirrorUUID,
+					image.State,
+					image.Description,
+					image.LastUpdate,
+					image.Up)
+				description := image.Description
+				log.DebugLog(ctx, "[Madhu] description: %s", description)
+				splittedString := strings.SplitN(description, ",", 2)
+				if len(splittedString) == 1 {
+					log.DebugLog(ctx, "no snapshot details", splittedString[0])
+					continue
+				}
+				var localSnapInfo localStatus
+				err := json.Unmarshal([]byte(splittedString[1]), &localSnapInfo)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal local snapshot info: %w", err)
+				}
+				log.DebugLog(ctx, "Madhu localStatus", localSnapInfo)
+				totalSnpshotTime += localSnapInfo.LocalSnapshotTime
+				totalSnapshotBytes += localSnapInfo.LastSnapshotBytes
+				totalSnapshotDuration += *localSnapInfo.LastSnapshotDuration
+			}
+			err = nil
+			totalDuration := int64(totalSnapshotDuration / int64(totalImages))
+			// write the total snapshot time, bytes and duration to the description
+			d := localStatus{
+				LocalSnapshotTime:    int64(totalSnpshotTime / int64(totalImages)),
+				LastSnapshotBytes:    int64(totalSnapshotBytes / int64(totalImages)),
+				LastSnapshotDuration: &totalDuration,
+			}
+			description, err := json.Marshal(d)
+			log.DebugLog(ctx, "description: %s", description)
+			log.DebugLog(ctx, "description: %v", d)
+			if err != nil {
+
+				return nil, fmt.Errorf("failed to marshal local snapshot info: %w", err)
+			}
+			ss.Description = fmt.Sprintf("%s, %s", ss.Description, description)
 			break
 		}
 	}
