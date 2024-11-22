@@ -75,20 +75,21 @@ type VolumeGroupSnapshotter interface {
 }
 
 type volumeGroupSnapshotterBase struct {
-	timeout          int
-	framework        *framework.Framework
-	groupclient      *groupsnapclient.GroupsnapshotV1beta1Client
-	snapClient       *snapclient.SnapshotV1Client
-	storageClassName string
-	blockPVC         bool
-	totalPVCCount    int
-	namespace        string
+	timeout                   int
+	framework                 *framework.Framework
+	groupclient               *groupsnapclient.GroupsnapshotV1beta1Client
+	snapClient                *snapclient.SnapshotV1Client
+	storageClassName          string
+	blockPVC                  bool
+	totalPVCCount             int
+	additionalVGSnapshotCount int
+	namespace                 string
 }
 
 func newVolumeGroupSnapshotBase(f *framework.Framework, namespace,
 	storageClass string,
 	blockPVC bool,
-	timeout, totalPVCCount int,
+	timeout, totalPVCCount, additionalVGSnapshotCount int,
 ) (*volumeGroupSnapshotterBase, error) {
 	config, err := framework.LoadConfig()
 	if err != nil {
@@ -105,14 +106,15 @@ func newVolumeGroupSnapshotBase(f *framework.Framework, namespace,
 	}
 
 	return &volumeGroupSnapshotterBase{
-		framework:        f,
-		groupclient:      c,
-		snapClient:       s,
-		namespace:        namespace,
-		storageClassName: storageClass,
-		blockPVC:         blockPVC,
-		timeout:          timeout,
-		totalPVCCount:    totalPVCCount,
+		framework:                 f,
+		groupclient:               c,
+		snapClient:                s,
+		namespace:                 namespace,
+		storageClassName:          storageClass,
+		blockPVC:                  blockPVC,
+		timeout:                   timeout,
+		totalPVCCount:             totalPVCCount,
+		additionalVGSnapshotCount: additionalVGSnapshotCount,
 	}, err
 }
 
@@ -476,6 +478,22 @@ func (v *volumeGroupSnapshotterBase) testVolumeGroupSnapshot(vol VolumeGroupSnap
 	volumeGroupSnapshot, err := v.CreateVolumeGroupSnapshot(vgsName, vgscName, pvcLabels)
 	if err != nil {
 		return fmt.Errorf("failed to create volume group snapshot: %w", err)
+	}
+
+	// Create and delete additional group snapshots.
+	for i := range v.additionalVGSnapshotCount {
+		newVGSName := fmt.Sprintf("%s-%d", vgsName, i)
+		_, err = v.CreateVolumeGroupSnapshot(newVGSName, vgscName, pvcLabels)
+		if err != nil {
+			return fmt.Errorf("failed to create volume group snapshot %q: %w", newVGSName, err)
+		}
+	}
+	for i := range v.additionalVGSnapshotCount {
+		newVGSName := fmt.Sprintf("%s-%d", vgsName, i)
+		err = v.DeleteVolumeGroupSnapshot(newVGSName)
+		if err != nil {
+			return fmt.Errorf("failed to delete volume group snapshot %q: %w", newVGSName, err)
+		}
 	}
 
 	clonePVCs, err := v.CreatePVCClones(volumeGroupSnapshot)

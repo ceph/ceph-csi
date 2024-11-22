@@ -4881,7 +4881,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				scName := "csi-rbd-sc"
-				snapshotter, err := newRBDVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3)
+				snapshotter, err := newRBDVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3, 5)
 				if err != nil {
 					framework.Failf("failed to create RBDVolumeGroupSnapshot: %v", err)
 				}
