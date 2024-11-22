@@ -785,13 +785,9 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	}
 }
 
-type trashSnapInfo struct {
-	origSnapName string
-}
-
 func flattenClonedRbdImages(
 	ctx context.Context,
-	snaps []librbd.SnapInfo,
+	children []string,
 	pool, monitors, rbdImageName string,
 	cr *util.Credentials,
 ) error {
@@ -807,26 +803,9 @@ func flattenClonedRbdImages(
 
 		return err
 	}
-	var origNameList []trashSnapInfo
-	for _, snapInfo := range snaps {
-		// check if the snapshot belongs to trash namespace.
-		isTrash, retErr := rv.isTrashSnap(snapInfo.Id)
-		if retErr != nil {
-			return retErr
-		}
 
-		if isTrash {
-			// get original snap name for the snapshot in trash namespace
-			origSnapName, retErr := rv.getOrigSnapName(snapInfo.Id)
-			if retErr != nil {
-				return retErr
-			}
-			origNameList = append(origNameList, trashSnapInfo{origSnapName})
-		}
-	}
-
-	for _, snapName := range origNameList {
-		rv.RbdImageName = snapName.origSnapName
+	for _, childName := range children {
+		rv.RbdImageName = childName
 		err = rv.flattenRbdImage(ctx, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
@@ -2052,57 +2031,26 @@ func (ri *rbdImage) DisableDeepFlatten() error {
 	return image.UpdateFeatures(librbd.FeatureDeepFlatten, false)
 }
 
-func (ri *rbdImage) listSnapshots() ([]librbd.SnapInfo, error) {
+// listSnapAndChildren returns list of names of snapshots and child images.
+func (ri *rbdImage) listSnapAndChildren() ([]librbd.SnapInfo, []string, error) {
 	image, err := ri.open()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer image.Close()
 
-	snapInfoList, err := image.GetSnapshotNames()
+	snaps, err := image.GetSnapshotNames()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return snapInfoList, nil
-}
-
-// isTrashSnap returns true if the snapshot belongs to trash namespace.
-func (ri *rbdImage) isTrashSnap(snapID uint64) (bool, error) {
-	image, err := ri.open()
+	// ListChildren() returns pools, images, err.
+	_, children, err := image.ListChildren()
 	if err != nil {
-		return false, err
-	}
-	defer image.Close()
-
-	// Get namespace type for the snapshot
-	nsType, err := image.GetSnapNamespaceType(snapID)
-	if err != nil {
-		return false, err
+		return nil, nil, err
 	}
 
-	if nsType == librbd.SnapNamespaceTypeTrash {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-// getOrigSnapName returns the original snap name for
-// the snapshots in Trash Namespace.
-func (ri *rbdImage) getOrigSnapName(snapID uint64) (string, error) {
-	image, err := ri.open()
-	if err != nil {
-		return "", err
-	}
-	defer image.Close()
-
-	origSnapName, err := image.GetSnapTrashNamespace(snapID)
-	if err != nil {
-		return "", err
-	}
-
-	return origSnapName, nil
+	return snaps, children, nil
 }
 
 func (ri *rbdImage) isCompatibleEncryption(dst *rbdImage) error {
