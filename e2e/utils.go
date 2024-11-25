@@ -1614,6 +1614,9 @@ const (
 	kubectlCreate = kubectlAction("create")
 	// kubectlDelete tells retryKubectlInput() to run "delete".
 	kubectlDelete = kubectlAction("delete")
+
+	//kubectlGet tells retryKubectlInput() to run "get".
+	kubectlGet = kubectlAction("get")
 )
 
 // String returns the string format of the kubectlAction, this is automatically
@@ -1637,7 +1640,7 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 		}
 		cmd = append(cmd, []string{string(action), "-f", "-"}...)
 
-		_, err := e2ekubectl.RunKubectlInput(namespace, data, cmd...)
+		output, err := e2ekubectl.RunKubectlInput(namespace, data, cmd...)
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -1656,7 +1659,7 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 
 			return false, fmt.Errorf("failed to run kubectl: %w", err)
 		}
-
+		framework.Logf("kubectl output: %s\n", output)
 		return true, nil
 	})
 }

@@ -145,14 +145,14 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.0.1
+          image: quay.io/madhupr001/csi-snapshotter:latest
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
             - "--timeout=150s"
             - "--leader-election=true"
             - "--extra-create-metadata=true"
-            - "--enable-volume-group-snapshots=true"
+            - "--feature-gates=CSIVolumeGroupSnapshot=true"
             - "--http-endpoint=$(POD_IP):8092"
           env:
             - name: ADDRESS
@@ -195,9 +195,7 @@ spec:
           imagePullPolicy: "IfNotPresent"
       volumes:
         - name: socket-dir
-          emptyDir: {
-            medium: "Memory"
-          }
+          emptyDir: { medium: "Memory" }
         - name: host-sys
           hostPath:
             path: /sys
@@ -214,9 +212,7 @@ spec:
           configMap:
             name: ceph-csi-config
         - name: keys-tmp-dir
-          emptyDir: {
-            medium: "Memory"
-          }
+          emptyDir: { medium: "Memory" }
         - name: ceph-csi-encryption-kms-config
           configMap:
             name: ceph-csi-encryption-kms-config

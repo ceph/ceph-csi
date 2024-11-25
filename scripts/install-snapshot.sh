@@ -16,7 +16,7 @@ TEMP_DIR="$(mktemp -d)"
 SNAPSHOTTER_URL="https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${SNAPSHOT_VERSION}"
 
 # controller
-SNAPSHOT_RBAC="${SNAPSHOTTER_URL}/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml"
+SNAPSHOT_RBAC=https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/a4754736ebb2dc7475b28d1e4bf7a68e330070fe/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml
 SNAPSHOT_CONTROLLER="${SNAPSHOTTER_URL}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
 
 # snapshot CRD
@@ -25,9 +25,9 @@ VOLUME_SNAPSHOT_CONTENT="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k
 VOLUME_SNAPSHOT="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml"
 
 # volumegroupsnapshot CRD
-VOLUME_GROUP_SNAPSHOTCLASS="${SNAPSHOTTER_URL}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotclasses.yaml"
-VOLUME_GROUP_SNAPSHOT_CONTENT="${SNAPSHOTTER_URL}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotcontents.yaml"
-VOLUME_GROUP_SNAPSHOT="${SNAPSHOTTER_URL}/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshots.yaml"
+VOLUME_GROUP_SNAPSHOTCLASS=https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/a4754736ebb2dc7475b28d1e4bf7a68e330070fe/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotclasses.yaml
+VOLUME_GROUP_SNAPSHOT_CONTENT=https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/a4754736ebb2dc7475b28d1e4bf7a68e330070fe/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotcontents.yaml
+VOLUME_GROUP_SNAPSHOT=https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/a4754736ebb2dc7475b28d1e4bf7a68e330070fe/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshots.yaml
 
 function install_snapshot_controller() {
     local namespace=$1
@@ -74,23 +74,15 @@ function create_or_delete_resource() {
     curl -o "${temp_snap_controller}" "${SNAPSHOT_CONTROLLER}"
     sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_rbac}"
     sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_snap_controller}"
-    sed -i -E "s/(image: registry\.k8s\.io\/sig-storage\/snapshot-controller:).*$/\1$SNAPSHOT_VERSION/g" "${temp_snap_controller}"
+    sed -i 's|image:.*|image: quay.io/madhupr001/snapshot-controller:latest|' "${temp_snap_controller}"
 
     if [ "${operation}" == "create" ]; then
         # Argument to add/update
-        ARGUMENT="--enable-volume-group-snapshots=true"
+        ARGUMENT="--feature-gates=CSIVolumeGroupSnapshot=true"
         # Check if the argument is already present and set to false
-        if grep -q -E "^\s+-\s+--enable-volume-group-snapshots=false" "${temp_snap_controller}"; then
-            sed -i -E "s/^\s+-\s+--enable-volume-group-snapshots=false$/      - $ARGUMENT/" "${temp_snap_controller}"
-            # Check if the argument is already present and set to true
-        elif grep -q -E "^\s+-\s+--enable-volume-group-snapshots=true" "${temp_snap_controller}"; then
-            echo "Argument already present and matching."
-        else
-            # Add the argument if it's not present
-            sed -i -E "/^(\s+)args:/a\           \ - $ARGUMENT" "${temp_snap_controller}"
-        fi
+        # Add the argument if it's not present
+        sed -i -E "/^(\s+)args:/a\           \ - $ARGUMENT" "${temp_snap_controller}"
     fi
-
     kubectl_retry "${operation}" -f "${VOLUME_GROUP_SNAPSHOTCLASS}"
     kubectl_retry "${operation}" -f "${VOLUME_GROUP_SNAPSHOT_CONTENT}"
     kubectl_retry "${operation}" -f "${VOLUME_GROUP_SNAPSHOT}"

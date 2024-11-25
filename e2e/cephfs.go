@@ -349,6 +349,50 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("test volumeGroupSnapshot", func() {
+				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				scName := "csi-cephfs-sc"
+				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 10)
+				if err != nil {
+					framework.Failf("failed to create volumeGroupSnapshot Base: %v", err)
+				}
+
+				snapTestErr := snapshotter.TestVolumeGroupSnapshot()
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshot", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumegroupsnapshot: %v", err)
+				}
+
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshotcontent", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumegroupsnapshot: %v", err)
+				}
+
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshot", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumesnapshot: %v", err)
+				}
+
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshotcontent", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumesnapshotcontent: %v", err)
+				}
+
+				if snapTestErr != nil {
+					framework.Failf("failed to test volumeGroupSnapshot: %v", snapTestErr)
+				}
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+
+				framework.Logf("[Debug] volumeGroupSnapshot test passed")
+				return
+			})
+
 			By("validate fuseMountOptions", func() {
 				params := map[string]string{
 					"mounter":          "fuse",
@@ -2475,19 +2519,6 @@ var _ = Describe(cephfsType, func() {
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
 					framework.Failf("failed to delete PVC: %v", err)
-				}
-			})
-
-			By("test volumeGroupSnapshot", func() {
-				scName := "csi-cephfs-sc"
-				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3)
-				if err != nil {
-					framework.Failf("failed to create volumeGroupSnapshot Base: %v", err)
-				}
-
-				err = snapshotter.TestVolumeGroupSnapshot()
-				if err != nil {
-					framework.Failf("failed to test volumeGroupSnapshot: %v", err)
 				}
 			})
 
