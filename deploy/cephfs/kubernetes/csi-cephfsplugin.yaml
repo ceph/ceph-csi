@@ -26,7 +26,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/cephcsi:v3.12-canary
+          image: quay.io/cephcsi/cephcsi:v3.12.3
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=cephfs"
@@ -124,7 +124,7 @@ spec:
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/cephcsi:v3.12-canary
+          image: quay.io/cephcsi/cephcsi:v3.12.3
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
