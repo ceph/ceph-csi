@@ -717,12 +717,6 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 	defer cs.OperationLocks.ReleaseExpandLock(volID)
 
-	cr, err := util.NewAdminCredentials(secret)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	defer cr.DeleteCredentials()
-
 	volOptions, volIdentifier, err := store.NewVolumeOptionsFromVolID(ctx, volID, nil, secret,
 		cs.ClusterName, cs.SetMetadata)
 	if err != nil {
