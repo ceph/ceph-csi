@@ -52,3 +52,20 @@ func CreateTempFile(prefix, contents string) (*os.File, error) {
 
 	return file, nil
 }
+
+// CreateSpareFile makes `file` a sparse file of size `sizeMB`.
+func CreateSparseFile(file *os.File, sizeMB int64) error {
+	sizeBytes := sizeMB * 1024 * 1024
+
+	// seek to the end of the file.
+	if _, err := file.Seek(sizeBytes-1, 0); err != nil {
+		return fmt.Errorf("failed to seek to the end of the file: %w", err)
+	}
+
+	// write a single byte, effectively making it a sparse file.
+	if _, err := file.Write([]byte{0}); err != nil {
+		return fmt.Errorf("failed to write to the end of the file: %w", err)
+	}
+
+	return nil
+}

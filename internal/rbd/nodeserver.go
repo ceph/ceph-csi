@@ -26,6 +26,7 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/fscrypt"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -45,6 +46,11 @@ type NodeServer struct {
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
 	VolumeLocks *util.VolumeLocks
+
+	// ext4HasPrezeroedSupport indicates whether the ext4 filesystem has support for pre-zeroed blocks.
+	ext4HasPrezeroedSupport featureFlag
+	// xfsHasReflinkSupport indicates whether the xfs filesystem has support for reflink.
+	xfsHasReflinkSupport featureFlag
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed
@@ -61,11 +67,16 @@ type stageTransaction struct {
 	devicePath string
 }
 
+// featureFlag represents a type for defining feature flags within the RBD node server.
+type featureFlag int
+
 const (
-	// values for xfsHasReflink.
-	xfsReflinkUnset int = iota
-	xfsReflinkNoSupport
-	xfsReflinkSupport
+	// featureFlagUnset represents the default value for a feature flag.
+	featureFlagUnset featureFlag = iota
+	// featureFlagNoSupport represents the value for a feature flag when the feature is not supported.
+	featureFlagNoSupport
+	// featureFlagSupport represents the value for a feature flag when the feature is supported.
+	featureFlagSupport
 
 	staticVol        = "staticVolume"
 	volHealerCtx     = "volumeHealerContext"
@@ -94,15 +105,6 @@ var (
 			Distribution: ".el8",
 			Backport:     true,
 		}, // RHEL 8.2
-	}
-
-	// xfsHasReflink is set by xfsSupportsReflink(), use the function when
-	// checking the support for reflink.
-	xfsHasReflink = xfsReflinkUnset
-
-	mkfsDefaultArgs = map[string][]string{
-		"ext4": {"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1"},
-		"xfs":  {"-K"},
 	}
 
 	mountDefaultOpts = map[string][]string{
@@ -793,7 +795,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	}
 
 	if existingFormat == "" && !staticVol && !readOnly && !isBlock {
-		args := mkfsDefaultArgs[fsType]
+		args := ns.getMkfsArgs(fsType)
 
 		// if the VolumeContext contains "mkfsOptions", use those as args instead
 		volumeCtx := req.GetVolumeContext()
@@ -1292,8 +1294,8 @@ func (ns *NodeServer) processEncryptedDevice(
 // argument. In case it is supported, return true.
 func (ns *NodeServer) xfsSupportsReflink() bool {
 	// return cached value, if set
-	if xfsHasReflink != xfsReflinkUnset {
-		return xfsHasReflink == xfsReflinkSupport
+	if ns.xfsHasReflinkSupport != featureFlagUnset {
+		return ns.xfsHasReflinkSupport == featureFlagSupport
 	}
 
 	// run mkfs.xfs in the same namespace as formatting would be done in
@@ -1303,15 +1305,63 @@ func (ns *NodeServer) xfsSupportsReflink() bool {
 	if err != nil {
 		// mkfs.xfs should fail with an error message (and help text)
 		if strings.Contains(string(out), "reflink=0|1") {
-			xfsHasReflink = xfsReflinkSupport
+			ns.xfsHasReflinkSupport = featureFlagSupport
 
 			return true
 		}
 	}
 
-	xfsHasReflink = xfsReflinkNoSupport
+	ns.xfsHasReflinkSupport = featureFlagNoSupport
 
 	return false
+}
+
+// ext4SupportsPrezeroed checks if the ext4 filesystem supports the
+// "assume_storage_prezeroed" option. It does this by creating a temporary
+// image file, attempting to format it with the ext4 filesystem using the
+// "assume_storage_prezeroed" option, and checking the output for errors.
+func (ns *NodeServer) ext4SupportsPrezeroed() bool {
+	if ns.ext4HasPrezeroedSupport != featureFlagUnset {
+		return ns.ext4HasPrezeroedSupport == featureFlagSupport
+	}
+
+	ctx := context.TODO()
+	tempImgFile, err := os.CreateTemp(os.TempDir(), "prezeroed.img")
+	if err != nil {
+		log.WarningLog(ctx, "failed to create temporary image file: %v", err)
+
+		return false
+	}
+	defer os.Remove(tempImgFile.Name())
+
+	if err = file.CreateSparseFile(tempImgFile, 1); err != nil {
+		log.WarningLog(ctx, "failed to create sparse file: %v", err)
+
+		return false
+	}
+
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
+
+	// `-n` Causes mke2fs to not actually create a file system
+	// but display what it would do if it were to create a file system.
+	out, err := diskMounter.Exec.Command(
+		"mkfs.ext4",
+		"-n",
+		"-Eassume_storage_prezeroed=1",
+		tempImgFile.Name(),
+	).CombinedOutput()
+	if err != nil {
+		if strings.Contains(string(out), "Bad option(s) specified") {
+			ns.ext4HasPrezeroedSupport = featureFlagNoSupport
+		}
+
+		// if the error is not due to the missing option, we can't be sure
+		// if the option is supported or not, return false optimistically
+		return false
+	}
+	ns.ext4HasPrezeroedSupport = featureFlagSupport
+
+	return true
 }
 
 // NodeGetVolumeStats returns volume stats.
@@ -1396,4 +1446,26 @@ func getDeviceSize(ctx context.Context, devicePath string) (uint64, error) {
 	}
 
 	return size, nil
+}
+
+// getMkfsArgs returns the appropriate mkfs arguments for the given filesystem type.
+// Supported filesystem types are "ext4" and "xfs". For "ext4", it checks if the
+// ext4 filesystem supports pre-zeroed storage and returns the corresponding arguments.
+// For "xfs", it returns the arguments to disable discard. If an unknown filesystem
+// type is provided, a warning is logged and empty options are returned.
+func (ns *NodeServer) getMkfsArgs(fsType string) []string {
+	switch fsType {
+	case "ext4":
+		if ns.ext4SupportsPrezeroed() {
+			return []string{"-m0", "-Enodiscard,assume_storage_prezeroed=1"}
+		}
+
+		return []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1"}
+	case "xfs":
+		return []string{"-K"}
+	default:
+		log.WarningLogMsg("unknown fsType: %q, using default mkfs options", fsType)
+
+		return []string{}
+	}
 }

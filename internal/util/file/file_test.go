@@ -98,3 +98,45 @@ func TestCreateTempFile_WithLargeContent(t *testing.T) {
 		t.Fatalf("Content mismatch: got %v, want %v", string(readContent), content)
 	}
 }
+
+func TestCreateSparseFile(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		sizeMB  int64
+		wantErr bool
+	}{
+		{"WithValidSize", 10, false},
+		{"WithZeroSize", 0, true},
+		{"WithNegativeSize", -1, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			file, err := os.CreateTemp(t.TempDir(), "test-sparse-")
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			err = CreateSparseFile(file, tt.sizeMB)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if !tt.wantErr {
+				fileInfo, err := file.Stat()
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+
+				expectedSize := tt.sizeMB * 1024 * 1024
+				if fileInfo.Size() != expectedSize {
+					t.Fatalf("Size mismatch: got %v, want %v", fileInfo.Size(), expectedSize)
+				}
+			}
+		})
+	}
+}
