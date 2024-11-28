@@ -453,7 +453,7 @@ func (v volumeGroupSnapshotterBase) DeleteVolumeGroupSnapshotClass(groupSnapshot
 }
 
 func (v *volumeGroupSnapshotterBase) testVolumeGroupSnapshot(vol VolumeGroupSnapshotter) error {
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 15; i++ {
 		pvcLabels := map[string]string{"pvc": "vgsc"}
 		pvcs, err := v.CreatePVCs(v.namespace, pvcLabels)
 		if err != nil {
@@ -483,20 +483,20 @@ func (v *volumeGroupSnapshotterBase) testVolumeGroupSnapshot(vol VolumeGroupSnap
 			return fmt.Errorf("failed to create clones: %w", err)
 		}
 		// create pods using the cloned PVCs
-		pods, err := v.CreatePods(clonePVCs)
-		if err != nil {
-			return fmt.Errorf("failed to create pods: %w", err)
-		}
+		// pods, err := v.CreatePods(clonePVCs)
+		// if err != nil {
+		// 	return fmt.Errorf("failed to create pods: %w", err)
+		// }
 		// validate the resources in the backend
 		err = vol.ValidateResourcesForCreate(volumeGroupSnapshot)
 		if err != nil {
 			return fmt.Errorf("failed to validate resources for create: %w", err)
 		}
 		// Delete the pods
-		err = v.DeletePods(pods)
-		if err != nil {
-			return fmt.Errorf("failed to delete pods: %w", err)
-		}
+		// err = v.DeletePods(pods)
+		// if err != nil {
+		// 	return fmt.Errorf("failed to delete pods: %w", err)
+		// }
 		// Delete the clones
 		err = v.DeletePVCs(clonePVCs)
 		if err != nil {

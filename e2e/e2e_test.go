@@ -59,7 +59,7 @@ func init() {
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
 	fmt.Println("timeout for deploytimeout ", deployTimeout)
-	testRBD = false
+	testRBD = true
 	testNFS = false
 }
 

@@ -550,6 +550,49 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
+			By("test volumeGroupSnapshot", func() {
+				supported, err := librbdSupportsVolumeGroupSnapshot(f)
+				if err != nil {
+					framework.Failf("failed to check for VolumeGroupSnapshot support: %v", err)
+				}
+				if !supported {
+					Skip("librbd does not support required VolumeGroupSnapshot function(s)")
+				}
+
+				scName := "csi-rbd-sc"
+				snapshotter, err := newRBDVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 10)
+				if err != nil {
+					framework.Failf("failed to create RBDVolumeGroupSnapshot: %v", err)
+				}
+
+				snapTestErr := snapshotter.TestVolumeGroupSnapshot()
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshot", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumegroupsnapshot: %v", err)
+				}
+
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshotcontent", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumegroupsnapshot: %v", err)
+				}
+
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshot", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumesnapshot: %v", err)
+				}
+
+				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshotcontent", deployTimeout, "-oyaml")
+				if err != nil {
+					framework.Logf("failed to get volumesnapshotcontent: %v", err)
+				}
+
+				if snapTestErr != nil {
+					framework.Failf("failed to test volumeGroupSnapshot: %v", snapTestErr)
+				}
+
+				framework.Logf("[Debug] volumeGroupSnapshot test passed")
+				return
+			})
 			By("reattach the old PV to a new PVC and check if PVC metadata is updated on RBD image", func() {
 				reattachPVCNamespace := f.Namespace.Name + "-2"
 				pvc, err := loadPVC(pvcPath)
@@ -4868,27 +4911,6 @@ var _ = Describe("RBD", func() {
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 				if err != nil {
 					framework.Failf("failed to create storageclass: %v", err)
-				}
-			})
-
-			By("test volumeGroupSnapshot", func() {
-				supported, err := librbdSupportsVolumeGroupSnapshot(f)
-				if err != nil {
-					framework.Failf("failed to check for VolumeGroupSnapshot support: %v", err)
-				}
-				if !supported {
-					Skip("librbd does not support required VolumeGroupSnapshot function(s)")
-				}
-
-				scName := "csi-rbd-sc"
-				snapshotter, err := newRBDVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3)
-				if err != nil {
-					framework.Failf("failed to create RBDVolumeGroupSnapshot: %v", err)
-				}
-
-				err = snapshotter.TestVolumeGroupSnapshot()
-				if err != nil {
-					framework.Failf("failed to test volumeGroupSnapshot: %v", err)
 				}
 			})
 
