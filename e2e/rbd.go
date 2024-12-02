@@ -560,32 +560,12 @@ var _ = Describe("RBD", func() {
 				}
 
 				scName := "csi-rbd-sc"
-				snapshotter, err := newRBDVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 10)
+				snapshotter, err := newRBDVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 20)
 				if err != nil {
 					framework.Failf("failed to create RBDVolumeGroupSnapshot: %v", err)
 				}
 
 				snapTestErr := snapshotter.TestVolumeGroupSnapshot()
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshot", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumegroupsnapshot: %v", err)
-				}
-
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshotcontent", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumegroupsnapshot: %v", err)
-				}
-
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshot", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumesnapshot: %v", err)
-				}
-
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshotcontent", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumesnapshotcontent: %v", err)
-				}
-
 				if snapTestErr != nil {
 					framework.Failf("failed to test volumeGroupSnapshot: %v", snapTestErr)
 				}

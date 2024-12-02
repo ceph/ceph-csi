@@ -355,31 +355,12 @@ var _ = Describe(cephfsType, func() {
 					framework.Failf("failed to create CephFS storageclass: %v", err)
 				}
 				scName := "csi-cephfs-sc"
-				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 10)
+				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 20)
 				if err != nil {
 					framework.Failf("failed to create volumeGroupSnapshot Base: %v", err)
 				}
 
 				snapTestErr := snapshotter.TestVolumeGroupSnapshot()
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshot", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumegroupsnapshot: %v", err)
-				}
-
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumegroupsnapshotcontent", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumegroupsnapshot: %v", err)
-				}
-
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshot", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumesnapshot: %v", err)
-				}
-
-				err = retryKubectlInput(f.UniqueName, kubectlGet, "volumesnapshotcontent", deployTimeout, "-oyaml")
-				if err != nil {
-					framework.Logf("failed to get volumesnapshotcontent: %v", err)
-				}
 
 				if snapTestErr != nil {
 					framework.Failf("failed to test volumeGroupSnapshot: %v", snapTestErr)

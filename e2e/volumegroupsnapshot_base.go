@@ -453,7 +453,7 @@ func (v volumeGroupSnapshotterBase) DeleteVolumeGroupSnapshotClass(groupSnapshot
 }
 
 func (v *volumeGroupSnapshotterBase) testVolumeGroupSnapshot(vol VolumeGroupSnapshotter) error {
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 10; i++ {
 		pvcLabels := map[string]string{"pvc": "vgsc"}
 		pvcs, err := v.CreatePVCs(v.namespace, pvcLabels)
 		if err != nil {
@@ -522,6 +522,38 @@ func (v *volumeGroupSnapshotterBase) testVolumeGroupSnapshot(vol VolumeGroupSnap
 		if err != nil {
 			return fmt.Errorf("failed to delete volume group snapshot class: %w", err)
 		}
+
+		vgscNew, err := v.groupclient.VolumeGroupSnapshotContents().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list VolumeGroupSnapshotContent: %w", err)
+		}
+		for _, vgsc := range vgscNew.Items {
+			framework.Logf("VolumeGroupSnapshotContent %s is not deleted %+v", vgsc.Name, vgsc)
+		}
+		vgsNew, err := v.groupclient.VolumeGroupSnapshots(v.namespace).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list VolumeGroupSnapshot: %w", err)
+		}
+		for _, vgs := range vgsNew.Items {
+			framework.Logf("VolumeGroupSnapshot %s is not deleted %+v", vgs.Name, vgs)
+		}
+		vsNew, err := v.snapClient.VolumeSnapshots(v.namespace).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list VolumeSnapshot: %w", err)
+		}
+		for _, vs := range vsNew.Items {
+			framework.Logf("VolumeSnapshot %s is not deleted %+v", vs.Name, vs)
+		}
+
+		vscNew, err := v.snapClient.VolumeSnapshotContents().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list VolumeSnapshotContent: %w", err)
+		}
+		for _, vsc := range vscNew.Items {
+			framework.Logf("VolumeSnapshotContent %s is not deleted %+v", vsc.Name, vsc)
+		}
+		framework.Logf("VolumeGroupSnapshot test %d completed", i)
+
 	}
 	return nil
 }
