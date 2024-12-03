@@ -56,8 +56,8 @@ environments.
 
 | Ceph CSI Version | Container Orchestrator Name | Version Tested     |
 | -----------------| --------------------------- | -------------------|
-| v3.12.0          | Kubernetes                  | v1.29, v1.30, v1.31|
-| v3.11.0          | Kubernetes                  | v1.26, v1.27, v1.28, v1.29|
+| v3.13.0          | Kubernetes                  | v1.29, v1.30, v1.31|
+| v3.12.3          | Kubernetes                  | v1.29, v1.30, v1.31|
 
 There is work in progress to make this CO-independent and thus
 support other orchestration environments (Nomad, Mesos..etc).
@@ -129,11 +129,12 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | devel (Branch)          | quay.io/cephcsi/cephcsi      | canary    |
-| v3.12.0 (Release)       | quay.io/cephcsi/cephcsi      | v3.12.0   |
-| v3.11.0 (Release)       | quay.io/cephcsi/cephcsi      | v3.11.0   |
+| v3.13.0 (Release)       | quay.io/cephcsi/cephcsi      | v3.13.0   |
+| v3.12.3 (Release)       | quay.io/cephcsi/cephcsi      | v3.12.3   |
 
 | Deprecated Ceph CSI Release/Branch | Container image name | Image Tag |
 | ----------------------- | --------------------------------| --------- |
+| v3.11.0 (Release)       | quay.io/cephcsi/cephcsi         | v3.11.0   |
 | v3.10.2 (Release)       | quay.io/cephcsi/cephcsi         | v3.10.2   |
 | v3.10.1 (Release)       | quay.io/cephcsi/cephcsi         | v3.10.1   |
 | v3.10.0 (Release)       | quay.io/cephcsi/cephcsi         | v3.10.0   |
