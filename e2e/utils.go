@@ -214,6 +214,14 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + cephfsOptions(pool),
 			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", cephfsOptions(pool)),
 		},
+		{
+			volumeMode:           groupSnapsType,
+			driverType:           rbdType,
+			radosLsCmd:           "rados ls" + rbdOptions(pool),
+			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", rbdOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + rbdOptions(pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", rbdOptions(pool)),
+		},
 	}
 
 	for _, cmds := range radosListCommands {

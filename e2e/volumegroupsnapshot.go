@@ -176,6 +176,14 @@ func (rvgs *rbdVolumeGroupSnapshot) ValidateResourcesForCreate(vgs *groupsnapapi
 
 func (rvgs *rbdVolumeGroupSnapshot) ValidateResourcesForDelete() error {
 	validateOmapCount(rvgs.framework, 0, rbdType, defaultRBDPool, volumesType)
+	validateOmapCount(rvgs.framework, 0, rbdType, defaultRBDPool, snapsType)
+	validateOmapCount(rvgs.framework, 0, rbdType, defaultRBDPool, groupSnapsType)
+	validateRBDImageCount(rvgs.framework, 0, defaultRBDPool)
+
+	err := waitToRemoveImagesFromTrash(rvgs.framework, defaultRBDPool, deployTimeout)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
