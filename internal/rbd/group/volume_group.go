@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/ceph/go-ceph/rados"
+	librados "github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/volumegroup"
@@ -31,7 +32,10 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
-var ErrRBDGroupNotConnected = errors.New("RBD group is not connected")
+var (
+	ErrRBDGroupNotConnected = fmt.Errorf("%w: RBD group is not connected", librados.ErrNotConnected)
+	ErrRBDGroupNotFound     = fmt.Errorf("%w: RBD group not found", librbd.ErrNotFound)
+)
 
 // volumeGroup handles all requests for 'rbd group' operations.
 type volumeGroup struct {

@@ -18,10 +18,12 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/ceph/ceph-csi/internal/rbd"
+	"github.com/ceph/ceph-csi/internal/rbd/group"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -192,9 +194,15 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 	// resolve the volume group
 	vg, err := mgr.GetVolumeGroupByID(ctx, req.GetVolumeGroupId())
 	if err != nil {
+		if errors.Is(err, group.ErrRBDGroupNotFound) {
+			log.DebugLog(ctx, "VolumeGroup %q doesn't exists", req.GetVolumeGroupId())
+
+			return &volumegroup.DeleteVolumeGroupResponse{}, nil
+		}
+
 		return nil, status.Errorf(
-			codes.NotFound,
-			"could not find volume group %q: %s",
+			codes.Internal,
+			"could not fetch volume group %q: %s",
 			req.GetVolumeGroupId(),
 			err.Error())
 	}
