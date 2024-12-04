@@ -145,6 +145,12 @@ func (cvg *commonVolumeGroup) getVolumeGroupAttributes(ctx context.Context) (*jo
 		attrs = &journal.VolumeGroupAttributes{}
 	}
 
+	if attrs.GroupName == "" || attrs.CreationTime == nil {
+		log.ErrorLog(ctx, "volume group with id %v not found", cvg.id)
+
+		return nil, ErrRBDGroupNotFound
+	}
+
 	cvg.requestName = attrs.RequestName
 	cvg.name = attrs.GroupName
 	cvg.creationTime = attrs.CreationTime
