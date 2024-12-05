@@ -629,8 +629,10 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 		}
 		// If we start flattening all the snapshots at one shot the volume
 		// creation time will be affected,so we will flatten only the extra
-		// snapshots.
-		extraSnapshots := min(len(snaps)-int(minSnapshotsOnImageToStartFlatten), len(children))
+		// snapshots. Use the min of the extra snapshots and the number of children
+		// to avoid scenario where number of children are less than the extra snapshots.
+		// This occurs when the child images are in trash and not yet deleted.
+		extraSnapshots := min((len(snaps) - int(minSnapshotsOnImageToStartFlatten)), len(children))
 		children = children[:extraSnapshots]
 		err = flattenClonedRbdImages(
 			ctx,
