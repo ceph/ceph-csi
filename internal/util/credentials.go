@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -110,6 +112,12 @@ func NewUserCredentials(secrets map[string]string) (*Credentials, error) {
 
 // NewAdminCredentials creates new admin credentials from secret.
 func NewAdminCredentials(secrets map[string]string) (*Credentials, error) {
+	// Use userID and userKey if found else fallback to adminID and adminKey
+	if cred, err := newCredentialsFromSecret(credUserID, credUserKey, secrets); err == nil {
+		return cred, nil
+	}
+	log.WarningLogMsg("adminID and adminKey are deprecated, please use userID and userKey instead")
+
 	return newCredentialsFromSecret(credAdminID, credAdminKey, secrets)
 }
 
