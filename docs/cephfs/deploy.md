@@ -90,12 +90,6 @@ to use the output of `ceph fsid` of the Ceph cluster to be used for
 provisioning.
 
 **Required secrets for provisioning:**
-Admin credentials are required for provisioning new volumes
-
-* `adminID`: ID of an admin client
-* `adminKey`: key of the admin client
-
-**Required secrets for statically provisioned volumes:**
 User credentials with access to an existing volume
 
 * `userID`: ID of a user client
