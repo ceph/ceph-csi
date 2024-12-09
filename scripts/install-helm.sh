@@ -172,7 +172,7 @@ install_cephcsi_helm_charts() {
     if [ "${DEPLOY_SECRET}" -eq 1 ]; then
         fetch_template_values
         RBD_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=admin --set secret.userKey=${ADMIN_KEY}"
-        CEPHFS_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.adminID=admin --set secret.adminKey=${ADMIN_KEY}"
+        CEPHFS_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=admin --set secret.userKey=${ADMIN_KEY}"
     fi
     # enable read affinity
     if [ "${ENABLE_READ_AFFINITY}" -eq 1 ]; then
@@ -232,16 +232,14 @@ if ! helm_loc="$(type -p "helm")" || [[ -z ${helm_loc} ]]; then
     HELM="${TEMP}/${dist}-${arch}/helm"
 fi
 
-if [ "$#" -le 2 ]
-then
+if [ "$#" -le 2 ]; then
     ACTION=$1
     NAMESPACE=$2
     SKIP_PARSE="true"
 fi
 
 if [ ${#SKIP_PARSE} -eq 0 ]; then
-    while [ "$1" != "" ]
-    do
+    while [ "$1" != "" ]; do
         case $1 in
         up)
             shift

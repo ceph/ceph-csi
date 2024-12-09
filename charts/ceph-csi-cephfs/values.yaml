@@ -383,11 +383,8 @@ secret:
   # Key values correspond to a user name and its key, as defined in the
   # ceph cluster. User ID should have required access to the 'pool'
   # specified in the storage class
-  adminID: <plaintext ID>
-  adminKey: <Ceph auth key corresponding to ID above>
-  # User credentials are required for the static provisioned PVC.
-  userID: ""
-  userKey: ""
+  userID: <plaintext ID>
+  userKey: <Ceph auth key corresponding to the userID above>
 
 # This is a sample configmap that helps define a Ceph configuration as required
 # by the CSI plugins.
