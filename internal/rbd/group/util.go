@@ -189,6 +189,15 @@ func (cvg *commonVolumeGroup) GetName(ctx context.Context) (string, error) {
 	return cvg.name, nil
 }
 
+// GetRequestName returns the requestName of the VolumeGroup.
+func (cvg *commonVolumeGroup) GetRequestName(ctx context.Context) (string, error) {
+	if cvg.requestName == "" {
+		return "", errors.New("BUG: requestName is not set")
+	}
+
+	return cvg.requestName, nil
+}
+
 // GetPool returns the name of the pool that holds the VolumeGroup.
 func (cvg *commonVolumeGroup) GetPool(ctx context.Context) (string, error) {
 	if cvg.pool == "" {
@@ -291,9 +300,9 @@ func (cvg *commonVolumeGroup) Delete(ctx context.Context) error {
 		return fmt.Errorf("failed to get name for volume group %q: %w", cvg, err)
 	}
 
-	csiID, err := cvg.GetID(ctx)
+	reqName, err := cvg.GetRequestName(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get id for volume group %q: %w", cvg, err)
+		return fmt.Errorf("failed to get request name for volume group %q: %w", cvg, err)
 	}
 
 	pool, err := cvg.GetPool(ctx)
@@ -306,7 +315,7 @@ func (cvg *commonVolumeGroup) Delete(ctx context.Context) error {
 		return err
 	}
 
-	err = j.UndoReservation(ctx, pool, name, csiID)
+	err = j.UndoReservation(ctx, pool, name, reqName)
 	if err != nil /* TODO? !errors.Is(..., err) */ {
 		return fmt.Errorf("failed to undo the reservation for volume group %q: %w", cvg, err)
 	}
