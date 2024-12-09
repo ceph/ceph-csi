@@ -127,6 +127,9 @@ func createCephfsSecret(f *framework.Framework, secretName, userName, userKey st
 	if secretName != "" {
 		sc.Name = secretName
 	}
+	// TODO: Update the secrets to use userID and userKey once
+	// the version used for upgrade testing does not depend on
+	// adminID and adminKey.
 	sc.StringData["adminID"] = userName
 	sc.StringData["adminKey"] = userKey
 	delete(sc.StringData, "userID")
