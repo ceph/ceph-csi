@@ -35,7 +35,7 @@ RUN dnf -y install \
 	librados-devel \
         libcephfs-devel \
 	librbd-devel \
-    && dnf -y update \
+    && dnf -y --nobest update \
     && dnf clean all \
     && rm -rf /var/cache/yum \
     && true
