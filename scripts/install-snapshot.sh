@@ -78,12 +78,12 @@ function create_or_delete_resource() {
 
     if [ "${operation}" == "create" ]; then
         # Argument to add/update
-        ARGUMENT="--enable-volume-group-snapshots=true"
+        ARGUMENT="--feature-gates=CSIVolumeGroupSnapshot=true"
         # Check if the argument is already present and set to false
-        if grep -q -E "^\s+-\s+--enable-volume-group-snapshots=false" "${temp_snap_controller}"; then
-            sed -i -E "s/^\s+-\s+--enable-volume-group-snapshots=false$/      - $ARGUMENT/" "${temp_snap_controller}"
+        if grep -q -E "^\s+-\s+--feature-gates=CSIVolumeGroupSnapshot=false" "${temp_snap_controller}"; then
+            sed -i -E "s/^\s+-\s+----feature-gates=CSIVolumeGroupSnapshot=false$/      - $ARGUMENT/" "${temp_snap_controller}"
             # Check if the argument is already present and set to true
-        elif grep -q -E "^\s+-\s+--enable-volume-group-snapshots=true" "${temp_snap_controller}"; then
+        elif grep -q -E "^\s+-\s+--feature-gates=CSIVolumeGroupSnapshot=true" "${temp_snap_controller}"; then
             echo "Argument already present and matching."
         else
             # Add the argument if it's not present
