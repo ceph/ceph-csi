@@ -23,13 +23,13 @@ require (
 	github.com/onsi/ginkgo/v2 v2.19.1
 	github.com/onsi/gomega v1.34.1
 	github.com/pkg/xattr v0.4.10
-	github.com/prometheus/client_golang v1.19.1
-	github.com/stretchr/testify v1.9.0
-	golang.org/x/crypto v0.26.0
-	golang.org/x/net v0.28.0
-	golang.org/x/sys v0.24.0
-	google.golang.org/grpc v1.65.0
-	google.golang.org/protobuf v1.34.2
+	github.com/prometheus/client_golang v1.20.5
+	github.com/stretchr/testify v1.10.0
+	golang.org/x/crypto v0.31.0
+	golang.org/x/net v0.31.0
+	golang.org/x/sys v0.28.0
+	google.golang.org/grpc v1.68.1
+	google.golang.org/protobuf v1.35.2
 	//
 	// when updating k8s.io/kubernetes, make sure to update the replace section too
 	//
@@ -157,16 +157,16 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/oauth2 v0.20.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/term v0.23.0 // indirect
-	golang.org/x/text v0.17.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.23.0 // indirect
+	golang.org/x/oauth2 v0.23.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
+	golang.org/x/tools v0.26.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
