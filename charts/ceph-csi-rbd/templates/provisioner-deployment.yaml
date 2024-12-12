@@ -228,7 +228,7 @@ spec:
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
             - "--extra-create-metadata=true"
-            - "--enable-volume-group-snapshots={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
+            - "--feature-gates=CSIVolumeGroupSnapshot={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
 {{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
             - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.snapshotter.args.httpEndpointPort }}"
 {{- end }}
