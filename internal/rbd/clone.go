@@ -176,6 +176,14 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		return err
 	}
 
+	// adjust rbd qos after resize volume.
+	err = rv.AdjustQOS(ctx)
+	if err != nil {
+		log.ErrorLog(ctx, "failed adjust QOS for rbd image")
+
+		return err
+	}
+
 	return nil
 }
 

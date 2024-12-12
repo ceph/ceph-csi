@@ -231,6 +231,12 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// Get QosParameters from SC if qos configuration existing in SC
+	err = rbdVol.SetQOS(ctx, req.GetParameters())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	err = rbdVol.Connect(cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to connect to volume %v: %v", rbdVol.RbdImageName, err)
@@ -415,7 +421,7 @@ func (cs *ControllerServer) CreateVolume(
 		}
 	}()
 
-	err = cs.createBackingImage(ctx, cr, req.GetSecrets(), rbdVol, parentVol, rbdSnap)
+	err = cs.createBackingImage(ctx, cr, req.GetSecrets(), rbdVol, parentVol, rbdSnap, req.GetParameters())
 	if err != nil {
 		if errors.Is(err, ErrFlattenInProgress) {
 			return nil, status.Error(codes.Aborted, err.Error())
@@ -732,6 +738,7 @@ func (cs *ControllerServer) createBackingImage(
 	secrets map[string]string,
 	rbdVol, parentVol *rbdVolume,
 	rbdSnap *rbdSnapshot,
+	scParams map[string]string,
 ) error {
 	var err error
 
@@ -783,6 +790,21 @@ func (cs *ControllerServer) createBackingImage(
 	}()
 	err = rbdVol.storeImageID(ctx, j)
 	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Apply Qos parameters to rbd image.
+	err = rbdVol.ApplyQOS(ctx)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to apply QOS for rbd image: %s with error: %v", rbdVol, err)
+
+		return status.Error(codes.Internal, err.Error())
+	}
+	// Save Qos parameters from SC in Image metadata, we will use it while resize volume.
+	err = rbdVol.SaveQOS(ctx, scParams)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to save QOS for rbd image: %s with error: %v", rbdVol, err)
+
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -1601,6 +1623,13 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		err = rbdVol.resize(volSize)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to resize rbd image: %s with error: %v", rbdVol, err)
+
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		// adjust rbd qos after resize volume.
+		err = rbdVol.AdjustQOS(ctx)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to adjust QOS for rbd image: %s with error: %v", rbdVol, err)
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}

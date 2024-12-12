@@ -73,6 +73,15 @@ make image-cephcsi
 | `stripeUnit`                                                                                        | no                   | stripe unit in bytes                                                                                                                                                                                                                                                                               |
 | `stripeCount`                                                                                       | no                   | objects to stripe over before looping                                                                                                                                                                                                                                                              |
 | `objectSize`                                                                                        | no                   | object size in bytes                                                                                                                                                                                                                                                                               |
+| `BaseReadIops`                                                                                      | no                   | the base limit of read operations per second |
+| `BaseWriteIops`                                                                                     | no                   | the base limit of write operations per second |
+| `BaseReadBytesPerSecond`                                                                            | no                   | the base limit of read bytes per second |
+| `BaseWriteBytesPerSecond`                                                                           | no                   | the base limit of write bytes per second |
+| `ReadIopsPerGiB`                                                                                    | no                   | the limit of read operations per GiB |
+| `WriteIopsPerGiB`                                                                                   | no                   | the limit of write operations per GiB |
+| `ReadBpsPerGiB`                                                                                     | no                   | the limit of read bytes per GiB |
+| `WriteBpsPerGiB`                                                                                    | no                   | the limit of write bytes per GiB |
+| `BaseVolSizeBytes`                                                                                  | no                   | the min size of volume what use to calculate qos beased on capacity |
 | `extraDeploy` | no | array of extra objects to deploy with the release |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the

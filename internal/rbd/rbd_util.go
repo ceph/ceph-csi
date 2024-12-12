@@ -148,6 +148,12 @@ type rbdImage struct {
 	EnableMetadata bool
 	// ParentInTrash indicates the parent image is in trash.
 	ParentInTrash bool
+
+	// RBD QoS configuration
+	QosParameters map[string]string
+
+	// the min size of volume what use to calc qos beased on capacity.
+	BaseVolSize string
 }
 
 // check that rbdVolume implements the types.Volume interface.

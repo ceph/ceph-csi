@@ -1166,3 +1166,28 @@ func validateStripe(f *framework.Framework,
 
 	return nil
 }
+
+func validateQOS(f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	wants map[string]string,
+) error {
+	metadataConfPrefix := "conf_"
+
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+	for k, v := range wants {
+		qosVal, err := getImageMeta(rbdImageSpec, metadataConfPrefix+k, f)
+		if err != nil {
+			return err
+		}
+		if qosVal != v {
+			return fmt.Errorf("%s: %s does not match expected %s", k, qosVal, v)
+		}
+	}
+
+	return nil
+}

@@ -162,6 +162,38 @@ parameters:
    # stripeCount: <>
    # (optional) The object size in bytes.
    # objectSize: <>
+
+   # rbd volume QoS.
+   # QoS provides settings for rbd volume read/write iops
+   # and read/write bandwidth. There are 4 base qos parameters
+   # among them, when users apply for a volume capacity equal
+   # to or less than BaseVolSizebytes, use base qos limit.
+   # For the portion of capacity exceeding BaseVolSizebytes,
+   # QoS will be increased in steps set per GiB. If the step
+   # size parameter per GiB is not provided, only base QoS limit
+   # will be used and not associated with capacity size.
+   #
+   # note: currently supports rbd-nbd mounter.
+   #
+   # For more details
+   # (optional) the base limit of read operations per second.
+   # BaseReadIops: <>
+   # (optional) the base limit of write operations per second.
+   # BaseWriteIops: <>
+   # (optional) the base limit of read bytes per second.
+   # BaseReadBytesPerSecond: <>
+   # (optional) the base limit of write bytes per second.
+   # BaseWriteBytesPerSecond: <>
+   # (optional) the limit of read operations per GiB.
+   # ReadIopsPerGiB: <>
+   # (optional) the limit of write operations per GiB.
+   # WriteIopsPerGiB: <>
+   # (optional) the limit of read bytes per GiB.
+   # ReadBpsPerGiB: <>
+   # (optional) the limit of write bytes per GiB.
+   # WriteBpsPerGiB: <>
+   # (optional) min size of volume what use to calc qos beased on capacity.
+   # BaseVolSizeBytes:<>
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 
