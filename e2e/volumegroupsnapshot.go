@@ -18,9 +18,10 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 
-	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1alpha1"
+	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
@@ -78,16 +79,32 @@ func (c *cephFSVolumeGroupSnapshot) ValidateResourcesForCreate(vgs *groupsnapapi
 		return fmt.Errorf("failed getting cephFS metadata pool name: %w", err)
 	}
 
-	sourcePVCCount := len(vgs.Status.PVCVolumeSnapshotRefList)
+	vgsc, err := c.groupclient.VolumeGroupSnapshotContents().Get(
+		ctx,
+		*vgs.Status.BoundVolumeGroupSnapshotContentName,
+		metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get VolumeGroupSnapshotContent: %w", err)
+	}
+
+	sourcePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
 	// we are creating clones for each source PVC
-	clonePVCCount := len(vgs.Status.PVCVolumeSnapshotRefList)
+	clonePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
 	totalPVCCount := sourcePVCCount + clonePVCCount
 	validateSubvolumeCount(c.framework, totalPVCCount, fileSystemName, subvolumegroup)
 
 	// we are creating 1 snapshot for each source PVC, validate the snapshot count
-	for _, pvcSnap := range vgs.Status.PVCVolumeSnapshotRefList {
+	for _, snapshot := range vgsc.Status.VolumeSnapshotHandlePairList {
+		volumeHandle := snapshot.VolumeHandle
+		volumeSnapshotName := fmt.Sprintf("snapshot-%x", sha256.Sum256([]byte(
+			string(vgsc.UID)+volumeHandle)))
+		volumeSnapshot, err := c.snapClient.VolumeSnapshots(vgs.Namespace).Get(ctx, volumeSnapshotName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get VolumeSnapshot: %w", err)
+		}
+		pvcName := *volumeSnapshot.Spec.Source.PersistentVolumeClaimName
 		pvc, err := c.framework.ClientSet.CoreV1().PersistentVolumeClaims(vgs.Namespace).Get(ctx,
-			pvcSnap.PersistentVolumeClaimRef.Name,
+			pvcName,
 			metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get PVC: %w", err)
@@ -165,8 +182,16 @@ func (rvgs *rbdVolumeGroupSnapshot) GetVolumeGroupSnapshotClass() (*groupsnapapi
 }
 
 func (rvgs *rbdVolumeGroupSnapshot) ValidateResourcesForCreate(vgs *groupsnapapi.VolumeGroupSnapshot) error {
-	sourcePVCCount := len(vgs.Status.PVCVolumeSnapshotRefList)
-	clonePVCCount := len(vgs.Status.PVCVolumeSnapshotRefList)
+	vgsc, err := rvgs.groupclient.VolumeGroupSnapshotContents().Get(
+		context.TODO(),
+		*vgs.Status.BoundVolumeGroupSnapshotContentName,
+		metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get VolumeGroupSnapshotContent: %w", err)
+	}
+
+	sourcePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
+	clonePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
 	totalPVCCount := sourcePVCCount + clonePVCCount
 
 	validateOmapCount(rvgs.framework, totalPVCCount, rbdType, defaultRBDPool, volumesType)

@@ -17,4 +17,4 @@ limitations under the License.
 // +k8s:deepcopy-gen=package
 // +groupName=groupsnapshot.storage.k8s.io
 
-package v1alpha1
+package v1beta1
