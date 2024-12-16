@@ -828,6 +828,10 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 	return err
 }
 
+func disableVGSAlphaCLIArg(template string) string {
+	return strings.ReplaceAll(template, "- \"--enable-volume-group-snapshots=true\"", "")
+}
+
 func addTopologyDomainsToDSYaml(template, labels string) string {
 	return strings.ReplaceAll(template, "# - \"--domainlabels=failure-domain/region,failure-domain/zone\"",
 		"- \"--domainlabels="+labels+"\"")
