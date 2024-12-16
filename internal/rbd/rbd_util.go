@@ -680,6 +680,10 @@ func (ri *rbdImage) Delete(ctx context.Context) error {
 	rbdImage := librbd.GetImage(ri.ioctx, image)
 	err = rbdImage.Trash(0)
 	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			return fmt.Errorf("Failed as %w (internal %w)", ErrImageNotFound, err)
+		}
+
 		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", ri, err)
 
 		return err

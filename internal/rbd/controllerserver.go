@@ -1471,27 +1471,9 @@ func (cs *ControllerServer) DeleteSnapshot(
 	// Deleting snapshot and cloned volume
 	log.DebugLog(ctx, "deleting cloned rbd volume %s", rbdSnap.RbdSnapName)
 
-	rbdVol := rbdSnap.toVolume()
-
-	err = rbdVol.Connect(cr)
+	err = rbdSnap.Delete(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	defer rbdVol.Destroy(ctx)
-
-	rbdVol.ImageID = rbdSnap.ImageID
-	// update parent name to delete the snapshot
-	rbdSnap.RbdImageName = rbdVol.RbdImageName
-	err = cleanUpSnapshot(ctx, rbdVol, rbdSnap, rbdVol)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to delete image: %v", err)
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	err = undoSnapReservation(ctx, rbdSnap, cr)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)",
-			rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, err)
+		log.ErrorLog(ctx, "failed to delete rbd snapshot: %s with error: %v", rbdSnap, err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
