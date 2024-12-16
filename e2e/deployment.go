@@ -252,6 +252,9 @@ func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
 
 	data = replaceLogLevelInTemplate(data)
 
+	// disable VGS alpha feature, TODO: remove this in next release (3.14.0)
+	data = disableVGSAlphaCLIArg(data)
+
 	if yrn.oneReplica {
 		data = oneReplicaDeployYaml(data)
 	}
