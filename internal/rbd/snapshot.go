@@ -82,7 +82,7 @@ func cleanUpSnapshot(
 ) error {
 	err := parentVol.deleteSnapshot(ctx, rbdSnap)
 	if err != nil {
-		if !errors.Is(err, ErrSnapNotFound) {
+		if !errors.Is(err, ErrImageNotFound) && !errors.Is(err, ErrSnapNotFound) {
 			log.ErrorLog(ctx, "failed to delete snapshot %q: %v", rbdSnap, err)
 
 			return err
@@ -160,6 +160,42 @@ func (rbdSnap *rbdSnapshot) ToCSI(ctx context.Context) (*csi.Snapshot, error) {
 		ReadyToUse:      true,
 		GroupSnapshotId: rbdSnap.groupID,
 	}, nil
+}
+
+// Delete removes the snapshot from the RBD image and then
+// the RBD image itself. If the backing RBD snapshot and image is removed
+// successfully, the reservation for the snapshot is removed from the journal.
+//
+// NOTE: As the function manipulates omaps, it should be called with a lock against the request name
+// held, to prevent parallel operations from modifying the state of the omaps for this request name.
+func (rbdSnap *rbdSnapshot) Delete(ctx context.Context) error {
+	rbdVol := rbdSnap.toVolume()
+
+	err := rbdVol.Connect(rbdSnap.conn.Creds)
+	if err != nil {
+		return err
+	}
+	defer rbdVol.Destroy(ctx)
+
+	rbdVol.ImageID = rbdSnap.ImageID
+	// update parent name to delete the snapshot
+	rbdSnap.RbdImageName = rbdVol.RbdImageName
+	err = cleanUpSnapshot(ctx, rbdVol, rbdSnap, rbdVol)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to cleanup image %s and snapshot %s: %v", rbdVol, rbdSnap, err)
+
+		return err
+	}
+
+	err = undoSnapReservation(ctx, rbdSnap, rbdSnap.conn.Creds)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)",
+			rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, err)
+
+		return err
+	}
+
+	return nil
 }
 
 func undoSnapshotCloning(
