@@ -18,11 +18,13 @@ package rbd
 
 import (
 	"context"
+	"errors"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/ceph/ceph-csi/internal/rbd/group"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -213,10 +215,17 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(
 
 	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, groupSnapshotID)
 	if err != nil {
+		if errors.Is(err, group.ErrRBDGroupNotFound) {
+			log.ErrorLog(ctx, "VolumeGroupSnapshot %q doesn't exists", groupSnapshotID)
+
+			return &csi.DeleteVolumeGroupSnapshotResponse{}, nil
+		}
+
 		return nil, status.Errorf(
 			codes.Internal,
-			"failed to get volume group snapshot with id %q: %v",
-			groupSnapshotID, err)
+			"could not fetch volume group snapshot with id %q: %s",
+			groupSnapshotID,
+			err.Error())
 	}
 	defer groupSnapshot.Destroy(ctx)
 
@@ -252,10 +261,20 @@ func (cs *ControllerServer) GetVolumeGroupSnapshot(
 
 	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, groupSnapshotID)
 	if err != nil {
+		if errors.Is(err, group.ErrRBDGroupNotFound) {
+			log.ErrorLog(ctx, "VolumeGroupSnapshot %q doesn't exists", groupSnapshotID)
+
+			return nil, status.Errorf(
+				codes.NotFound,
+				"failed to get volume group snapshot with id %q: %v",
+				groupSnapshotID, err)
+		}
+
 		return nil, status.Errorf(
 			codes.Internal,
-			"failed to get volume group snapshot with id %q: %v",
-			groupSnapshotID, err)
+			"could not fetch volume group snapshot with id %q: %s",
+			groupSnapshotID,
+			err.Error())
 	}
 	defer groupSnapshot.Destroy(ctx)
 

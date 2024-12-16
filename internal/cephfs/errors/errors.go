@@ -61,6 +61,9 @@ var (
 
 	// ErrQuiesceInProgress is returned when quiesce operation is in progress.
 	ErrQuiesceInProgress = coreError.New("quiesce operation is in progress")
+
+	// ErrGroupNotFound is returned when volume group snapshot is not found in the backend.
+	ErrGroupNotFound = coreError.New("volume group snapshot not found")
 )
 
 // IsCloneRetryError returns true if the clone error is pending,in-progress

@@ -721,11 +721,15 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
 
 	vgo, vgsi, err := store.NewVolumeGroupOptionsFromID(ctx, req.GetGroupSnapshotId(), cr)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to get volume group options: %v", err)
-		err = extractDeleteVolumeGroupError(err)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+		if !errors.Is(err, cerrors.ErrGroupNotFound) {
+			log.ErrorLog(ctx, "failed to get volume group options: %v", err)
+			err = extractDeleteVolumeGroupError(err)
+			if err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
 		}
+
+		log.ErrorLog(ctx, "VolumeGroupSnapshot %q doesn't exists", req.GetGroupSnapshotId())
 
 		return &csi.DeleteVolumeGroupSnapshotResponse{}, nil
 	}
