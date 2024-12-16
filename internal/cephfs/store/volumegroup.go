@@ -172,6 +172,12 @@ func NewVolumeGroupOptionsFromID(
 		return nil, nil, err
 	}
 
+	if groupAttributes.GroupName == "" {
+		log.ErrorLog(ctx, "volume group snapshot with id %v not found", volumeGroupSnapshotID)
+
+		return nil, nil, cerrors.ErrGroupNotFound
+	}
+
 	vgs.RequestName = groupAttributes.RequestName
 	vgs.FsVolumeGroupSnapshotName = groupAttributes.GroupName
 	vgs.VolumeGroupSnapshotID = volumeGroupSnapshotID

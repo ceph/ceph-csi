@@ -18,6 +18,7 @@ package group
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -69,6 +70,12 @@ func GetVolumeGroupSnapshot(
 
 	attrs, err := vgs.getVolumeGroupAttributes(ctx)
 	if err != nil {
+		if errors.Is(err, ErrRBDGroupNotFound) {
+			log.ErrorLog(ctx, "%v, returning empty volume group snapshot %q", vgs, err)
+
+			return vgs, err
+		}
+
 		return nil, fmt.Errorf("failed to get volume attributes for id %q: %w", vgs, err)
 	}
 
