@@ -2480,7 +2480,7 @@ var _ = Describe(cephfsType, func() {
 
 			By("test volumeGroupSnapshot", func() {
 				scName := "csi-cephfs-sc"
-				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3)
+				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3, 0)
 				if err != nil {
 					framework.Failf("failed to create volumeGroupSnapshot Base: %v", err)
 				}

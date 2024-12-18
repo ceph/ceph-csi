@@ -573,7 +573,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 // are more than the `minSnapshotOnImage` Add a task to flatten all the
 // temporary cloned images.
 func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	snaps, err := rbdVol.listSnapshots()
+	snaps, children, err := rbdVol.listSnapAndChildren()
 	if err != nil {
 		if errors.Is(err, ErrImageNotFound) {
 			return status.Error(codes.InvalidArgument, err.Error())
@@ -589,9 +589,19 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			len(snaps),
 			rbdVol,
 			maxSnapshotsOnImage)
+
+		if len(children) == 0 {
+			// if none of the child images(are in trash) exist, we can't flatten them.
+			// return ResourceExhausted error message as we have reached the hard limit.
+			log.ErrorLog(ctx, "child images of image %q cannot be flatten", rbdVol)
+
+			return status.Errorf(codes.ResourceExhausted,
+				"rbd image %q has %d snapshots but child images cannot be flattened",
+				rbdVol, len(snaps))
+		}
 		err = flattenClonedRbdImages(
 			ctx,
-			snaps,
+			children,
 			rbdVol.Pool,
 			rbdVol.Monitors,
 			rbdVol.RbdImageName,
@@ -610,13 +620,23 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			len(snaps),
 			rbdVol,
 			minSnapshotsOnImageToStartFlatten)
+		if len(children) == 0 {
+			// if none of the child images(are in trash) exist, we can't flatten them.
+			// return nil since we have only reach the soft limit.
+			log.DebugLog(ctx, "child images of image %q cannot be flatten", rbdVol)
+
+			return nil
+		}
 		// If we start flattening all the snapshots at one shot the volume
 		// creation time will be affected,so we will flatten only the extra
-		// snapshots.
-		snaps = snaps[minSnapshotsOnImageToStartFlatten-1:]
+		// snapshots. Use the min of the extra snapshots and the number of children
+		// to avoid scenario where number of children are less than the extra snapshots.
+		// This occurs when the child images are in trash and not yet deleted.
+		extraSnapshots := min((len(snaps) - int(minSnapshotsOnImageToStartFlatten)), len(children))
+		children = children[:extraSnapshots]
 		err = flattenClonedRbdImages(
 			ctx,
-			snaps,
+			children,
 			rbdVol.Pool,
 			rbdVol.Monitors,
 			rbdVol.RbdImageName,
@@ -1157,7 +1177,7 @@ func (cs *ControllerServer) CreateSnapshot(
 		return cloneFromSnapshot(ctx, rbdVol, rbdSnap, cr, req.GetParameters())
 	}
 
-	err = flattenTemporaryClonedImages(ctx, rbdVol, cr)
+	err = rbdVol.PrepareVolumeForSnapshot(ctx, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -1373,11 +1393,6 @@ func (cs *ControllerServer) doSnapshotClone(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to reserve volume id: %v", err)
 
-		return cloneRbd, err
-	}
-
-	err = cloneRbd.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-	if err != nil {
 		return cloneRbd, err
 	}
 

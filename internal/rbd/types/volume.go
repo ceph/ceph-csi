@@ -58,6 +58,10 @@ type Volume interface {
 	// if the parent image is in trash, it returns an error.
 	// if the parent image exists and is not enabled for mirroring, it returns an error.
 	HandleParentImageExistence(ctx context.Context, flattenMode FlattenMode) error
+	// PrepareVolumeForSnapshot prepares the volume for snapshot by
+	// checking snapshots limit and clone depth limit and flatten it
+	// if required.
+	PrepareVolumeForSnapshot(ctx context.Context, cr *util.Credentials) error
 
 	// ToMirror converts the Volume to a Mirror.
 	ToMirror() (Mirror, error)
