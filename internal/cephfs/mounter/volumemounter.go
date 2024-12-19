@@ -31,7 +31,7 @@ import (
 var (
 	availableMounters []string
 
-	//nolint:gomnd // numbers specify Kernel versions.
+	//nolint:mnd // numbers specify Kernel versions.
 	quotaSupport = []util.KernelVersion{
 		{
 			Version:      4,

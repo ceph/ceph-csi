@@ -1793,7 +1793,7 @@ func (ri *rbdImageMetadataStash) String() string {
 func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 	imgMeta := rbdImageMetadataStash{
 		// there are no checks for this at present
-		Version:        3, //nolint:gomnd // number specifies version.
+		Version:        3, //nolint:mnd // number specifies version.
 		Pool:           volOptions.Pool,
 		RadosNamespace: volOptions.RadosNamespace,
 		ImageName:      volOptions.RbdImageName,

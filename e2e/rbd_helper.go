@@ -36,7 +36,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-//nolint:gomnd // numbers specify Kernel versions.
+//nolint:mnd // numbers specify Kernel versions.
 var nbdResizeSupport = []util.KernelVersion{
 	{
 		Version:      5,
@@ -48,7 +48,7 @@ var nbdResizeSupport = []util.KernelVersion{
 	}, // standard 5.3+ versions
 }
 
-//nolint:gomnd // numbers specify Kernel versions.
+//nolint:mnd // numbers specify Kernel versions.
 var fastDiffSupport = []util.KernelVersion{
 	{
 		Version:      5,
@@ -60,7 +60,7 @@ var fastDiffSupport = []util.KernelVersion{
 	}, // standard 5.3+ versions
 }
 
-//nolint:gomnd // numbers specify Kernel versions.
+//nolint:mnd // numbers specify Kernel versions.
 var deepFlattenSupport = []util.KernelVersion{
 	{
 		Version:      5,
@@ -75,7 +75,7 @@ var deepFlattenSupport = []util.KernelVersion{
 // To use `io-timeout=0` we need
 // www.mail-archive.com/linux-block@vger.kernel.org/msg38060.html
 //
-//nolint:gomnd // numbers specify Kernel versions.
+//nolint:mnd // numbers specify Kernel versions.
 var nbdZeroIOtimeoutSupport = []util.KernelVersion{
 	{
 		Version:      5,
