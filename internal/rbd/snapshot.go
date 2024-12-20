@@ -298,7 +298,7 @@ func (rv *rbdVolume) NewSnapshotByID(
 	log.DebugLog(ctx, "going to clone snapshot image %q from image %q with snapshot ID %d", snap, rv, id)
 
 	err = librbd.CloneImageByID(rv.ioctx, rv.RbdImageName, id, rv.ioctx, snap.RbdImageName, options)
-	if err != nil && !errors.Is(librbd.ErrExist, err) {
+	if err != nil && !errors.Is(err, librbd.ErrExist) {
 		log.ErrorLog(ctx, "failed to clone snapshot %q with id %d: %v", snap, id, err)
 
 		return nil, fmt.Errorf("failed to clone %q with snapshot id %d as new image %q: %w", rv.RbdImageName, id, snap, err)
@@ -342,7 +342,7 @@ func (rv *rbdVolume) NewSnapshotByID(
 	defer image.Close()
 
 	snapImage, err = image.CreateSnapshot(snap.RbdSnapName)
-	if err != nil && !errors.Is(librbd.ErrExist, err) {
+	if err != nil && !errors.Is(err, librbd.ErrExist) {
 		return nil, fmt.Errorf("failed to create snapshot on image %q: %w", snap, err)
 	}
 
