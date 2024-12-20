@@ -26,7 +26,7 @@ import (
 func checkError(t *testing.T, msg string, err error) {
 	t.Helper()
 	if err == nil {
-		t.Errorf(msg)
+		t.Error(msg)
 	}
 }
 

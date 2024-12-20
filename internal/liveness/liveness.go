@@ -64,7 +64,7 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 	// register prometheus metrics
 	err := prometheus.Register(liveness)
 	if err != nil {
-		log.FatalLogMsg(err.Error())
+		log.FatalLogMsg("%v", err.Error())
 	}
 
 	csiConn, err := connlib.Connect(context.Background(), endpoint, liveMetricsManager)

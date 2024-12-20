@@ -123,7 +123,7 @@ func getForceOption(ctx context.Context, parameters map[string]string) (bool, er
 	}
 	force, err := strconv.ParseBool(val)
 	if err != nil {
-		return false, status.Errorf(codes.Internal, err.Error())
+		return false, status.Error(codes.Internal, err.Error())
 	}
 
 	return force, nil
@@ -636,7 +636,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		// it takes time for this operation.
 		log.ErrorLog(ctx, err.Error())
 
-		return nil, status.Errorf(codes.Aborted, err.Error())
+		return nil, status.Error(codes.Aborted, err.Error())
 	}
 
 	if info.GetState() != librbd.MirrorImageEnabled.String() {
@@ -832,11 +832,11 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Errorf(codes.NotFound, err.Error())
+			err = status.Error(codes.NotFound, err.Error())
 		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Errorf(codes.NotFound, err.Error())
+			err = status.Error(codes.NotFound, err.Error())
 		default:
-			err = status.Errorf(codes.Internal, err.Error())
+			err = status.Error(codes.Internal, err.Error())
 		}
 
 		return nil, err

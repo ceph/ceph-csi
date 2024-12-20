@@ -218,7 +218,7 @@ var _ = Describe(cephfsType, func() {
 
 		err = createSubvolumegroup(f, fileSystemName, subvolumegroup)
 		if err != nil {
-			framework.Failf("%v", err)
+			framework.Failf("failed to create subvolumegroup %s: %v", subvolumegroup, err)
 		}
 	})
 
@@ -261,7 +261,7 @@ var _ = Describe(cephfsType, func() {
 
 		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
 		if err != nil {
-			framework.Failf("%v", err)
+			framework.Failf("failed to delete subvolumegroup %s: %v", subvolumegroup, err)
 		}
 
 		if deployCephFS {
@@ -768,7 +768,7 @@ var _ = Describe(cephfsType, func() {
 				for i := range deplPods {
 					err = ensureStatSucceeds(deplPods[i].Name)
 					if err != nil {
-						framework.Failf(err.Error())
+						framework.Failf("ensureStatSucceeds failed for pod %q: %v", deplPods[i].Name, err.Error())
 					}
 				}
 				// Kill ceph-fuse in cephfs-csi node plugin Pods.
@@ -797,12 +797,12 @@ var _ = Describe(cephfsType, func() {
 				// the pod with hopefully mounts working again.
 				err = deletePod(pod2Name, depl.Namespace, c, deployTimeout)
 				if err != nil {
-					framework.Failf(err.Error())
+					framework.Failf("failed to delete pod %s: %v", pod2Name, err.Error())
 				}
 				// Wait for the second Pod to be recreated.
 				err = waitForDeploymentComplete(c, depl.Name, depl.Namespace, deployTimeout)
 				if err != nil {
-					framework.Failf(err.Error())
+					framework.Failf("timeout waiting for deployment %s: %v", depl.Name, err.Error())
 				}
 				// List Deployment's pods again to get name of the new pod.
 				deplPods, err = listPods(f, depl.Namespace, &metav1.ListOptions{
@@ -828,7 +828,7 @@ var _ = Describe(cephfsType, func() {
 				// Verify Pod pod2Name has its ceph-fuse mount working again.
 				err = ensureStatSucceeds(pod2Name)
 				if err != nil {
-					framework.Failf(err.Error())
+					framework.Failf("ensureStatSucceeds failed for pod %q: %v", pod2Name, err.Error())
 				}
 
 				// Delete created resources.
@@ -967,11 +967,11 @@ var _ = Describe(cephfsType, func() {
 
 				err = createSubvolumegroup(f, fileSystemName, subvolgrp1)
 				if err != nil {
-					framework.Failf("%v", err)
+					framework.Failf("failed to create subvolumegroup %s: %v", subvolgrp1, err)
 				}
 				err = createSubvolumegroup(f, fileSystemName, subvolgrp2)
 				if err != nil {
-					framework.Failf("%v", err)
+					framework.Failf("failed to create subvolumegroup %s: %v", subvolgrp2, err)
 				}
 				err = createCustomConfigMap(f.ClientSet, cephFSDirPath, clusterInfo)
 				if err != nil {
@@ -1019,11 +1019,11 @@ var _ = Describe(cephfsType, func() {
 				}
 				err = deleteSubvolumegroup(f, fileSystemName, subvolgrp1)
 				if err != nil {
-					framework.Failf("%v", err)
+					framework.Failf("failed to delete subvolumegroup %s: %v", subvolgrp1, err)
 				}
 				err = deleteSubvolumegroup(f, fileSystemName, subvolgrp2)
 				if err != nil {
-					framework.Failf("%v", err)
+					framework.Failf("failed to delete subvolumegroup %s: %v", subvolgrp2, err)
 				}
 				err = deleteConfigMap(cephFSDirPath)
 				if err != nil {
@@ -1076,14 +1076,15 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				cmd := "echo 'Hello World' >" + filePath
 				_, stdErr := execCommandInPodAndAllowFail(
 					f,
-					"echo 'Hello World' >"+filePath,
+					cmd,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					framework.Failf(stdErr)
+					framework.Failf("failed to execute command %s: %v", cmd, stdErr)
 				}
 
 				// delete PVC and app
@@ -2406,14 +2407,15 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				cmd := "echo 'Hello World' > " + filePath
 				_, stdErr := execCommandInPodAndAllowFail(
 					f,
-					"echo 'Hello World' > "+filePath,
+					cmd,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					framework.Failf(stdErr)
+					framework.Failf("failed to execute command %s: %v", cmd, stdErr)
 				}
 
 				// delete cloned ROX pvc and app

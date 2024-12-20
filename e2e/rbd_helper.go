@@ -1071,7 +1071,7 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 			return true, nil
 		}
 		errReason = fmt.Errorf("found %d images found in trash. Image details %v", len(imagesInTrash), imagesInTrash)
-		framework.Logf(errReason.Error())
+		framework.Logf("%v", errReason.Error())
 
 		return false, nil
 	})

@@ -251,7 +251,7 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 					framework.Logf("additional debug info: rados ls command output: %s, stdErr: %s", stdOut, stdErr)
 				}
 			}
-			framework.Failf("%v", saveErr)
+			framework.Fail(saveErr.Error())
 		}
 	}
 }

@@ -103,7 +103,7 @@ func (r *ReconcilePersistentVolume) getCredentials(
 
 	if name == "" || namespace == "" {
 		errStr := "secret name or secret namespace is empty"
-		log.ErrorLogMsg(errStr)
+		log.ErrorLogMsg("%v", errStr)
 
 		return nil, errors.New(errStr)
 	}

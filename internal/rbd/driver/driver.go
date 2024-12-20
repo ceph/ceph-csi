@@ -143,7 +143,7 @@ func (r *Driver) Run(conf *util.Config) {
 	if k8s.RunsOnKubernetes() && conf.IsNodeServer {
 		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
 		if err != nil {
-			log.FatalLogMsg(err.Error())
+			log.FatalLogMsg("%v", err.Error())
 		}
 	}
 
@@ -157,19 +157,19 @@ func (r *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			log.FatalLogMsg(err.Error())
+			log.FatalLogMsg("%v", err.Error())
 		}
 		r.ns = NewNodeServer(r.cd, conf.Vtype, nodeLabels, topology, crushLocationMap)
 
 		var attr string
 		attr, err = rbd.GetKrbdSupportedFeatures()
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.FatalLogMsg(err.Error())
+			log.FatalLogMsg("%v", err.Error())
 		}
 		var krbdFeatures uint
 		krbdFeatures, err = rbd.HexStringToInteger(attr)
 		if err != nil {
-			log.FatalLogMsg(err.Error())
+			log.FatalLogMsg("%v", err.Error())
 		}
 		rbd.SetGlobalInt("krbdFeatures", krbdFeatures)
 
@@ -185,7 +185,7 @@ func (r *Driver) Run(conf *util.Config) {
 	// configure CSI-Addons server and components
 	err = r.setupCSIAddonsServer(conf)
 	if err != nil {
-		log.FatalLogMsg(err.Error())
+		log.FatalLogMsg("%v", err.Error())
 	}
 
 	s := csicommon.NewNonBlockingGRPCServer()

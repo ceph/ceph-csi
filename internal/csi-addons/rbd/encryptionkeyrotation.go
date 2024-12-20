@@ -73,9 +73,9 @@ func (ekrs *EncryptionKeyRotationServer) EncryptionKeyRotate(
 			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
 		case errors.Is(err, util.ErrPoolNotFound):
 			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", volID, err)
-			err = status.Errorf(codes.NotFound, err.Error())
+			err = status.Error(codes.NotFound, err.Error())
 		default:
-			err = status.Errorf(codes.Internal, err.Error())
+			err = status.Error(codes.Internal, err.Error())
 		}
 
 		return nil, err

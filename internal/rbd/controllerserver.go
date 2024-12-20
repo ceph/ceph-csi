@@ -1122,9 +1122,9 @@ func (cs *ControllerServer) CreateSnapshot(
 			err = status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
 		case errors.Is(err, util.ErrPoolNotFound):
 			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", req.GetSourceVolumeId(), err)
-			err = status.Errorf(codes.NotFound, err.Error())
+			err = status.Error(codes.NotFound, err.Error())
 		default:
-			err = status.Errorf(codes.Internal, err.Error())
+			err = status.Error(codes.Internal, err.Error())
 		}
 
 		return nil, err
@@ -1171,7 +1171,7 @@ func (cs *ControllerServer) CreateSnapshot(
 			return nil, status.Error(codes.AlreadyExists, err.Error())
 		}
 
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if found {
 		return cloneFromSnapshot(ctx, rbdVol, rbdSnap, cr, req.GetParameters())
@@ -1253,7 +1253,7 @@ func cloneFromSnapshot(
 			log.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
 		}
 
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer vol.Destroy(ctx)
 
@@ -1265,14 +1265,14 @@ func cloneFromSnapshot(
 	err = vol.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if errors.Is(err, ErrFlattenInProgress) {
 		// if flattening is in progress, return error and do not cleanup
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	} else if err != nil {
 		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 		if uErr != nil {
 			log.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
 		}
 
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Update snapshot-name/snapshot-namespace/snapshotcontent-name details on
@@ -1566,9 +1566,9 @@ func (cs *ControllerServer) ControllerExpandVolume(
 			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
 		case errors.Is(err, util.ErrPoolNotFound):
 			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", volID, err)
-			err = status.Errorf(codes.NotFound, err.Error())
+			err = status.Error(codes.NotFound, err.Error())
 		default:
-			err = status.Errorf(codes.Internal, err.Error())
+			err = status.Error(codes.Internal, err.Error())
 		}
 
 		return nil, err

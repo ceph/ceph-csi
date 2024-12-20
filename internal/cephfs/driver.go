@@ -109,7 +109,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer && k8s.RunsOnKubernetes() {
 		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
 		if err != nil {
-			log.FatalLogMsg(err.Error())
+			log.FatalLogMsg("%v", err.Error())
 		}
 	}
 
@@ -159,7 +159,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			log.FatalLogMsg(err.Error())
+			log.FatalLogMsg("%v", err.Error())
 		}
 		fs.ns = NewNodeServer(
 			fs.cd, conf.Vtype,
@@ -176,7 +176,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			log.FatalLogMsg(err.Error())
+			log.FatalLogMsg("%v", err.Error())
 		}
 		fs.ns = NewNodeServer(
 			fs.cd, conf.Vtype,
@@ -189,7 +189,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	// configure CSI-Addons server and components
 	err = fs.setupCSIAddonsServer(conf)
 	if err != nil {
-		log.FatalLogMsg(err.Error())
+		log.FatalLogMsg("%v", err.Error())
 	}
 
 	server := csicommon.NewNonBlockingGRPCServer()

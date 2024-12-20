@@ -436,7 +436,7 @@ func getBackingSnapshotRoot(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to open %s when searching for snapshot root: %v", snapshotsBase, err)
 
-		return "", status.Errorf(codes.Internal, err.Error())
+		return "", status.Error(codes.Internal, err.Error())
 	}
 	defer dir.Close()
 
@@ -446,7 +446,7 @@ func getBackingSnapshotRoot(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to read %s when searching for snapshot root: %v", snapshotsBase, err)
 
-		return "", status.Errorf(codes.Internal, err.Error())
+		return "", status.Error(codes.Internal, err.Error())
 	}
 
 	var (
