@@ -1580,10 +1580,17 @@ func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 		// return value.
 	}
 
-	maj := strconv.Itoa(major)
-	min := strconv.Itoa(minor)
+	vMajor, err := strconv.Atoi(v.Major)
+	if err != nil {
+		framework.Failf("failed to convert Kubernetes major version %q to int: %v", v.Major, err)
+	}
 
-	return (v.Major > maj) || (v.Major == maj && v.Minor >= min)
+	vMinor, err := strconv.Atoi(v.Minor)
+	if err != nil {
+		framework.Failf("failed to convert Kubernetes minor version %q to int: %v", v.Minor, err)
+	}
+
+	return (vMajor > major) || (vMajor == major && vMinor >= minor)
 }
 
 // waitForJobCompletion polls the status of the given job and waits until the
