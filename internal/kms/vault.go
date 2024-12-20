@@ -305,7 +305,7 @@ func (vc *vaultConnection) Destroy() {
 		tmpFile, ok := vc.vaultConfig[api.EnvVaultCACert]
 		if ok {
 			// ignore error on failure to remove tmpfile (gosec complains)
-			//nolint:forcetypeassert // ignore error on failure to remove tmpfile
+			//nolint:forcetypeassert,errcheck // ignore error on failure to remove tmpfile
 			_ = os.Remove(tmpFile.(string))
 		}
 	}
