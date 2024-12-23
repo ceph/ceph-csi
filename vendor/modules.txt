@@ -204,7 +204,7 @@ github.com/ceph/ceph-csi/api/deploy/kubernetes/cephfs
 github.com/ceph/ceph-csi/api/deploy/kubernetes/nfs
 github.com/ceph/ceph-csi/api/deploy/kubernetes/rbd
 github.com/ceph/ceph-csi/api/deploy/ocp
-# github.com/ceph/go-ceph v0.30.1-0.20241102143109-75d1af3ed638
+# github.com/ceph/go-ceph v0.31.0
 ## explicit; go 1.19
 github.com/ceph/go-ceph/cephfs
 github.com/ceph/go-ceph/cephfs/admin
