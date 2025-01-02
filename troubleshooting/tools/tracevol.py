@@ -42,6 +42,7 @@ import sys
 import re
 import prettytable
 PARSER = argparse.ArgumentParser()
+ARGS=None # just so that the linter is happy, ARGS is global already.
 
 # -p pvc-test -k /home/.kube/config -n default -rn rook-ceph
 PARSER.add_argument("-p", "--pvcname", default="", help="PVC name")
@@ -562,6 +563,188 @@ def get_fsname_from_pvdata(arg, pvdata):
         sys.exit()
     return fsname
 
+def kube_client(*commands):
+    """
+    Executes a kubectl/oc command with the provided arguments and returns the JSON output.
+    Note: Do not pass `-o json` as an argument, this helper adds it automatically for get commands.
+
+    Example:
+        kube_client("get", "pvcs")
+
+    Args:
+        *commands: Additional command-line arguments to pass to the Kubernetes or OpenShift command.
+    """
+    arg = ARGS
+    cmd = [arg.command]
+    if arg.kubeconfig != "":
+        cmd += ["--kubeconfig", arg.kubeconfig]
+    cmd += list(commands)
+
+    if "get" in commands:
+        cmd += ["-o", "json"]
+
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
+    if stderr is not None:
+        if arg.debug:
+            print(f"failed to execute command {commands} due to {stderr}")
+        sys.exit()
+    try:
+        data = json.loads(stdout)
+    except ValueError as err:
+        print(err, stdout)
+        sys.exit()
+
+    return data
+
+def get_val_from_omap(obj, key, pool, is_rbd, regex=br'[A-Za-z0-9\-]+'):
+    """
+    Retrieve a value from an OMAP key in a Ceph pool.
+
+    Args:
+        obj (str): The name of the object in the pool.
+        key (str): The key within the OMAP to retrieve the value from.
+        pool (str): The name of the Ceph pool.
+        is_rbd (bool): Flag indicating if the pool is an RBD pool.
+        regex (regex, optional): The regular expression to use to extract the value from the output.
+
+    Returns:
+        str: A string containing the retrieved value.
+    """
+    cmd = ['rados', 'getomapval', obj, key, "--pool", pool]
+
+    if not ARGS.userkey:
+        cmd += ["--id", ARGS.userid, "--key", ARGS.userkey]
+
+    if not is_rbd:
+        cmd += ["--namespace", "csi"]
+
+    if ARGS.toolboxdeployed is True:
+        kube = get_cmd_prefix(ARGS)
+        cmd = kube + cmd
+
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
+    if stderr is not None:
+        return ""
+
+    result = b''
+    lines = [x.strip() for x in stdout.split(b"\n")]
+    for line in lines:
+        if b' ' not in line:
+            continue
+        if b'value' in line and b'bytes' in line:
+            continue
+        part = re.findall(regex, line)
+        if part:
+            result += part[-1]
+
+    return result.decode()
+
+def check_snap_content_name_in_rados(snap_uuid, snap_content_name, pool, is_rbd):
+    """
+    Validates if snapshot content name is listed in csi.snaps.default omap
+    """
+    snap_content_name = snap_content_name.replace("snapcontent", "snapshot")
+    omap_obj = "csi.snaps.default"
+    omap_key = f'csi.snap.{snap_content_name}'
+
+    val = get_val_from_omap(omap_obj, omap_key, pool, is_rbd)
+    if val != snap_uuid:
+        if ARGS.debug:
+            print(f"expected image Id {snap_uuid} found Id in rados {val}")
+        return False
+    return True
+
+def check_snap_uuid_in_rados(snap_uuid, snapcontent_name, pool, is_rbd):
+    """
+    Checks whether the value of the key `csi.snapname` in the `csi.snap.<snap_uuid>` 
+    omap object matches the name of the snapshot content.
+    """
+    omap_obj = f'csi.snap.{snap_uuid}'
+    omap_key = "csi.snapname"
+    snapcontent_name = snapcontent_name.replace("snapcontent", "snapshot")
+
+    name = get_val_from_omap(omap_obj, omap_key, pool, is_rbd)
+    if name != snapcontent_name:
+        if ARGS.debug:
+            print(f"expected image Id {snapcontent_name} found Id in rados {name}")
+        return False
+    return True
+
+def parse_volume_snapshots(volsnapshots):
+    """
+    Parses a list of volume snapshots and prints a table with their details.
+    """
+    cephfs_snap_tbl = prettytable.PrettyTable()
+    cephfs_snap_tbl.title = "CephFS Volume Snapshots"
+    cephfs_snap_tbl.field_names = ["Name", "PVC", "Subvolume Name",
+                                   "Snapshot ID", "Snapshot ID in omap", "Snapcontent in omap"]
+
+    rbd_snap_tbl = prettytable.PrettyTable()
+    rbd_snap_tbl.title = "RBD Volume Snapshots"
+    rbd_snap_tbl.field_names = ["Name", "PVC", "Image Name",
+                                "Snapshot ID", "Snapshot ID in omap", "Snapcontent in omap"]
+
+    for snapshot in volsnapshots['items']:
+        snap_name = snapshot['metadata']['name']
+        pvc_name = snapshot['spec']['source']['persistentVolumeClaimName']
+
+        # Fetch the PVC and its PV, useful later
+        pvc = kube_client("get", "pvc", pvc_name)
+        pv_data = kube_client("get", "pv", pvc['spec']['volumeName'])
+
+        # Find the type of the PVC (RBD or CephFS)
+        csi_attrs = pv_data['spec'].get('csi')
+
+        # Make sure the PVC is a CSI volume
+        if not csi_attrs:
+            if ARGS.debug:
+                print(f"Skipping snapshot {snap_name} as it is not a CSI volume")
+            continue
+        fs_type = "CephFS" if "fsName" in csi_attrs['volumeAttributes'] else "RBD"
+        is_rbd = fs_type == "RBD"
+
+        # Get the vol name inside ceph
+        vol_handle = pv_data['spec']['csi']['volumeHandle']
+        pool = get_pool_name(ARGS, vol_handle, is_rbd)
+        img_uuid = get_image_uuid(vol_handle)
+        prefix = get_volname_prefix(ARGS, pv_data)
+        img_id = prefix + img_uuid
+
+        # Get the snapshot ID, we can inspect volumesnapshotcontent to get the snapshot handle
+        # Alternatively, we can use the toolbox pod to fetch these values from ceph directly
+        snap_content_name = snapshot['status']['boundVolumeSnapshotContentName']
+        snap_content = kube_client("get", "volumesnapshotcontent", snap_content_name)
+
+        # The snapshot prefix can be optionally defined in the volumesnapshotclass parameters
+        # or we can read it from OMAP key `csi.snapname` in the `csi.snap.<snap_uuid>` omap object
+        snap_handle = snap_content['status']['snapshotHandle']
+        snap_uuid = get_image_uuid(snap_handle)
+        snap_id = get_val_from_omap(f"csi.snap.{snap_uuid}", "csi.imagename", pool, is_rbd)
+
+        uuid_in_rados = check_snap_uuid_in_rados(snap_uuid, snap_content_name, pool, is_rbd)
+        scn_in_rados = check_snap_content_name_in_rados(snap_uuid, snap_content_name, pool, is_rbd)
+
+        row = [snap_name, pvc_name, img_id, snap_id, uuid_in_rados, scn_in_rados]
+        if fs_type == "CephFS":
+            cephfs_snap_tbl.add_row(row)
+        else:
+            rbd_snap_tbl.add_row(row)
+
+    print(rbd_snap_tbl)
+    print(cephfs_snap_tbl)
+
+def list_volume_snapshots():
+    """
+    Retrieve and parse the list of volume snapshots from the cluster.
+    """
+    volumesnapshots = kube_client("get", "volumesnapshots", "-n", ARGS.namespace)
+
+    parse_volume_snapshots(volumesnapshots)
+
 if __name__ == "__main__":
     ARGS = PARSER.parse_args()
     if ARGS.command not in ["kubectl", "oc"]:
@@ -571,3 +754,4 @@ if __name__ == "__main__":
         print("python version less than 3 is not supported.")
         sys.exit(1)
     list_pvc_vol_name_mapping(ARGS)
+    list_volume_snapshots()
