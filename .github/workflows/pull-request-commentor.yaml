@@ -27,6 +27,9 @@ jobs:
           - k8s: "1.32"
             branch: "release-v3.13"
 
+          - k8s: "1.29"
+            branch: "devel"
+
     # watch out, matrix.branch can not be used in this if-statement :-/
     if: >
       (github.event.label.name == 'ok-to-test' &&
