@@ -37,6 +37,9 @@ var (
 	ErrNotConnected = getError(-C.ENOTCONN)
 	// ErrNotExist indicates a non-specific missing resource.
 	ErrNotExist = getError(-C.ENOENT)
+	// ErrOpNotSupported is returned in general for operations that are not
+	// supported.
+	ErrOpNotSupported = getError(-C.EOPNOTSUPP)
 
 	// Private errors:
 

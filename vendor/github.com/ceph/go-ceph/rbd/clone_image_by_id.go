@@ -1,5 +1,3 @@
-//go:build ceph_preview
-
 package rbd
 
 /*
@@ -50,7 +48,8 @@ var (
 //	               uint64_t p_snap_id, rados_ioctx_t c_ioctx,
 //	               const char *c_name, rbd_image_options_t c_opts);
 func CloneImageByID(ioctx *rados.IOContext, parentName string, snapID uint64,
-	destctx *rados.IOContext, name string, rio *ImageOptions) error {
+	destctx *rados.IOContext, name string, rio *ImageOptions,
+) error {
 	if rio == nil {
 		return getError(C.EINVAL)
 	}
