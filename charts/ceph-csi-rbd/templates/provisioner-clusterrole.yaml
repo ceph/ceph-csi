@@ -29,6 +29,12 @@ rules:
   - apiGroups: [""]
     resources: ["endpoints"]
     verbs: ["get", "create", "update"]
+  - apiGroups: ["replication.storage.openshift.io"]
+    resources: ["volumegroupreplicationcontents"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["replication.storage.openshift.io"]
+    resources: ["volumegroupreplicationclasses"]
+    verbs: ["get", "list", "watch"]
 {{- if .Values.provisioner.attacher.enabled }}
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
