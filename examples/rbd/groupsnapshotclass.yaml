@@ -14,6 +14,10 @@ parameters:
   # eg: pool: rbdpool
   pool: <rbd-pool-name>
 
+  # (optional) Prefix to use for naming RBD groups.
+  # If omitted, defaults to "csi-vol-group-".
+  # volumeGroupNamePrefix: "foo-bar-"
+
   csi.storage.k8s.io/group-snapshotter-secret-name: csi-rbd-secret
   csi.storage.k8s.io/group-snapshotter-secret-namespace: default
 deletionPolicy: Delete
