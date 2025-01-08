@@ -346,8 +346,8 @@ func (mgr *rbdManager) GetVolumeGroupSnapshotByName(
 		return nil, errors.New("required 'pool' option missing in volume group parameters")
 	}
 
-	// groupNamePrefix is an optional parameter, can be an empty string
-	prefix := mgr.parameters["groupNamePrefix"]
+	// volumeGroupNamePrefix is an optional parameter, can be an empty string
+	prefix := mgr.parameters["volumeGroupNamePrefix"]
 
 	clusterID, err := util.GetClusterID(mgr.parameters)
 	if err != nil {
@@ -409,8 +409,8 @@ func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 		return nil, err
 	}
 
-	// groupNamePrefix is an optional parameter, can be an empty string
-	prefix := mgr.parameters["groupNamePrefix"]
+	// volumeGroupNamePrefix is an optional parameter, can be an empty string
+	prefix := mgr.parameters["volumeGroupNamePrefix"]
 
 	clusterID, err := vg.GetClusterID(ctx)
 	if err != nil {
