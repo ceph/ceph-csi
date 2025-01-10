@@ -287,7 +287,7 @@ provisioner:
     enabled: true
     image:
       repository: registry.k8s.io/sig-storage/csi-resizer
-      tag: v1.11.1
+      tag: v1.13.1
       pullPolicy: IfNotPresent
     resources: {}
     args:
