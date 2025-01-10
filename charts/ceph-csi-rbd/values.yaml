@@ -538,6 +538,7 @@ secret:
   # Key values correspond to a user name and its key, as defined in the
   # ceph cluster. User ID should have required access to the 'pool'
   # specified in the storage class
+  # The userID must not include the "client." prefix!
   userID: <plaintext ID>
   userKey: <Ceph auth key corresponding to userID above>
   # Encryption passphrase
