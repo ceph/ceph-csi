@@ -331,11 +331,22 @@ func (status globalMirrorGroupStatus) GetRemoteSiteStatus(ctx context.Context) (
 				totalSnapshotDuration += *localSnapInfo.LastSnapshotDuration
 			}
 			err = nil
-			totalDuration := int64(totalSnapshotDuration / int64(totalImages))
+			totalDuration := int64(0)
+			if totalSnapshotDuration > 0 {
+				totalDuration = int64(totalSnapshotDuration / int64(totalImages))
+			}
+			totalTime := int64(0)
+			if totalSnpshotTime > 0 {
+				totalTime = int64(totalSnpshotTime / int64(totalImages))
+			}
+			totalBytes := int64(0)
+			if totalSnapshotBytes > 0 {
+				totalBytes = int64(totalSnapshotBytes / int64(totalImages))
+			}
 			// write the total snapshot time, bytes and duration to the description
 			d := localStatus{
-				LocalSnapshotTime:    int64(totalSnpshotTime / int64(totalImages)),
-				LastSnapshotBytes:    int64(totalSnapshotBytes / int64(totalImages)),
+				LocalSnapshotTime:    totalTime,
+				LastSnapshotBytes:    totalBytes,
 				LastSnapshotDuration: &totalDuration,
 			}
 			description, err := json.Marshal(d)
