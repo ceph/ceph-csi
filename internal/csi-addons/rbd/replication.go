@@ -815,6 +815,8 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	}
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get user credentials: %v", err)
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer cr.DeleteCredentials()
@@ -830,6 +832,8 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get volume with id %q: %v", volumeID, err)
+
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
 			err = status.Error(codes.NotFound, err.Error())
@@ -843,12 +847,14 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	}
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
+		log.ErrorLog(ctx, "failed to convert volume %q to mirror type: %v", rbdVol, err)
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	info, err := mirror.GetMirroringInfo(ctx)
 	if err != nil {
-		log.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, "failed to get info for mirror %q: %v", mirror, err)
 
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
@@ -864,17 +870,18 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 
 	mirrorStatus, err := mirror.GetGlobalMirroringStatus(ctx)
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get status for mirror %q: %v", mirror, err)
+
 		if errors.Is(err, corerbd.ErrImageNotFound) {
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
-		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	remoteStatus, err := mirrorStatus.GetRemoteSiteStatus(ctx)
 	if err != nil {
-		log.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, "failed to get remote site status for mirror %q: %v", mirror, err)
 
 		if errors.Is(err, librbd.ErrNotExist) {
 			return nil, status.Errorf(codes.NotFound, "failed to get remote status: %v", err)
@@ -886,10 +893,11 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	description := remoteStatus.GetDescription()
 	resp, err := getLastSyncInfo(ctx, description)
 	if err != nil {
+		log.ErrorLog(ctx, "failed to parse last sync info from %q: %v", description, err)
+
 		if errors.Is(err, corerbd.ErrLastSyncTimeNotFound) {
 			return nil, status.Errorf(codes.NotFound, "failed to get last sync info: %v", err)
 		}
-		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Errorf(codes.Internal, "failed to get last sync info: %v", err)
 	}
