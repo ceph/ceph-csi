@@ -876,6 +876,10 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
 
+		if errors.Is(err, librbd.ErrNotExist) {
+			return nil, status.Errorf(codes.NotFound, "failed to get remote status: %v", err)
+		}
+
 		return nil, status.Errorf(codes.Internal, "failed to get remote status: %v", err)
 	}
 
