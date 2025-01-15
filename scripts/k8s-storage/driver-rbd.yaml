@@ -56,6 +56,9 @@ DriverInfo:
     # Support for volume expansion in nodes
     nodeExpansion: true
 
+    # supports offline volume expansion
+    offlineExpansion: false
+
     # Support volume that can run on single node only (like hostpath)
     singleNodeVolume: false
 
