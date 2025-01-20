@@ -32,7 +32,7 @@ import (
 func TestControllerReclaimSpace(t *testing.T) {
 	t.Parallel()
 
-	controller := NewReclaimSpaceControllerServer(util.NewVolumeLocks())
+	controller := NewReclaimSpaceControllerServer("test.driver", util.NewVolumeLocks())
 
 	req := &rs.ControllerReclaimSpaceRequest{
 		VolumeId: "",

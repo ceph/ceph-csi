@@ -17,6 +17,7 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -25,7 +26,7 @@ import (
 // of the image.
 // This function will return ErrImageInUse if the image is in use, since
 // sparsifying an image on which i/o is in progress is not optimal.
-func (ri *rbdImage) Sparsify() error {
+func (ri *rbdImage) Sparsify(_ context.Context) error {
 	inUse, err := ri.isInUse()
 	if err != nil {
 		return fmt.Errorf("failed to check if image is in use: %w", err)

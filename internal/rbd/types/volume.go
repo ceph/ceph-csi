@@ -45,6 +45,9 @@ type csiAddonsVolume interface {
 	// RotateEncryptionKey processes the key rotation for the RBD Volume.
 	RotateEncryptionKey(ctx context.Context) error
 
+	// Sparsify tries to free unused blocks of the volume from the CSI-Addons Controller.
+	Sparsify(ctx context.Context) error
+
 	// HandleParentImageExistence checks the image's parent.
 	// if the parent image does not exist and is not in trash, it returns nil.
 	// if the flattenMode is FlattenModeForce, it flattens the image itself.

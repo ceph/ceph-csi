@@ -37,13 +37,18 @@ import (
 // of CSI-addons reclaimspace controller service spec.
 type ReclaimSpaceControllerServer struct {
 	*rs.UnimplementedReclaimSpaceControllerServer
+
+	driver      string
 	volumeLocks *util.VolumeLocks
 }
 
 // NewReclaimSpaceControllerServer creates a new ReclaimSpaceControllerServer which handles
 // the ReclaimSpace Service requests from the CSI-Addons specification.
-func NewReclaimSpaceControllerServer(volumeLocks *util.VolumeLocks) *ReclaimSpaceControllerServer {
-	return &ReclaimSpaceControllerServer{volumeLocks: volumeLocks}
+func NewReclaimSpaceControllerServer(driver string, volumeLocks *util.VolumeLocks) *ReclaimSpaceControllerServer {
+	return &ReclaimSpaceControllerServer{
+		driver:      driver,
+		volumeLocks: volumeLocks,
+	}
 }
 
 func (rscs *ReclaimSpaceControllerServer) RegisterService(server grpc.ServiceRegistrar) {
@@ -59,12 +64,6 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
-	cr, err := util.NewUserCredentials(req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	defer cr.DeleteCredentials()
-
 	if acquired := rscs.volumeLocks.TryAcquire(volumeID); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
 
@@ -72,13 +71,16 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 	}
 	defer rscs.volumeLocks.Release(volumeID)
 
-	rbdVol, err := rbdutil.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	mgr := rbdutil.NewManager(rscs.driver, nil, req.GetSecrets())
+	defer mgr.Destroy(ctx)
+
+	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "failed to find volume with ID %q: %s", volumeID, err.Error())
 	}
 	defer rbdVol.Destroy(ctx)
 
-	err = rbdVol.Sparsify()
+	err = rbdVol.Sparsify(ctx)
 	if errors.Is(err, rbdutil.ErrImageInUse) {
 		// FIXME: https://github.com/csi-addons/kubernetes-csi-addons/issues/406.
 		// treat sparsify call as no-op if volume is in use.
