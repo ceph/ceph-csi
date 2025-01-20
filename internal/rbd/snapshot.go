@@ -177,6 +177,14 @@ func (rbdSnap *rbdSnapshot) Delete(ctx context.Context) error {
 	}
 	defer rbdVol.Destroy(ctx)
 
+	// cleanup the image from trash if the error is image not found.
+	err = rbdVol.ensureImageCleanup(ctx)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to delete rbd image %q: %v", rbdVol, err)
+
+		return err
+	}
+
 	rbdVol.ImageID = rbdSnap.ImageID
 	// update parent name to delete the snapshot
 	rbdSnap.RbdImageName = rbdVol.RbdImageName

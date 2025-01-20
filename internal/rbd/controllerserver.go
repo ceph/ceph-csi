@@ -1471,7 +1471,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 		if errors.Is(err, ErrImageNotFound) {
 			log.UsefulLog(ctx, "cleaning up leftovers of snapshot %s: %v", snapshotID, err)
 
-			err = cleanUpImageAndSnapReservation(ctx, rbdSnap, cr)
+			err = rbdSnap.Delete(ctx)
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
@@ -1508,34 +1508,6 @@ func (cs *ControllerServer) DeleteSnapshot(
 	}
 
 	return &csi.DeleteSnapshotResponse{}, nil
-}
-
-// cleanUpImageAndSnapReservation cleans up the image from the trash and
-// snapshot reservation in rados OMAP.
-func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	rbdVol := rbdSnap.toVolume()
-	err := rbdVol.Connect(cr)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	defer rbdVol.Destroy(ctx)
-
-	// cleanup the image from trash if the error is image not found.
-	err = rbdVol.ensureImageCleanup(ctx)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to delete rbd image: %q with error: %v", rbdVol.Pool, rbdVol.VolName, err)
-
-		return status.Error(codes.Internal, err.Error())
-	}
-	err = undoSnapReservation(ctx, rbdSnap, cr)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap %q",
-			rbdSnap.requestName, rbdSnap, err)
-
-		return status.Error(codes.Internal, err.Error())
-	}
-
-	return nil
 }
 
 // ControllerExpandVolume expand RBD Volumes on demand based on resizer request.
