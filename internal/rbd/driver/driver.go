@@ -249,7 +249,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 		rs := casrbd.NewReclaimSpaceNodeServer(r.ns.VolumeLocks)
 		r.cas.RegisterService(rs)
 
-		ekr := casrbd.NewEncryptionKeyRotationServer(r.ns.VolumeLocks)
+		ekr := casrbd.NewEncryptionKeyRotationServer(conf.InstanceID, r.ns.VolumeLocks)
 		r.cas.RegisterService(ekr)
 	}
 

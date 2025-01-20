@@ -32,11 +32,15 @@ import (
 
 type EncryptionKeyRotationServer struct {
 	*ekr.UnimplementedEncryptionKeyRotationControllerServer
+	driver  string
 	volLock *util.VolumeLocks
 }
 
-func NewEncryptionKeyRotationServer(volLock *util.VolumeLocks) *EncryptionKeyRotationServer {
-	return &EncryptionKeyRotationServer{volLock: volLock}
+func NewEncryptionKeyRotationServer(driver string, volLock *util.VolumeLocks) *EncryptionKeyRotationServer {
+	return &EncryptionKeyRotationServer{
+		driver:  driver,
+		volLock: volLock,
+	}
 }
 
 func (ekrs *EncryptionKeyRotationServer) RegisterService(svc grpc.ServiceRegistrar) {
@@ -58,15 +62,10 @@ func (ekrs *EncryptionKeyRotationServer) EncryptionKeyRotate(
 	}
 	defer ekrs.volLock.Release(volID)
 
-	// Get the credentials required to authenticate
-	// against a ceph cluster
-	creds, err := util.NewUserCredentials(req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	defer creds.DeleteCredentials()
+	mgr := rbd.NewManager(ekrs.driver, nil, req.GetSecrets())
+	defer mgr.Destroy(ctx)
 
-	rbdVol, err := rbd.GenVolFromVolID(ctx, volID, creds, req.GetSecrets())
+	rbdVol, err := mgr.GetVolumeByID(ctx, volID)
 	if err != nil {
 		switch {
 		case errors.Is(err, rbd.ErrImageNotFound):
