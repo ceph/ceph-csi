@@ -1421,12 +1421,6 @@ func (cs *ControllerServer) DeleteSnapshot(
 		return nil, err
 	}
 
-	cr, err := util.NewUserCredentials(req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	defer cr.DeleteCredentials()
-
 	snapshotID := req.GetSnapshotId()
 	if snapshotID == "" {
 		return nil, status.Error(codes.InvalidArgument, "snapshot ID cannot be empty")
@@ -1440,14 +1434,17 @@ func (cs *ControllerServer) DeleteSnapshot(
 	defer cs.SnapshotLocks.Release(snapshotID)
 
 	// lock out snapshotID for restore operation
-	if err = cs.OperationLocks.GetDeleteLock(snapshotID); err != nil {
+	if err := cs.OperationLocks.GetDeleteLock(snapshotID); err != nil {
 		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(snapshotID)
 
-	rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, req.GetSecrets())
+	mgr := NewManager(cs.Driver.GetInstanceID(), nil, req.GetSecrets())
+	defer mgr.Destroy(ctx)
+
+	rbdSnap, err := mgr.GetSnapshotByID(ctx, snapshotID)
 	if err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we don't
 		// need to worry about deleting snapshot or omap data, return success
@@ -1498,7 +1495,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 	defer cs.SnapshotLocks.Release(requestName)
 
 	// Deleting snapshot and cloned volume
-	log.DebugLog(ctx, "deleting cloned rbd volume %s", rbdSnap.RbdSnapName)
+	log.DebugLog(ctx, "deleting cloned rbd volume %s", rbdSnap)
 
 	err = rbdSnap.Delete(ctx)
 	if err != nil {
