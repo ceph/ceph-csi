@@ -981,12 +981,12 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 	defer cs.VolumeLocks.Release(requestName)
 
-	return cleanupRBDImage(ctx, rbdVol, cr)
+	return rbdVol.cleanupRBDImage(ctx, cr)
 }
 
 // cleanupRBDImage removes the rbd image and OMAP metadata associated with it.
-func cleanupRBDImage(ctx context.Context,
-	rbdVol *rbdVolume, cr *util.Credentials,
+func (rbdVol *rbdVolume) cleanupRBDImage(ctx context.Context,
+	cr *util.Credentials,
 ) (*csi.DeleteVolumeResponse, error) {
 	info, err := rbdVol.GetMirroringInfo(ctx)
 	if err != nil {
