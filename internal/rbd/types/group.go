@@ -58,13 +58,13 @@ type VolumeGroup interface {
 	Create(ctx context.Context) error
 
 	// Delete removes the VolumeGroup from the backend storage.
-	Delete(ctx context.Context) error
+	Delete(ctx context.Context, vgMirrorInfo MirrorInfo, mirror Mirror) error
 
 	// AddVolume adds the Volume to the VolumeGroup.
 	AddVolume(ctx context.Context, volume Volume) error
 
 	// RemoveVolume removes the Volume from the VolumeGroup.
-	RemoveVolume(ctx context.Context, volume Volume) error
+	RemoveVolume(ctx context.Context, volume Volume, removeImageFromGroup bool) error
 
 	// ListVolumes returns a slice with all Volumes in the VolumeGroup.
 	ListVolumes(ctx context.Context) ([]Volume, error)
