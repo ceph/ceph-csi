@@ -957,12 +957,30 @@ func (cs *ControllerServer) DeleteVolume(
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer func() {
-		if rbdVol != nil {
-			rbdVol.Destroy(ctx)
+	// secrets can be different for volumes created with in-tree drivers
+	secrets := req.GetSecrets()
+	if util.IsMigrationSecret(secrets) {
+		secrets, err = util.ParseAndSetSecretMapFromMigSecret(secrets)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
 		}
-	}()
+	}
+
+	mgr := NewManager(cs.Driver.GetInstanceID(), nil, secrets)
+	defer mgr.Destroy(ctx)
+
+	var rbdVol *rbdVolume
+	vol, err := mgr.GetVolumeByID(ctx, volumeID)
+	if vol != nil {
+		defer vol.Destroy(ctx)
+
+		var ok bool
+		rbdVol, ok = vol.(*rbdVolume) // FIXME: temporary cast until rbdVolume is cleaned up
+		if !ok {
+			// this can never happen, mgr.GetVolumeByID() returns a *rbdVolume on success
+			log.ErrorLog(ctx, "failed to cast %q of type %T to %T", vol, vol, rbdVol)
+		}
+	}
 	if err != nil {
 		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
 	}

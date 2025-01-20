@@ -135,7 +135,7 @@ func GetMonValFromSecret(secrets map[string]string) (string, error) {
 func ParseAndSetSecretMapFromMigSecret(secretmap map[string]string) (map[string]string, error) {
 	newSecretMap := make(map[string]string)
 	// parse and set userKey
-	if !isMigrationSecret(secretmap) {
+	if !IsMigrationSecret(secretmap) {
 		return nil, errors.New("passed secret map does not contain user key or it is nil")
 	}
 	newSecretMap[credUserKey] = secretmap[migUserKey]
@@ -148,11 +148,11 @@ func ParseAndSetSecretMapFromMigSecret(secretmap map[string]string) (map[string]
 	return newSecretMap, nil
 }
 
-// isMigrationSecret validates if the passed in secretmap is a secret
+// IsMigrationSecret validates if the passed in secretmap is a secret
 // of a migration volume request. The migration secret carry a field
 // called `key` which is the equivalent of `userKey` which is what we
 // check here for identifying the secret.
-func isMigrationSecret(secrets map[string]string) bool {
+func IsMigrationSecret(secrets map[string]string) bool {
 	// the below 'nil' check is an extra measure as the request validators like
 	// ValidateNodeStageVolumeRequest() already does the nil check, however considering
 	// this function can be called independently with a map of secret values
@@ -166,7 +166,7 @@ func isMigrationSecret(secrets map[string]string) bool {
 // secret. If it is not a migration it will continue the attempt to create credentials from it
 // without parsing the secret. This function returns credentials and error.
 func NewUserCredentialsWithMigration(secrets map[string]string) (*Credentials, error) {
-	if isMigrationSecret(secrets) {
+	if IsMigrationSecret(secrets) {
 		migSecret, err := ParseAndSetSecretMapFromMigSecret(secrets)
 		if err != nil {
 			return nil, err
