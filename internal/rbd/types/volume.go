@@ -25,9 +25,45 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
-//nolint:interfacebloat // more than 10 methods are needed for the interface
+type snapshottableVolume interface {
+	// NewSnapshotByID creates a new Snapshot object based on the details of the Volume.
+	NewSnapshotByID(ctx context.Context, cr *util.Credentials, name string, id uint64) (Snapshot, error)
+
+	// PrepareVolumeForSnapshot prepares the volume for snapshot by
+	// checking snapshots limit and clone depth limit and flatten it
+	// if required.
+	PrepareVolumeForSnapshot(ctx context.Context, cr *util.Credentials) error
+}
+
+type csiAddonsVolume interface {
+	// AddToGroup adds the Volume to the VolumeGroup.
+	AddToGroup(ctx context.Context, vg VolumeGroup) error
+
+	// RemoveFromGroup removes the Volume from the VolumeGroup.
+	RemoveFromGroup(ctx context.Context, vg VolumeGroup) error
+
+	// RotateEncryptionKey processes the key rotation for the RBD Volume.
+	RotateEncryptionKey(ctx context.Context) error
+
+	// HandleParentImageExistence checks the image's parent.
+	// if the parent image does not exist and is not in trash, it returns nil.
+	// if the flattenMode is FlattenModeForce, it flattens the image itself.
+	// if the parent image is in trash, it returns an error.
+	// if the parent image exists and is not enabled for mirroring, it returns an error.
+	HandleParentImageExistence(ctx context.Context, flattenMode FlattenMode) error
+
+	// RepairResyncedImageID updates the existing image ID with new one in OMAP.
+	RepairResyncedImageID(ctx context.Context, ready bool) error
+
+	// ToMirror converts the Volume to a Mirror.
+	ToMirror() (Mirror, error)
+}
+
 type Volume interface {
 	journalledObject
+	snapshottableVolume
+	csiAddonsVolume
+
 	// Destroy frees the resources used by the Volume.
 	Destroy(ctx context.Context)
 
@@ -37,12 +73,6 @@ type Volume interface {
 	// ToCSI creates a CSI protocol formatted struct of the volume.
 	ToCSI(ctx context.Context) (*csi.Volume, error)
 
-	// AddToGroup adds the Volume to the VolumeGroup.
-	AddToGroup(ctx context.Context, vg VolumeGroup) error
-
-	// RemoveFromGroup removes the Volume from the VolumeGroup.
-	RemoveFromGroup(ctx context.Context, vg VolumeGroup) error
-
 	// GetCreationTime returns the creation time of the volume.
 	GetCreationTime(ctx context.Context) (*time.Time, error)
 
@@ -50,22 +80,4 @@ type Volume interface {
 	GetMetadata(key string) (string, error)
 	// SetMetadata sets the value of the metadata key on the volume.
 	SetMetadata(key, value string) error
-	// RepairResyncedImageID updates the existing image ID with new one in OMAP.
-	RepairResyncedImageID(ctx context.Context, ready bool) error
-	// HandleParentImageExistence checks the image's parent.
-	// if the parent image does not exist and is not in trash, it returns nil.
-	// if the flattenMode is FlattenModeForce, it flattens the image itself.
-	// if the parent image is in trash, it returns an error.
-	// if the parent image exists and is not enabled for mirroring, it returns an error.
-	HandleParentImageExistence(ctx context.Context, flattenMode FlattenMode) error
-	// PrepareVolumeForSnapshot prepares the volume for snapshot by
-	// checking snapshots limit and clone depth limit and flatten it
-	// if required.
-	PrepareVolumeForSnapshot(ctx context.Context, cr *util.Credentials) error
-
-	// ToMirror converts the Volume to a Mirror.
-	ToMirror() (Mirror, error)
-
-	// NewSnapshotByID creates a new Snapshot object based on the details of the Volume.
-	NewSnapshotByID(ctx context.Context, cr *util.Credentials, name string, id uint64) (Snapshot, error)
 }
