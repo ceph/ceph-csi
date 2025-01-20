@@ -208,7 +208,7 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	rbdVol.RequestName = req.GetName()
+	rbdVol.requestName = req.GetName()
 
 	// Volume Size - Default is 1 GiB
 	volSizeBytes := int64(oneGB)
@@ -772,7 +772,11 @@ func (cs *ControllerServer) createBackingImage(
 		}
 	}
 
-	log.DebugLog(ctx, "created image %s backed for request name %s", rbdVol, rbdVol.RequestName)
+	requestName, err := rbdVol.GetRequestName(ctx)
+	if err != nil {
+		requestName = "<unset request name>"
+	}
+	log.DebugLog(ctx, "created image %s backed for request name %s", rbdVol, requestName)
 
 	defer func() {
 		if err != nil {
@@ -884,12 +888,12 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 	// If error is ErrImageNotFound then we failed to find the image, but found the imageOMap
 	// to lead us to the image, hence the imageOMap needs to be garbage collected, by calling
 	// unreserve for the same
-	if acquired := cs.VolumeLocks.TryAcquire(rbdVol.RequestName); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
+	if acquired := cs.VolumeLocks.TryAcquire(rbdVol.requestName); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, rbdVol.requestName)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdVol.requestName)
 	}
-	defer cs.VolumeLocks.Release(rbdVol.RequestName)
+	defer cs.VolumeLocks.Release(rbdVol.requestName)
 
 	if err = undoVolReservation(ctx, rbdVol, cr); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -965,12 +969,17 @@ func (cs *ControllerServer) DeleteVolume(
 
 	// lock out parallel create requests against the same volume name as we
 	// clean up the image and associated omaps for the same
-	if acquired := cs.VolumeLocks.TryAcquire(rbdVol.RequestName); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
-
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
+	requestName, err := rbdVol.GetRequestName(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	defer cs.VolumeLocks.Release(rbdVol.RequestName)
+
+	if acquired := cs.VolumeLocks.TryAcquire(requestName); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, requestName)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, requestName)
+	}
+	defer cs.VolumeLocks.Release(requestName)
 
 	return cleanupRBDImage(ctx, rbdVol, cr)
 }
@@ -1012,7 +1021,7 @@ func cleanupRBDImage(ctx context.Context,
 		if localStatus.IsUP() && localStatus.GetState() == librbd.MirrorImageStatusStateReplaying.String() {
 			if err = undoVolReservation(ctx, rbdVol, cr); err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for volume (%s) with backing image (%s) (%s)",
-					rbdVol.RequestName, rbdVol.RbdImageName, err)
+					rbdVol.requestName, rbdVol.RbdImageName, err)
 
 				return nil, status.Error(codes.Internal, err.Error())
 			}
@@ -1057,7 +1066,7 @@ func cleanupRBDImage(ctx context.Context,
 
 	if err = undoVolReservation(ctx, rbdVol, cr); err != nil {
 		log.ErrorLog(ctx, "failed to remove reservation for volume (%s) with backing image (%s) (%s)",
-			rbdVol.RequestName, rbdVol.RbdImageName, err)
+			rbdVol.requestName, rbdVol.RbdImageName, err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -1146,7 +1155,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	rbdSnap.RbdImageName = rbdVol.RbdImageName
 	rbdSnap.VolSize = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
-	rbdSnap.RequestName = req.GetName()
+	rbdSnap.requestName = req.GetName()
 
 	if acquired := cs.SnapshotLocks.TryAcquire(req.GetName()); !acquired {
 		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, req.GetName())
@@ -1250,7 +1259,7 @@ func cloneFromSnapshot(
 	if err != nil {
 		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 		if uErr != nil {
-			log.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
+			log.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.requestName, uErr)
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
@@ -1269,7 +1278,7 @@ func cloneFromSnapshot(
 	} else if err != nil {
 		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 		if uErr != nil {
-			log.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
+			log.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.requestName, uErr)
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
@@ -1476,12 +1485,17 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 	// safeguard against parallel create or delete requests against the same
 	// name
-	if acquired := cs.SnapshotLocks.TryAcquire(rbdSnap.RequestName); !acquired {
-		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, rbdSnap.RequestName)
-
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdSnap.RequestName)
+	requestName, err := rbdSnap.GetRequestName(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	defer cs.SnapshotLocks.Release(rbdSnap.RequestName)
+
+	if acquired := cs.SnapshotLocks.TryAcquire(requestName); !acquired {
+		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, requestName)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, requestName)
+	}
+	defer cs.SnapshotLocks.Release(requestName)
 
 	// Deleting snapshot and cloned volume
 	log.DebugLog(ctx, "deleting cloned rbd volume %s", rbdSnap.RbdSnapName)
@@ -1516,7 +1530,7 @@ func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, c
 	err = undoSnapReservation(ctx, rbdSnap, cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap %q",
-			rbdSnap.RequestName, rbdSnap, err)
+			rbdSnap.requestName, rbdSnap, err)
 
 		return status.Error(codes.Internal, err.Error())
 	}

@@ -29,6 +29,9 @@ type journalledObject interface {
 	// GetID returns the ID in the backend storage for the object.
 	GetID(ctx context.Context) (string, error)
 
+	// GetRequestName returns the requestName of the VolumeGroup.
+	GetRequestName(ctx context.Context) (string, error)
+
 	// GetName returns the name of the object in the backend storage.
 	GetName(ctx context.Context) (string, error)
 

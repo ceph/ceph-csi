@@ -190,7 +190,7 @@ func (rbdSnap *rbdSnapshot) Delete(ctx context.Context) error {
 	err = undoSnapReservation(ctx, rbdSnap, rbdSnap.conn.Creds)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)",
-			rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, err)
+			rbdSnap.requestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, err)
 
 		return err
 	}
@@ -235,7 +235,7 @@ func (rv *rbdVolume) NewSnapshotByID(
 	id uint64,
 ) (types.Snapshot, error) {
 	snap := rv.toSnapshot()
-	snap.RequestName = name
+	snap.requestName = name
 
 	srcVolID, err := rv.GetID(ctx)
 	if err != nil {

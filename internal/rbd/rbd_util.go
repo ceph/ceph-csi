@@ -106,10 +106,10 @@ type rbdImage struct {
 	Pool           string
 	RadosNamespace string
 	ClusterID      string `json:"clusterId"`
-	// RequestName is the CSI generated volume name for the rbdVolume.
+	// requestName is the CSI generated volume name for the rbdVolume.
 	// This does not have a JSON tag as it is not stashed in JSON encoded
 	// config maps in v1.0.0
-	RequestName string
+	requestName string
 	ReservedID  string
 	NamePrefix  string
 	// ParentName represents the parent image name of the image.
@@ -415,6 +415,16 @@ func (ri *rbdImage) String() string {
 	}
 
 	return fmt.Sprintf("%s/%s", ri.Pool, ri.RbdImageName)
+}
+
+func (ri *rbdImage) GetRequestName(_ context.Context) (string, error) {
+	var err error
+
+	if ri.requestName == "" {
+		err = fmt.Errorf("rbd image %q does not have a request name", ri)
+	}
+
+	return ri.requestName, err
 }
 
 func (ri *rbdImage) GetPoolName() string {
@@ -1026,7 +1036,7 @@ func genSnapFromSnapID(
 		return rbdSnap, err
 	}
 	rbdSnap.ImageID = imageAttributes.ImageID
-	rbdSnap.RequestName = imageAttributes.RequestName
+	rbdSnap.requestName = imageAttributes.RequestName
 	rbdSnap.RbdImageName = imageAttributes.SourceName
 	rbdSnap.RbdSnapName = imageAttributes.ImageName
 	rbdSnap.ReservedID = vi.ObjectUUID
@@ -1156,7 +1166,7 @@ func generateVolumeFromVolumeID(
 	if err != nil {
 		return rbdVol, err
 	}
-	rbdVol.RequestName = imageAttributes.RequestName
+	rbdVol.requestName = imageAttributes.RequestName
 	rbdVol.RbdImageName = imageAttributes.ImageName
 	rbdVol.ReservedID = vi.ObjectUUID
 	rbdVol.ImageID = imageAttributes.ImageID

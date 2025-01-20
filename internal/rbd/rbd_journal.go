@@ -38,7 +38,7 @@ func validateNonEmptyField(field, fieldName, structName string) error {
 func validateRbdSnap(rbdSnap *rbdSnapshot) error {
 	var err error
 
-	if err = validateNonEmptyField(rbdSnap.RequestName, "RequestName", "rbdSnapshot"); err != nil {
+	if err = validateNonEmptyField(rbdSnap.requestName, "RequestName", "rbdSnapshot"); err != nil {
 		return err
 	}
 
@@ -64,7 +64,7 @@ func validateRbdSnap(rbdSnap *rbdSnapshot) error {
 func validateRbdVol(rbdVol *rbdVolume) error {
 	var err error
 
-	if err = validateNonEmptyField(rbdVol.RequestName, "RequestName", "rbdVolume"); err != nil {
+	if err = validateNonEmptyField(rbdVol.requestName, "RequestName", "rbdVolume"); err != nil {
 		return err
 	}
 
@@ -145,7 +145,7 @@ func checkSnapCloneExists(
 	defer j.Destroy()
 
 	snapData, err := j.CheckReservation(ctx, rbdSnap.JournalPool,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "", util.EncryptionTypeNone)
+		rbdSnap.requestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "", util.EncryptionTypeNone)
 	if err != nil {
 		return false, err
 	}
@@ -235,7 +235,7 @@ func checkSnapCloneExists(
 	}
 
 	log.DebugLog(ctx, "found existing image (%s) with name (%s) for request (%s)",
-		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
+		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.requestName)
 
 	return true, nil
 }
@@ -269,7 +269,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	defer j.Destroy()
 
 	imageData, err := j.CheckReservation(
-		ctx, rv.JournalPool, rv.RequestName, rv.NamePrefix, "", kmsID, encryptionType)
+		ctx, rv.JournalPool, rv.requestName, rv.NamePrefix, "", kmsID, encryptionType)
 	if err != nil {
 		return false, err
 	}
@@ -310,7 +310,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 				}
 			}
 			err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool,
-				rv.RbdImageName, rv.RequestName)
+				rv.RbdImageName, rv.requestName)
 
 			return false, err
 		}
@@ -347,7 +347,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	}
 
 	log.DebugLog(ctx, "found existing volume (%s) with image name (%s) for request (%s)",
-		rv.VolID, rv.RbdImageName, rv.RequestName)
+		rv.VolID, rv.RbdImageName, rv.requestName)
 
 	return true, nil
 }
@@ -415,7 +415,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 
 	rbdSnap.ReservedID, rbdSnap.RbdSnapName, err = j.ReserveName(
 		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, kmsID, rbdSnap.ReservedID, rbdVol.Owner,
+		rbdSnap.requestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, kmsID, rbdSnap.ReservedID, rbdVol.Owner,
 		"", encryptionType)
 	defer func() {
 		// only undo the reservation when an error occurred
@@ -439,7 +439,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 	}
 
 	log.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
-		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
+		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.requestName)
 
 	return nil
 }
@@ -501,7 +501,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) er
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, rbdVol.ReservedID, rbdVol.Owner, "", encryptionType)
+		rbdVol.requestName, rbdVol.NamePrefix, "", kmsID, rbdVol.ReservedID, rbdVol.Owner, "", encryptionType)
 	if err != nil {
 		return err
 	}
@@ -513,7 +513,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) er
 	}
 
 	log.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
-		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
+		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.requestName)
 
 	return nil
 }
@@ -528,7 +528,7 @@ func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Cre
 
 	err = j.UndoReservation(
 		ctx, rbdSnap.JournalPool, rbdSnap.Pool, rbdSnap.RbdSnapName,
-		rbdSnap.RequestName)
+		rbdSnap.requestName)
 
 	return err
 }
@@ -542,7 +542,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 	defer j.Destroy()
 
 	err = j.UndoReservation(ctx, rbdVol.JournalPool, rbdVol.Pool,
-		rbdVol.RbdImageName, rbdVol.RequestName)
+		rbdVol.RbdImageName, rbdVol.requestName)
 
 	return err
 }
@@ -636,11 +636,11 @@ func RegenerateJournal(
 		return "", err
 	}
 
-	rbdVol.RequestName = requestName
+	rbdVol.requestName = requestName
 	rbdVol.NamePrefix = volumeAttributes["volumeNamePrefix"]
 
 	imageData, err := j.CheckReservation(
-		ctx, rbdVol.JournalPool, rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, encryptionType)
+		ctx, rbdVol.JournalPool, rbdVol.requestName, rbdVol.NamePrefix, "", kmsID, encryptionType)
 	if err != nil {
 		return "", err
 	}
@@ -680,7 +680,7 @@ func RegenerateJournal(
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID, rbdVol.Owner, "", encryptionType)
+		rbdVol.requestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID, rbdVol.Owner, "", encryptionType)
 	if err != nil {
 		return "", err
 	}
@@ -688,7 +688,7 @@ func RegenerateJournal(
 	defer func() {
 		if err != nil {
 			undoErr := j.UndoReservation(ctx, rbdVol.JournalPool, rbdVol.Pool,
-				rbdVol.RbdImageName, rbdVol.RequestName)
+				rbdVol.RbdImageName, rbdVol.requestName)
 			if undoErr != nil {
 				log.ErrorLog(ctx, "failed to undo reservation %s: %v", rbdVol, undoErr)
 			}
@@ -701,7 +701,7 @@ func RegenerateJournal(
 	}
 
 	log.DebugLog(ctx, "re-generated Volume ID (%s) and image name (%s) for request name (%s)",
-		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
+		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.requestName)
 	if rbdVol.ImageID == "" {
 		err = rbdVol.storeImageID(ctx, j)
 		if err != nil {
