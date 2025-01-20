@@ -23,6 +23,7 @@ import (
 	"strconv"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -276,7 +277,7 @@ func (rbdVol *rbdVolume) ToCSI(ctx context.Context) (*csi.Volume, error) {
 func buildCreateVolumeResponse(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
-	rbdVol *rbdVolume,
+	rbdVol types.Volume,
 ) (*csi.CreateVolumeResponse, error) {
 	volume, err := rbdVol.ToCSI(ctx)
 	if err != nil {
