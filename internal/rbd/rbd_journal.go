@@ -608,6 +608,10 @@ func RegenerateJournal(
 	if err != nil {
 		return "", err
 	}
+	rbdVol.RadosNamespace, err = util.GetRBDRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
+	if err != nil {
+		return "", err
+	}
 
 	if rbdVol.Pool, ok = volumeAttributes["pool"]; !ok {
 		return "", errors.New("required 'pool' parameter missing in volume attributes")
