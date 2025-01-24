@@ -31,8 +31,8 @@ import (
 var _ types.Manager = &rbdManager{}
 
 type rbdManager struct {
-	// csiID is the instance id of the CSI-driver (driver name).
-	csiID string
+	// driverInstance is the instance id of the CSI-driver (driver name).
+	driverInstance string
 	// parameters can contain the parameters of a create request.
 	parameters map[string]string
 	// secrets contain the credentials to connect to the Ceph cluster.
@@ -46,11 +46,11 @@ type rbdManager struct {
 
 // NewManager returns a new manager for handling Volume and Volume Group
 // operations, combining the requests for RBD and the journalling in RADOS.
-func NewManager(csiID string, parameters, secrets map[string]string) types.Manager {
+func NewManager(driverInstance string, parameters, secrets map[string]string) types.Manager {
 	return &rbdManager{
-		csiID:      csiID,
-		parameters: parameters,
-		secrets:    secrets,
+		driverInstance: driverInstance,
+		parameters:     parameters,
+		secrets:        secrets,
 	}
 }
 
@@ -102,7 +102,7 @@ func (mgr *rbdManager) getVolumeGroupJournal(clusterID string) (journal.VolumeGr
 		return nil, fmt.Errorf("failed to find the RADOS namespace for cluster %q: %w", clusterID, err)
 	}
 
-	vgJournalConfig := journal.NewCSIVolumeGroupJournalWithNamespace(mgr.csiID, ns)
+	vgJournalConfig := journal.NewCSIVolumeGroupJournalWithNamespace(mgr.driverInstance, ns)
 
 	vgJournal, err := vgJournalConfig.Connect(monitors, ns, creds)
 	if err != nil {
@@ -221,7 +221,7 @@ func (mgr *rbdManager) GetVolumeGroupByID(ctx context.Context, id string) (types
 		return nil, err
 	}
 
-	vg, err := rbd_group.GetVolumeGroup(ctx, id, mgr.csiID, creds, mgr)
+	vg, err := rbd_group.GetVolumeGroup(ctx, id, mgr.driverInstance, creds, mgr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volume group with id %q: %w", id, err)
 	}
@@ -302,7 +302,7 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 		return nil, fmt.Errorf("failed to generate a unique CSI volume group with uuid for %q: %w", uuid, err)
 	}
 
-	vg, err := rbd_group.GetVolumeGroup(ctx, csiID, mgr.csiID, creds, mgr)
+	vg, err := rbd_group.GetVolumeGroup(ctx, csiID, mgr.driverInstance, creds, mgr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volume group %q at cluster %q: %w", name, clusterID, err)
 	}
@@ -329,7 +329,7 @@ func (mgr *rbdManager) GetVolumeGroupSnapshotByID(
 		return nil, err
 	}
 
-	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, id, mgr.csiID, creds, mgr)
+	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, id, mgr.driverInstance, creds, mgr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volume group with id %q: %w", id, err)
 	}
@@ -382,7 +382,7 @@ func (mgr *rbdManager) GetVolumeGroupSnapshotByName(
 		return nil, fmt.Errorf("failed to generate a unique CSI volume group with uuid %q: %w", uuid, err)
 	}
 
-	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, csiID, mgr.csiID, mgr.creds, mgr)
+	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, csiID, mgr.driverInstance, mgr.creds, mgr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing volume group snapshot with uuid %q: %w", uuid, err)
 	}
@@ -445,7 +445,7 @@ func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 		return nil, fmt.Errorf("failed to generate a unique CSI volume group with uuid for %q: %w", uuid, err)
 	}
 
-	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, groupID, mgr.csiID, mgr.creds, mgr)
+	vgs, err := rbd_group.GetVolumeGroupSnapshot(ctx, groupID, mgr.driverInstance, mgr.creds, mgr)
 	if vgs != nil {
 		log.DebugLog(ctx, "found existing volume group snapshot %q for id %q", vgs, groupID)
 
@@ -494,7 +494,7 @@ func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 
 	log.DebugLog(ctx, "volume group snapshot %q contains %d snapshots: %v", name, len(snapshots), snapshots)
 
-	vgs, err = rbd_group.NewVolumeGroupSnapshot(ctx, groupID, mgr.csiID, mgr.creds, snapshots)
+	vgs, err = rbd_group.NewVolumeGroupSnapshot(ctx, groupID, mgr.driverInstance, mgr.creds, snapshots)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new volume group snapshot %q: %w", name, err)
 	}

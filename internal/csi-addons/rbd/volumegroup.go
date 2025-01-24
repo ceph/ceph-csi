@@ -41,15 +41,15 @@ type VolumeGroupServer struct {
 	// don't need to add all RPC methods leading to forward compatibility.
 	*volumegroup.UnimplementedControllerServer
 
-	// csiID is the unique ID for this CSI-driver deployment.
-	csiID string
+	// driverInstance is the unique ID for this CSI-driver deployment.
+	driverInstance string
 }
 
 // NewVolumeGroupServer creates a new VolumeGroupServer which handles the
 // VolumeGroup Service requests from the CSI-Addons specification.
 func NewVolumeGroupServer(instanceID string) *VolumeGroupServer {
 	return &VolumeGroupServer{
-		csiID: instanceID,
+		driverInstance: instanceID,
 	}
 }
 
@@ -85,7 +85,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 	ctx context.Context,
 	req *volumegroup.CreateVolumeGroupRequest,
 ) (*volumegroup.CreateVolumeGroupResponse, error) {
-	mgr := rbd.NewManager(vs.csiID, req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(vs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve all volumes
@@ -188,7 +188,7 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 	ctx context.Context,
 	req *volumegroup.DeleteVolumeGroupRequest,
 ) (*volumegroup.DeleteVolumeGroupResponse, error) {
-	mgr := rbd.NewManager(vs.csiID, nil, req.GetSecrets())
+	mgr := rbd.NewManager(vs.driverInstance, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve the volume group
@@ -285,7 +285,7 @@ func (vs *VolumeGroupServer) ModifyVolumeGroupMembership(
 	ctx context.Context,
 	req *volumegroup.ModifyVolumeGroupMembershipRequest,
 ) (*volumegroup.ModifyVolumeGroupMembershipResponse, error) {
-	mgr := rbd.NewManager(vs.csiID, nil, req.GetSecrets())
+	mgr := rbd.NewManager(vs.driverInstance, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve the volume group
@@ -427,7 +427,7 @@ func (vs *VolumeGroupServer) ControllerGetVolumeGroup(
 	ctx context.Context,
 	req *volumegroup.ControllerGetVolumeGroupRequest,
 ) (*volumegroup.ControllerGetVolumeGroupResponse, error) {
-	mgr := rbd.NewManager(vs.csiID, nil, req.GetSecrets())
+	mgr := rbd.NewManager(vs.driverInstance, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve the volume group

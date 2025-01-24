@@ -32,14 +32,14 @@ import (
 
 type EncryptionKeyRotationServer struct {
 	*ekr.UnimplementedEncryptionKeyRotationControllerServer
-	driver  string
-	volLock *util.VolumeLocks
+	driverInstance string
+	volLock        *util.VolumeLocks
 }
 
-func NewEncryptionKeyRotationServer(driver string, volLock *util.VolumeLocks) *EncryptionKeyRotationServer {
+func NewEncryptionKeyRotationServer(driverInstance string, volLock *util.VolumeLocks) *EncryptionKeyRotationServer {
 	return &EncryptionKeyRotationServer{
-		driver:  driver,
-		volLock: volLock,
+		driverInstance: driverInstance,
+		volLock:        volLock,
 	}
 }
 
@@ -62,7 +62,7 @@ func (ekrs *EncryptionKeyRotationServer) EncryptionKeyRotate(
 	}
 	defer ekrs.volLock.Release(volID)
 
-	mgr := rbd.NewManager(ekrs.driver, nil, req.GetSecrets())
+	mgr := rbd.NewManager(ekrs.driverInstance, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volID)

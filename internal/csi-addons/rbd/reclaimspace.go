@@ -38,16 +38,19 @@ import (
 type ReclaimSpaceControllerServer struct {
 	*rs.UnimplementedReclaimSpaceControllerServer
 
-	driver      string
-	volumeLocks *util.VolumeLocks
+	driverInstance string
+	volumeLocks    *util.VolumeLocks
 }
 
 // NewReclaimSpaceControllerServer creates a new ReclaimSpaceControllerServer which handles
 // the ReclaimSpace Service requests from the CSI-Addons specification.
-func NewReclaimSpaceControllerServer(driver string, volumeLocks *util.VolumeLocks) *ReclaimSpaceControllerServer {
+func NewReclaimSpaceControllerServer(
+	driverInstance string,
+	volumeLocks *util.VolumeLocks,
+) *ReclaimSpaceControllerServer {
 	return &ReclaimSpaceControllerServer{
-		driver:      driver,
-		volumeLocks: volumeLocks,
+		driverInstance: driverInstance,
+		volumeLocks:    volumeLocks,
 	}
 }
 
@@ -71,7 +74,7 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 	}
 	defer rscs.volumeLocks.Release(volumeID)
 
-	mgr := rbdutil.NewManager(rscs.driver, nil, req.GetSecrets())
+	mgr := rbdutil.NewManager(rscs.driverInstance, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)

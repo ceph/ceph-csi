@@ -95,8 +95,8 @@ type ReplicationServer struct {
 	*replication.UnimplementedControllerServer
 	// Embed ControllerServer as it implements helper functions
 	*corerbd.ControllerServer
-	// csiID is the unique ID for this CSI-driver deployment.
-	csiID string
+	// driverInstance is the unique ID for this CSI-driver deployment.
+	driverInstance string
 }
 
 // NewReplicationServer creates a new ReplicationServer which handles
@@ -104,7 +104,7 @@ type ReplicationServer struct {
 func NewReplicationServer(instanceID string, c *corerbd.ControllerServer) *ReplicationServer {
 	return &ReplicationServer{
 		ControllerServer: c,
-		csiID:            instanceID,
+		driverInstance:   instanceID,
 	}
 }
 
@@ -277,7 +277,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	mgr := rbd.NewManager(rs.csiID, req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -347,7 +347,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	mgr := rbd.NewManager(rs.csiID, req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -415,7 +415,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	mgr := rbd.NewManager(rs.csiID, req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -508,7 +508,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	mgr := rbd.NewManager(rs.csiID, req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -618,7 +618,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
-	mgr := rbd.NewManager(rs.csiID, req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -827,7 +827,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
-	mgr := rbd.NewManager(rs.csiID, nil, req.GetSecrets())
+	mgr := rbd.NewManager(rs.driverInstance, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
