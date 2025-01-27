@@ -41,6 +41,6 @@ jobs:
           args: --file=./deploy/cephcsi/image/Dockerfile
       - name: Upload result to GitHub Code Scanning
         # yamllint disable-line rule:line-length
-        uses: github/codeql-action/upload-sarif@b6a472f63d85b9c78a3ac5e89422239fc15e9b3c  # v3.28.1
+        uses: github/codeql-action/upload-sarif@4e83f6b818d7c9f52143570963b2c7f7f055decb  # v3.28.6
         with:
           sarif_file: snyk.sarif
