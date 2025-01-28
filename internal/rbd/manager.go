@@ -257,8 +257,8 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 		journalPool = pool
 	}
 
-	// volumeNamePrefix is an optional parameter, can be an empty string
-	prefix := mgr.parameters["volumeNamePrefix"]
+	// volumeGroupNamePrefix is an optional parameter, can be an empty string
+	prefix := mgr.parameters["volumeGroupNamePrefix"]
 
 	// check if the journal contains a generated name for the group already
 	vgData, err := vgJournal.CheckReservation(ctx, journalPool, name, prefix)
