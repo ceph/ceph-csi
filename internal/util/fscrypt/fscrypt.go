@@ -60,7 +60,8 @@ var policyV2Support = []util.KernelVersion{
 
 // error values
 var (
-	ErrBadAuth = errors.New("key authentication check failed")
+	ErrBadAuth         = errors.New("key authentication check failed")
+	ErrEmptyPassphrase = errors.New("empty passphrase given")
 )
 
 func AppendEncyptedSubdirectory(dir string) string {
@@ -94,14 +95,35 @@ func getPassphrase(ctx context.Context, encryption util.VolumeEncryption, volID 
 	return passphrase, nil
 }
 
+// resizePassphrase makes sure that the given passphrase will be of [size]
+// bytes. In case the passphrase is shorter, it will be repeated as many times
+// as needed. When a passphrase is (or becomes) longer than the requested
+// [size], the passphrase in truncated.
+func resizePassphrase(passphrase string, size int) (string, error) {
+	if passphrase == "" || size <= 0 {
+		return "", ErrEmptyPassphrase
+	}
+
+	for len(passphrase) < size {
+		passphrase += passphrase
+	}
+	if len(passphrase) > size {
+		passphrase = string([]byte(passphrase)[:size])
+	}
+
+	return passphrase, nil
+}
+
 // createKeyFuncFromVolumeEncryption returns an fscrypt key function returning
 // encryption keys from a VolumeEncryption struct.
 func createKeyFuncFromVolumeEncryption(
 	ctx context.Context,
 	encryption util.VolumeEncryption,
 	volID string,
-	keySize int,
 ) (func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error), error) {
+	// keys must be 32 bytes, see https://github.com/google/fscrypt?tab=readme-ov-file#using-a-raw-key-protector
+	keySize := encryptionPassphraseSize / 2
+
 	keyFunc := func(info fscryptactions.ProtectorInfo, retry bool) (*fscryptcrypto.Key, error) {
 		if retry {
 			return nil, ErrBadAuth
@@ -112,9 +134,11 @@ func createKeyFuncFromVolumeEncryption(
 			return nil, err
 		}
 
-		if keySize < 0 {
-			keySize = len(passphrase)
+		passphrase, err = resizePassphrase(passphrase, keySize)
+		if err != nil {
+			return nil, err
 		}
+
 		key, err := fscryptcrypto.NewBlankKey(keySize)
 		copy(key.Data(), passphrase)
 
@@ -171,7 +195,7 @@ func unlockExisting(
 		errMsg := fmt.Sprintf("fscrypt: unlock with protector error: %v", err)
 		log.ErrorLog(ctx, "%s, retry using a null padded passphrase", errMsg)
 
-		keyFn, err = createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID, encryptionPassphraseSize/2)
+		keyFn, err = createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID)
 		if err != nil {
 			log.ErrorLog(ctx, "fscrypt: could not create key function: %v", err)
 
@@ -376,7 +400,7 @@ func Unlock(
 	stagingTargetPath string, volID string,
 ) error {
 	// Fetches keys from KMS. Do this first to catch KMS errors before setting up anything.
-	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID, -1)
+	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID)
 	if err != nil {
 		log.ErrorLog(ctx, "fscrypt: could not create key function: %v", err)
 
