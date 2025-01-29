@@ -25,6 +25,70 @@ const (
 	VolumeReplicationNameAnnotation = "replication.storage.openshift.io/volume-replication-name"
 )
 
+// These are valid condition statuses.
+// "ConditionCompleted" means the condition is fulfilled.
+// "ConditionDegraded" means the condition is not fulfilled.
+// "ConditionResyncing" means the condition is resyncing.
+const (
+	ConditionCompleted = "Completed"
+	ConditionDegraded  = "Degraded"
+	ConditionResyncing = "Resyncing"
+	ConditionValidated = "Validated"
+)
+
+// These are valid messages for various conditions and states of volume replication.
+const (
+	MessagePromoted           = "is promoted to primary and replicating to secondary"
+	MessageHealthy            = "is healthy"
+	MessageNotResyncing       = "is not resyncing"
+	MessageValidated          = "is validated and met all prerequisites"
+	MessageFailedPromoted     = "failed to promote"
+	MessageFailedDemoted      = "failed to demote"
+	MessageFailedPreCondition = "failed to meet prerequisite"
+	MessageDemoted            = "is demoted to secondary"
+	MessageDegraded           = "is degraded"
+	MessageResyncTriggered    = "is resyncing changes from primary to secondary"
+	MessageResyncFailed       = "failed to resync"
+)
+
+type Source string
+
+const (
+	Volume      Source = "volume"
+	VolumeGroup Source = "volume group"
+)
+
+// These are valid conditions.
+
+const (
+	// Success condition represents the successful completion of the operation.
+	Success = "Success"
+	// Promoted condition represents the successful promotion of the volume.
+	Promoted = "Promoted"
+	// Demoted condition represents the successful demotion of the volume.
+	Demoted = "Demoted"
+	// FailedToPromote condition represents the failure to promote the volume.
+	FailedToPromote = "FailedToPromote"
+	// FailedToDemote condition represents the failure to demote the volume.
+	FailedToDemote = "FailedToDemote"
+	// Error condition represents the error in the operation.
+	Error = "Error"
+	// VolumeDegraded condition represents the volume is degraded.
+	VolumeDegraded = "VolumeDegraded"
+	// Healthy condition represents the volume is healthy.
+	Healthy = "Healthy"
+	// ResyncTriggered condition represents the resync operation is triggered.
+	ResyncTriggered = "ResyncTriggered"
+	// FailedToResync condition represents the failure to resync the volume.
+	FailedToResync = "FailedToResync"
+	// NotResyncing condition represents the volume is not resyncing.
+	NotResyncing = "NotResyncing"
+	// PrerequisiteMet condition represents that the prerequisite is met.
+	PrerequisiteMet = "PrerequisiteMet"
+	// PrerequisiteNotMet condition represents that the prerequisite is not met.
+	PrerequisiteNotMet = "PrerequisiteNotMet"
+)
+
 // ReplicationState represents the replication operations to be performed on the volume.
 // +kubebuilder:validation:Enum=primary;secondary;resync
 type ReplicationState string
