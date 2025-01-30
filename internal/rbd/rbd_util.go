@@ -1586,7 +1586,7 @@ func (rv *rbdVolume) constructImageOptions(ctx context.Context) (*librbd.ImageOp
 
 	logMsg := fmt.Sprintf("setting image options on %s", rv)
 	if rv.DataPool != "" {
-		logMsg += ", data pool %s" + rv.DataPool
+		logMsg += ", data pool " + rv.DataPool
 		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
 		if err != nil {
 			return nil, fmt.Errorf("failed to set data pool: %w", err)
