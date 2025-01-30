@@ -1587,14 +1587,14 @@ func (rv *rbdVolume) constructImageOptions(ctx context.Context) (*librbd.ImageOp
 	logMsg := fmt.Sprintf("setting image options on %s", rv)
 	if rv.DataPool != "" {
 		logMsg += ", data pool " + rv.DataPool
-		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
+		err = options.SetString(librbd.ImageOptionDataPool, rv.DataPool)
 		if err != nil {
 			return nil, fmt.Errorf("failed to set data pool: %w", err)
 		}
 	}
 
 	if rv.ImageFeatureSet != 0 {
-		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.ImageFeatureSet))
+		err = options.SetUint64(librbd.ImageOptionFeatures, uint64(rv.ImageFeatureSet))
 		if err != nil {
 			return nil, fmt.Errorf("failed to set image features: %w", err)
 		}
@@ -1602,11 +1602,11 @@ func (rv *rbdVolume) constructImageOptions(ctx context.Context) (*librbd.ImageOp
 
 	if rv.StripeCount != 0 {
 		logMsg += fmt.Sprintf(", stripe count %d, stripe unit %d", rv.StripeCount, rv.StripeUnit)
-		err = options.SetUint64(librbd.RbdImageOptionStripeCount, rv.StripeCount)
+		err = options.SetUint64(librbd.ImageOptionStripeCount, rv.StripeCount)
 		if err != nil {
 			return nil, fmt.Errorf("failed to set stripe count: %w", err)
 		}
-		err = options.SetUint64(librbd.RbdImageOptionStripeUnit, rv.StripeUnit)
+		err = options.SetUint64(librbd.ImageOptionStripeUnit, rv.StripeUnit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to set stripe unit: %w", err)
 		}
@@ -1615,7 +1615,7 @@ func (rv *rbdVolume) constructImageOptions(ctx context.Context) (*librbd.ImageOp
 	if rv.ObjectSize != 0 {
 		order := uint64(math.Log2(float64(rv.ObjectSize)))
 		logMsg += fmt.Sprintf(", object size %d, order %d", rv.ObjectSize, order)
-		err = options.SetUint64(librbd.RbdImageOptionOrder, order)
+		err = options.SetUint64(librbd.ImageOptionOrder, order)
 		if err != nil {
 			return nil, fmt.Errorf("failed to set object size: %w", err)
 		}
