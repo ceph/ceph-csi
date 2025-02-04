@@ -84,7 +84,7 @@ push_helm_charts() {
 	popd >/dev/null
 
 	pushd "${CHARTDIR}/csi-charts/docs" >/dev/null
-	helm repo index .
+	helm repo index . --url "https://ceph.github.io/csi-charts/"
 	git config user.name "${GITHUB_USER}"
 	git config user.email "${GITHUB_EMAIL}"
 	git add --all :/ && git commit -m "Update for helm charts ${PACKAGE}-${VERSION}"
