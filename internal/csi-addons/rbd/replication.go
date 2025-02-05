@@ -29,11 +29,13 @@ import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	corerbd "github.com/ceph/ceph-csi/internal/rbd"
+	rbd_group "github.com/ceph/ceph-csi/internal/rbd/group"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
+
 	"github.com/ceph/go-ceph/rbd/admin"
 	"github.com/csi-addons/spec/lib/go/replication"
 	"google.golang.org/grpc"
@@ -255,9 +257,9 @@ func validateSchedulingInterval(interval string) error {
 func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	req *replication.EnableVolumeReplicationRequest,
 ) (*replication.EnableVolumeReplicationResponse, error) {
-	volumeID := csicommon.GetIDFromReplication(req)
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	reqID := csicommon.GetIDFromReplication(req)
+	if reqID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty ID in request")
 	}
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -270,24 +272,23 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 		return nil, err
 	}
 
-	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	if acquired := rs.VolumeLocks.TryAcquire(reqID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, reqID)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, reqID)
 	}
-	defer rs.VolumeLocks.Release(volumeID)
+	defer rs.VolumeLocks.Release(reqID)
 
 	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+	volumes, mirror, err := mgr.GetMirrorSource(ctx, reqID, req.GetReplicationSource())
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get mirror source with id %q: %v", reqID, err)
+
 		return nil, getGRPCError(err)
 	}
-	mirror, err := rbdVol.ToMirror()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	defer destoryVolumes(ctx, volumes)
 
 	// extract the mirroring mode
 	mirroringMode, err := getMirroringMode(ctx, req.GetParameters())
@@ -307,17 +308,18 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if info.GetState() != librbd.MirrorImageEnabled.String() {
-		err = rbdVol.HandleParentImageExistence(ctx, flattenMode)
-		if err != nil {
-			log.ErrorLog(ctx, err.Error())
+		for _, rbdVol := range volumes {
+			err = rbdVol.HandleParentImageExistence(ctx, flattenMode)
+			if err != nil {
+				err = fmt.Errorf("failed to handle parent image for volume group %q: %w", mirror, err)
+				return nil, getGRPCError(err)
+			}
+			err = mirror.EnableMirroring(ctx, mirroringMode)
+			if err != nil {
+				log.ErrorLog(ctx, err.Error())
 
-			return nil, getGRPCError(err)
-		}
-		err = mirror.EnableMirroring(ctx, mirroringMode)
-		if err != nil {
-			log.ErrorLog(ctx, err.Error())
-
-			return nil, status.Error(codes.Internal, err.Error())
+				return nil, status.Error(codes.Internal, err.Error())
+			}
 		}
 	}
 
@@ -330,9 +332,9 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	req *replication.DisableVolumeReplicationRequest,
 ) (*replication.DisableVolumeReplicationResponse, error) {
-	volumeID := csicommon.GetIDFromReplication(req)
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	reqID := csicommon.GetIDFromReplication(req)
+	if reqID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty ID in request")
 	}
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -340,24 +342,23 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	if acquired := rs.VolumeLocks.TryAcquire(reqID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, reqID)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, reqID)
 	}
-	defer rs.VolumeLocks.Release(volumeID)
+	defer rs.VolumeLocks.Release(reqID)
 
 	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+	volumes, mirror, err := mgr.GetMirrorSource(ctx, reqID, req.GetReplicationSource())
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get mirror source with id %q: %v", reqID, err)
+
 		return nil, getGRPCError(err)
 	}
-	mirror, err := rbdVol.ToMirror()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	defer destoryVolumes(ctx, volumes)
 
 	// extract the force option
 	force, err := getForceOption(ctx, req.GetParameters())
@@ -376,7 +377,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	case librbd.MirrorImageDisabled.String():
 	// image mirroring is still disabling
 	case librbd.MirrorImageDisabling.String():
-		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
+		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", reqID)
 	case librbd.MirrorImageEnabled.String():
 		err = corerbd.DisableVolumeReplication(mirror, ctx, info.IsPrimary(), force)
 		if err != nil {
@@ -398,9 +399,9 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	req *replication.PromoteVolumeRequest,
 ) (*replication.PromoteVolumeResponse, error) {
-	volumeID := csicommon.GetIDFromReplication(req)
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	reqID := csicommon.GetIDFromReplication(req)
+	if reqID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty ID in request")
 	}
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -408,24 +409,23 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	if acquired := rs.VolumeLocks.TryAcquire(reqID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, reqID)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, reqID)
 	}
-	defer rs.VolumeLocks.Release(volumeID)
+	defer rs.VolumeLocks.Release(reqID)
 
 	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+	volumes, mirror, err := mgr.GetMirrorSource(ctx, reqID, req.GetReplicationSource())
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get mirror source with id %q: %v", reqID, err)
+
 		return nil, getGRPCError(err)
 	}
-	mirror, err := rbdVol.ToMirror()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	defer destoryVolumes(ctx, volumes)
 
 	info, err := mirror.GetMirroringInfo(ctx)
 	if err != nil {
@@ -438,7 +438,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		return nil, status.Errorf(
 			codes.InvalidArgument,
 			"mirroring is not enabled on %s, image is in %s Mode",
-			volumeID,
+			reqID,
 			info.GetState())
 	}
 
@@ -475,10 +475,10 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		}
 		log.DebugLog(
 			ctx,
-			"Added scheduling at interval %s, start time %s for volume %s",
+			"Added scheduling at interval %s, start time %s for Id %s",
 			interval,
 			startTime,
-			rbdVol)
+			reqID)
 	}
 
 	return &replication.PromoteVolumeResponse{}, nil
@@ -491,9 +491,9 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	req *replication.DemoteVolumeRequest,
 ) (*replication.DemoteVolumeResponse, error) {
-	volumeID := csicommon.GetIDFromReplication(req)
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	reqID := csicommon.GetIDFromReplication(req)
+	if reqID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty ID in request")
 	}
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -501,31 +501,23 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	if acquired := rs.VolumeLocks.TryAcquire(reqID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, reqID)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, reqID)
 	}
-	defer rs.VolumeLocks.Release(volumeID)
+	defer rs.VolumeLocks.Release(reqID)
 
 	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+	volumes, mirror, err := mgr.GetMirrorSource(ctx, reqID, req.GetReplicationSource())
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get mirror source with id %q: %v", reqID, err)
+
 		return nil, getGRPCError(err)
 	}
-	mirror, err := rbdVol.ToMirror()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	creationTime, err := rbdVol.GetCreationTime(ctx)
-	if err != nil {
-		log.ErrorLog(ctx, err.Error())
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	defer destoryVolumes(ctx, volumes)
 
 	info, err := mirror.GetMirroringInfo(ctx)
 	if err != nil {
@@ -538,24 +530,33 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 		return nil, status.Errorf(
 			codes.InvalidArgument,
 			"mirroring is not enabled on %s, image is in %s Mode",
-			volumeID,
+			reqID,
 			info.GetState())
 	}
 
 	// demote image to secondary
 	if info.IsPrimary() {
-		// store the image creation time for resync
-		_, err = rbdVol.GetMetadata(imageCreationTimeKey)
-		if err != nil && errors.Is(err, librbd.ErrNotFound) {
-			log.DebugLog(ctx, "setting image creation time %s for %s", creationTime, rbdVol)
-			err = rbdVol.SetMetadata(imageCreationTimeKey, timestampToString(creationTime))
-		}
-		if err != nil {
-			log.ErrorLog(ctx, err.Error())
+		for _, vol := range volumes {
+			// store the image creation time for resync
+			creationTime, cErr := vol.GetCreationTime(ctx)
+			if cErr != nil {
+				log.ErrorLog(ctx, cErr.Error())
 
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+				return nil, status.Error(codes.Internal, cErr.Error())
+			}
 
+			// store the image creation time for resync
+			_, err = vol.GetMetadata(imageCreationTimeKey)
+			if err != nil && errors.Is(err, librbd.ErrNotFound) {
+				log.DebugLog(ctx, "setting image creation time %s for %s", creationTime, vol)
+				err = vol.SetMetadata(imageCreationTimeKey, timestampToString(creationTime))
+			}
+			if err != nil {
+				log.ErrorLog(ctx, err.Error())
+
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
 		err = mirror.Demote(ctx)
 		if err != nil {
 			log.ErrorLog(ctx, err.Error())
@@ -602,9 +603,9 @@ func checkRemoteSiteStatus(ctx context.Context, mirrorStatus []types.SiteStatus)
 func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	req *replication.ResyncVolumeRequest,
 ) (*replication.ResyncVolumeResponse, error) {
-	volumeID := csicommon.GetIDFromReplication(req)
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	reqID := csicommon.GetIDFromReplication(req)
+	if reqID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty ID in request")
 	}
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -612,23 +613,23 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	if acquired := rs.VolumeLocks.TryAcquire(reqID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, reqID)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, reqID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
+
 	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+	volumes, mirror, err := mgr.GetMirrorSource(ctx, reqID, req.GetReplicationSource())
 	if err != nil {
+		log.ErrorLog(ctx, "failed to get mirror source with id %q: %v", reqID, err)
+
 		return nil, getGRPCError(err)
 	}
-	mirror, err := rbdVol.ToMirror()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	defer destoryVolumes(ctx, volumes)
 
 	info, err := mirror.GetMirroringInfo(ctx)
 	if err != nil {
@@ -693,35 +694,40 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		ready = checkRemoteSiteStatus(ctx, sts.GetAllSitesStatus())
 	}
 
-	creationTime, err := rbdVol.GetCreationTime(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get image info for %s: %s", rbdVol, err.Error())
-	}
-
-	// image creation time is stored in the image metadata. it looks like
-	// `"seconds:1692879841 nanos:631526669"`
-	// If the image gets resynced the local image creation time will be
-	// lost, if the keys is not present in the image metadata then we can
-	// assume that the image is already resynced.
-	savedImageTime, err := rbdVol.GetMetadata(imageCreationTimeKey)
-	if err != nil && !errors.Is(err, librbd.ErrNotFound) {
-		return nil, status.Errorf(codes.Internal,
-			"failed to get %s key from image metadata for %s: %s",
-			imageCreationTimeKey,
-			rbdVol,
-			err.Error())
-	}
-
-	if savedImageTime != "" {
-		st, sErr := timestampFromString(savedImageTime)
-		if sErr != nil {
-			return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", sErr.Error())
+	for _, vol := range volumes {
+		creationTime, tErr := vol.GetCreationTime(ctx)
+		if tErr != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get image info for %s: %s", vol, tErr.Error())
 		}
-		log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime)
-		if req.GetForce() && st.Equal(*creationTime) {
-			err = mirror.Resync(ctx)
-			if err != nil {
-				return nil, getGRPCError(err)
+
+		// image creation time is stored in the image metadata. it looks like
+		// `"seconds:1692879841 nanos:631526669"`
+		// If the image gets resynced the local image creation time will be
+		// lost, if the keys is not present in the image metadata then we can
+		// assume that the image is already resynced.
+		var savedImageTime string
+		savedImageTime, err = vol.GetMetadata(imageCreationTimeKey)
+		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+			return nil, status.Errorf(codes.Internal,
+				"failed to get %s key from image metadata for %s: %s",
+				imageCreationTimeKey,
+				vol,
+				err.Error())
+		}
+
+		if savedImageTime != "" {
+			st, sErr := timestampFromString(savedImageTime)
+			if sErr != nil {
+				return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", sErr.Error())
+			}
+			log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", vol, st, creationTime)
+			if req.GetForce() && st.Equal(*creationTime) {
+				err = mirror.Resync(ctx)
+				if err != nil {
+					return nil, getGRPCError(err)
+				}
+				// Break the loop as we need to issue resync only once for the image or for the group.
+				break
 			}
 		}
 	}
@@ -733,9 +739,12 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		}
 	}
 
-	err = rbdVol.RepairResyncedImageID(ctx, ready)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to resync Image ID: %s", err.Error())
+	// update imageID for all the volumes
+	for _, vol := range volumes {
+		err = vol.RepairResyncedImageID(ctx, ready)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to resync Image ID: %s", err.Error())
+		}
 	}
 
 	resp := &replication.ResyncVolumeResponse{
@@ -785,13 +794,14 @@ func getGRPCError(err error) error {
 	}
 
 	errorStatusMap := map[error]codes.Code{
-		corerbd.ErrImageNotFound:      codes.NotFound,
-		util.ErrPoolNotFound:          codes.NotFound,
-		corerbd.ErrInvalidArgument:    codes.InvalidArgument,
-		corerbd.ErrFlattenInProgress:  codes.Aborted,
-		corerbd.ErrAborted:            codes.Aborted,
-		corerbd.ErrFailedPrecondition: codes.FailedPrecondition,
-		corerbd.ErrUnavailable:        codes.Unavailable,
+		corerbd.ErrImageNotFound:         codes.NotFound,
+		util.ErrPoolNotFound:             codes.NotFound,
+		corerbd.ErrInvalidArgument:       codes.InvalidArgument,
+		corerbd.ErrFlattenInProgress:     codes.Aborted,
+		corerbd.ErrAborted:               codes.Aborted,
+		corerbd.ErrFailedPrecondition:    codes.FailedPrecondition,
+		corerbd.ErrUnavailable:           codes.Unavailable,
+		rbd_group.ErrRBDGroupUnAvailable: codes.Unavailable,
 	}
 
 	for e, code := range errorStatusMap {
@@ -809,9 +819,9 @@ func getGRPCError(err error) error {
 func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	req *replication.GetVolumeReplicationInfoRequest,
 ) (*replication.GetVolumeReplicationInfoResponse, error) {
-	volumeID := csicommon.GetIDFromReplication(req)
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	reqID := csicommon.GetIDFromReplication(req)
+	if reqID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty ID in request")
 	}
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -821,36 +831,23 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	if acquired := rs.VolumeLocks.TryAcquire(reqID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, reqID)
 
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, reqID)
 	}
-	defer rs.VolumeLocks.Release(volumeID)
+	defer rs.VolumeLocks.Release(reqID)
+
 	mgr := rbd.NewManager(rs.driverInstance, nil, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
-	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+	volumes, mirror, err := mgr.GetMirrorSource(ctx, reqID, req.GetReplicationSource())
 	if err != nil {
-		log.ErrorLog(ctx, "failed to get volume with id %q: %v", volumeID, err)
+		log.ErrorLog(ctx, "failed to get mirror source with id %q: %v", reqID, err)
 
-		switch {
-		case errors.Is(err, corerbd.ErrImageNotFound):
-			err = status.Error(codes.NotFound, err.Error())
-		case errors.Is(err, util.ErrPoolNotFound):
-			err = status.Error(codes.NotFound, err.Error())
-		default:
-			err = status.Error(codes.Internal, err.Error())
-		}
-
-		return nil, err
+		return nil, getGRPCError(err)
 	}
-	mirror, err := rbdVol.ToMirror()
-	if err != nil {
-		log.ErrorLog(ctx, "failed to convert volume %q to mirror type: %v", rbdVol, err)
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	defer destoryVolumes(ctx, volumes)
 
 	info, err := mirror.GetMirroringInfo(ctx)
 	if err != nil {
@@ -879,6 +876,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	log.DebugLog(ctx, "mirrorStatus: %+v", mirrorStatus)
 	remoteStatus, err := mirrorStatus.GetRemoteSiteStatus(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get remote site status for mirror %q: %v", mirror, err)
@@ -902,6 +900,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Errorf(codes.Internal, "failed to get last sync info: %v", err)
 	}
 
+	log.DebugLog(ctx, "Madhu the response is %v", resp)
 	return resp, nil
 }
 
@@ -926,7 +925,7 @@ func getLastSyncInfo(ctx context.Context, description string) (*replication.GetV
 	if description == "" {
 		return nil, fmt.Errorf("empty description: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
-	log.DebugLog(ctx, "description: %s", description)
+	log.DebugLog(ctx, "Madhu description: %s", description)
 	splittedString := strings.SplitN(description, ",", 2)
 	if len(splittedString) == 1 {
 		return nil, fmt.Errorf("no snapshot details: %w", corerbd.ErrLastSyncTimeNotFound)
@@ -943,6 +942,7 @@ func getLastSyncInfo(ctx context.Context, description string) (*replication.GetV
 		return nil, fmt.Errorf("failed to unmarshal local snapshot info: %w", err)
 	}
 
+	log.DebugLog(ctx, "Madhu the description after unmarshalling is %v", localSnapInfo)
 	// If the json unmarsal is successful but the local snapshot time is 0, we
 	// need to consider it as an error as the LastSyncTime is required.
 	if localSnapInfo.LocalSnapshotTime == 0 {
@@ -968,6 +968,7 @@ func getLastSyncInfo(ctx context.Context, description string) (*replication.GetV
 	response.LastSyncTime = lastSyncTime
 	response.LastSyncBytes = localSnapInfo.LastSnapshotBytes
 
+	log.DebugLog(ctx, "Madhu the return response is %v", response)
 	return &response, nil
 }
 
@@ -986,4 +987,11 @@ func checkVolumeResyncStatus(ctx context.Context, localStatus types.SiteStatus) 
 	}
 
 	return nil
+}
+
+// destoryVolumes destroys the volume connections.
+func destoryVolumes(ctx context.Context, volumes []types.Volume) {
+	for _, vol := range volumes {
+		vol.Destroy(ctx)
+	}
 }
