@@ -21,6 +21,8 @@ import (
 )
 
 var (
+	// ErrImageNotFound is returned when image name is not found in the cluster on the given pool and/or namespace.
+	ErrImageNotFound = errors.New("image not found")
 	// ErrKeyNotFound is returned when requested key in omap is not found.
 	ErrKeyNotFound = errors.New("key not found")
 	// ErrObjectExists is returned when named omap is already present in rados.

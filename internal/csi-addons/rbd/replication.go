@@ -651,7 +651,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	sts, err := mirror.GetGlobalMirroringStatus(ctx)
 	if err != nil {
 		// the image gets recreated after issuing resync
-		if errors.Is(err, corerbd.ErrImageNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) {
 			// caller retries till RBD syncs an initial version of the image to
 			// report its status in the resync call. Ideally, this line will not
 			// be executed as the error would get returned due to getMirroringInfo
@@ -785,7 +785,7 @@ func getGRPCError(err error) error {
 	}
 
 	errorStatusMap := map[error]codes.Code{
-		corerbd.ErrImageNotFound:      codes.NotFound,
+		util.ErrImageNotFound:         codes.NotFound,
 		util.ErrPoolNotFound:          codes.NotFound,
 		corerbd.ErrInvalidArgument:    codes.InvalidArgument,
 		corerbd.ErrFlattenInProgress:  codes.Aborted,
@@ -835,7 +835,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		log.ErrorLog(ctx, "failed to get volume with id %q: %v", volumeID, err)
 
 		switch {
-		case errors.Is(err, corerbd.ErrImageNotFound):
+		case errors.Is(err, util.ErrImageNotFound):
 			err = status.Error(codes.NotFound, err.Error())
 		case errors.Is(err, util.ErrPoolNotFound):
 			err = status.Error(codes.NotFound, err.Error())
@@ -872,7 +872,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get status for mirror %q: %v", mirror, err)
 
-		if errors.Is(err, corerbd.ErrImageNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) {
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
 

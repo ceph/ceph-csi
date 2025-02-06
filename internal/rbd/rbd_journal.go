@@ -172,7 +172,7 @@ func checkSnapCloneExists(
 	// Fetch on-disk image attributes
 	err = vol.getImageInfo()
 	if err != nil {
-		if errors.Is(err, ErrImageNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) {
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
 				if !errors.Is(err, ErrSnapNotFound) {
@@ -298,7 +298,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	// Fetch on-disk image attributes and compare against request
 	err = rv.getImageInfo()
 	if err != nil {
-		if errors.Is(err, ErrImageNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) {
 			// Need to check cloned info here not on createvolume,
 			if parentVol != nil {
 				found, cErr := rv.checkCloneImage(ctx, parentVol)

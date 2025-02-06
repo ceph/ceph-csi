@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -66,7 +67,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 
 			return true, nil
 
-		case errors.Is(err, ErrImageNotFound):
+		case errors.Is(err, util.ErrImageNotFound):
 			// as the temp clone does not exist,check snapshot exists on parent volume
 			// snapshot name is same as temporary clone image
 			snap.RbdImageName = tempClone.RbdImageName

@@ -524,7 +524,7 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
-			err = fmt.Errorf("Failed as %w (internal %w)", ErrImageNotFound, err)
+			err = fmt.Errorf("Failed as %w (internal %w)", util.ErrImageNotFound, err)
 		}
 
 		return nil, err
@@ -542,7 +542,7 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 func (ri *rbdImage) isInUse() (bool, error) {
 	image, err := ri.open()
 	if err != nil {
-		if errors.Is(err, ErrImageNotFound) || errors.Is(err, util.ErrPoolNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			return false, err
 		}
 		// any error should assume something else is using the image
@@ -681,7 +681,7 @@ func (ri *rbdImage) Delete(ctx context.Context) error {
 	err = rbdImage.Trash(0)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
-			return fmt.Errorf("Failed as %w (internal %w)", ErrImageNotFound, err)
+			return fmt.Errorf("Failed as %w (internal %w)", util.ErrImageNotFound, err)
 		}
 
 		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", ri, err)
@@ -731,7 +731,7 @@ func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
 	tempClone := rv.generateTempClone()
 	err := tempClone.Delete(ctx)
 	if err != nil {
-		if errors.Is(err, ErrImageNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) {
 			return tempClone.ensureImageCleanup(ctx)
 		} else {
 			// return error if it is not ErrImageNotFound
@@ -770,7 +770,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 			// if the parent image is moved to trash the name will be present
 			// in rbd image info but the image will be in trash, in that case
 			// return the found depth
-			if errors.Is(err, ErrImageNotFound) {
+			if errors.Is(err, util.ErrImageNotFound) {
 				return depth, nil
 			}
 			log.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
@@ -956,7 +956,7 @@ func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint6
 			// is in the trash, when we try to open the parent image to get its
 			// information it fails because it is already in trash. We should
 			// treat error as nil if the parent is not found.
-			if errors.Is(err, ErrImageNotFound) {
+			if errors.Is(err, util.ErrImageNotFound) {
 				return false, nil
 			}
 			log.ErrorLog(ctx, "failed to get image info for %s: %s", rbdImg.String(), err)
@@ -1312,7 +1312,7 @@ func shouldRetryVolumeGeneration(err error) bool {
 	// Continue searching for specific known errors
 	return (errors.Is(err, util.ErrKeyNotFound) ||
 		errors.Is(err, util.ErrPoolNotFound) ||
-		errors.Is(err, ErrImageNotFound) ||
+		errors.Is(err, util.ErrImageNotFound) ||
 		errors.Is(err, rados.ErrPermissionDenied))
 }
 

@@ -418,7 +418,7 @@ func Test_shouldRetryVolumeGeneration(t *testing.T) {
 		},
 		{
 			name: "ErrImageNotFound (continue searching)",
-			args: args{err: ErrImageNotFound},
+			args: args{err: util.ErrImageNotFound},
 			want: true, // Known error, continue searching
 		},
 		{

@@ -575,7 +575,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	snaps, children, err := rbdVol.listSnapAndChildren()
 	if err != nil {
-		if errors.Is(err, ErrImageNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) {
 			return status.Error(codes.InvalidArgument, err.Error())
 		}
 
@@ -831,7 +831,7 @@ func checkContentSource(
 		rbdvol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
 			log.ErrorLog(ctx, "failed to get backend image for %s: %v", volID, err)
-			if !errors.Is(err, ErrImageNotFound) {
+			if !errors.Is(err, util.ErrImageNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
 			}
 
@@ -871,7 +871,7 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	if errors.Is(err, ErrImageNotFound) {
+	if errors.Is(err, util.ErrImageNotFound) {
 		notFoundErr := rbdVol.ensureImageCleanup(ctx)
 		if notFoundErr != nil {
 			return nil, status.Errorf(codes.Internal, "failed to cleanup image %q: %v", rbdVol, notFoundErr)
@@ -946,7 +946,7 @@ func (cs *ControllerServer) DeleteVolume(
 			return nil, status.Error(codes.InvalidArgument, pErr.Error())
 		}
 		pErr = deleteMigratedVolume(ctx, pmVolID, cr)
-		if pErr != nil && !errors.Is(pErr, ErrImageNotFound) {
+		if pErr != nil && !errors.Is(pErr, util.ErrImageNotFound) {
 			return nil, status.Error(codes.Internal, pErr.Error())
 		}
 
@@ -1118,7 +1118,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}()
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrImageNotFound):
+		case errors.Is(err, util.ErrImageNotFound):
 			err = status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
 		case errors.Is(err, util.ErrPoolNotFound):
 			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", req.GetSourceVolumeId(), err)
@@ -1459,7 +1459,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 		// if the error is ErrImageNotFound, We need to cleanup the image from
 		// trash and remove the metadata in OMAP.
-		if errors.Is(err, ErrImageNotFound) {
+		if errors.Is(err, util.ErrImageNotFound) {
 			log.UsefulLog(ctx, "cleaning up leftovers of snapshot %s: %v", snapshotID, err)
 
 			err = cleanUpImageAndSnapReservation(ctx, rbdSnap, cr)
@@ -1562,7 +1562,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	rbdVol, err := genVolFromVolIDWithMigration(ctx, volID, cr, req.GetSecrets())
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrImageNotFound):
+		case errors.Is(err, util.ErrImageNotFound):
 			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
 		case errors.Is(err, util.ErrPoolNotFound):
 			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", volID, err)

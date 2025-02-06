@@ -174,7 +174,7 @@ func (mgr *rbdManager) GetVolumeByID(ctx context.Context, id string) (types.Volu
 	volume, err := GenVolFromVolID(ctx, id, creds, mgr.secrets)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrImageNotFound):
+		case errors.Is(err, util.ErrImageNotFound):
 			err = fmt.Errorf("volume %s not found: %w", id, err)
 
 			return nil, err
@@ -199,7 +199,7 @@ func (mgr *rbdManager) GetSnapshotByID(ctx context.Context, id string) (types.Sn
 	snapshot, err := genSnapFromSnapID(ctx, id, creds, mgr.secrets)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrImageNotFound):
+		case errors.Is(err, util.ErrImageNotFound):
 			err = fmt.Errorf("volume %s not found: %w", id, err)
 
 			return nil, err
@@ -467,7 +467,7 @@ func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 
 			return vgs, nil
 		}
-	} else if err != nil && !errors.Is(ErrImageNotFound, err) {
+	} else if err != nil && !errors.Is(err, util.ErrImageNotFound) {
 		// ErrImageNotFound can be returned if the VolumeGroupSnapshot
 		// could not be found. It is expected that it does not exist
 		// yet, in which case it will be created below.

@@ -597,8 +597,8 @@ func TestGetGRPCError(t *testing.T) {
 		},
 		{
 			name:        "ErrImageNotFound",
-			err:         corerbd.ErrImageNotFound,
-			expectedErr: status.Error(codes.NotFound, corerbd.ErrImageNotFound.Error()),
+			err:         util.ErrImageNotFound,
+			expectedErr: status.Error(codes.NotFound, util.ErrImageNotFound.Error()),
 		},
 		{
 			name:        "ErrPoolNotFound",
