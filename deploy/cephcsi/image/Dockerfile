@@ -7,8 +7,10 @@ FROM ${BASE_IMAGE} as updated_base
 # TODO: remove the following cmd, when issues
 # https://github.com/ceph/ceph-container/issues/2034
 # https://github.com/ceph/ceph-container/issues/2141 are fixed.
-RUN dnf config-manager --disable \
-    tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true
+RUN true \
+    && dnf -y reinstall https://download.ceph.com/rpm-${CEPH_VERSION}/el9/noarch/ceph-release-1-1.el9.noarch.rpm \
+    && ( dnf config-manager --disable tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true ) \
+    && true
 
 RUN mkdir -p /etc/selinux && touch /etc/selinux/config
 
