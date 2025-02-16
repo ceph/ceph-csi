@@ -11,5 +11,6 @@
   value [PR](https://github.com/ceph/ceph-csi/pull/4887)
 - cephfs: support omap data store in radosnamespace [PR](https://github.com/ceph/ceph-csi/pull/4661)
 - helm: Support setting nodepluigin and provisioner annotations
+- rbd: fix encrypted PVC with metadata KMS cannot be deleted
 
 ## NOTE

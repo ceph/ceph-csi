@@ -54,8 +54,11 @@ func newDefaultTestDummy() EncryptionKMS {
 
 func newSecretsMetadataTestDummy() EncryptionKMS {
 	smKMS := secretsMetadataKMS{}
-	smKMS.secretsKMS = secretsKMS{passphrase: base64.URLEncoding.EncodeToString(
-		[]byte("test dummy passphrase"))}
+	smKMS.Secrets = map[string]string{
+		encryptionPassphraseKey: "test dummy passphrase",
+	}
+	smKMS.Tenant = "tenant"
+	smKMS.Config = nil
 
 	return smKMS
 }
