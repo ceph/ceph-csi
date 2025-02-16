@@ -97,7 +97,7 @@ func (kms secretsKMS) RemoveDEK(ctx context.Context, key string) error {
 // secretsMetadataKMS is a KMS based on the secretKMS, but stores the
 // Data-Encryption-Key (DEK) in the metadata of the volume.
 type secretsMetadataKMS struct {
-	secretsKMS
+	ProviderInitArgs
 }
 
 var _ = RegisterProvider(Provider{
@@ -109,28 +109,9 @@ var _ = RegisterProvider(Provider{
 // so that the passphrase from the user provided or StorageClass secrets can be used
 // for encrypting/decrypting DEKs that are stored in a detached DEKStore.
 func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
-	var (
-		smKMS                secretsMetadataKMS
-		encryptionPassphrase string
-		ok                   bool
-		err                  error
-	)
+	var smKMS secretsMetadataKMS
 
-	encryptionPassphrase, err = smKMS.fetchEncryptionPassphrase(
-		args.Config, args.Tenant)
-	if err != nil {
-		if !errors.Is(err, errConfigOptionMissing) {
-			return nil, err
-		}
-		// if 'userSecret' option is not specified, fetch encryptionPassphrase
-		// from storageclass secrets.
-		encryptionPassphrase, ok = args.Secrets[encryptionPassphraseKey]
-		if !ok {
-			return nil, fmt.Errorf(
-				"missing %q in storageclass secret", encryptionPassphraseKey)
-		}
-	}
-	smKMS.secretsKMS = secretsKMS{passphrase: encryptionPassphrase}
+	smKMS.ProviderInitArgs = args
 
 	return smKMS, nil
 }
@@ -184,7 +165,45 @@ func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
 
 // Destroy frees all used resources.
 func (kms secretsMetadataKMS) Destroy() {
-	kms.secretsKMS.Destroy()
+	// nothing to do
+}
+
+// FetchDEK returns passphrase from Kubernetes secrets.
+func (kms secretsMetadataKMS) FetchDEK(ctx context.Context, key string) (string, error) {
+	var (
+		encryptionPassphrase string
+		ok                   bool
+		err                  error
+	)
+
+	encryptionPassphrase, err = kms.fetchEncryptionPassphrase(
+		kms.Config, kms.Tenant)
+	if err != nil {
+		if !errors.Is(err, errConfigOptionMissing) {
+			return "", err
+		}
+		// if 'userSecret' option is not specified, fetch encryptionPassphrase
+		// from storageclass secrets.
+		encryptionPassphrase, ok = kms.Secrets[encryptionPassphraseKey]
+		if !ok {
+			return "", fmt.Errorf(
+				"missing %q in storageclass secret", encryptionPassphraseKey)
+		}
+	}
+
+	return encryptionPassphrase, nil
+}
+
+// StoreDEK does nothing, as there is no passphrase per key (volume), so
+// no need to store is anywhere.
+func (kms secretsMetadataKMS) StoreDEK(ctx context.Context, key, value string) error {
+	return nil
+}
+
+// RemoveDEK is doing nothing as no new passphrases are saved with
+// secretsKMS.
+func (kms secretsMetadataKMS) RemoveDEK(ctx context.Context, key string) error {
+	return nil
 }
 
 func (kms secretsMetadataKMS) RequiresDEKStore() DEKStoreType {
@@ -208,7 +227,7 @@ type encryptedMetedataDEK struct {
 // nonce that was used for encrypting.
 func (kms secretsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
 	// use the passphrase from the secretKMS
-	passphrase, err := kms.secretsKMS.FetchDEK(ctx, volumeID)
+	passphrase, err := kms.FetchDEK(ctx, volumeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get passphrase: %w", err)
 	}
@@ -238,7 +257,7 @@ func (kms secretsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK
 // fetches secretKMS passphrase to decrypt the DEK.
 func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK string) (string, error) {
 	// use the passphrase from the secretKMS
-	passphrase, err := kms.secretsKMS.FetchDEK(ctx, volumeID)
+	passphrase, err := kms.FetchDEK(ctx, volumeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get passphrase: %w", err)
 	}
@@ -265,7 +284,7 @@ func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encrypte
 
 func (kms secretsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	// use the passphrase from the secretKMS
-	return kms.secretsKMS.FetchDEK(ctx, volumeID)
+	return kms.FetchDEK(ctx, volumeID)
 }
 
 // generateCipher returns a AEAD cipher based on a passphrase and salt

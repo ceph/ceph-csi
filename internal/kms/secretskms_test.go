@@ -70,15 +70,7 @@ func TestInitSecretsMetadataKMS(t *testing.T) {
 		Secrets: map[string]string{},
 	}
 
-	// passphrase it not set, init should fail
 	kms, err := initSecretsMetadataKMS(args)
-	require.Error(t, err)
-	require.Nil(t, kms)
-
-	// set a passphrase to get a working KMS
-	args.Secrets[encryptionPassphraseKey] = "my-passphrase-from-kubernetes"
-
-	kms, err = initSecretsMetadataKMS(args)
 	require.NoError(t, err)
 	require.NotNil(t, kms)
 	require.Equal(t, DEKStoreMetadata, kms.RequiresDEKStore())
@@ -86,24 +78,39 @@ func TestInitSecretsMetadataKMS(t *testing.T) {
 
 func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	t.Parallel()
-	secrets := map[string]string{
-		encryptionPassphraseKey: "my-passphrase-from-kubernetes",
-	}
 	args := ProviderInitArgs{
 		Tenant:  "tenant",
 		Config:  nil,
-		Secrets: secrets,
+		Secrets: map[string]string{},
 	}
 	volumeID := "csi-vol-1b00f5f8-b1c1-11e9-8421-9243c1f659f0"
 
 	kms, err := initSecretsMetadataKMS(args)
 	require.NoError(t, err)
 	require.NotNil(t, kms)
+	require.Equal(t, DEKStoreMetadata, kms.RequiresDEKStore())
 
 	// plainDEK is the (LUKS) passphrase for the volume
 	plainDEK := "usually created with generateNewEncryptionPassphrase()"
 
 	ctx := context.TODO()
+
+	// with missing encryptionPassphraseKey, encrypting should fail
+	_, err = kms.EncryptDEK(ctx, volumeID, plainDEK)
+	require.Error(t, err)
+
+	secrets := map[string]string{
+		encryptionPassphraseKey: "my-passphrase-from-kubernetes",
+	}
+	args = ProviderInitArgs{
+		Tenant:  "tenant",
+		Config:  nil,
+		Secrets: secrets,
+	}
+
+	kms, err = initSecretsMetadataKMS(args)
+	require.NoError(t, err)
+	require.NotNil(t, kms)
 
 	encryptedDEK, err := kms.EncryptDEK(ctx, volumeID, plainDEK)
 	require.NoError(t, err)
