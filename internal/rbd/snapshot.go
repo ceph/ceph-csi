@@ -147,6 +147,13 @@ func (rbdSnap *rbdSnapshot) toVolume() *rbdVolume {
 }
 
 func (rbdSnap *rbdSnapshot) ToCSI(ctx context.Context) (*csi.Snapshot, error) {
+	switch {
+	case rbdSnap.VolID == "":
+		return nil, fmt.Errorf("%q does not have a volume-id set", rbdSnap)
+	case rbdSnap.SourceVolumeID == "":
+		return nil, fmt.Errorf("%q does not have a source-volume-id set", rbdSnap)
+	}
+
 	created, err := rbdSnap.GetCreationTime(ctx)
 	if err != nil {
 		return nil, err
