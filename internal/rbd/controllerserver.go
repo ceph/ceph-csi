@@ -250,6 +250,17 @@ func (cs *ControllerServer) parseVolCreateRequest(
 }
 
 func (rbdVol *rbdVolume) ToCSI(ctx context.Context) (*csi.Volume, error) {
+	switch {
+	case rbdVol.VolID == "":
+		return nil, fmt.Errorf("%q does not have a volume-id set", rbdVol)
+	case rbdVol.Pool == "":
+		return nil, fmt.Errorf("%q does not have a pool set", rbdVol)
+	case rbdVol.JournalPool == "":
+		return nil, fmt.Errorf("%q does not have a journal-pool set", rbdVol)
+	case rbdVol.RbdImageName == "":
+		return nil, fmt.Errorf("%q does not have an image-name set", rbdVol)
+	}
+
 	vol := &csi.Volume{
 		VolumeId:      rbdVol.VolID,
 		CapacityBytes: rbdVol.VolSize,
