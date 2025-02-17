@@ -64,7 +64,7 @@ func (opts EncryptionOptionsLUKS1) allocateEncryptionOptions() cEncryptionData {
 	var cOpts C.rbd_encryption_luks1_format_options_t
 	var retData cEncryptionData
 	cOpts.alg = C.rbd_encryption_algorithm_t(opts.Alg)
-	//CBytes allocates memory which we'll free by calling cOptsFree()
+	// CBytes allocates memory. it will be freed when cEncryptionData.free is called
 	cOpts.passphrase = (*C.char)(C.CBytes(opts.Passphrase))
 	cOpts.passphrase_size = C.size_t(len(opts.Passphrase))
 	retData.opts = C.rbd_encryption_options_t(&cOpts)
@@ -78,7 +78,7 @@ func (opts EncryptionOptionsLUKS2) allocateEncryptionOptions() cEncryptionData {
 	var cOpts C.rbd_encryption_luks2_format_options_t
 	var retData cEncryptionData
 	cOpts.alg = C.rbd_encryption_algorithm_t(opts.Alg)
-	//CBytes allocates memory which we'll free by calling cOptsFree()
+	// CBytes allocates memory. it will be freed when cEncryptionData.free is called
 	cOpts.passphrase = (*C.char)(C.CBytes(opts.Passphrase))
 	cOpts.passphrase_size = C.size_t(len(opts.Passphrase))
 	retData.opts = C.rbd_encryption_options_t(&cOpts)

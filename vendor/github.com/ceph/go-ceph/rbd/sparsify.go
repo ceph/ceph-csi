@@ -72,7 +72,7 @@ func (image *Image) SparsifyWithProgress(
 		data:     data,
 	}
 	cbIndex := sparsifyCallbacks.Add(ctx)
-	defer diffIterateCallbacks.Remove(cbIndex)
+	defer sparsifyCallbacks.Remove(cbIndex)
 
 	ret := C.wrap_rbd_sparsify_with_progress(image.image, C.size_t(sparseSize), C.uintptr_t(cbIndex))
 

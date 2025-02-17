@@ -217,7 +217,7 @@ func GroupSnapRollbackWithProgress(
 		data:     data,
 	}
 	cbIndex := groupSnapRollbackCallbacks.Add(ctx)
-	defer diffIterateCallbacks.Remove(cbIndex)
+	defer groupSnapRollbackCallbacks.Remove(cbIndex)
 
 	ret := C.wrap_rbd_group_snap_rollback_with_progress(
 		cephIoctx(ioctx),

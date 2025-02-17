@@ -666,23 +666,23 @@ var iterBufSize = 64
 //	const char *start_id, size_t max, char **image_ids,
 //	rbd_mirror_image_status_t *images, size_t *len)
 func MirrorImageGlobalStatusList(
-	ioctx *rados.IOContext, start string, max int) ([]GlobalMirrorImageIDAndStatus, error) {
+	ioctx *rados.IOContext, start string, maxItems int) ([]GlobalMirrorImageIDAndStatus, error) {
 	var (
 		result   []GlobalMirrorImageIDAndStatus
 		fetchAll bool
 	)
-	if max <= 0 {
-		max = iterBufSize
+	if maxItems <= 0 {
+		maxItems = iterBufSize
 		fetchAll = true
 	}
-	chunk := make([]GlobalMirrorImageIDAndStatus, max)
+	chunk := make([]GlobalMirrorImageIDAndStatus, maxItems)
 	for {
 		length, err := mirrorImageGlobalStatusList(ioctx, start, chunk)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, chunk[:length]...)
-		if !fetchAll || length < max {
+		if !fetchAll || length < maxItems {
 			break
 		}
 		start = chunk[length-1].ID
@@ -700,15 +700,15 @@ func mirrorImageGlobalStatusList(
 	defer C.free(unsafe.Pointer(cStart))
 
 	var (
-		max    = C.size_t(len(results))
-		length = C.size_t(0)
-		ids    = make([]*C.char, len(results))
-		images = make([]C.rbd_mirror_image_global_status_t, len(results))
+		maxItems = C.size_t(len(results))
+		length   = C.size_t(0)
+		ids      = make([]*C.char, len(results))
+		images   = make([]C.rbd_mirror_image_global_status_t, len(results))
 	)
 	ret := C.rbd_mirror_image_global_status_list(
 		cephIoctx(ioctx),
 		cStart,
-		max,
+		maxItems,
 		&ids[0],
 		&images[0],
 		&length)
@@ -807,23 +807,23 @@ type MirrorImageInfoItem struct {
 //	rbd_mirror_image_info_t *info_entries, size_t *num_entries)
 func MirrorImageInfoList(
 	ioctx *rados.IOContext, modeFilter ImageMirrorModeFilter, start string,
-	max int) ([]MirrorImageInfoItem, error) {
+	maxItems int) ([]MirrorImageInfoItem, error) {
 	var (
 		result   []MirrorImageInfoItem
 		fetchAll bool
 	)
-	if max <= 0 {
-		max = iterBufSize
+	if maxItems <= 0 {
+		maxItems = iterBufSize
 		fetchAll = true
 	}
-	chunk := make([]MirrorImageInfoItem, max)
+	chunk := make([]MirrorImageInfoItem, maxItems)
 	for {
 		length, err := mirrorImageInfoList(ioctx, start, modeFilter, chunk)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, chunk[:length]...)
-		if !fetchAll || length < max {
+		if !fetchAll || length < maxItems {
 			break
 		}
 		start = chunk[length-1].ID
@@ -838,7 +838,7 @@ func mirrorImageInfoList(ioctx *rados.IOContext, start string,
 	defer C.free(unsafe.Pointer(cStart))
 
 	var (
-		max           = C.size_t(len(results))
+		maxItems      = C.size_t(len(results))
 		length        = C.size_t(0)
 		ids           = make([]*C.char, len(results))
 		modes         = make([]C.rbd_mirror_image_mode_t, len(results))
@@ -853,7 +853,7 @@ func mirrorImageInfoList(ioctx *rados.IOContext, start string,
 		cephIoctx(ioctx),
 		modeFilterPtr,
 		cStart,
-		max,
+		maxItems,
 		&ids[0],
 		&modes[0],
 		&infos[0],
@@ -949,23 +949,23 @@ type MirrorImageInstanceIDItem struct {
 //	size_t *len)
 func MirrorImageInstanceIDList(
 	ioctx *rados.IOContext, start string,
-	max int) ([]MirrorImageInstanceIDItem, error) {
+	maxItems int) ([]MirrorImageInstanceIDItem, error) {
 	var (
 		result   []MirrorImageInstanceIDItem
 		fetchAll bool
 	)
-	if max <= 0 {
-		max = iterBufSize
+	if maxItems <= 0 {
+		maxItems = iterBufSize
 		fetchAll = true
 	}
-	chunk := make([]MirrorImageInstanceIDItem, max)
+	chunk := make([]MirrorImageInstanceIDItem, maxItems)
 	for {
 		length, err := mirrorImageInstanceIDList(ioctx, start, chunk)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, chunk[:length]...)
-		if !fetchAll || length < max {
+		if !fetchAll || length < maxItems {
 			break
 		}
 		start = chunk[length-1].ID
@@ -980,7 +980,7 @@ func mirrorImageInstanceIDList(ioctx *rados.IOContext, start string,
 	defer C.free(unsafe.Pointer(cStart))
 
 	var (
-		max         = C.size_t(len(results))
+		maxItems    = C.size_t(len(results))
 		length      = C.size_t(0)
 		ids         = make([]*C.char, len(results))
 		instanceIDs = make([]*C.char, len(results))
@@ -988,7 +988,7 @@ func mirrorImageInstanceIDList(ioctx *rados.IOContext, start string,
 	ret := C.rbd_mirror_image_instance_id_list(
 		cephIoctx(ioctx),
 		cStart,
-		max,
+		maxItems,
 		&ids[0],
 		&instanceIDs[0],
 		&length,
