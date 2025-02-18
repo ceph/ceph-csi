@@ -1248,7 +1248,11 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	csiSnap, err := vol.toSnapshot().ToCSI(ctx)
+	// FIXME: doSnapshotClone() returns a rbdVolume, some attributes may be missing?
+	snap := vol.toSnapshot()
+	snap.SourceVolumeID = rbdSnap.SourceVolumeID
+
+	csiSnap, err := snap.ToCSI(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
