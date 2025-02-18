@@ -297,24 +297,28 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	requestSize := rv.VolSize
 	// Fetch on-disk image attributes and compare against request
 	err = rv.getImageInfo()
-	if err != nil {
-		if errors.Is(err, util.ErrImageNotFound) {
-			// Need to check cloned info here not on createvolume,
-			if parentVol != nil {
-				found, cErr := rv.checkCloneImage(ctx, parentVol)
-				switch {
-				case found && cErr == nil:
-					return true, nil
-				case cErr != nil:
-					return false, cErr
-				}
-			}
-			err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool,
-				rv.RbdImageName, rv.RequestName)
+	switch {
+	case errors.Is(err, util.ErrImageNotFound) && parentVol != nil:
+		// Need to check cloned info here not on createvolume
+		found, cErr := rv.checkCloneImage(ctx, parentVol)
+		if cErr != nil {
+			return false, cErr
+		}
+
+		if !found {
+			// image not found, undo the reservation
+			err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool, rv.RbdImageName, rv.RequestName)
 
 			return false, err
 		}
 
+	case errors.Is(err, util.ErrImageNotFound) && parentVol == nil:
+		// image not found, undo the reservation
+		err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool, rv.RbdImageName, rv.RequestName)
+
+		return false, err
+
+	case err != nil:
 		return false, err
 	}
 
