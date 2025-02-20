@@ -1003,6 +1003,16 @@ func validatePVCClone(
 			if wgErrs[n] == nil && validatePVC != nil && kms != noKMS {
 				wgErrs[n] = validatePVC(f, &p, &a)
 			}
+			if wgErrs[n] == nil {
+				// validate RBD snapshot under temporary clone is not deleted.
+				imageData, imageInfoerr := getImageInfoFromPVC(p.Namespace, name, f)
+				if imageInfoerr != nil {
+					wgErrs[n] = imageInfoerr
+				} else {
+					tempRBDImageName := imageData.imageName + "-temp"
+					wgErrs[n] = validateRBDSnapshotCount(f, 1, defaultRBDPool, tempRBDImageName)
+				}
+			}
 			wg.Done()
 		}(i, *pvcClone, *appClone)
 	}

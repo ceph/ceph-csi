@@ -248,6 +248,17 @@ type imageInfoFromPVC struct {
 	pvName          string
 }
 
+type snapInfo struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	Protected string `json:"protected"`
+}
+
+func (s snapInfo) String() string {
+	return fmt.Sprintf("{id: %d, name: %s, protected: %s}", s.ID, s.Name, s.Protected)
+}
+
 // getImageInfoFromPVC reads volume handle of the bound PV to the passed in PVC,
 // and returns imageInfoFromPVC or error.
 func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (imageInfoFromPVC, error) {
@@ -713,6 +724,25 @@ func librbdSupportsVolumeGroupSnapshot(f *framework.Framework) (bool, error) {
 	}
 
 	return strings.TrimSpace(stdout) == "0", nil
+}
+
+func listRBDSnapshots(f *framework.Framework, pool, image string) ([]snapInfo, error) {
+	var snapInfos []snapInfo
+	command := fmt.Sprintf("rbd snap ls --format=json %s %s", rbdOptions(pool), image)
+	stdout, stdErr, err := execCommandInToolBoxPod(f, command, rookNamespace)
+	if err != nil {
+		return snapInfos, err
+	}
+	if stdErr != "" {
+		return snapInfos, fmt.Errorf("failed to list RBD snapshots %v", stdErr)
+	}
+
+	err = json.Unmarshal([]byte(stdout), &snapInfos)
+	if err != nil {
+		return snapInfos, err
+	}
+
+	return snapInfos, nil
 }
 
 func listRBDImages(f *framework.Framework, pool string) ([]string, error) {

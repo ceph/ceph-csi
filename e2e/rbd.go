@@ -185,6 +185,20 @@ func createORDeleteRbdResources(action kubectlAction) {
 	}
 }
 
+func validateRBDSnapshotCount(f *framework.Framework, count int, pool, image string) error {
+	snapshotList, err := listRBDSnapshots(f, pool, image)
+	if err != nil {
+		return fmt.Errorf("failed to list RBD snapshots: %w", err)
+	}
+	if len(snapshotList) != count {
+		return fmt.Errorf("RBD snapshots count not matching, snapshot count for image %s/%s %d, expected %d"+
+			"snapshots in cluster: %v",
+			pool, image, len(snapshotList), count, snapshotList)
+	}
+
+	return nil
+}
+
 func validateRBDImageCount(f *framework.Framework, count int, pool string) {
 	imageList, err := listRBDImages(f, pool)
 	if err != nil {
