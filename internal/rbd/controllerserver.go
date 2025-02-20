@@ -1067,7 +1067,7 @@ func cleanupRBDImage(ctx context.Context,
 	if inUse {
 		log.ErrorLog(ctx, "rbd %s is still being used", rbdVol)
 
-		return nil, status.Errorf(codes.Internal, "rbd %s is still being used", rbdVol.RbdImageName)
+		return nil, status.Errorf(codes.Aborted, "rbd %s is still being used", rbdVol.RbdImageName)
 	}
 
 	// delete the temporary rbd image created as part of volume clone during
