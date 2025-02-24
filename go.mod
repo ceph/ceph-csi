@@ -27,7 +27,7 @@ require (
 	github.com/pkg/xattr v0.4.10
 	github.com/prometheus/client_golang v1.20.5
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.35.0
 	golang.org/x/net v0.35.0
 	golang.org/x/sys v0.30.0
 	google.golang.org/grpc v1.70.0
