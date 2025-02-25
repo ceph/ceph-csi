@@ -34,6 +34,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"k8s.io/klog/v2"
+	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -160,6 +161,7 @@ func init() {
 	if err := flag.Set("logtostderr", "true"); err != nil {
 		klog.Exitf("failed to set logtostderr flag: %v", err)
 	}
+	ctrlLog.SetLogger(klog.NewKlogr())
 	flag.Parse()
 }
 
