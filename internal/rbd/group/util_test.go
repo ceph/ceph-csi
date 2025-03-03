@@ -14,16 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package group
 
 import (
 	"errors"
 	"testing"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util"
+
 	"github.com/ceph/go-ceph/rados"
 )
 
-func Test_shouldRetryVolumeGeneration(t *testing.T) {
+func Test_shouldRetryVolumeGroupGeneration(t *testing.T) {
 	t.Parallel()
 	type args struct {
 		err error
@@ -39,18 +42,13 @@ func Test_shouldRetryVolumeGeneration(t *testing.T) {
 			want: false, // No error, stop searching
 		},
 		{
-			name: "ErrKeyNotFound (continue searching)",
-			args: args{err: ErrKeyNotFound},
-			want: true, // Known error, continue searching
-		},
-		{
 			name: "ErrPoolNotFound (continue searching)",
-			args: args{err: ErrPoolNotFound},
+			args: args{err: util.ErrPoolNotFound},
 			want: true, // Known error, continue searching
 		},
 		{
-			name: "ErrImageNotFound (continue searching)",
-			args: args{err: ErrImageNotFound},
+			name: "ErrRBDGroupNotFound (continue searching)",
+			args: args{err: rbderrors.ErrGroupNotFound},
 			want: true, // Known error, continue searching
 		},
 		{
@@ -67,7 +65,7 @@ func Test_shouldRetryVolumeGeneration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := ShouldRetryVolumeGeneration(tt.args.err); got != tt.want {
+			if got := ShouldRetryVolumeGroupGeneration(tt.args.err); got != tt.want {
 				t.Errorf("ShouldRetryVolumeGeneration() = %v, want %v", got, tt.want)
 			}
 		})

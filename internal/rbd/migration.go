@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"strings"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -39,13 +40,13 @@ func parseMigrationVolID(vh string) (*migrationVolID, error) {
 	handSlice := strings.Split(vh, migVolIDFieldSep)
 	if len(handSlice) < migVolIDTotalLength {
 		// its short of length in this case, so return error
-		return nil, ErrInvalidVolID
+		return nil, rbderrors.ErrInvalidVolID
 	}
 	// Store pool
 	poolHash := strings.Join(handSlice[migVolIDSplitLength:], migVolIDFieldSep)
 	poolByte, dErr := hex.DecodeString(poolHash)
 	if dErr != nil {
-		return nil, ErrMissingPoolNameInVolID
+		return nil, rbderrors.ErrMissingPoolNameInVolID
 	}
 	mh.poolName = string(poolByte)
 	// Parse migration mons( for clusterID) and image
@@ -62,13 +63,13 @@ func parseMigrationVolID(vh string) (*migrationVolID, error) {
 		}
 	}
 	if mh.imageName == "" {
-		return nil, ErrMissingImageNameInVolID
+		return nil, rbderrors.ErrMissingImageNameInVolID
 	}
 	if mh.poolName == "" {
-		return nil, ErrMissingPoolNameInVolID
+		return nil, rbderrors.ErrMissingPoolNameInVolID
 	}
 	if mh.clusterID == "" {
-		return nil, ErrDecodeClusterIDFromMonsInVolID
+		return nil, rbderrors.ErrDecodeClusterIDFromMonsInVolID
 	}
 
 	return mh, nil

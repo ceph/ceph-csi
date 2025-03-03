@@ -14,11 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rbd
+package rbderrors
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+
+	librados "github.com/ceph/go-ceph/rados"
+	librbd "github.com/ceph/go-ceph/rbd"
+)
 
 var (
+	// ErrImageNotFound is returned when image name is not found in the cluster on the given pool and/or namespace.
+	ErrImageNotFound = errors.New("image not found")
 	// ErrSnapNotFound is returned when snap name passed is not found in the list of snapshots for the
 	// given image.
 	ErrSnapNotFound = errors.New("snapshot not found")
@@ -55,4 +63,8 @@ var (
 	ErrInvalidArgument = errors.New("invalid arguments provided")
 	// ErrImageInUse is returned when the image is in use.
 	ErrImageInUse = errors.New("image is in use")
+	// ErrGroupNotConnected is returned when the RBD group is not connected.
+	ErrGroupNotConnected = fmt.Errorf("%w: RBD group is not connected", librados.ErrNotConnected)
+	// ErrGroupNotFound is returned when group is not found in the cluster on the given pool and/or namespace.
+	ErrGroupNotFound = fmt.Errorf("%w: RBD group not found", librbd.ErrNotFound)
 )

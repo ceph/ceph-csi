@@ -23,6 +23,10 @@ import (
 	"strings"
 	"testing"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util"
+
+	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/stretchr/testify/require"
 )
@@ -383,6 +387,57 @@ func Test_checkValidImageFeatures(t *testing.T) {
 			t.Parallel()
 			if got := checkValidImageFeatures(tt.imageFeatures, tt.ok); got != tt.want {
 				t.Errorf("checkValidImageFeatures() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_shouldRetryVolumeGeneration(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "No error (stop searching)",
+			args: args{err: nil},
+			want: false, // No error, stop searching
+		},
+		{
+			name: "ErrKeyNotFound (continue searching)",
+			args: args{err: util.ErrKeyNotFound},
+			want: true, // Known error, continue searching
+		},
+		{
+			name: "ErrPoolNotFound (continue searching)",
+			args: args{err: util.ErrPoolNotFound},
+			want: true, // Known error, continue searching
+		},
+		{
+			name: "ErrImageNotFound (continue searching)",
+			args: args{err: rbderrors.ErrImageNotFound},
+			want: true, // Known error, continue searching
+		},
+		{
+			name: "ErrPermissionDenied (continue searching)",
+			args: args{err: rados.ErrPermissionDenied},
+			want: true, // Known error, continue searching
+		},
+		{
+			name: "Different error (stop searching)",
+			args: args{err: errors.New("unknown error")},
+			want: false, // Unknown error, stop searching
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := ShouldRetryVolumeGeneration(tt.args.err); got != tt.want {
+				t.Errorf("ShouldRetryVolumeGeneration() = %v, want %v", got, tt.want)
 			}
 		})
 	}

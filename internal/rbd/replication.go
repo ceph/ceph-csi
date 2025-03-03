@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -70,14 +71,14 @@ func DisableVolumeReplication(mirror types.Mirror,
 
 		localStatus, err := sts.GetLocalSiteStatus()
 		if err != nil {
-			return fmt.Errorf("failed to get local state: %w", ErrInvalidArgument)
+			return fmt.Errorf("failed to get local state: %w", rbderrors.ErrInvalidArgument)
 		}
 		if localStatus.IsUP() && localStatus.GetState() == librbd.MirrorImageStatusStateReplaying.String() {
 			return nil
 		}
 
 		return fmt.Errorf("%w: secondary image status is up=%t and state=%s",
-			ErrInvalidArgument, localStatus.IsUP(), localStatus.GetState())
+			rbderrors.ErrInvalidArgument, localStatus.IsUP(), localStatus.GetState())
 	}
 	err := mirror.DisableMirroring(ctx, force)
 	if err != nil {
@@ -92,7 +93,7 @@ func DisableVolumeReplication(mirror types.Mirror,
 
 	// error out if the image is not in disabled state.
 	if info.GetState() != librbd.MirrorImageDisabled.String() {
-		return fmt.Errorf("%w: image is in %q state, expected state %q", ErrAborted,
+		return fmt.Errorf("%w: image is in %q state, expected state %q", rbderrors.ErrAborted,
 			info.GetState(), librbd.MirrorImageDisabled.String())
 	}
 

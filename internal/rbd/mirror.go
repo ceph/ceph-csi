@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -56,7 +57,7 @@ func (rv *rbdVolume) HandleParentImageExistence(
 	if rv.ParentInTrash {
 		return fmt.Errorf("%w: failed to enable mirroring on image %q:"+
 			" parent is in trash",
-			ErrFailedPrecondition, rv)
+			rbderrors.ErrFailedPrecondition, rv)
 	}
 
 	parent, err := rv.getParent()
@@ -72,7 +73,7 @@ func (rv *rbdVolume) HandleParentImageExistence(
 	if parentMirroringInfo.GetState() != librbd.MirrorImageEnabled.String() {
 		return fmt.Errorf("%w: failed to enable mirroring on image %q: "+
 			"parent image %q is not enabled for mirroring",
-			ErrFailedPrecondition, rv, parent)
+			rbderrors.ErrFailedPrecondition, rv, parent)
 	}
 
 	return nil
@@ -204,7 +205,7 @@ func (ri *rbdImage) Resync(_ context.Context) error {
 	// If we issued a resync, return a non-final error as image needs to be recreated
 	// locally. Caller retries till RBD syncs an initial version of the image to
 	// report its status in the resync request.
-	return fmt.Errorf("%w: awaiting initial resync due to split brain", ErrUnavailable)
+	return fmt.Errorf("%w: awaiting initial resync due to split brain", rbderrors.ErrUnavailable)
 }
 
 // GetGlobalMirroringStatus get the mirroring status of an image.

@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/ceph/ceph-csi/internal/rbd/group"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -215,7 +215,7 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(
 
 	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, groupSnapshotID)
 	if err != nil {
-		if errors.Is(err, group.ErrRBDGroupNotFound) {
+		if errors.Is(err, rbderrors.ErrGroupNotFound) {
 			log.ErrorLog(ctx, "VolumeGroupSnapshot %q doesn't exists", groupSnapshotID)
 
 			return &csi.DeleteVolumeGroupSnapshotResponse{}, nil
@@ -261,7 +261,7 @@ func (cs *ControllerServer) GetVolumeGroupSnapshot(
 
 	groupSnapshot, err := mgr.GetVolumeGroupSnapshotByID(ctx, groupSnapshotID)
 	if err != nil {
-		if errors.Is(err, group.ErrRBDGroupNotFound) {
+		if errors.Is(err, rbderrors.ErrGroupNotFound) {
 			log.ErrorLog(ctx, "VolumeGroupSnapshot %q doesn't exists", groupSnapshotID)
 
 			return nil, status.Errorf(

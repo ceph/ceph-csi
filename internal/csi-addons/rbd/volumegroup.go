@@ -23,7 +23,7 @@ import (
 	"slices"
 
 	"github.com/ceph/ceph-csi/internal/rbd"
-	"github.com/ceph/ceph-csi/internal/rbd/group"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -194,7 +194,7 @@ func (vs *VolumeGroupServer) DeleteVolumeGroup(
 	// resolve the volume group
 	vg, err := mgr.GetVolumeGroupByID(ctx, req.GetVolumeGroupId())
 	if err != nil {
-		if errors.Is(err, group.ErrRBDGroupNotFound) {
+		if errors.Is(err, rbderrors.ErrGroupNotFound) {
 			log.ErrorLog(ctx, "VolumeGroup %q doesn't exists", req.GetVolumeGroupId())
 
 			return &volumegroup.DeleteVolumeGroupResponse{}, nil
@@ -433,7 +433,7 @@ func (vs *VolumeGroupServer) ControllerGetVolumeGroup(
 	// resolve the volume group
 	vg, err := mgr.GetVolumeGroupByID(ctx, req.GetVolumeGroupId())
 	if err != nil {
-		if errors.Is(err, group.ErrRBDGroupNotFound) {
+		if errors.Is(err, rbderrors.ErrGroupNotFound) {
 			log.ErrorLog(ctx, "VolumeGroup %q doesn't exists", req.GetVolumeGroupId())
 
 			return nil, status.Errorf(

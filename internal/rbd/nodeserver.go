@@ -27,6 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/pkg/util/kernel"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/fscrypt"
@@ -1046,7 +1047,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		}
 
 		// If not mounted, and error is anything other than metadata file missing, it is an error
-		if !errors.Is(err, ErrMissingStash) {
+		if !errors.Is(err, rbderrors.ErrMissingStash) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 

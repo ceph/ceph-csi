@@ -24,6 +24,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -70,7 +71,7 @@ func GetVolumeGroupSnapshot(
 
 	attrs, err := vgs.getVolumeGroupAttributes(ctx)
 	if err != nil {
-		if errors.Is(err, ErrRBDGroupNotFound) {
+		if errors.Is(err, rbderrors.ErrGroupNotFound) {
 			log.ErrorLog(ctx, "%v, returning empty volume group snapshot %q", vgs, err)
 
 			return vgs, err

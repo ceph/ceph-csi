@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/journal"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	rbd_group "github.com/ceph/ceph-csi/internal/rbd/group"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -174,7 +175,7 @@ func (mgr *rbdManager) GetVolumeByID(ctx context.Context, id string) (types.Volu
 	volume, err := GenVolFromVolID(ctx, id, creds, mgr.secrets)
 	if err != nil {
 		switch {
-		case errors.Is(err, util.ErrImageNotFound):
+		case errors.Is(err, rbderrors.ErrImageNotFound):
 			err = fmt.Errorf("volume %s not found: %w", id, err)
 
 			return nil, err
@@ -199,7 +200,7 @@ func (mgr *rbdManager) GetSnapshotByID(ctx context.Context, id string) (types.Sn
 	snapshot, err := genSnapFromSnapID(ctx, id, creds, mgr.secrets)
 	if err != nil {
 		switch {
-		case errors.Is(err, util.ErrImageNotFound):
+		case errors.Is(err, rbderrors.ErrImageNotFound):
 			err = fmt.Errorf("volume %s not found: %w", id, err)
 
 			return nil, err
@@ -467,7 +468,7 @@ func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 
 			return vgs, nil
 		}
-	} else if err != nil && !errors.Is(err, util.ErrImageNotFound) {
+	} else if err != nil && !errors.Is(err, rbderrors.ErrImageNotFound) {
 		// ErrImageNotFound can be returned if the VolumeGroupSnapshot
 		// could not be found. It is expected that it does not exist
 		// yet, in which case it will be created below.
@@ -537,7 +538,7 @@ func (mgr *rbdManager) RegenerateVolumeGroupJournal(
 
 	err = gi.DecomposeCSIID(groupID)
 	if err != nil {
-		return "", fmt.Errorf("%w: error decoding volume group ID (%w) (%s)", ErrInvalidVolID, err, groupID)
+		return "", fmt.Errorf("%w: error decoding volume group ID (%w) (%s)", rbderrors.ErrInvalidVolID, err, groupID)
 	}
 
 	monitors, clusterID, err = util.FetchMappedClusterIDAndMons(ctx, gi.ClusterID)

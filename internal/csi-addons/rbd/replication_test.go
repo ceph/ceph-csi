@@ -26,6 +26,7 @@ import (
 	"time"
 
 	corerbd "github.com/ceph/ceph-csi/internal/rbd"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -450,7 +451,7 @@ func TestValidateLastSyncInfo(t *testing.T) {
 				LastSyncDuration: nil,
 				LastSyncBytes:    0,
 			},
-			expectedErr: corerbd.ErrLastSyncTimeNotFound.Error(),
+			expectedErr: rbderrors.ErrLastSyncTimeNotFound.Error(),
 		},
 		{
 			name: "description without last_snapshot_bytes",
@@ -472,7 +473,7 @@ func TestValidateLastSyncInfo(t *testing.T) {
 				LastSyncTime:     nil,
 				LastSyncBytes:    0,
 			},
-			expectedErr: corerbd.ErrLastSyncTimeNotFound.Error(),
+			expectedErr: rbderrors.ErrLastSyncTimeNotFound.Error(),
 		},
 		{
 			name: "description without last_snapshot_sync_seconds",
@@ -516,7 +517,7 @@ func TestValidateLastSyncInfo(t *testing.T) {
 				LastSyncTime:     nil,
 				LastSyncBytes:    0,
 			},
-			expectedErr: corerbd.ErrLastSyncTimeNotFound.Error(),
+			expectedErr: rbderrors.ErrLastSyncTimeNotFound.Error(),
 		},
 	}
 	for _, tt := range tests {
@@ -567,23 +568,23 @@ func TestGetGRPCError(t *testing.T) {
 	}{
 		{
 			name:        "InvalidArgument",
-			err:         corerbd.ErrInvalidArgument,
-			expectedErr: status.Error(codes.InvalidArgument, corerbd.ErrInvalidArgument.Error()),
+			err:         rbderrors.ErrInvalidArgument,
+			expectedErr: status.Error(codes.InvalidArgument, rbderrors.ErrInvalidArgument.Error()),
 		},
 		{
 			name:        "Aborted",
-			err:         corerbd.ErrAborted,
-			expectedErr: status.Error(codes.Aborted, corerbd.ErrAborted.Error()),
+			err:         rbderrors.ErrAborted,
+			expectedErr: status.Error(codes.Aborted, rbderrors.ErrAborted.Error()),
 		},
 		{
 			name:        "FailedPrecondition",
-			err:         corerbd.ErrFailedPrecondition,
-			expectedErr: status.Error(codes.FailedPrecondition, corerbd.ErrFailedPrecondition.Error()),
+			err:         rbderrors.ErrFailedPrecondition,
+			expectedErr: status.Error(codes.FailedPrecondition, rbderrors.ErrFailedPrecondition.Error()),
 		},
 		{
 			name:        "Unavailable",
-			err:         corerbd.ErrUnavailable,
-			expectedErr: status.Error(codes.Unavailable, corerbd.ErrUnavailable.Error()),
+			err:         rbderrors.ErrUnavailable,
+			expectedErr: status.Error(codes.Unavailable, rbderrors.ErrUnavailable.Error()),
 		},
 		{
 			name:        "InvalidError",
@@ -597,8 +598,8 @@ func TestGetGRPCError(t *testing.T) {
 		},
 		{
 			name:        "ErrImageNotFound",
-			err:         util.ErrImageNotFound,
-			expectedErr: status.Error(codes.NotFound, util.ErrImageNotFound.Error()),
+			err:         rbderrors.ErrImageNotFound,
+			expectedErr: status.Error(codes.NotFound, rbderrors.ErrImageNotFound.Error()),
 		},
 		{
 			name:        "ErrPoolNotFound",

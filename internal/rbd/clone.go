@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -56,7 +56,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	err := tempClone.checkSnapExists(snap)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrSnapNotFound):
+		case errors.Is(err, rbderrors.ErrSnapNotFound):
 			// as the snapshot is not present, create new snapshot, clone and
 			// don't delete the temporary snapshot
 			err = createRBDClone(ctx, tempClone, rv, snap, false)
@@ -66,7 +66,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 
 			return true, nil
 
-		case errors.Is(err, util.ErrImageNotFound):
+		case errors.Is(err, rbderrors.ErrImageNotFound):
 			// as the temp clone does not exist,check snapshot exists on parent volume
 			// snapshot name is same as temporary clone image
 			snap.RbdImageName = tempClone.RbdImageName
@@ -76,7 +76,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 				// create new resources for a cleaner approach
 				err = parentVol.deleteSnapshot(ctx, snap)
 			}
-			if errors.Is(err, ErrSnapNotFound) {
+			if errors.Is(err, rbderrors.ErrSnapNotFound) {
 				return false, nil
 			}
 

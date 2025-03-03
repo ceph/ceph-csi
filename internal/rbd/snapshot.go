@@ -24,6 +24,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -90,7 +91,7 @@ func cleanUpSnapshot(
 ) error {
 	err := parentVol.deleteSnapshot(ctx, rbdSnap)
 	if err != nil {
-		if !errors.Is(err, util.ErrImageNotFound) && !errors.Is(err, ErrSnapNotFound) {
+		if !errors.Is(err, rbderrors.ErrImageNotFound) && !errors.Is(err, rbderrors.ErrSnapNotFound) {
 			log.ErrorLog(ctx, "failed to delete snapshot %q: %v", rbdSnap, err)
 
 			return err
@@ -100,7 +101,7 @@ func cleanUpSnapshot(
 	if rbdVol != nil {
 		err := rbdVol.Delete(ctx)
 		if err != nil {
-			if !errors.Is(err, util.ErrImageNotFound) {
+			if !errors.Is(err, rbderrors.ErrImageNotFound) {
 				log.ErrorLog(ctx, "failed to delete rbd image %q with error: %v", rbdVol, err)
 
 				return err

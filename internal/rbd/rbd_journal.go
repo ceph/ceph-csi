@@ -24,6 +24,7 @@ import (
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
 
 	"github.com/ceph/ceph-csi/internal/journal"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -174,10 +175,10 @@ func checkSnapCloneExists(
 	// Fetch on-disk image attributes
 	err = vol.getImageInfo()
 	if err != nil {
-		if errors.Is(err, util.ErrImageNotFound) {
+		if errors.Is(err, rbderrors.ErrImageNotFound) {
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
-				if !errors.Is(err, ErrSnapNotFound) {
+				if !errors.Is(err, rbderrors.ErrSnapNotFound) {
 					log.ErrorLog(ctx, "failed to delete snapshot %s: %v", rbdSnap, err)
 
 					return false, err
@@ -205,7 +206,7 @@ func checkSnapCloneExists(
 
 	// check snapshot exists if not create it
 	err = vol.checkSnapExists(rbdSnap)
-	if errors.Is(err, ErrSnapNotFound) {
+	if errors.Is(err, rbderrors.ErrSnapNotFound) {
 		// create snapshot
 		sErr := vol.createSnapshot(ctx, rbdSnap)
 		if sErr != nil {
@@ -300,7 +301,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	// Fetch on-disk image attributes and compare against request
 	err = rv.getImageInfo()
 	switch {
-	case errors.Is(err, util.ErrImageNotFound) && parentVol != nil:
+	case errors.Is(err, rbderrors.ErrImageNotFound) && parentVol != nil:
 		// Need to check cloned info here not on createvolume
 		found, cErr := rv.checkCloneImage(ctx, parentVol)
 		if cErr != nil {
@@ -314,7 +315,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 			return false, err
 		}
 
-	case errors.Is(err, util.ErrImageNotFound) && parentVol == nil:
+	case errors.Is(err, rbderrors.ErrImageNotFound) && parentVol == nil:
 		// image not found, undo the reservation
 		err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool, rv.RbdImageName, rv.RequestName)
 
@@ -332,7 +333,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	// size checks
 	if rv.VolSize < requestSize {
 		return false, fmt.Errorf("%w: image with the same name (%s) but with different size already exists",
-			ErrVolNameConflict, rv.RbdImageName)
+			rbderrors.ErrVolNameConflict, rv.RbdImageName)
 	}
 	// TODO: We should also ensure image features and format is the same
 
@@ -600,7 +601,7 @@ func RegenerateJournal(
 	err = vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
 		return "", fmt.Errorf("%w: error decoding volume ID (%w) (%s)",
-			ErrInvalidVolID, err, rbdVol.VolID)
+			rbderrors.ErrInvalidVolID, err, rbdVol.VolID)
 	}
 
 	rbdVol.Owner = owner
