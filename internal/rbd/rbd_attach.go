@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -71,7 +73,7 @@ var (
 	hasNBD              = true
 	hasNBDCookieSupport = false
 
-	kernelCookieSupport = []util.KernelVersion{
+	kernelCookieSupport = []kernel.KernelVersion{
 		{
 			Version:      5,
 			PatchLevel:   14,
@@ -243,13 +245,13 @@ func SetRbdNbdToolFeatures() {
 	log.DefaultLog("nbd module loaded")
 
 	// fetch the current running kernel info
-	release, err := util.GetKernelVersion()
+	release, err := kernel.GetKernelVersion()
 	if err != nil {
 		log.WarningLogMsg("fetching current kernel version failed (%v)", err)
 
 		return
 	}
-	if !util.CheckKernelSupport(release, kernelCookieSupport) {
+	if !kernel.CheckKernelSupport(release, kernelCookieSupport) {
 		log.WarningLogMsg("kernel version %q doesn't support cookie feature", release)
 
 		return

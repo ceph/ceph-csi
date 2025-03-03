@@ -35,6 +35,8 @@ import (
 	"github.com/pkg/xattr"
 	"golang.org/x/sys/unix"
 
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
+
 	"github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -47,7 +49,7 @@ const (
 	encryptionPassphraseSize = 64
 )
 
-var policyV2Support = []util.KernelVersion{
+var policyV2Support = []kernel.KernelVersion{
 	{
 		Version:      5,
 		PatchLevel:   4,
@@ -327,13 +329,13 @@ func IsDirectoryUnlocked(directoryPath, filesystem string) error {
 
 func getBestPolicyVersion() (int64, error) {
 	// fetch the current running kernel info
-	release, err := util.GetKernelVersion()
+	release, err := kernel.GetKernelVersion()
 	if err != nil {
 		return 0, fmt.Errorf("fetching current kernel version failed: %w", err)
 	}
 
 	switch {
-	case util.CheckKernelSupport(release, policyV2Support):
+	case kernel.CheckKernelSupport(release, policyV2Support):
 		return 2, nil
 	default:
 		return 1, nil

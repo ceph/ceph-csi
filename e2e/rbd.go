@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 
 	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
@@ -358,7 +358,7 @@ var _ = Describe("RBD", func() {
 			framework.Failf("failed to get the kernel version: %v", err)
 		}
 		// default io-timeout=0, needs kernel >= 5.4
-		if !util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
+		if !kernel.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
 			nbdMapOptions = "nbd:debug-rbd=20,io-timeout=330"
 		}
 
@@ -1224,7 +1224,7 @@ var _ = Describe("RBD", func() {
 					return
 				}
 
-				if util.CheckKernelSupport(kernelRelease, nbdResizeSupport) {
+				if kernel.CheckKernelSupport(kernelRelease, nbdResizeSupport) {
 					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
 						framework.Failf("failed to delete storageclass: %v", err)
@@ -1274,7 +1274,7 @@ var _ = Describe("RBD", func() {
 
 			By("create PVC with layering,fast-diff image-features and bind it to an app",
 				func() {
-					if util.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+					if kernel.CheckKernelSupport(kernelRelease, fastDiffSupport) {
 						err := deleteResource(rbdExamplePath + "storageclass.yaml")
 						if err != nil {
 							framework.Failf("failed to delete storageclass: %v", err)
@@ -1341,7 +1341,7 @@ var _ = Describe("RBD", func() {
 					validateRBDImageCount(f, 1, defaultRBDPool)
 					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
-					if util.CheckKernelSupport(kernelRelease, deepFlattenSupport) {
+					if kernel.CheckKernelSupport(kernelRelease, deepFlattenSupport) {
 						app, aErr := loadApp(appPath)
 						if aErr != nil {
 							framework.Failf("failed to load application: %v", aErr)
@@ -1402,7 +1402,7 @@ var _ = Describe("RBD", func() {
 
 					// checking the minimal kernel version for fast-diff as its
 					// higher kernel version than other default image features.
-					if util.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+					if kernel.CheckKernelSupport(kernelRelease, fastDiffSupport) {
 						app, aErr := loadApp(appPath)
 						if aErr != nil {
 							framework.Failf("failed to load application: %v", aErr)
@@ -1437,7 +1437,7 @@ var _ = Describe("RBD", func() {
 						return
 					}
 
-					if util.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+					if kernel.CheckKernelSupport(kernelRelease, fastDiffSupport) {
 						err := deleteResource(rbdExamplePath + "storageclass.yaml")
 						if err != nil {
 							framework.Failf("failed to delete storageclass: %v", err)
@@ -1969,7 +1969,7 @@ var _ = Describe("RBD", func() {
 				// Writes on kernel < 5.4 are failing due to a bug in NBD driver,
 				// NBD zero cmd timeout handling is fixed with kernel >= 5.4
 				// see https://github.com/ceph/ceph-csi/issues/2204#issuecomment-930941047
-				if util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
+				if kernel.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
 					filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 					_, stdErr, err = execCommandInPod(
 						f,

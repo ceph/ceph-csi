@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -245,28 +246,28 @@ var (
 		},
 	}
 
-	krbdLayeringSupport = []util.KernelVersion{
+	krbdLayeringSupport = []kernel.KernelVersion{
 		{
 			Version:    3,
 			PatchLevel: 8,
 			SubLevel:   0,
 		},
 	}
-	krbdStripingV2Support = []util.KernelVersion{
+	krbdStripingV2Support = []kernel.KernelVersion{
 		{
 			Version:    3,
 			PatchLevel: 10,
 			SubLevel:   0,
 		},
 	}
-	krbdExclusiveLockSupport = []util.KernelVersion{
+	krbdExclusiveLockSupport = []kernel.KernelVersion{
 		{
 			Version:    4,
 			PatchLevel: 9,
 			SubLevel:   0,
 		},
 	}
-	krbdDataPoolSupport = []util.KernelVersion{
+	krbdDataPoolSupport = []kernel.KernelVersion{
 		{
 			Version:    4,
 			PatchLevel: 11,
@@ -279,19 +280,19 @@ var (
 // Minimum kernel version should be 3.8, else it will return error.
 func prepareKrbdFeatureAttrs() (uint64, error) {
 	// fetch the current running kernel info
-	release, err := util.GetKernelVersion()
+	release, err := kernel.GetKernelVersion()
 	if err != nil {
 		return 0, fmt.Errorf("fetching current kernel version failed: %w", err)
 	}
 
 	switch {
-	case util.CheckKernelSupport(release, krbdDataPoolSupport):
+	case kernel.CheckKernelSupport(release, krbdDataPoolSupport):
 		return librbd.FeatureDataPool, nil
-	case util.CheckKernelSupport(release, krbdExclusiveLockSupport):
+	case kernel.CheckKernelSupport(release, krbdExclusiveLockSupport):
 		return librbd.FeatureExclusiveLock, nil
-	case util.CheckKernelSupport(release, krbdStripingV2Support):
+	case kernel.CheckKernelSupport(release, krbdStripingV2Support):
 		return librbd.FeatureStripingV2, nil
-	case util.CheckKernelSupport(release, krbdLayeringSupport):
+	case kernel.CheckKernelSupport(release, krbdLayeringSupport):
 		return librbd.FeatureLayering, nil
 	}
 	log.ErrorLogMsg("kernel version is too old: %q", release)

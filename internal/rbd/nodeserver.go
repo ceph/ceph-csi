@@ -24,6 +24,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
+
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/file"
@@ -88,7 +90,7 @@ var (
 	// deepFlattenSupport holds the list of kernel which support mapping rbd
 	// image with deep-flatten image feature
 	//nolint:mnd // numbers specify Kernel versions.
-	deepFlattenSupport = []util.KernelVersion{
+	deepFlattenSupport = []kernel.KernelVersion{
 		{
 			Version:      5,
 			PatchLevel:   1,
@@ -587,12 +589,12 @@ func flattenImageBeforeMapping(
 
 	if kernelRelease == "" {
 		// fetch the current running kernel info
-		kernelRelease, err = util.GetKernelVersion()
+		kernelRelease, err = kernel.GetKernelVersion()
 		if err != nil {
 			return err
 		}
 	}
-	if !util.CheckKernelSupport(kernelRelease, deepFlattenSupport) && !skipForceFlatten {
+	if !kernel.CheckKernelSupport(kernelRelease, deepFlattenSupport) && !skipForceFlatten {
 		feature, err = volOptions.checkImageChainHasFeature(ctx, librbd.FeatureDeepFlatten)
 		if err != nil {
 			return err

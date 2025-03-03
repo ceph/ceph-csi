@@ -23,6 +23,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
+
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -32,7 +34,7 @@ var (
 	availableMounters []string
 
 	//nolint:mnd // numbers specify Kernel versions.
-	quotaSupport = []util.KernelVersion{
+	quotaSupport = []kernel.KernelVersion{
 		{
 			Version:      4,
 			PatchLevel:   17,
@@ -70,12 +72,12 @@ func LoadAvailableMounters(conf *util.Config) error {
 		log.ErrorLogMsg("failed to run mount.ceph %v", err)
 	} else {
 		// fetch the current running kernel info
-		release, kvErr := util.GetKernelVersion()
+		release, kvErr := kernel.GetKernelVersion()
 		if kvErr != nil {
 			return kvErr
 		}
 
-		if conf.ForceKernelCephFS || util.CheckKernelSupport(release, quotaSupport) {
+		if conf.ForceKernelCephFS || kernel.CheckKernelSupport(release, quotaSupport) {
 			log.DefaultLog("loaded mounter: %s", volumeMounterKernel)
 			availableMounters = append(availableMounters, volumeMounterKernel)
 		} else {

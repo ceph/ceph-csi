@@ -23,6 +23,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
+
 	"github.com/ceph/ceph-csi/internal/cephfs"
 	"github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/controller/persistentvolume"
@@ -191,7 +193,7 @@ func printVersion() {
 	fmt.Println("Go Version:", runtime.Version())
 	fmt.Println("Compiler:", runtime.Compiler)
 	fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	if kv, err := util.GetKernelVersion(); err == nil {
+	if kv, err := kernel.GetKernelVersion(); err == nil {
 		fmt.Println("Kernel:", kv)
 	}
 }
