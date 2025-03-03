@@ -68,7 +68,11 @@ func stripSingleValue(field protoreflect.FieldDescriptor, v protoreflect.Value) 
 	case protoreflect.MessageKind:
 		return stripMessage(v.Message())
 	case protoreflect.EnumKind:
-		return field.Enum().Values().ByNumber(v.Enum()).Name()
+		desc := field.Enum().Values().ByNumber(v.Enum())
+		if desc == nil {
+			return v.Enum()
+		}
+		return desc.Name()
 	default:
 		return v.Interface()
 	}
