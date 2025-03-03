@@ -28,9 +28,10 @@ type VolumeGroupReplicationSpec struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="volumeGroupReplicationClassName is immutable"
 	VolumeGroupReplicationClassName string `json:"volumeGroupReplicationClassName"`
 
-	// volumeReplicationClassName is the volumeReplicationClass name for VolumeReplication object
+	// volumeReplicationClassName is the volumeReplicationClass name for the VolumeReplication object
+	// created for this volumeGroupReplication
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="volumReplicationClassName is immutable"
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="volumeReplicationClassName is immutable"
 	VolumeReplicationClassName string `json:"volumeReplicationClassName"`
 
 	// Name of the VolumeReplication object created for this volumeGroupReplication
@@ -65,7 +66,7 @@ type VolumeGroupReplicationSpec struct {
 type VolumeGroupReplicationSource struct {
 	// Selector is a label query over persistent volume claims that are to be
 	// grouped together for replication.
-	// +optional
+	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="selector is immutable"
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 }

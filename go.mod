@@ -50,7 +50,7 @@ require (
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.3.1
-	github.com/csi-addons/kubernetes-csi-addons v0.11.0
+	github.com/csi-addons/kubernetes-csi-addons v0.12.0
 )
 
 require (

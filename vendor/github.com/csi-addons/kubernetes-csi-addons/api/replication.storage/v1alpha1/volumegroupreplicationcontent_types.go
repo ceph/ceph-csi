@@ -27,16 +27,15 @@ type VolumeGroupReplicationContentSpec struct {
 	// VolumeGroupReplicationContent object is bound.
 	// VolumeGroupReplication.Spec.VolumeGroupReplicationContentName field must reference to
 	// this VolumeGroupReplicationContent's name for the bidirectional binding to be valid.
-	// For a pre-existing VolumeGroupReplicationContent object, name and namespace of the
-	// VolumeGroupReplication object MUST be provided for binding to happen.
-	// This field is immutable after creation.
-	// Required.
-	// +kubebuilder:validation:XValidation:rule="has(self.name) && has(self.__namespace__)",message="both volumeGroupReplicationRef.name and volumeGroupReplicationRef.namespace must be set"
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="volumeGroupReplicationRef is immutable"
-	VolumeGroupReplicationRef corev1.ObjectReference `json:"volumeGroupReplicationRef"`
+	// For a pre-existing VolumeGroupReplication object, MUST provide an empty/nil value for
+	// VolumeGroupReplicationRef for the auto-binding to happen.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:XValidation:rule="self != null ? has(self.name) && has(self.__namespace__) && has(self.uid) : true",message="volumeGroupReplicationRef.name, volumeGroupReplicationRef.namespace and volumeGroupReplicationRef.uid must be set if volumeGroupReplicationRef is defined"
+	VolumeGroupReplicationRef *corev1.ObjectReference `json:"volumeGroupReplicationRef,omitempty"`
 
 	// VolumeGroupReplicationHandle is a unique id returned by the CSI driver
 	// to identify the VolumeGroupReplication on the storage system.
+	// +kubebuilder:validation:Optional
 	VolumeGroupReplicationHandle string `json:"volumeGroupReplicationHandle"`
 
 	// provisioner is the name of the CSI driver used to create the physical
@@ -45,17 +44,20 @@ type VolumeGroupReplicationContentSpec struct {
 	// This MUST be the same as the name returned by the CSI GetPluginName() call for
 	// that driver.
 	// Required.
+	// +kubebuilder:validation:Required
 	Provisioner string `json:"provisioner"`
 
 	// VolumeGroupReplicationClassName is the name of the VolumeGroupReplicationClass from
 	// which this group replication was (or will be) created.
-	// +optional
+	// Required.
+	// +kubebuilder:validation:Required
 	VolumeGroupReplicationClassName string `json:"volumeGroupReplicationClassName"`
 
-	// Source specifies whether the snapshot is (or should be) dynamically provisioned
-	// or already exists, and just requires a Kubernetes object representation.
-	// This field is immutable after creation.
+	// Source specifies whether the volume group is (or should be) dynamically provisioned
+	// or already exists using the volumes listed here, and just requires a
+	// Kubernetes object representation.
 	// Required.
+	// +kubebuilder:validation:Required
 	Source VolumeGroupReplicationContentSource `json:"source"`
 }
 
@@ -63,12 +65,13 @@ type VolumeGroupReplicationContentSpec struct {
 type VolumeGroupReplicationContentSource struct {
 	// VolumeHandles is a list of volume handles on the backend to be grouped
 	// and replicated.
+	// +kubebuilder:validation:Required
 	VolumeHandles []string `json:"volumeHandles"`
 }
 
 // VolumeGroupReplicationContentStatus defines the status of VolumeGroupReplicationContent
 type VolumeGroupReplicationContentStatus struct {
-	// PersistentVolumeRefList is the list of of PV for the group replication
+	// PersistentVolumeRefList is the list of PV for the group replication
 	// The maximum number of allowed PV in the group is 100.
 	// +optional
 	PersistentVolumeRefList []corev1.LocalObjectReference `json:"persistentVolumeRefList,omitempty"`
