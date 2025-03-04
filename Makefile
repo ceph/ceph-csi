@@ -170,7 +170,7 @@ cephcsi: check-env
 	GOOS=linux go build $(GO_TAGS) -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
 e2e.test: check-env
-	go test $(GO_TAGS) -mod=vendor -c ./e2e
+	cd e2e && go test $(GO_TAGS) -mod=vendor -c -o ../e2e.test ./
 
 .PHONY: rbd-group-snapshot
 rbd-group-snapshot:
