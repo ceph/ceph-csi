@@ -26,6 +26,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+
 	"github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -83,66 +85,20 @@ func FetchEncryptionKMSID(encrypted, kmsID string) (string, error) {
 	return kmsID, nil
 }
 
-type EncryptionType int
-
-const (
-	// EncryptionTypeInvalid signals invalid or unsupported configuration.
-	EncryptionTypeInvalid EncryptionType = iota
-	// EncryptionTypeNone disables encryption.
-	EncryptionTypeNone
-	// EncryptionTypeBlock enables block encryption.
-	EncryptionTypeBlock
-	// EncryptionTypeBlock enables file encryption (fscrypt).
-	EncryptionTypeFile
-)
-
-const (
-	encryptionTypeBlockString = "block"
-	encryptionTypeFileString  = "file"
-)
-
-func ParseEncryptionType(typeStr string) EncryptionType {
-	switch typeStr {
-	case encryptionTypeBlockString:
-		return EncryptionTypeBlock
-	case encryptionTypeFileString:
-		return EncryptionTypeFile
-	case "":
-		return EncryptionTypeNone
-	default:
-		return EncryptionTypeInvalid
-	}
-}
-
-func (encType EncryptionType) String() string {
-	switch encType {
-	case EncryptionTypeBlock:
-		return encryptionTypeBlockString
-	case EncryptionTypeFile:
-		return encryptionTypeFileString
-	case EncryptionTypeNone:
-		return ""
-	case EncryptionTypeInvalid:
-		return "INVALID"
-	default:
-		return "UNKNOWN"
-	}
-}
-
 // FetchEncryptionType returns encryptionType specified in volOptions.
 // If not specified, use fallback. If specified but invalid, return
 // invalid.
-func FetchEncryptionType(volOptions map[string]string, fallback EncryptionType) EncryptionType {
+func FetchEncryptionType(volOptions map[string]string, fallback crypto.EncryptionType) crypto.EncryptionType {
 	encType, ok := volOptions["encryptionType"]
 	if !ok {
 		return fallback
 	}
 
 	if encType == "" {
-		return EncryptionTypeInvalid
+		return crypto.EncryptionTypeInvalid
 	}
 
-	return ParseEncryptionType(encType)
+	return crypto.ParseEncryptionType(encType)
 }
 
 // NewVolumeEncryption creates a new instance of VolumeEncryption and

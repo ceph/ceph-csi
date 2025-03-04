@@ -19,7 +19,7 @@ package rbd
 import (
 	"testing"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
 
 func TestParseEncryptionOpts(t *testing.T) {
@@ -27,9 +27,9 @@ func TestParseEncryptionOpts(t *testing.T) {
 	tests := []struct {
 		testName     string
 		volOptions   map[string]string
-		fallbackType util.EncryptionType
+		fallbackType crypto.EncryptionType
 		expectedKMS  string
-		expectedEnc  util.EncryptionType
+		expectedEnc  crypto.EncryptionType
 		expectedErr  bool
 	}{
 		{
@@ -37,9 +37,9 @@ func TestParseEncryptionOpts(t *testing.T) {
 			volOptions: map[string]string{
 				"foo": "bar",
 			},
-			fallbackType: util.EncryptionTypeBlock,
+			fallbackType: crypto.EncryptionTypeBlock,
 			expectedKMS:  "",
-			expectedEnc:  util.EncryptionTypeNone,
+			expectedEnc:  crypto.EncryptionTypeNone,
 			expectedErr:  false,
 		},
 		{
@@ -47,9 +47,9 @@ func TestParseEncryptionOpts(t *testing.T) {
 			volOptions: map[string]string{
 				"encrypted": "false",
 			},
-			fallbackType: util.EncryptionTypeBlock,
+			fallbackType: crypto.EncryptionTypeBlock,
 			expectedKMS:  "",
-			expectedEnc:  util.EncryptionTypeNone,
+			expectedEnc:  crypto.EncryptionTypeNone,
 			expectedErr:  false,
 		},
 		{
@@ -57,9 +57,9 @@ func TestParseEncryptionOpts(t *testing.T) {
 			volOptions: map[string]string{
 				"encrypted": "notbool",
 			},
-			fallbackType: util.EncryptionTypeBlock,
+			fallbackType: crypto.EncryptionTypeBlock,
 			expectedKMS:  "",
-			expectedEnc:  util.EncryptionTypeInvalid,
+			expectedEnc:  crypto.EncryptionTypeInvalid,
 			expectedErr:  true,
 		},
 		{
@@ -68,9 +68,9 @@ func TestParseEncryptionOpts(t *testing.T) {
 				"encrypted":       "true",
 				"encryptionKMSID": "valid-kms-id",
 			},
-			fallbackType: util.EncryptionTypeBlock,
+			fallbackType: crypto.EncryptionTypeBlock,
 			expectedKMS:  "valid-kms-id",
-			expectedEnc:  util.EncryptionTypeBlock,
+			expectedEnc:  crypto.EncryptionTypeBlock,
 			expectedErr:  false,
 		},
 	}

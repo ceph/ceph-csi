@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -1078,14 +1080,14 @@ func genSnapFromSnapID(
 		}
 	}()
 
-	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeBlock {
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == crypto.EncryptionTypeBlock {
 		err = rbdSnap.configureBlockEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdSnap, fmt.Errorf("failed to configure block encryption for "+
 				"%q: %w", rbdSnap, err)
 		}
 	}
-	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeFile {
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == crypto.EncryptionTypeFile {
 		err = rbdSnap.configureFileEncryption(ctx, imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdSnap, fmt.Errorf("failed to configure file encryption for "+
@@ -1180,13 +1182,13 @@ func generateVolumeFromVolumeID(
 	rbdVol.ImageID = imageAttributes.ImageID
 	rbdVol.Owner = imageAttributes.Owner
 
-	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeBlock {
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == crypto.EncryptionTypeBlock {
 		err = rbdVol.configureBlockEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err
 		}
 	}
-	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeFile {
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == crypto.EncryptionTypeFile {
 		err = rbdVol.configureFileEncryption(ctx, imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err

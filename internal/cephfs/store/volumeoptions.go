@@ -26,6 +26,8 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
@@ -37,7 +39,7 @@ import (
 )
 
 const (
-	cephfsDefaultEncryptionType = util.EncryptionTypeFile
+	cephfsDefaultEncryptionType = crypto.EncryptionTypeFile
 )
 
 type VolumeOptions struct {
@@ -906,7 +908,7 @@ func GenSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (*S
 	return cephfsSnap, nil
 }
 
-func parseEncryptionOpts(volOptions map[string]string) (string, util.EncryptionType, error) {
+func parseEncryptionOpts(volOptions map[string]string) (string, crypto.EncryptionType, error) {
 	var (
 		err              error
 		ok               bool
@@ -914,11 +916,11 @@ func parseEncryptionOpts(volOptions map[string]string) (string, util.EncryptionT
 	)
 	encrypted, ok = volOptions["encrypted"]
 	if !ok {
-		return "", util.EncryptionTypeNone, nil
+		return "", crypto.EncryptionTypeNone, nil
 	}
 	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
 	if err != nil {
-		return "", util.EncryptionTypeInvalid, err
+		return "", crypto.EncryptionTypeInvalid, err
 	}
 
 	encType := util.FetchEncryptionType(volOptions, cephfsDefaultEncryptionType)
@@ -933,7 +935,7 @@ func IsEncrypted(ctx context.Context, volOptions map[string]string) (bool, error
 		return false, err
 	}
 
-	return encType == util.EncryptionTypeFile, nil
+	return encType == crypto.EncryptionTypeFile, nil
 }
 
 // CopyEncryptionConfig copies passphrases and initializes a fresh
@@ -1022,11 +1024,11 @@ func (vo *VolumeOptions) InitKMS(
 		return err
 	}
 
-	if encType == util.EncryptionTypeNone {
+	if encType == crypto.EncryptionTypeNone {
 		return nil
 	}
 
-	if encType != util.EncryptionTypeFile {
+	if encType != crypto.EncryptionTypeFile {
 		return fmt.Errorf("unsupported encryption type %v. only supported type is 'file'", encType)
 	}
 

@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
@@ -91,14 +93,14 @@ func validateRbdVol(rbdVol *rbdVolume) error {
 	return err
 }
 
-func getEncryptionConfig(rbdVol *rbdVolume) (string, util.EncryptionType) {
+func getEncryptionConfig(rbdVol *rbdVolume) (string, crypto.EncryptionType) {
 	switch {
 	case rbdVol.isBlockEncrypted():
-		return rbdVol.blockEncryption.GetID(), util.EncryptionTypeBlock
+		return rbdVol.blockEncryption.GetID(), crypto.EncryptionTypeBlock
 	case rbdVol.isFileEncrypted():
-		return rbdVol.fileEncryption.GetID(), util.EncryptionTypeFile
+		return rbdVol.fileEncryption.GetID(), crypto.EncryptionTypeFile
 	default:
-		return "", util.EncryptionTypeNone
+		return "", crypto.EncryptionTypeNone
 	}
 }
 
@@ -145,7 +147,7 @@ func checkSnapCloneExists(
 	defer j.Destroy()
 
 	snapData, err := j.CheckReservation(ctx, rbdSnap.JournalPool,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "", util.EncryptionTypeNone)
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "", crypto.EncryptionTypeNone)
 	if err != nil {
 		return false, err
 	}
@@ -585,7 +587,7 @@ func RegenerateJournal(
 		vi             util.CSIIdentifier
 		rbdVol         *rbdVolume
 		kmsID          string
-		encryptionType util.EncryptionType
+		encryptionType crypto.EncryptionType
 		err            error
 		ok             bool
 	)

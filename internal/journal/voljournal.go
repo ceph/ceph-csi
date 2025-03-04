@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -291,7 +293,7 @@ Return values:
 */
 func (conn *Connection) CheckReservation(ctx context.Context,
 	journalPool, reqName, namePrefix, snapParentName, kmsConfig string,
-	encryptionType util.EncryptionType,
+	encryptionType crypto.EncryptionType,
 ) (*ImageData, error) {
 	var (
 		snapSource       bool
@@ -389,7 +391,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 		}
 	}
 
-	if encryptionType != util.EncryptionTypeNone {
+	if encryptionType != crypto.EncryptionTypeNone {
 		if savedImageAttributes.EncryptionType != encryptionType {
 			return nil, fmt.Errorf("internal state inconsistent, omap encryption type"+
 				" mismatch, request type %q(%d) volume UUID (%s) volume omap encryption type %q (%d)",
@@ -567,7 +569,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	imagePool string, imagePoolID int64,
 	reqName, namePrefix, parentName, kmsConf, volUUID, owner,
 	backingSnapshotID string,
-	encryptionType util.EncryptionType,
+	encryptionType crypto.EncryptionType,
 ) (string, string, error) {
 	// TODO: Take in-arg as ImageAttributes?
 	var (
@@ -685,16 +687,16 @@ func (conn *Connection) ReserveName(ctx context.Context,
 
 // ImageAttributes contains all CSI stored image attributes, typically as OMap keys.
 type ImageAttributes struct {
-	RequestName       string              // Contains the request name for the passed in UUID
-	SourceName        string              // Contains the parent image name for the passed in UUID, if it is a snapshot
-	ImageName         string              // Contains the image or subvolume name for the passed in UUID
-	KmsID             string              // Contains encryption KMS, if it is an encrypted image
-	EncryptionType    util.EncryptionType // Type of encryption used, if image encrypted
-	Owner             string              // Contains the owner to be used in combination with KmsID (for some KMS)
-	ImageID           string              // Contains the image id
-	GroupID           string              // Contains the group id of the image
-	JournalPoolID     int64               // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
-	BackingSnapshotID string              // ID of the snapshot on which the CephFS snapshot-backed volume is based
+	RequestName       string                // Contains the request name for the passed in UUID
+	SourceName        string                // Contains the parent image name for the passed in UUID, if it is a snapshot
+	ImageName         string                // Contains the image or subvolume name for the passed in UUID
+	KmsID             string                // Contains encryption KMS, if it is an encrypted image
+	EncryptionType    crypto.EncryptionType // Type of encryption used, if image encrypted
+	Owner             string                // Contains the owner to be used in combination with KmsID (for some KMS)
+	ImageID           string                // Contains the image id
+	GroupID           string                // Contains the group id of the image
+	JournalPoolID     int64                 // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
+	BackingSnapshotID string                // ID of the snapshot on which the CephFS snapshot-backed volume is based
 }
 
 // GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure.
@@ -740,7 +742,7 @@ func (conn *Connection) GetImageAttributes(
 	var found bool
 	imageAttributes.RequestName = values[cj.csiNameKey]
 	imageAttributes.KmsID = values[cj.encryptKMSKey]
-	imageAttributes.EncryptionType = util.ParseEncryptionType(values[cj.encryptionType])
+	imageAttributes.EncryptionType = crypto.ParseEncryptionType(values[cj.encryptionType])
 	imageAttributes.Owner = values[cj.ownerKey]
 	imageAttributes.ImageID = values[cj.csiImageIDKey]
 	imageAttributes.BackingSnapshotID = values[cj.backingSnapshotIDKey]

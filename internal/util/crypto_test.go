@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/ceph/ceph-csi/internal/kms"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
 
 	"github.com/stretchr/testify/require"
 )
@@ -65,33 +66,18 @@ func TestKMSWorkflow(t *testing.T) {
 	require.Equal(t, secrets["encryptionPassphrase"], passphrase)
 }
 
-func TestEncryptionType(t *testing.T) {
-	t.Parallel()
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("wat?"))
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("both"))
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("file,block"))
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("block,file"))
-	require.EqualValues(t, EncryptionTypeBlock, ParseEncryptionType("block"))
-	require.EqualValues(t, EncryptionTypeFile, ParseEncryptionType("file"))
-	require.EqualValues(t, EncryptionTypeNone, ParseEncryptionType(""))
-
-	for _, s := range []string{"file", "block", ""} {
-		require.EqualValues(t, s, ParseEncryptionType(s).String())
-	}
-}
-
 func TestFetchEncryptionType(t *testing.T) {
 	t.Parallel()
 	volOpts := map[string]string{}
-	require.EqualValues(t, EncryptionTypeBlock, FetchEncryptionType(volOpts, EncryptionTypeBlock))
-	require.EqualValues(t, EncryptionTypeFile, FetchEncryptionType(volOpts, EncryptionTypeFile))
-	require.EqualValues(t, EncryptionTypeNone, FetchEncryptionType(volOpts, EncryptionTypeNone))
+	require.EqualValues(t, crypto.EncryptionTypeBlock, FetchEncryptionType(volOpts, crypto.EncryptionTypeBlock))
+	require.EqualValues(t, crypto.EncryptionTypeFile, FetchEncryptionType(volOpts, crypto.EncryptionTypeFile))
+	require.EqualValues(t, crypto.EncryptionTypeNone, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = ""
-	require.EqualValues(t, EncryptionTypeInvalid, FetchEncryptionType(volOpts, EncryptionTypeNone))
+	require.EqualValues(t, crypto.EncryptionTypeInvalid, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = "block"
-	require.EqualValues(t, EncryptionTypeBlock, FetchEncryptionType(volOpts, EncryptionTypeNone))
+	require.EqualValues(t, crypto.EncryptionTypeBlock, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = "file"
-	require.EqualValues(t, EncryptionTypeFile, FetchEncryptionType(volOpts, EncryptionTypeNone))
+	require.EqualValues(t, crypto.EncryptionTypeFile, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = "INVALID"
-	require.EqualValues(t, EncryptionTypeInvalid, FetchEncryptionType(volOpts, EncryptionTypeNone))
+	require.EqualValues(t, crypto.EncryptionTypeInvalid, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 }

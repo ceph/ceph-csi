@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
@@ -65,7 +67,7 @@ const (
 	// rbdDefaultEncryptionType is the default to use when the
 	// user did not specify an "encryptionType", but set
 	// "encryption": true.
-	rbdDefaultEncryptionType = util.EncryptionTypeBlock
+	rbdDefaultEncryptionType = crypto.EncryptionTypeBlock
 
 	// Luks slots.
 	luksSlot0 = "0"
@@ -111,12 +113,12 @@ func (ri *rbdImage) isFileEncrypted() bool {
 }
 
 func IsFileEncrypted(ctx context.Context, volOptions map[string]string) (bool, error) {
-	_, encType, err := ParseEncryptionOpts(volOptions, util.EncryptionTypeInvalid)
+	_, encType, err := ParseEncryptionOpts(volOptions, crypto.EncryptionTypeInvalid)
 	if err != nil {
 		return false, err
 	}
 
-	return encType == util.EncryptionTypeFile, nil
+	return encType == crypto.EncryptionTypeFile, nil
 }
 
 // setupBlockEncryption configures the metadata of the RBD image for encryption:
@@ -314,13 +316,13 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 	}
 
 	switch encType {
-	case util.EncryptionTypeBlock:
+	case crypto.EncryptionTypeBlock:
 		err = ri.configureBlockEncryption(kmsID, credentials)
-	case util.EncryptionTypeFile:
+	case crypto.EncryptionTypeFile:
 		err = ri.configureFileEncryption(ctx, kmsID, credentials)
-	case util.EncryptionTypeInvalid:
+	case crypto.EncryptionTypeInvalid:
 		return errors.New("invalid encryption type")
-	case util.EncryptionTypeNone:
+	case crypto.EncryptionTypeNone:
 		return nil
 	}
 
@@ -334,8 +336,8 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 // ParseEncryptionOpts returns kmsID and sets Owner attribute.
 func ParseEncryptionOpts(
 	volOptions map[string]string,
-	fallbackEncType util.EncryptionType,
-) (string, util.EncryptionType, error) {
+	fallbackEncType crypto.EncryptionType,
+) (string, crypto.EncryptionType, error) {
 	var (
 		err              error
 		ok               bool
@@ -343,18 +345,18 @@ func ParseEncryptionOpts(
 	)
 	encrypted, ok = volOptions["encrypted"]
 	if !ok {
-		return "", util.EncryptionTypeNone, nil
+		return "", crypto.EncryptionTypeNone, nil
 	}
 	ok, err = strconv.ParseBool(encrypted)
 	if err != nil {
-		return "", util.EncryptionTypeInvalid, err
+		return "", crypto.EncryptionTypeInvalid, err
 	}
 	if !ok {
-		return "", util.EncryptionTypeNone, nil
+		return "", crypto.EncryptionTypeNone, nil
 	}
 	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
 	if err != nil {
-		return "", util.EncryptionTypeInvalid, err
+		return "", crypto.EncryptionTypeInvalid, err
 	}
 
 	encType := util.FetchEncryptionType(volOptions, fallbackEncType)

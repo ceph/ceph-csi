@@ -27,6 +27,8 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -263,12 +265,12 @@ func updateTopologyConstraints(volOpts *VolumeOptions) error {
 	return nil
 }
 
-func getEncryptionConfig(volOptions *VolumeOptions) (string, util.EncryptionType) {
+func getEncryptionConfig(volOptions *VolumeOptions) (string, crypto.EncryptionType) {
 	if volOptions.IsEncrypted() {
-		return volOptions.Encryption.GetID(), util.EncryptionTypeFile
+		return volOptions.Encryption.GetID(), crypto.EncryptionTypeFile
 	}
 
-	return "", util.EncryptionTypeNone
+	return "", crypto.EncryptionTypeNone
 }
 
 // ReserveVol is a helper routine to request a UUID reservation for the CSI VolumeName and,
