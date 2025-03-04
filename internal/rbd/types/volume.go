@@ -67,9 +67,6 @@ type Volume interface {
 	snapshottableVolume
 	csiAddonsVolume
 
-	// Destroy frees the resources used by the Volume.
-	Destroy(ctx context.Context)
-
 	// Delete removes the volume from the storage backend.
 	Delete(ctx context.Context) error
 

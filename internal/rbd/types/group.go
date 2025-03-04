@@ -37,14 +37,14 @@ type journalledObject interface {
 
 	// GetClusterID returns the ID of the cluster of the object.
 	GetClusterID(ctx context.Context) (string, error)
+
+	// Destroy frees the resources used by the object.
+	Destroy(ctx context.Context)
 }
 
 // VolumeGroup contains a number of volumes.
 type VolumeGroup interface {
 	journalledObject
-
-	// Destroy frees the resources used by the VolumeGroup.
-	Destroy(ctx context.Context)
 
 	// GetIOContext returns the IOContext for performing librbd operations
 	// on the VolumeGroup. This is used by the rbdVolume struct when it

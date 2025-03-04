@@ -29,9 +29,6 @@ import (
 type VolumeGroupSnapshot interface {
 	journalledObject
 
-	// Destroy frees the resources used by the VolumeGroupSnapshot.
-	Destroy(ctx context.Context)
-
 	// Delete removes the VolumeGroupSnapshot from the storage backend.
 	Delete(ctx context.Context) error
 

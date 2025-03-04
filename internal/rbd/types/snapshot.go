@@ -28,9 +28,6 @@ import (
 type Snapshot interface {
 	journalledObject
 
-	// Destroy frees the resources used by the Snapshot.
-	Destroy(ctx context.Context)
-
 	// Delete removes the snapshot from the storage backend.
 	Delete(ctx context.Context) error
 
