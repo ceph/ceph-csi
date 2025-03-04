@@ -89,6 +89,29 @@ updates:
       - ci/skip/multi-arch-build
     commit-message:
       prefix: "rebase"
+  - package-ecosystem: "gomod"
+    directory: "/e2e"
+    schedule:
+      interval: "weekly"
+    rebase-strategy: "disabled"
+    groups:
+      golang-dependencies:
+        patterns:
+          - "github.com/golang*"
+          - "golang.org/*"
+      k8s-dependencies:
+        patterns:
+          - "k8s.io*"
+      github-dependencies:
+        patterns:
+          - "github.com*"
+        exclude-patterns:
+          - "github.com/golang*"
+    labels:
+      - rebase
+      - ci/skip/multi-arch-build
+    commit-message:
+      prefix: "rebase"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
