@@ -138,7 +138,7 @@ nodeplugin:
   plugin:
     image:
       repository: quay.io/cephcsi/cephcsi
-      tag: v3.13.1
+      tag: v3.13-canary
       pullPolicy: IfNotPresent
     resources: {}
 
