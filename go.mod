@@ -12,7 +12,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.3.1
 	github.com/IBM/keyprotect-go-client v0.15.1
 	github.com/aws/aws-sdk-go v1.55.6
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.16
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.17
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.32.0
 	github.com/container-storage-interface/spec v1.11.0
@@ -27,7 +27,7 @@ require (
 	github.com/kubernetes-csi/csi-lib-utils v0.21.0
 	github.com/libopenstorage/secrets v0.0.0-20231011182615-5f4b25ceede1
 	github.com/pkg/xattr v0.4.10
-	github.com/prometheus/client_golang v1.21.0
+	github.com/prometheus/client_golang v1.21.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.36.0
 	golang.org/x/net v0.37.0
