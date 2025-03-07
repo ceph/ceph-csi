@@ -880,9 +880,9 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 
 func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath string, isBlock bool) (bool, error) {
 	// Check if that mount path exists properly
-	notMnt, err := ns.Mounter.IsLikelyNotMountPoint(mountPath)
+	isMnt, err := ns.Mounter.IsMountPoint(mountPath)
 	if err == nil {
-		return notMnt, nil
+		return !isMnt, nil
 	}
 	if !os.IsNotExist(err) {
 		return false, status.Error(codes.Internal, err.Error())
@@ -893,22 +893,22 @@ func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath strin
 		if e != nil {
 			log.DebugLog(ctx, "Failed to create mountPath:%s with error: %v", mountPath, err)
 
-			return notMnt, status.Error(codes.Internal, e.Error())
+			return !isMnt, status.Error(codes.Internal, e.Error())
 		}
 		if err = pathFile.Close(); err != nil {
 			log.DebugLog(ctx, "Failed to close mountPath:%s with error: %v", mountPath, err)
 
-			return notMnt, status.Error(codes.Internal, err.Error())
+			return !isMnt, status.Error(codes.Internal, err.Error())
 		}
 	} else {
 		// Create a mountpath directory
 		if err = util.CreateMountPoint(mountPath); err != nil {
-			return notMnt, status.Error(codes.Internal, err.Error())
+			return !isMnt, status.Error(codes.Internal, err.Error())
 		}
 	}
-	notMnt = true
+	isMnt = false
 
-	return notMnt, err
+	return !isMnt, err
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path.

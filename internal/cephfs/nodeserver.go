@@ -263,7 +263,7 @@ func (ns *NodeServer) NodeStageVolume(
 		}
 	}
 
-	isMnt, err := util.IsMountPoint(ns.Mounter, stagingTargetPath)
+	isMnt, err := ns.Mounter.IsMountPoint(stagingTargetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -539,7 +539,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	// Ensure staging target path is a mountpoint.
 
-	isMnt, err := util.IsMountPoint(ns.Mounter, stagingTargetPath)
+	isMnt, err := ns.Mounter.IsMountPoint(stagingTargetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -552,7 +552,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	// Check if the volume is already mounted
 
-	isMnt, err = util.IsMountPoint(ns.Mounter, targetPath)
+	isMnt, err = ns.Mounter.IsMountPoint(targetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -615,7 +615,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	// stop the health-checker that may have been started in NodeGetVolumeStats()
 	ns.healthChecker.StopChecker(volID, targetPath)
 
-	isMnt, err := util.IsMountPoint(ns.Mounter, targetPath)
+	isMnt, err := ns.Mounter.IsMountPoint(targetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -687,7 +687,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	isMnt, err := util.IsMountPoint(ns.Mounter, stagingTargetPath)
+	isMnt, err := ns.Mounter.IsMountPoint(stagingTargetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 

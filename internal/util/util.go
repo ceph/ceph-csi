@@ -219,16 +219,6 @@ func checkDirExists(p string) bool {
 	return true
 }
 
-// IsMountPoint checks if the given path is mountpoint or not.
-func IsMountPoint(mounter mount.Interface, p string) (bool, error) {
-	notMnt, err := mounter.IsLikelyNotMountPoint(p)
-	if err != nil {
-		return false, err
-	}
-
-	return !notMnt, nil
-}
-
 // IsCorruptedMountError checks if the given error is a result of a corrupted
 // mountpoint.
 func IsCorruptedMountError(err error) bool {

@@ -200,19 +200,19 @@ func (ns *NodeServer) mountNFS(
 		err    error
 	)
 
-	notMnt, err := ns.Mounter.IsLikelyNotMountPoint(mountPoint)
+	isMnt, err := ns.Mounter.IsMountPoint(mountPoint)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(mountPoint, defaultMountPermission)
 			if err != nil {
 				return err
 			}
-			notMnt = true
+			isMnt = false
 		} else {
 			return err
 		}
 	}
-	if !notMnt {
+	if isMnt {
 		log.DebugLog(ctx, "nfs: volume is already mounted to %s", mountPoint)
 
 		return nil

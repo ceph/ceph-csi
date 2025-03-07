@@ -47,7 +47,7 @@ func (ms mountState) String() string {
 }
 
 func (ns *NodeServer) getMountState(path string) (mountState, error) {
-	isMnt, err := util.IsMountPoint(ns.Mounter, path)
+	isMnt, err := ns.Mounter.IsMountPoint(path)
 	if err != nil {
 		if util.IsCorruptedMountError(err) {
 			return msCorrupted, nil

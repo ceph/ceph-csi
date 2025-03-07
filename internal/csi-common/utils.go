@@ -25,7 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -351,7 +350,7 @@ func FilesystemNodeGetVolumeStats(
 	targetPath string,
 	includeInodes bool,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
-	isMnt, err := util.IsMountPoint(mounter, targetPath)
+	isMnt, err := mounter.IsMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
