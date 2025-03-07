@@ -14,7 +14,7 @@ require (
 	github.com/ceph/ceph-csi v0.0.0-00010101000000-000000000000
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.2.0
-	github.com/onsi/ginkgo/v2 v2.22.2
+	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2
 	k8s.io/api v0.32.2
 	k8s.io/apimachinery v0.32.2
@@ -123,7 +123,7 @@ require (
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
-	golang.org/x/tools v0.28.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241216192217-9240e9c98484 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
