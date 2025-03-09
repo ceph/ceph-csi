@@ -482,14 +482,6 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
-			By("check static PVC with without FsName", func() {
-				scPath := cephFSExamplePath + "secret.yaml"
-				err := validateCephFsStaticPV(f, appPath, scPath, "")
-				if err != nil {
-					framework.Failf("failed to validate CephFS static pv without filesystem name: %v", err)
-				}
-			})
-
 			By("create a storageclass with pool and a PVC then bind it to an app", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {

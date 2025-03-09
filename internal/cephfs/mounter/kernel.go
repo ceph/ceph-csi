@@ -72,25 +72,24 @@ func (m *kernelMounter) mountKernel(
 		m.needsModprobe = false
 	}
 
+	fsID, err := volOptions.GetFSID()
+	if err != nil {
+		return fmt.Errorf("failed to get fsID, stop mounting: %w", err)
+	}
+
 	args := []string{
 		"-t", "ceph",
-		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
+		fmt.Sprintf("%s@%s.%s=%s", cr.ID, fsID, volOptions.FsName, volOptions.RootPath),
 		mountPoint,
 	}
 
-	optionsStr := fmt.Sprintf("name=%s,secretfile=%s", cr.ID, cr.KeyFile)
-	mdsNamespace := ""
-	if volOptions.FsName != "" {
-		mdsNamespace = "mds_namespace=" + volOptions.FsName
-	}
-	optionsStr = util.MountOptionsAdd(optionsStr, mdsNamespace, volOptions.KernelMountOptions, netDev)
+	optionsStr := fmt.Sprintf("mon_addr=%s,secretfile=%s", strings.ReplaceAll(volOptions.Monitors, ",", "/"), cr.KeyFile)
+
+	optionsStr = util.MountOptionsAdd(optionsStr, volOptions.KernelMountOptions, netDev)
 
 	args = append(args, "-o", optionsStr)
 
-	var (
-		stderr string
-		err    error
-	)
+	var stderr string
 
 	if volOptions.NetNamespaceFilePath != "" {
 		_, stderr, err = util.ExecuteCommandWithNSEnter(ctx, volOptions.NetNamespaceFilePath, "mount", args[:]...)

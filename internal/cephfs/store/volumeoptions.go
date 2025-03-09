@@ -103,6 +103,19 @@ func (vo *VolumeOptions) Destroy() {
 	}
 }
 
+func (vo *VolumeOptions) GetFSID() (string, error) {
+	if vo.conn == nil {
+		return "", errors.New("cluster not connected yet")
+	}
+
+	fsID, err := vo.conn.GetFSID()
+	if err != nil {
+		return "", err
+	}
+
+	return fsID, nil
+}
+
 func validateNonEmptyField(field, fieldName string) error {
 	if field == "" {
 		return fmt.Errorf("parameter '%s' cannot be empty", fieldName)
@@ -682,6 +695,17 @@ func NewVolumeOptionsFromMonitorList(
 		opts.BackingSnapshot = true
 	}
 
+	cr, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer cr.DeleteCredentials()
+
+	err = opts.Connect(cr)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &opts, &vid, nil
 }
 
@@ -730,7 +754,7 @@ func NewVolumeOptionsFromStaticVolume(
 		return nil, nil, err
 	}
 
-	if err = extractOptionalOption(&opts.FsName, "fsName", options); err != nil {
+	if err = extractOption(&opts.FsName, "fsName", options); err != nil {
 		return nil, nil, err
 	}
 
@@ -759,6 +783,17 @@ func NewVolumeOptionsFromStaticVolume(
 
 	if opts.BackingSnapshotID != "" {
 		opts.BackingSnapshot = true
+	}
+
+	cr, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer cr.DeleteCredentials()
+
+	err = opts.Connect(cr)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return &opts, &vid, nil
