@@ -45,7 +45,7 @@ require (
 require (
 	// sigs.k8s.io/controller-runtime wants this version, it gets replaced below
 	k8s.io/client-go v12.0.0+incompatible
-	sigs.k8s.io/controller-runtime v0.20.2
+	sigs.k8s.io/controller-runtime v0.20.3
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.32.2
