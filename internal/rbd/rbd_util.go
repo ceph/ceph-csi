@@ -84,6 +84,10 @@ const (
 
 	// clusterNameKey cluster Key, set on RBD image.
 	clusterNameKey = "csi.ceph.com/cluster/name"
+
+	// Suffix added to the temp cloned image name.
+	// This will always be (rbd image name + "-temp").
+	tempImageSuffix = "-temp"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -2025,26 +2029,49 @@ func (ri *rbdImage) DisableDeepFlatten() error {
 	return image.UpdateFeatures(librbd.FeatureDeepFlatten, false)
 }
 
-// listSnapAndChildren returns list of names of snapshots and child images.
-func (ri *rbdImage) listSnapAndChildren() ([]librbd.SnapInfo, []string, error) {
+type snapAndChildrenInfo struct {
+	SnapInfoList           []librbd.SnapInfo
+	TempCloneChildren      []string
+	VolumeSnapshotChildren []string
+}
+
+// listSnapAndChildren returns list of snapshot names, volume snapshot images and
+// child temp clone images. Only child images which are not in trash are returned.
+func (ri *rbdImage) listSnapAndChildren() (*snapAndChildrenInfo, error) {
 	image, err := ri.open()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer image.Close()
 
 	snaps, err := image.GetSnapshotNames()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// ListChildren() returns pools, images, err.
-	_, children, err := image.ListChildren()
+	childImageSpecList, err := image.ListChildrenAttributes()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return snaps, children, nil
+	tempCloneChildren := make([]string, 0)
+	volSnapChildren := make([]string, 0)
+	for _, child := range childImageSpecList {
+		if child.Trash {
+			continue
+		}
+		if isTempClonedImage(child.ImageName) {
+			tempCloneChildren = append(tempCloneChildren, child.ImageName)
+		} else {
+			volSnapChildren = append(volSnapChildren, child.ImageName)
+		}
+	}
+
+	return &snapAndChildrenInfo{
+		SnapInfoList:           snaps,
+		TempCloneChildren:      tempCloneChildren,
+		VolumeSnapshotChildren: volSnapChildren,
+	}, nil
 }
 
 func (ri *rbdImage) isCompatibleEncryption(dst *rbdImage) error {

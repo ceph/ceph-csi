@@ -21,15 +21,22 @@ type EncryptionOptionsLUKS struct {
 }
 
 func (opts EncryptionOptionsLUKS) allocateEncryptionOptions() cEncryptionData {
-	var cOpts C.rbd_encryption_luks_format_options_t
 	var retData cEncryptionData
+
 	// CBytes allocates memory. it will be freed when cEncryptionData.free is called
-	cOpts.passphrase = (*C.char)(C.CBytes(opts.Passphrase))
+	cPassphrase := (*C.char)(C.CBytes(opts.Passphrase))
+	cOptsSize := C.size_t(C.sizeof_rbd_encryption_luks_format_options_t)
+	cOpts := (*C.rbd_encryption_luks_format_options_t)(C.malloc(cOptsSize))
+	cOpts.passphrase = cPassphrase
 	cOpts.passphrase_size = C.size_t(len(opts.Passphrase))
-	retData.opts = C.rbd_encryption_options_t(&cOpts)
-	retData.optsSize = C.size_t(C.sizeof_rbd_encryption_luks_format_options_t)
-	retData.free = func() { C.free(unsafe.Pointer(cOpts.passphrase)) }
+
 	retData.format = C.RBD_ENCRYPTION_FORMAT_LUKS
+	retData.opts = C.rbd_encryption_options_t(cOpts)
+	retData.optsSize = cOptsSize
+	retData.free = func() {
+		C.free(unsafe.Pointer(cOpts.passphrase))
+		C.free(unsafe.Pointer(cOpts))
+	}
 	return retData
 }
 

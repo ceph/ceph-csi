@@ -590,7 +590,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 // are more than the `minSnapshotOnImage` Add a task to flatten all the
 // temporary cloned images.
 func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	snaps, children, err := rbdVol.listSnapAndChildren()
+	snapAndChildrenInfo, err := rbdVol.listSnapAndChildren()
 	if err != nil {
 		if errors.Is(err, util.ErrImageNotFound) {
 			return status.Error(codes.InvalidArgument, err.Error())
@@ -598,6 +598,17 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 
 		return status.Error(codes.Internal, err.Error())
 	}
+	children := make([]string, 0)
+	// order the temp clone images first followed by the volume snapshot
+	// images so that the temp clone images are flattened first.
+	// This is done in order to:
+	// - increase number of snapshots which can be supported for
+	// changed block tracking(rbd snap diff).
+	// - favor scalability since multiple PVCs can be restored from same
+	// volumesnapshot versus just one PVC-PVC clone.
+	children = append(children, snapAndChildrenInfo.TempCloneChildren...)
+	children = append(children, snapAndChildrenInfo.VolumeSnapshotChildren...)
+	snaps := snapAndChildrenInfo.SnapInfoList
 
 	if len(snaps) > int(maxSnapshotsOnImage) {
 		log.DebugLog(

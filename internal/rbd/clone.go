@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
@@ -122,7 +123,7 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	// The temp cloned image name will be always (rbd image name + "-temp")
 	// this name will be always unique, as cephcsi never creates an image with
 	// this format for new rbd images
-	tempClone.RbdImageName = rv.RbdImageName + "-temp"
+	tempClone.RbdImageName = rv.RbdImageName + tempImageSuffix
 
 	return &tempClone
 }
@@ -249,4 +250,10 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 	}
 
 	return nil
+}
+
+// isTempClonedImage checks whether the image is a temporary cloned image
+// by checking the suffix of the image name.
+func isTempClonedImage(imageName string) bool {
+	return strings.HasSuffix(imageName, tempImageSuffix)
 }

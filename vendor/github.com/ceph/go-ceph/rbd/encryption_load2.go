@@ -81,25 +81,22 @@ func (image *Image) EncryptionLoad2(opts []EncryptionOptions) error {
 	}
 
 	length := len(opts)
-	cspecs := (*C.rbd_encryption_spec_t)(C.malloc(
-		C.size_t(C.sizeof_rbd_encryption_spec_t * length)))
-	specs := unsafe.Slice(cspecs, length)
+	cspecs := make([]C.rbd_encryption_spec_t, length)
 	freeFuncs := make([]func(), length)
 
 	for idx, option := range opts {
-		f := option.(encryptionOptions2).writeEncryptionSpec(&specs[idx])
+		f := option.(encryptionOptions2).writeEncryptionSpec(&cspecs[idx])
 		freeFuncs[idx] = f
 	}
 	defer func() {
 		for _, f := range freeFuncs {
 			f()
 		}
-		C.free(unsafe.Pointer(cspecs))
 	}()
 
 	ret := C.rbd_encryption_load2(
 		image.image,
-		cspecs,
+		(*C.rbd_encryption_spec_t)(unsafe.Pointer(&cspecs[0])),
 		C.size_t(length))
 	return getError(ret)
 }
