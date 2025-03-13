@@ -2255,8 +2255,9 @@ func (rv *rbdVolume) PrepareVolumeForSnapshot(ctx context.Context, cr *util.Cred
 		return err
 	}
 
-	// choosing 2, since snapshot adds one depth and we'll be flattening the parent.
-	const depthToAvoidFlatten = 2
+	// choosing 3, since snapshot adds one depth, restore pvc will add one in future
+	// and we'll be flattening the parent.
+	const depthToAvoidFlatten = 3
 	if rbdHardMaxCloneDepth > depthToAvoidFlatten {
 		hardLimit = rbdHardMaxCloneDepth - depthToAvoidFlatten
 	}
