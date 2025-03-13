@@ -721,12 +721,12 @@ func (ns *NodeServer) NodePublishVolume(
 	defer ns.VolumeLocks.Release(targetPath)
 
 	// Check if that target path exists properly
-	notMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
+	isMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if !notMnt {
+	if isMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
@@ -878,37 +878,45 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 	return nil
 }
 
+// createTargetMountPath check if the mountPath already has something mounted
+// on it. If not, the directory (for a filesystem volume) will be created.
+//
+// This function returns 'true' in case there is something mounted on the given
+// path already, 'false' when the path exists, but nothing is mounted there.
 func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath string, isBlock bool) (bool, error) {
-	// Check if that mount path exists properly
 	isMnt, err := ns.Mounter.IsMountPoint(mountPath)
 	if err == nil {
-		return !isMnt, nil
+		return isMnt, nil
 	}
 	if !os.IsNotExist(err) {
-		return false, status.Error(codes.Internal, err.Error())
+		return false, fmt.Errorf("path %q exists, but detecting it as mount point failed: %w", mountPath, err)
 	}
-	if isBlock {
-		// #nosec
-		pathFile, e := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0o750)
-		if e != nil {
-			log.DebugLog(ctx, "Failed to create mountPath:%s with error: %v", mountPath, err)
 
-			return !isMnt, status.Error(codes.Internal, e.Error())
-		}
-		if err = pathFile.Close(); err != nil {
-			log.DebugLog(ctx, "Failed to close mountPath:%s with error: %v", mountPath, err)
-
-			return !isMnt, status.Error(codes.Internal, err.Error())
-		}
-	} else {
+	// filesystem volume needs a directory
+	if !isBlock {
 		// Create a mountpath directory
 		if err = util.CreateMountPoint(mountPath); err != nil {
-			return !isMnt, status.Error(codes.Internal, err.Error())
+			return false, fmt.Errorf("failed to create mount path %q: %w", mountPath, err)
 		}
-	}
-	isMnt = false
 
-	return !isMnt, err
+		return false, nil
+	}
+
+	// block volume checks
+	// #nosec
+	pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0o750)
+	if err != nil {
+		log.DebugLog(ctx, "Failed to create mountPath:%s with error: %v", mountPath, err)
+
+		return false, fmt.Errorf("failed to create mount file %q: %w", mountPath, err)
+	}
+	if err = pathFile.Close(); err != nil {
+		log.DebugLog(ctx, "Failed to close mountPath:%s with error: %v", mountPath, err)
+
+		return false, fmt.Errorf("failed to close mount file %q: %w", mountPath, err)
+	}
+
+	return false, nil
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path.
