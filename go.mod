@@ -38,7 +38,7 @@ require (
 	k8s.io/apimachinery v0.32.2
 	k8s.io/cloud-provider v0.32.2
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubernetes v1.32.2
+	k8s.io/kubernetes v1.32.3
 	k8s.io/mount-utils v0.32.2
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
 )
