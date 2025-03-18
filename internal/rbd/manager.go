@@ -83,6 +83,12 @@ func (mgr *rbdManager) getCredentials() (*util.Credentials, error) {
 	return creds, nil
 }
 
+// getVolumeGroupNamePrefix returns the prefix for the volume group if set, or
+// an empty string if none is configured.
+func (mgr *rbdManager) getVolumeGroupNamePrefix() string {
+	return mgr.parameters["volumeGroupNamePrefix"]
+}
+
 func (mgr *rbdManager) getVolumeGroupJournal(clusterID string) (journal.VolumeGroupJournal, error) {
 	if mgr.vgJournal != nil {
 		return mgr.vgJournal, nil
@@ -123,11 +129,13 @@ func (mgr *rbdManager) getVolumeGroupJournal(clusterID string) (journal.VolumeGr
 // 3. an error or nil.
 func (mgr *rbdManager) getGroupUUID(
 	ctx context.Context,
-	clusterID, journalPool, name, prefix string,
+	clusterID, journalPool, name string,
 ) (string, func(), error) {
 	nothingToUndo := func() {
 		// the reservation was not done, no need to undo the reservation
 	}
+
+	prefix := mgr.getVolumeGroupNamePrefix()
 
 	vgJournal, err := mgr.getVolumeGroupJournal(clusterID)
 	if err != nil {
@@ -259,7 +267,7 @@ func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (type
 	}
 
 	// volumeGroupNamePrefix is an optional parameter, can be an empty string
-	prefix := mgr.parameters["volumeGroupNamePrefix"]
+	prefix := mgr.getVolumeGroupNamePrefix()
 
 	// check if the journal contains a generated name for the group already
 	vgData, err := vgJournal.CheckReservation(ctx, journalPool, name, prefix)
@@ -347,15 +355,12 @@ func (mgr *rbdManager) GetVolumeGroupSnapshotByName(
 		return nil, errors.New("required 'pool' option missing in volume group parameters")
 	}
 
-	// volumeGroupNamePrefix is an optional parameter, can be an empty string
-	prefix := mgr.parameters["volumeGroupNamePrefix"]
-
 	clusterID, err := util.GetClusterID(mgr.parameters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster-id: %w", err)
 	}
 
-	uuid, freeUUID, err := mgr.getGroupUUID(ctx, clusterID, pool, name, prefix)
+	uuid, freeUUID, err := mgr.getGroupUUID(ctx, clusterID, pool, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a UUID for volume group snapshot %q: %w", name, err)
 	}
@@ -410,15 +415,12 @@ func (mgr *rbdManager) CreateVolumeGroupSnapshot(
 		return nil, err
 	}
 
-	// volumeGroupNamePrefix is an optional parameter, can be an empty string
-	prefix := mgr.parameters["volumeGroupNamePrefix"]
-
 	clusterID, err := vg.GetClusterID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster id for volume group snapshot %q: %w", vg, err)
 	}
 
-	uuid, freeUUID, err := mgr.getGroupUUID(ctx, clusterID, pool, name, prefix)
+	uuid, freeUUID, err := mgr.getGroupUUID(ctx, clusterID, pool, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a UUID for volume group snapshot %q: %w", vg, err)
 	}
