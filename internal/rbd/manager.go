@@ -238,6 +238,21 @@ func (mgr *rbdManager) GetVolumeGroupByID(ctx context.Context, id string) (types
 	return vg, nil
 }
 
+func (mgr *rbdManager) MakeVolumeGroupID(ctx context.Context, poolID int64, name string) (string, error) {
+	clusterID, err := util.GetClusterID(mgr.parameters)
+	if err != nil {
+		return "", fmt.Errorf("failed to get cluster-id: %w", err)
+	}
+
+	// convert the clusterid, poolid and name to an id/handle
+	id, err := journal.MakeVolumeGroupID(clusterID, poolID, name, mgr.getVolumeGroupNamePrefix())
+	if err != nil {
+		return "", fmt.Errorf("failed to convert name %q to a CSI-handle: %w", name, err)
+	}
+
+	return id, nil
+}
+
 func (mgr *rbdManager) CreateVolumeGroup(ctx context.Context, name string) (types.VolumeGroup, error) {
 	creds, err := mgr.getCredentials()
 	if err != nil {

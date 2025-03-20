@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -164,6 +165,28 @@ func generateVolumeGroupName(namePrefix, groupUUID string) string {
 	}
 
 	return namePrefix + groupUUID
+}
+
+// MakeVolumeGroupID is a utility function that takes details of a VolumeGroup
+// and creates the CSI VolumeGroupId out of those.
+func MakeVolumeGroupID(clusterID string, poolID int64, name, prefix string) (string, error) {
+	namePrefix := prefix
+	if prefix == "" {
+		namePrefix = defaultVolumeGroupNamingPrefix
+	}
+
+	id, found := strings.CutPrefix(name, namePrefix)
+	if !found {
+		return "", fmt.Errorf("volume group name %q does not start with %q", name, namePrefix)
+	}
+
+	handle := util.CSIIdentifier{
+		ClusterID:  clusterID,
+		LocationID: poolID,
+		ObjectUUID: id,
+	}
+
+	return handle.ComposeCSIID()
 }
 
 /*

@@ -32,6 +32,16 @@ type SnapshotResolver interface {
 	GetSnapshotByID(ctx context.Context, id string) (Snapshot, error)
 }
 
+// VolumeGroupResolver can be used to construct a VolumeGroup from a CSI VolumeGroupId.
+type VolumeGroupResolver interface {
+	// MakeVolumeGroupID is called by Volume.GetVolumeGroupID to resolve
+	// the CSI VolumeGroupId of the VolumeGroup where the Volume belongs
+	// to.
+	// The poolID and name are details of the Ceph RBD-group for which the
+	// CSI VolumeGroupId should get constructed.
+	MakeVolumeGroupID(ctx context.Context, poolID int64, name string) (string, error)
+}
+
 // Manager provides a way for other packages to get Volumes and VolumeGroups.
 // It handles the operations on the backend, and makes sure the journal
 // reflects the expected state.
@@ -41,6 +51,9 @@ type Manager interface {
 
 	// SnapshotResolver is fully implemented by the Manager.
 	SnapshotResolver
+
+	// VolumeGroupResolver is fully implemented by the Manager.
+	VolumeGroupResolver
 
 	// Destroy frees all resources that the Manager allocated.
 	Destroy(ctx context.Context)
