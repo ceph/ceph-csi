@@ -40,7 +40,7 @@ import (
 // group and its snapshot around, the group snapshot can be inspected to list
 // the snapshots of the images.
 //
-//nolint:gocyclo,cyclop // TODO: reduce complexity.
+//nolint:gocyclo,cyclop,gocognit // TODO: reduce complexity.
 func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 	ctx context.Context,
 	req *csi.CreateVolumeGroupSnapshotRequest,
@@ -53,6 +53,8 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 		// the VG and VGS should not have the same name
 		vgName  = req.GetName() + "-vg" // stable temporary name
 		vgsName = req.GetName()
+
+		vgNeedsDeletion = true
 	)
 
 	// Existence and conflict checks
@@ -70,7 +72,7 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 	volumes := make([]types.Volume, len(req.GetSourceVolumeIds()))
 	defer func() {
 		for _, volume := range volumes {
-			if vg != nil {
+			if vg != nil && vgNeedsDeletion {
 				// 'normal' cleanup, remove all images from the group
 				vgErr := vg.RemoveVolume(ctx, volume)
 				if vgErr != nil {
@@ -87,7 +89,7 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 			}
 		}
 
-		if vg != nil {
+		if vg != nil && vgNeedsDeletion {
 			// the VG should always be deleted, volumes can only belong to a single VG
 			log.DebugLog(ctx, "removing temporary volume group %q", vg)
 
@@ -115,6 +117,51 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 	}
 
 	log.DebugLog(ctx, "all %d Volumes for VolumeGroup %q have been found", len(volumes), vgsName)
+
+	// all volumes should belong to the same group, or to no group at all
+	groupMatches, err := mgr.VolumesInSameGroup(ctx, volumes)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"failed to compare %d volumes: %s",
+			len(volumes),
+			err.Error())
+	} else if !groupMatches {
+		return nil, status.Error(
+			codes.Internal,
+			"not all volumes belong to the same group")
+	}
+
+	// check for pre-existing volume group name
+	vgHandle, err := volumes[0].GetVolumeGroupID(ctx, mgr)
+	if err != nil && !errors.Is(err, rbderrors.ErrGroupNotFound) {
+		return nil, status.Errorf(
+			codes.Internal,
+			"could not get volume group for volume %q: %v",
+			volumes[0],
+			err)
+	} else if vgHandle != "" {
+		vg, err = mgr.GetVolumeGroupByID(ctx, vgHandle)
+		// vg.Destroy(ctx) is called in a defer further up ^
+		if err != nil {
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"failed to resolve volume group with id %q: %s",
+				vgHandle,
+				err.Error())
+		}
+
+		vgName, err = vg.GetName(ctx)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"failed to get name of volume group %q: %s",
+				vg,
+				err.Error())
+		}
+
+		vgNeedsDeletion = false
+	}
 
 	groupSnapshot, err = mgr.GetVolumeGroupSnapshotByName(ctx, vgsName)
 	if groupSnapshot != nil {
@@ -155,24 +202,35 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 			errList)
 	}
 
-	// create a temporary VolumeGroup with a different name
-	vg, err = mgr.CreateVolumeGroup(ctx, vgName)
+	if vg == nil {
+		// create a temporary VolumeGroup with a different name
+		vg, err = mgr.CreateVolumeGroup(ctx, vgName)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"failed to create volume group %q: %s",
+				vgName,
+				err.Error())
+		}
+		// vg.Destroy(ctx) is called in a defer further up ^
+
+		log.DebugLog(ctx, "VolumeGroup %q has been created: %+v", vgName, vg)
+	}
+
+	vols, err := vg.ListVolumes(ctx)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.Internal,
-			"failed to create volume group %q: %s",
-			vgName,
+			"failed to list volumes of volume group %q: %s",
+			vg,
 			err.Error())
-	}
-	// vg.Destroy(ctx) is called in a defer further up ^
-
-	log.DebugLog(ctx, "VolumeGroup %q has been created: %+v", vgName, vg)
-
-	// add images to the group
-	for _, volume := range volumes {
-		err = vg.AddVolume(ctx, volume)
-		if err != nil {
-			return nil, status.Error(codes.Aborted, err.Error())
+	} else if len(vols) == 0 {
+		// add images to the group
+		for _, volume := range volumes {
+			err = vg.AddVolume(ctx, volume)
+			if err != nil {
+				return nil, status.Error(codes.Aborted, err.Error())
+			}
 		}
 	}
 
