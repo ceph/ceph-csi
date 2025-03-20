@@ -89,7 +89,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 	defer mgr.Destroy(ctx)
 
 	// resolve all volumes
-	volumes := make([]types.Volume, len(req.GetVolumeIds()))
+	volumes := make([]types.Volume, 0)
 	defer func() {
 		for _, vol := range volumes {
 			vol.Destroy(ctx)
@@ -105,7 +105,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 				req.GetName(),
 				err.Error())
 		}
-		volumes[i] = vol
+		volumes = append(volumes, vol)
 	}
 
 	log.DebugLog(ctx, "all %d Volumes for VolumeGroup %q have been found", len(volumes), req.GetName())
