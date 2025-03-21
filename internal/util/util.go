@@ -133,6 +133,8 @@ type Config struct {
 	// are considered slow.
 	LogSlowOpInterval time.Duration
 
+	AutoMaxProcs bool // configure GOMAXPROCS with automaxprocs
+
 	EnableProfiling    bool // flag to enable profiling
 	IsControllerServer bool // if set to true start provisioner server
 	IsNodeServer       bool // if set to true start node server

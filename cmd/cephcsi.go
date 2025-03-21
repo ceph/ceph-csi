@@ -35,6 +35,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
+	"go.uber.org/automaxprocs/maxprocs"
 	"k8s.io/klog/v2"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -77,6 +78,8 @@ func init() {
 	flag.StringVar(&conf.InstanceID, "instanceid", "default", "Unique ID distinguishing this instance of Ceph-CSI"+
 		" among other instances, when sharing Ceph clusters across CSI instances for provisioning")
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
+	flag.BoolVar(&conf.AutoMaxProcs, "automaxprocs", false,
+		"automatically set GOMAXPROCS to match Linux container CPU quota")
 	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
 	flag.StringVar(
@@ -215,6 +218,15 @@ func main() {
 		logAndExit(err.Error())
 	}
 
+	// maxprocs detects CPU quota based on cgroups, do this before setting PID-limit
+	if conf.AutoMaxProcs {
+		_, mpErr := maxprocs.Set(maxprocs.Logger(log.DefaultLog))
+		if mpErr != nil {
+			log.FatalLogMsg("failed to configure automaxprocs: %v", mpErr)
+		}
+	}
+
+	// set the PID limit (for native Ceph threads) after conf.AutoMaxProcs
 	setPIDLimit(&conf)
 
 	if conf.EnableProfiling || conf.Vtype == livenessType {
