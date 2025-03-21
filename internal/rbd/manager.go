@@ -652,3 +652,76 @@ func (mgr *rbdManager) RegenerateVolumeGroupJournal(
 
 	return groupHandle, nil
 }
+
+// CompareVolumesInGroup returns 'true' when the list of volumes matches the
+// volumes in the group. In case a volume belongs to no group, or an other
+// group than the VolumeGroup, 'false' is returned.
+func (mgr *rbdManager) CompareVolumesInGroup(
+	ctx context.Context,
+	volumes []types.Volume,
+	vg types.VolumeGroup,
+) (bool, error) {
+	vgVols, err := vg.ListVolumes(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to list volumes in group %q: %w", vg, err)
+	}
+
+	// the vg is allowed to be empty, or have the exact number of volumes
+	if !(len(vgVols) == 0 || len(vgVols) == len(volumes)) {
+		return false, fmt.Errorf(
+			"volume group %q has more or less volumes (%d) than expected (%d)",
+			vg,
+			len(vgVols),
+			len(volumes))
+	}
+
+	vgID, err := vg.GetID(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get name for volume group %q: %w", vg, err)
+	}
+
+	// verify that all volumes are part of the vg, or do not have a group at all
+	matchingGroup, err := mgr.VolumesInSameGroup(ctx, volumes)
+	if err != nil {
+		return false, err
+	} else if !matchingGroup {
+		return false, nil
+	}
+
+	// all volumes are in the same group
+	groupID, err := volumes[0].GetVolumeGroupID(ctx, mgr)
+	if err != nil && !errors.Is(err, rbderrors.ErrGroupNotFound) {
+		return false, fmt.Errorf("failed to get group for volume %q: %w", volumes[0], err)
+	}
+
+	// if none of the volumes is in a group, groupID will be ""
+	if groupID != "" && vgID != groupID {
+		log.DebugLog(ctx, "expecting group %q but volume %q has group %q", vgID, volumes[0], groupID)
+
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// VolumesInSameGroup returns 'true' when all volumes are in the same group, or
+// in no group at all.
+func (mgr *rbdManager) VolumesInSameGroup(ctx context.Context, volumes []types.Volume) (bool, error) {
+	var lastID *string
+	for _, v := range volumes {
+		id, err := v.GetVolumeGroupID(ctx, mgr)
+		if err != nil && !errors.Is(err, rbderrors.ErrGroupNotFound) {
+			return false, fmt.Errorf("failed to get group name for volume %q: %w", v, err)
+		}
+
+		// all volumes should be part of the same group
+		// lastID == nil in the 1st loop
+		if lastID != nil && *lastID != id {
+			return false, fmt.Errorf("volume %q belongs to group %q, but expected %q", v, id, *lastID)
+		}
+
+		lastID = &id
+	}
+
+	return true, nil
+}

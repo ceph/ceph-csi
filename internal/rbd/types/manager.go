@@ -40,6 +40,18 @@ type VolumeGroupResolver interface {
 	// The poolID and name are details of the Ceph RBD-group for which the
 	// CSI VolumeGroupId should get constructed.
 	MakeVolumeGroupID(ctx context.Context, poolID int64, name string) (string, error)
+
+	// GetVolumeGroupByID uses the CSI-Addons VolumeGroupId to resolve the
+	// returned VolumeGroup.
+	GetVolumeGroupByID(ctx context.Context, id string) (VolumeGroup, error)
+
+	// CompareVolumesInGroup verifies that all the volumes are part of the
+	// given VolumeGroup.
+	CompareVolumesInGroup(ctx context.Context, volumes []Volume, vg VolumeGroup) (bool, error)
+
+	// VolumesInSameGroup verifies that all volumes belong to the same (or
+	// no) VolumeGroup.
+	VolumesInSameGroup(ctx context.Context, volumes []Volume) (bool, error)
 }
 
 // Manager provides a way for other packages to get Volumes and VolumeGroups.
@@ -57,10 +69,6 @@ type Manager interface {
 
 	// Destroy frees all resources that the Manager allocated.
 	Destroy(ctx context.Context)
-
-	// GetVolumeGroupByID uses the CSI-Addons VolumeGroupId to resolve the
-	// returned VolumeGroup.
-	GetVolumeGroupByID(ctx context.Context, id string) (VolumeGroup, error)
 
 	// CreateVolumeGroup allocates a new VolumeGroup in the backend storage
 	// and records details about it in the journal.

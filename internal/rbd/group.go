@@ -22,6 +22,7 @@ import (
 
 	librbd "github.com/ceph/go-ceph/rbd"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 )
 
@@ -77,6 +78,28 @@ func (rv *rbdVolume) RemoveFromGroup(ctx context.Context, vg types.VolumeGroup) 
 	}
 
 	return librbd.GroupImageRemove(ioctx, name, rv.ioctx, rv.RbdImageName)
+}
+
+// GetVolumeGroupID returns the ID of the VolumeGroup where this rbdVolume
+// belongs to. If the rbdVolume does not belong to a VolumeGroup, a
+// rbderrors.ErrGroupNotFound is returned.
+func (rv *rbdVolume) GetVolumeGroupID(ctx context.Context, resolver types.VolumeGroupResolver) (string, error) {
+	image, err := rv.open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open image %q: %w", rv, err)
+	}
+	defer image.Close()
+
+	info, err := image.GetGroup()
+	if err != nil {
+		return "", fmt.Errorf("could not get group information for image %q: %w", rv, err)
+	}
+
+	if info.Name == "" {
+		return "", fmt.Errorf("%w: image %q is not part of a volume group", rbderrors.ErrGroupNotFound, rv)
+	}
+
+	return resolver.MakeVolumeGroupID(ctx, info.PoolID, info.Name)
 }
 
 func (rv *rbdVolume) ToMirror() (types.Mirror, error) {
