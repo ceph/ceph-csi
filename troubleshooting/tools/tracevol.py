@@ -660,7 +660,7 @@ def check_snap_content_name_in_rados(snap_uuid, snap_content_name, pool, is_rbd)
 
 def check_snap_uuid_in_rados(snap_uuid, snapcontent_name, pool, is_rbd):
     """
-    Checks whether the value of the key `csi.snapname` in the `csi.snap.<snap_uuid>` 
+    Checks whether the value of the key `csi.snapname` in the `csi.snap.<snap_uuid>`
     omap object matches the name of the snapshot content.
     """
     omap_obj = f'csi.snap.{snap_uuid}'
