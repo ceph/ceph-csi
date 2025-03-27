@@ -557,6 +557,35 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) e
 	return err
 }
 
+// validatePVCAndAppWaitForFirstConsumer creates a Pending PVC, starts an app, and verifies it to become Bound.
+func validatePVCAndAppWaitForFirstConsumer(pvcPath, appPath string, f *framework.Framework) error {
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return err
+	}
+	pvc.Namespace = f.UniqueName
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		return err
+	}
+	app.Namespace = f.UniqueName
+
+	err = createPVC(f.ClientSet, pvc)
+	if err != nil {
+		return err
+	}
+
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return err
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+
+	return err
+}
+
 func getMountType(selector, mountPath string, f *framework.Framework) (string, error) {
 	opt := metav1.ListOptions{
 		LabelSelector: selector,

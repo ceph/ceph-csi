@@ -130,6 +130,15 @@ func createPVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 	return err
 }
 
+func createPVC(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim) error {
+	_, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create pvc: %w", err)
+	}
+
+	return nil
+}
+
 func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v1.PersistentVolume, t int) error {
 	ctx := context.TODO()
 	err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(ctx, pvc.Name, metav1.DeleteOptions{})

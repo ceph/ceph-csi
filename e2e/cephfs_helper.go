@@ -26,6 +26,7 @@ import (
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
+	scv1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -67,6 +68,40 @@ func createCephfsStorageClass(
 		return err
 	}
 
+	err = updateStorageClassParameters(&sc, params, enablePool, f)
+	if err != nil {
+		return err
+	}
+
+	return createStorageClass(c, &sc)
+}
+
+func createCephfsStorageClassWaitForFirstConsumer(c kubernetes.Interface, f *framework.Framework,
+	enablePool bool,
+	params map[string]string) error {
+	scPath := fmt.Sprintf("%s/%s", cephFSExamplePath, "storageclass.yaml")
+	sc, err := getStorageClass(scPath)
+	if err != nil {
+		return err
+	}
+
+	err = updateStorageClassParameters(&sc, params, enablePool, f)
+	if err != nil {
+		return err
+	}
+
+	// Set the volume binding mode to WaitForFirstConsumer
+	value := scv1.VolumeBindingWaitForFirstConsumer
+	sc.VolumeBindingMode = &value
+
+	return createStorageClass(c, &sc)
+}
+
+func updateStorageClassParameters(sc *scv1.StorageClass, params map[string]string, enablePool bool, f *framework.Framework) error {
+	if sc == nil {
+		return fmt.Errorf("StorageClass is nil")
+	}
+
 	sc.Parameters["fsName"] = fileSystemName
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = cephFSProvisionerSecretName
@@ -93,18 +128,20 @@ func createCephfsStorageClass(
 
 	// fetch and set fsID from the cluster if not set in params
 	if _, found := params["clusterID"]; !found {
-		var fsID string
-		fsID, err = getClusterID(f)
+		fsID, err := getClusterID(f)
 		if err != nil {
 			return fmt.Errorf("failed to get clusterID: %w", err)
 		}
 		sc.Parameters["clusterID"] = fsID
 	}
 
-	timeout := time.Duration(deployTimeout) * time.Minute
+	return nil
+}
 
+func createStorageClass(c kubernetes.Interface, sc *scv1.StorageClass) error {
+	timeout := time.Duration(deployTimeout) * time.Minute
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
-		_, err = c.StorageV1().StorageClasses().Create(ctx, &sc, metav1.CreateOptions{})
+		_, err := c.StorageV1().StorageClasses().Create(ctx, sc, metav1.CreateOptions{})
 		if err != nil {
 			framework.Logf("error creating StorageClass %q: %v", sc.Name, err)
 			if isRetryableAPIError(err) {

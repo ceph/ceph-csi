@@ -360,6 +360,26 @@ var _ = Describe(cephfsType, func() {
 				})
 			}
 
+			By("verify PVC and App Binding with volumeBindingMode:WaitForFirstConsumer", func() {
+				err := createCephfsStorageClassWaitForFirstConsumer(f.ClientSet, f, true, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+
+				err = validatePVCAndAppWaitForFirstConsumer(pvcPath, appPath, f)
+				if err != nil {
+					framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
+
 			By("verify mountOptions support", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
