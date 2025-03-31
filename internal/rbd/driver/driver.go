@@ -201,7 +201,7 @@ func (r *Driver) Run(conf *util.Config) {
 
 	r.startProfiling(conf)
 
-	if conf.IsNodeServer {
+	if conf.IsNodeServer && k8s.RunsOnKubernetes() {
 		go func() {
 			// TODO: move the healer to csi-addons
 			err := rbd.RunVolumeHealer(r.ns, conf)
