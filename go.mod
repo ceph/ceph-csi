@@ -2,7 +2,7 @@ module github.com/ceph/ceph-csi
 
 go 1.23.1
 
-toolchain go1.23.4
+toolchain go1.24.1
 
 // our own API
 replace github.com/ceph/ceph-csi/api => ./api
@@ -30,7 +30,7 @@ require (
 	github.com/prometheus/client_golang v1.21.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.36.0
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	golang.org/x/sys v0.31.0
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.6
