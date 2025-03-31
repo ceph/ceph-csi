@@ -228,12 +228,14 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	is := casrbd.NewIdentityServer(conf)
 	r.cas.RegisterService(is)
 
+	if conf.IsControllerServer || conf.IsNodeServer {
+		// Register FenceController only once
+		fcs := casrbd.NewFenceControllerServer()
+		r.cas.RegisterService(fcs)
+	}
 	if conf.IsControllerServer {
 		rs := casrbd.NewReclaimSpaceControllerServer(conf.InstanceID, r.cs.VolumeLocks)
 		r.cas.RegisterService(rs)
-
-		fcs := casrbd.NewFenceControllerServer()
-		r.cas.RegisterService(fcs)
 
 		rcs := casrbd.NewReplicationServer(conf.InstanceID, NewControllerServer(r.cd))
 		r.cas.RegisterService(rcs)
@@ -241,11 +243,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 		vgcs := casrbd.NewVolumeGroupServer(conf.InstanceID)
 		r.cas.RegisterService(vgcs)
 	}
-
 	if conf.IsNodeServer {
-		fcs := casrbd.NewFenceControllerServer()
-		r.cas.RegisterService(fcs)
-
 		rs := casrbd.NewReclaimSpaceNodeServer(r.ns.VolumeLocks)
 		r.cas.RegisterService(rs)
 
