@@ -255,11 +255,10 @@ func (vg *volumeGroup) RemoveVolume(ctx context.Context, vol types.Volume) error
 
 	err := vol.RemoveFromGroup(ctx, vg)
 	if err != nil {
-		if errors.Is(err, librbd.ErrNotExist) {
-			return nil
+		if !errors.Is(err, librbd.ErrNotExist) {
+			return fmt.Errorf("failed to remove volume %q from volume group %q: %w", vol, vg, err)
 		}
-
-		return fmt.Errorf("failed to remove volume %q from volume group %q: %w", vol, vg, err)
+		log.DebugLog(ctx, "volume %q doesn't exist in group", vol)
 	}
 
 	// toRemove contain the ID of the volume that is removed from the group
