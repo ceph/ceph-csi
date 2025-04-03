@@ -8,6 +8,8 @@ run:
   build-tags:
 @@BUILD_TAGS@@
 
+  go: '@@GOVERSION@@'
+
   # default concurrency is a available CPU number
   concurrency: 4
 

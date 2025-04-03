@@ -117,12 +117,14 @@ mod-check: check-env
 	done
 	test -z "$(shell git status --short)" || (echo "files were modified during go mod checks: " ; git status --short ; false)
 
+scripts/golangci.yml: GOVERSION ?= $(shell . $(CURDIR)/build.env ; echo go$${GOLANG_VERSION})
 scripts/golangci.yml: scripts/golangci.yml.in
 	rm -f scripts/golangci.yml.buildtags.in
 	for tag in $(GO_TAGS_LIST); do \
 		echo "    - $$tag" >> scripts/golangci.yml.buildtags.in ; \
 	done
 	sed "/@@BUILD_TAGS@@/r scripts/golangci.yml.buildtags.in" scripts/golangci.yml.in | sed '/@@BUILD_TAGS@@/d' > scripts/golangci.yml
+	sed "s/@@GOVERSION@@/$(GOVERSION)/" -i scripts/golangci.yml
 
 go-lint: scripts/golangci.yml
 	./scripts/lint-go.sh
