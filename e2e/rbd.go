@@ -5219,7 +5219,8 @@ var _ = Describe("RBD", func() {
 					framework.Failf("failed to check for VolumeGroupSnapshot support: %v", err)
 				}
 				if !supported {
-					Skip("librbd does not support required VolumeGroupSnapshot function(s)")
+					framework.Logf("SKIPPING: librbd does not support required VolumeGroupSnapshot function(s)")
+					return
 				}
 
 				scName := "csi-rbd-sc"
