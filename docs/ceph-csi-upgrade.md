@@ -4,7 +4,7 @@
    - [Pre-upgrade considerations](#pre-upgrade-considerations)
       - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
    - [Upgrading from previous releases](#upgrading-from-previous-releases)
-   - [Upgrading from v3.12 to v3.13](#upgrading-from-v312-to-v313)
+   - [Upgrading from v3.13 to v3.14](#upgrading-from-v313-to-v314)
       - [Upgrading CephFS](#upgrading-cephfs)
          - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
             - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -78,11 +78,15 @@ To upgrade from previous releases, refer to the following:
 - [upgrade-from-v3.8-v3.9](https://github.com/ceph/ceph-csi/blob/v3.9.0/docs/ceph-csi-upgrade.md)
   to upgrade from cephcsi v3.8 to v3.9
 - [upgrade-from-v3.9-v3.10](https://github.com/ceph/ceph-csi/blob/v3.10.0/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.9 to v3.10
 - [upgrade-from-v3.10-v3.11](https://github.com/ceph/ceph-csi/blob/v3.11.0/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.10 to v3.11
 - [upgrade-from-v3.11-v3.12](https://github.com/ceph/ceph-csi/blob/v3.12.3/docs/ceph-csi-upgrade.md)
   to upgrade from cephcsi v3.11 to v3.12
+- [upgrade-from-v3.12-v3.13](https://github.com/ceph/ceph-csi/blob/v3.13.1/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.12 to v3.13
 
-## Upgrading from v3.12 to v3.13
+## Upgrading from v3.13 to v3.14
 
 **Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
@@ -92,19 +96,19 @@ that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-**Also, we do not recommend any direct upgrades to 3.13 except from 3.12 to 3.13.**
-For example, upgrading from 3.10 to 3.13 is not recommended.
+**Also, we do not recommend any direct upgrades to 3.14 except from 3.13 to 3.14.**
+For example, upgrading from 3.11 to 3.14 is not recommended.
 
 **Refer to the Breaking Changes Section in the
-[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.12.0) before
+[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.14.0) before
 proceeding further.**
 
-git checkout v3.13.0 tag
+git checkout v3.14.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.13.0
+git checkout v3.14.0
 ```
 
 ```console
@@ -226,7 +230,7 @@ For each node:
    - The pod deletion causes the pods to be restarted and updated automatically
      on the node.
 
-we have successfully upgraded cephfs csi from v3.12 to v3.13
+we have successfully upgraded cephfs csi from v3.13 to v3.14
 
 ### Upgrading RBD
 
@@ -290,7 +294,7 @@ daemonset.apps/csi-rbdplugin configured
 service/csi-metrics-rbdplugin configured
 ```
 
-we have successfully upgraded RBD csi from v3.12 to v3.13
+we have successfully upgraded RBD csi from v3.13 to v3.14
 
 ### Upgrading NFS
 
@@ -352,7 +356,7 @@ daemonset.apps/csi-nfsplugin configured
 service/csi-metrics-nfsplugin configured
 ```
 
-we have successfully upgraded nfs csi from v3.12 to v3.13
+we have successfully upgraded nfs csi from v3.13 to v3.14
 
 ### CSI Sidecar containers consideration
 
