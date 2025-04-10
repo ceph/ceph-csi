@@ -1,0 +1,30 @@
+{{- if .Values.volumeGroupSnapshotClass.create -}}
+apiVersion: groupsnapshot.storage.k8s.io/v1beta1
+kind: VolumeGroupSnapshotClass
+metadata:
+  name: {{ .Values.volumeGroupSnapshotClass.name }}
+{{- if .Values.volumeGroupSnapshotClass.annotations }}
+  annotations:
+{{ toYaml .Values.volumeGroupSnapshotClass.annotations | indent 4 }}
+{{- end }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+driver: {{ .Values.driverName }}
+parameters:
+  clusterID: {{ .Values.volumeGroupSnapshotClass.clusterID }}
+  pool: {{ .Values.volumeGroupSnapshotClass.pool }}
+{{- if .Values.volumeGroupSnapshotClass.volumeGroupNamePrefix }}
+  volumeGroupNamePrefix: "{{ .Values.volumeGroupSnapshotClass.volumeGroupNamePrefix }}"
+{{- end }}
+  csi.storage.k8s.io/group-snapshotter-secret-name: {{ .Values.volumeGroupSnapshotClass.groupSnapshotterSecret }}
+{{- if .Values.volumeGroupSnapshotClass.groupSnapshotterSecretNamespace }}
+  csi.storage.k8s.io/group-snapshotter-secret-namespace: {{ .Values.volumeGroupSnapshotClass.groupSnapshotterSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/group-snapshotter-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
+deletionPolicy: {{ .Values.volumeGroupSnapshotClass.deletionPolicy }}
+{{- end -}}
