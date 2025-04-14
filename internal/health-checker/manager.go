@@ -137,7 +137,8 @@ func (hcm *healthCheckManager) startStatChecker(volumeID, path string, shared bo
 // are key'd by theit volumeID+path.
 func (hcm *healthCheckManager) startChecker(cc ConditionChecker, volumeID, path string, shared bool) error {
 	key := volumeID
-	if shared {
+	if !shared {
+		// if it is non-shared checker, try to use the path as well.
 		key = fallbackKey(volumeID, path)
 	}
 
