@@ -101,7 +101,3 @@ func (rv *rbdVolume) GetVolumeGroupID(ctx context.Context, resolver types.Volume
 
 	return resolver.MakeVolumeGroupID(ctx, info.PoolID, info.Name)
 }
-
-func (rv *rbdVolume) ToMirror() (types.Mirror, error) {
-	return rv, nil
-}
