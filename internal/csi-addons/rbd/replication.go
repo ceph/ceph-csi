@@ -718,7 +718,13 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", sErr.Error())
 		}
 		log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime)
-		if req.GetForce() && st.Equal(*creationTime) {
+
+		syncInfo, sErr := localStatus.GetLastSyncInfo(ctx)
+		if sErr != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get last sync info: %s", sErr.Error())
+		}
+
+		if req.GetForce() && st.Equal(*creationTime) && !syncInfo.IsSyncing() {
 			err = mirror.Resync(ctx)
 			if err != nil {
 				return nil, getGRPCError(err)

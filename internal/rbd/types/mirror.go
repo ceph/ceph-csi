@@ -110,4 +110,8 @@ type SyncInfo interface {
 	// case there is no last snapshot bytes returns 0 as the LastSyncBytes is
 	// optional.
 	GetLastSyncBytes() int64
+
+	// IsSyncing returns true if the SyncInfo for the SiteStatus is actively
+	// syncing.
+	IsSyncing() bool
 }
