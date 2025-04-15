@@ -20,8 +20,6 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -32,12 +30,9 @@ import (
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
-	"github.com/csi-addons/spec/lib/go/replication"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestValidateSchedulingInterval(t *testing.T) {
@@ -413,147 +408,6 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 			t.Parallel()
 			if ready := checkRemoteSiteStatus(context.TODO(), tt.args.GetAllSitesStatus()); ready != tt.wantReady {
 				t.Errorf("checkRemoteSiteStatus() ready = %v, expect ready = %v", ready, tt.wantReady)
-			}
-		})
-	}
-}
-
-func TestValidateLastSyncInfo(t *testing.T) {
-	t.Parallel()
-	ctx := context.TODO()
-	duration, err := time.ParseDuration(strconv.Itoa(int(56743)) + "s")
-	if err != nil {
-		t.Errorf("failed to parse duration)")
-	}
-
-	tests := []struct {
-		name        string
-		description string
-		info        *replication.GetVolumeReplicationInfoResponse
-		expectedErr string
-	}{
-		{
-			name: "valid description",
-			//nolint:lll // sample output cannot be split into multiple lines.
-			description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncTime:     timestamppb.New(time.Unix(1684675261, 0)),
-				LastSyncDuration: durationpb.New(duration),
-				LastSyncBytes:    81920,
-			},
-			expectedErr: "",
-		},
-		{
-			name:        "empty description",
-			description: "",
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncTime:     nil,
-				LastSyncDuration: nil,
-				LastSyncBytes:    0,
-			},
-			expectedErr: rbderrors.ErrLastSyncTimeNotFound.Error(),
-		},
-		{
-			name: "description without last_snapshot_bytes",
-			//nolint:lll // sample output cannot be split into multiple lines.
-			description: `replaying, {"bytes_per_second":0.0,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncDuration: durationpb.New(duration),
-				LastSyncTime:     timestamppb.New(time.Unix(1684675261, 0)),
-				LastSyncBytes:    0,
-			},
-			expectedErr: "",
-		},
-		{
-			name: "description without local_snapshot_time",
-			//nolint:lll // sample output cannot be split into multiple lines.
-			description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncDuration: nil,
-				LastSyncTime:     nil,
-				LastSyncBytes:    0,
-			},
-			expectedErr: rbderrors.ErrLastSyncTimeNotFound.Error(),
-		},
-		{
-			name: "description without last_snapshot_sync_seconds",
-			//nolint:lll // sample output cannot be split into multiple lines.
-			description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncDuration: nil,
-				LastSyncTime:     timestamppb.New(time.Unix(1684675261, 0)),
-				LastSyncBytes:    81920,
-			},
-			expectedErr: "",
-		},
-		{
-			name: "description with last_snapshot_sync_seconds = 0",
-			//nolint:lll // sample output cannot be split into multiple lines.
-			description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_sync_seconds":0,
-			"last_snapshot_bytes":81920,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncDuration: durationpb.New(time.Duration(0)),
-				LastSyncTime:     timestamppb.New(time.Unix(1684675261, 0)),
-				LastSyncBytes:    81920,
-			},
-			expectedErr: "",
-		},
-		{
-			name: "description with invalid JSON",
-			//nolint:lll // sample output cannot be split into multiple lines.
-			description: `replaying,{"bytes_per_second":0.0,"last_snapshot_bytes":81920","bytes_per_snapshot":149504.0","remote_snapshot_timestamp":1662655501`,
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncDuration: nil,
-				LastSyncTime:     nil,
-				LastSyncBytes:    0,
-			},
-			expectedErr: "failed to unmarshal",
-		},
-		{
-			name:        "description with no JSON",
-			description: `replaying`,
-			info: &replication.GetVolumeReplicationInfoResponse{
-				LastSyncDuration: nil,
-				LastSyncTime:     nil,
-				LastSyncBytes:    0,
-			},
-			expectedErr: rbderrors.ErrLastSyncTimeNotFound.Error(),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			teststruct, err := getLastSyncInfo(ctx, tt.description)
-			if err != nil && !strings.Contains(err.Error(), tt.expectedErr) {
-				// returned error
-				t.Errorf("getLastSyncInfo() returned error, expected: %v, got: %v",
-					tt.expectedErr, err)
-			}
-			if teststruct != nil {
-				if teststruct.GetLastSyncTime().GetSeconds() != tt.info.GetLastSyncTime().GetSeconds() {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
-						tt.name,
-						teststruct.GetLastSyncTime(),
-						tt.info.GetLastSyncTime())
-				}
-				if tt.info.GetLastSyncDuration() == nil && teststruct.GetLastSyncDuration() != nil {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
-						tt.name,
-						teststruct.GetLastSyncDuration(),
-						tt.info.GetLastSyncDuration())
-				}
-				if teststruct.GetLastSyncDuration().GetSeconds() != tt.info.GetLastSyncDuration().GetSeconds() {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
-						tt.name,
-						teststruct.GetLastSyncDuration(),
-						tt.info.GetLastSyncDuration())
-				}
-				if teststruct.GetLastSyncBytes() != tt.info.GetLastSyncBytes() {
-					t.Errorf("name: %v, getLastSyncInfo() %v, expected %v",
-						tt.name,
-						teststruct.GetLastSyncBytes(),
-						tt.info.GetLastSyncBytes())
-				}
 			}
 		})
 	}

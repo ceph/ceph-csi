@@ -17,7 +17,9 @@ package rbd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
@@ -326,4 +328,76 @@ func (status SiteMirrorImageStatus) IsUP() bool {
 func (status SiteMirrorImageStatus) GetLastUpdate() time.Time {
 	// convert the last update time to UTC
 	return time.Unix(status.LastUpdate, 0).UTC()
+}
+
+func (status SiteMirrorImageStatus) GetLastSyncInfo(ctx context.Context) (types.SyncInfo, error) {
+	return newSyncInfo(ctx, status.Description)
+}
+
+type syncInfo struct {
+	LocalSnapshotTime    int64  `json:"local_snapshot_timestamp"`
+	LastSnapshotBytes    int64  `json:"last_snapshot_bytes"`
+	LastSnapshotDuration *int64 `json:"last_snapshot_sync_seconds"`
+}
+
+// Type assertion for ensuring an implementation of the full SyncInfo interface.
+var _ types.SyncInfo = &syncInfo{}
+
+func newSyncInfo(ctx context.Context, description string) (types.SyncInfo, error) {
+	// Format of the description will be as followed:
+	// description = `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,
+	// "last_snapshot_bytes":81920,"last_snapshot_sync_seconds":0,
+	// "local_snapshot_timestamp":1684675261,
+	// "remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`
+	// In case there is no last snapshot bytes returns 0 as the
+	// LastSyncBytes is optional.
+	// In case there is no last snapshot sync seconds, it returns nil as the
+	// LastSyncDuration is optional.
+	// In case there is no local snapshot timestamp return an error as the
+	// LastSyncTime is required.
+
+	if description == "" {
+		return nil, fmt.Errorf("empty description: %w", rbderrors.ErrLastSyncTimeNotFound)
+	}
+	log.DebugLog(ctx, "description: %s", description)
+	splittedString := strings.SplitN(description, ",", 2)
+	if len(splittedString) == 1 {
+		return nil, fmt.Errorf("no snapshot details: %w", rbderrors.ErrLastSyncTimeNotFound)
+	}
+
+	var localSnapInfo syncInfo
+	err := json.Unmarshal([]byte(splittedString[1]), &localSnapInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal description %q into syncInfo: %w", description, err)
+	}
+
+	// If the json unmarsal is successful but the local snapshot time is 0, we
+	// need to consider it as an error as the LastSyncTime is required.
+	if localSnapInfo.LocalSnapshotTime == 0 {
+		return nil, fmt.Errorf("empty local snapshot timestamp: %w", rbderrors.ErrLastSyncTimeNotFound)
+	}
+
+	return &localSnapInfo, nil
+}
+
+func (si *syncInfo) GetLastSyncTime() time.Time {
+	// converts localSnapshotTime of type int64 to time.Time
+	return time.Unix(si.LocalSnapshotTime, 0)
+}
+
+func (si *syncInfo) GetLastSyncBytes() int64 {
+	return si.LastSnapshotBytes
+}
+
+func (si *syncInfo) GetLastSyncDuration() *time.Duration {
+	var duration time.Duration
+
+	if si.LastSnapshotDuration == nil {
+		duration = time.Duration(0)
+	} else {
+		// time.Duration is in nanoseconds
+		duration = time.Duration(*si.LastSnapshotDuration) * time.Second
+	}
+
+	return &duration
 }

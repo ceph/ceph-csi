@@ -18,7 +18,6 @@ package rbd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -891,11 +890,8 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Errorf(codes.Internal, "failed to get remote status: %v", err)
 	}
 
-	description := remoteStatus.GetDescription()
-	resp, err := getLastSyncInfo(ctx, description)
+	lastSyncInfo, err := remoteStatus.GetLastSyncInfo(ctx)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to parse last sync info from %q: %v", description, err)
-
 		if errors.Is(err, rbderrors.ErrLastSyncTimeNotFound) {
 			return nil, status.Errorf(codes.NotFound, "failed to get last sync info: %v", err)
 		}
@@ -903,73 +899,18 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Errorf(codes.Internal, "failed to get last sync info: %v", err)
 	}
 
-	return resp, nil
-}
-
-// This function gets the local snapshot time, last sync snapshot seconds
-// and last sync bytes from the description of localStatus and convert
-// it into required types.
-func getLastSyncInfo(ctx context.Context, description string) (*replication.GetVolumeReplicationInfoResponse, error) {
-	// Format of the description will be as followed:
-	// description = `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,
-	// "last_snapshot_bytes":81920,"last_snapshot_sync_seconds":0,
-	// "local_snapshot_timestamp":1684675261,
-	// "remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`
-	// In case there is no last snapshot bytes returns 0 as the
-	// LastSyncBytes is optional.
-	// In case there is no last snapshot sync seconds, it returns nil as the
-	// LastSyncDuration is optional.
-	// In case there is no local snapshot timestamp return an error as the
-	// LastSyncTime is required.
-
-	var response replication.GetVolumeReplicationInfoResponse
-
-	if description == "" {
-		return nil, fmt.Errorf("empty description: %w", rbderrors.ErrLastSyncTimeNotFound)
-	}
-	log.DebugLog(ctx, "description: %s", description)
-	splittedString := strings.SplitN(description, ",", 2)
-	if len(splittedString) == 1 {
-		return nil, fmt.Errorf("no snapshot details: %w", rbderrors.ErrLastSyncTimeNotFound)
-	}
-	type localStatus struct {
-		LocalSnapshotTime    int64  `json:"local_snapshot_timestamp"`
-		LastSnapshotBytes    int64  `json:"last_snapshot_bytes"`
-		LastSnapshotDuration *int64 `json:"last_snapshot_sync_seconds"`
+	resp := replication.GetVolumeReplicationInfoResponse{
+		LastSyncTime:  timestamppb.New(lastSyncInfo.GetLastSyncTime()),
+		LastSyncBytes: lastSyncInfo.GetLastSyncBytes(),
 	}
 
-	var localSnapInfo localStatus
-	err := json.Unmarshal([]byte(splittedString[1]), &localSnapInfo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal local snapshot info: %w", err)
+	// lastDuration is optional, can be nil
+	lastDuration := lastSyncInfo.GetLastSyncDuration()
+	if lastDuration != nil {
+		resp.LastSyncDuration = durationpb.New(*lastDuration)
 	}
 
-	// If the json unmarsal is successful but the local snapshot time is 0, we
-	// need to consider it as an error as the LastSyncTime is required.
-	if localSnapInfo.LocalSnapshotTime == 0 {
-		return nil, fmt.Errorf("empty local snapshot timestamp: %w", rbderrors.ErrLastSyncTimeNotFound)
-	}
-	if localSnapInfo.LastSnapshotDuration != nil {
-		// converts localSnapshotDuration of type int64 to string format with
-		// appended `s` seconds required  for time.ParseDuration
-		lastDurationTime := fmt.Sprintf("%ds", *localSnapInfo.LastSnapshotDuration)
-		// parse Duration from the lastDurationTime string
-		lastDuration, err := time.ParseDuration(lastDurationTime)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse last snapshot duration: %w", err)
-		}
-		// converts time.Duration to *durationpb.Duration
-		response.LastSyncDuration = durationpb.New(lastDuration)
-	}
-
-	// converts localSnapshotTime of type int64 to time.Time
-	lastUpdateTime := time.Unix(localSnapInfo.LocalSnapshotTime, 0)
-	lastSyncTime := timestamppb.New(lastUpdateTime)
-
-	response.LastSyncTime = lastSyncTime
-	response.LastSyncBytes = localSnapInfo.LastSnapshotBytes
-
-	return &response, nil
+	return &resp, nil
 }
 
 func checkVolumeResyncStatus(ctx context.Context, localStatus types.SiteStatus) error {
@@ -977,13 +918,11 @@ func checkVolumeResyncStatus(ctx context.Context, localStatus types.SiteStatus) 
 	// started or not, if we dont see local_snapshot_timestamp in the
 	// description of localStatus, we are returning error. if we see the local
 	// snapshot timestamp in the description we return resyncing started.
-	description := localStatus.GetDescription()
-	resp, err := getLastSyncInfo(ctx, description)
+	//
+	// Note: without a local_snapshot_timestamp, GetLastSyncInfo() returns an error.
+	_, err := localStatus.GetLastSyncInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get last sync info: %w", err)
-	}
-	if resp.GetLastSyncTime() == nil {
-		return errors.New("last sync time is nil")
 	}
 
 	return nil

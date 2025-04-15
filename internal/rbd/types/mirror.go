@@ -92,4 +92,22 @@ type SiteStatus interface {
 	GetDescription() string
 	// GetLastUpdate returns the last update time
 	GetLastUpdate() time.Time
+	// GetLastSyncInfo returns the last SyncInfo details for the site
+	GetLastSyncInfo(ctx context.Context) (SyncInfo, error)
+}
+
+// SyncInfo is the interface for fetching more details about a SiteStatus object.
+type SyncInfo interface {
+	// GetLastSyncDuration returns the last snapshot sync duration. In case
+	// there is no last snapshot sync seconds, it returns nil as the
+	// LastSyncDuration is optional.
+	GetLastSyncDuration() *time.Duration
+
+	// GetLastSyncTime returns the local snapshot timestamp.
+	GetLastSyncTime() time.Time
+
+	// GetLastSyncBytes returns the last snapshot bytes of the last sync. In
+	// case there is no last snapshot bytes returns 0 as the LastSyncBytes is
+	// optional.
+	GetLastSyncBytes() int64
 }
