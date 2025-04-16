@@ -18,6 +18,7 @@ package rbd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -209,8 +210,12 @@ func (rm *rbdMirror) Demote(_ context.Context) error {
 	return nil
 }
 
-// Resync resync image to correct the split-brain.
-func (rm *rbdMirror) Resync(_ context.Context) error {
+// Resync resync image to correct the split-brain. It may take some time for
+// the RBD-mirror daemon to start syncing the image. After the resync operation
+// is executed, the status of the resync is checked with a small delay to
+// prevent subsequent resync calls from re-starting the resync quickly after
+// each other.
+func (rm *rbdMirror) Resync(ctx context.Context) error {
 	image, err := rm.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", rm, err)
@@ -219,6 +224,43 @@ func (rm *rbdMirror) Resync(_ context.Context) error {
 	err = image.MirrorResync()
 	if err != nil {
 		return fmt.Errorf("failed to resync image %q with error: %w", rm, err)
+	}
+
+	// delay until the state is syncing, or until 1+2+4+8+16 seconds passed
+	delay := 1 * time.Second
+	for {
+		time.Sleep(delay)
+
+		sts, dErr := rm.GetGlobalMirroringStatus(ctx)
+		if dErr != nil {
+			// the image gets recreated after issuing resync
+			if errors.Is(dErr, rbderrors.ErrImageNotFound) {
+				continue
+			}
+			log.ErrorLog(ctx, dErr.Error())
+
+			return dErr
+		}
+
+		localStatus, dErr := sts.GetLocalSiteStatus()
+		if dErr != nil {
+			log.ErrorLog(ctx, dErr.Error())
+
+			return fmt.Errorf("failed to get local status: %w", dErr)
+		}
+
+		syncInfo, dErr := localStatus.GetLastSyncInfo(ctx)
+		if dErr != nil {
+			return fmt.Errorf("failed to get last sync info: %w", dErr)
+		}
+		if syncInfo.IsSyncing() {
+			return nil
+		}
+
+		delay = 2 * delay
+		if delay > 30 {
+			break
+		}
 	}
 
 	// If we issued a resync, return a non-final error as image needs to be recreated
