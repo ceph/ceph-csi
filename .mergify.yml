@@ -91,7 +91,7 @@ pull_request_rules:
       - not:
           status-success~=^ci/centos
       - or:
-          - "check-pending=Queue: Embarked in merge train"
+          - "check-pending=Queue: Embarked in merge queue"
           - author=mergify[bot]
     actions:
       label:
