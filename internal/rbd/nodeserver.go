@@ -165,10 +165,12 @@ func (ns *NodeServer) populateRbdVol(
 ) (*rbdVolume, error) {
 	var err error
 	volID := req.GetVolumeId()
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
+
+	isBlock, isMultiNode := csicommon.IsBlockMultiNode([]*csi.VolumeCapability{req.GetVolumeCapability()})
 	disableInUseChecks := false
+
 	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
-	if req.GetVolumeCapability().GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+	if isMultiNode {
 		if !isBlock {
 			log.WarningLog(
 				ctx,
@@ -216,6 +218,7 @@ func (ns *NodeServer) populateRbdVol(
 	}
 
 	rv.DisableInUseChecks = disableInUseChecks
+	rv.readOnly = csicommon.IsReaderOnly([]*csi.VolumeCapability{req.GetVolumeCapability()})
 
 	err = rv.Connect(cr)
 	if err != nil {
@@ -403,13 +406,6 @@ func (ns *NodeServer) stageTransaction(
 	transaction := &stageTransaction{}
 
 	var err error
-
-	// Allow image to be mounted on multiple nodes if it is ROX
-	if req.GetVolumeCapability().GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
-		log.ExtendedLog(ctx, "setting disableInUseChecks on rbd volume to: %v", req.GetVolumeId)
-		volOptions.DisableInUseChecks = true
-		volOptions.readOnly = true
-	}
 
 	err = flattenImageBeforeMapping(ctx, volOptions)
 	if err != nil {
@@ -760,7 +756,6 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	stagingPath, devicePath string,
 	fileEncryption bool,
 ) error {
-	readOnly := false
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
 	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
@@ -784,18 +779,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	opt = append(opt, "_netdev")
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
-	rOnly := "ro"
-
-	mode := req.GetVolumeCapability().GetAccessMode().GetMode()
-	if mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
-		mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
-		if !csicommon.MountOptionContains(opt, rOnly) {
-			opt = append(opt, rOnly)
-		}
-	}
-	if csicommon.MountOptionContains(opt, rOnly) {
-		readOnly = true
-	}
+	readOnly := csicommon.IsReaderOnly([]*csi.VolumeCapability{req.GetVolumeCapability()})
 
 	if existingFormat == "" && !staticVol && !readOnly && !isBlock {
 		args := ns.getMkfsArgs(fsType)

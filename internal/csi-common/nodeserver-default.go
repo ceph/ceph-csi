@@ -93,6 +93,14 @@ func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) 
 		}
 	}
 
+	// add "ro" in case the capabilities indicate READER_ONLY
+	rOnly := "ro"
+	if IsReaderOnly([]*csi.VolumeCapability{volCap}) {
+		if !MountOptionContains(mountOptions, rOnly) {
+			mountOptions = append(mountOptions, rOnly)
+		}
+	}
+
 	return mountOptions
 }
 
