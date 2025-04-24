@@ -474,13 +474,16 @@ func (ns *NodeServer) stageTransaction(
 		}
 	}
 
-	// As we are supporting the restore of a volume to a bigger size and
-	// creating bigger size clone from a volume, we need to check filesystem
-	// resize is required, if required resize filesystem.
-	// in case of encrypted block PVC resize only the LUKS device.
-	err = resizeNodeStagePath(ctx, isBlock, transaction, req.GetVolumeId(), stagingTargetPath)
-	if err != nil {
-		return transaction, err
+	// if the volume is read-only, no resize should be done
+	if !volOptions.readOnly {
+		// As we are supporting the restore of a volume to a bigger size and
+		// creating bigger size clone from a volume, we need to check filesystem
+		// resize is required, if required resize filesystem.
+		// in case of encrypted block PVC resize only the LUKS device.
+		err = resizeNodeStagePath(ctx, isBlock, transaction, req.GetVolumeId(), stagingTargetPath)
+		if err != nil {
+			return transaction, err
+		}
 	}
 
 	return transaction, err
