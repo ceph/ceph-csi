@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.33.0
-	github.com/container-storage-interface/spec v1.11.0
+	github.com/container-storage-interface/spec v1.11.1-0.20250515121015-a539b4f9fe41
 	github.com/csi-addons/kubernetes-csi-addons v0.12.0
 	github.com/csi-addons/spec v0.2.1-0.20241104111131-27825f744db5
 	github.com/gemalto/kmip-go v0.0.10

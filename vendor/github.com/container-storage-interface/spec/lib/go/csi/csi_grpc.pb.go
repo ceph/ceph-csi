@@ -196,6 +196,7 @@ const (
 	Controller_CreateSnapshot_FullMethodName             = "/csi.v1.Controller/CreateSnapshot"
 	Controller_DeleteSnapshot_FullMethodName             = "/csi.v1.Controller/DeleteSnapshot"
 	Controller_ListSnapshots_FullMethodName              = "/csi.v1.Controller/ListSnapshots"
+	Controller_GetSnapshot_FullMethodName                = "/csi.v1.Controller/GetSnapshot"
 	Controller_ControllerExpandVolume_FullMethodName     = "/csi.v1.Controller/ControllerExpandVolume"
 	Controller_ControllerGetVolume_FullMethodName        = "/csi.v1.Controller/ControllerGetVolume"
 	Controller_ControllerModifyVolume_FullMethodName     = "/csi.v1.Controller/ControllerModifyVolume"
@@ -216,6 +217,7 @@ type ControllerClient interface {
 	CreateSnapshot(ctx context.Context, in *CreateSnapshotRequest, opts ...grpc.CallOption) (*CreateSnapshotResponse, error)
 	DeleteSnapshot(ctx context.Context, in *DeleteSnapshotRequest, opts ...grpc.CallOption) (*DeleteSnapshotResponse, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ListSnapshotsResponse, error)
+	GetSnapshot(ctx context.Context, in *GetSnapshotRequest, opts ...grpc.CallOption) (*GetSnapshotResponse, error)
 	ControllerExpandVolume(ctx context.Context, in *ControllerExpandVolumeRequest, opts ...grpc.CallOption) (*ControllerExpandVolumeResponse, error)
 	ControllerGetVolume(ctx context.Context, in *ControllerGetVolumeRequest, opts ...grpc.CallOption) (*ControllerGetVolumeResponse, error)
 	ControllerModifyVolume(ctx context.Context, in *ControllerModifyVolumeRequest, opts ...grpc.CallOption) (*ControllerModifyVolumeResponse, error)
@@ -328,6 +330,15 @@ func (c *controllerClient) ListSnapshots(ctx context.Context, in *ListSnapshotsR
 	return out, nil
 }
 
+func (c *controllerClient) GetSnapshot(ctx context.Context, in *GetSnapshotRequest, opts ...grpc.CallOption) (*GetSnapshotResponse, error) {
+	out := new(GetSnapshotResponse)
+	err := c.cc.Invoke(ctx, Controller_GetSnapshot_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerClient) ControllerExpandVolume(ctx context.Context, in *ControllerExpandVolumeRequest, opts ...grpc.CallOption) (*ControllerExpandVolumeResponse, error) {
 	out := new(ControllerExpandVolumeResponse)
 	err := c.cc.Invoke(ctx, Controller_ControllerExpandVolume_FullMethodName, in, out, opts...)
@@ -370,6 +381,7 @@ type ControllerServer interface {
 	CreateSnapshot(context.Context, *CreateSnapshotRequest) (*CreateSnapshotResponse, error)
 	DeleteSnapshot(context.Context, *DeleteSnapshotRequest) (*DeleteSnapshotResponse, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ListSnapshotsResponse, error)
+	GetSnapshot(context.Context, *GetSnapshotRequest) (*GetSnapshotResponse, error)
 	ControllerExpandVolume(context.Context, *ControllerExpandVolumeRequest) (*ControllerExpandVolumeResponse, error)
 	ControllerGetVolume(context.Context, *ControllerGetVolumeRequest) (*ControllerGetVolumeResponse, error)
 	ControllerModifyVolume(context.Context, *ControllerModifyVolumeRequest) (*ControllerModifyVolumeResponse, error)
@@ -412,6 +424,9 @@ func (UnimplementedControllerServer) DeleteSnapshot(context.Context, *DeleteSnap
 }
 func (UnimplementedControllerServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ListSnapshotsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
+}
+func (UnimplementedControllerServer) GetSnapshot(context.Context, *GetSnapshotRequest) (*GetSnapshotResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSnapshot not implemented")
 }
 func (UnimplementedControllerServer) ControllerExpandVolume(context.Context, *ControllerExpandVolumeRequest) (*ControllerExpandVolumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ControllerExpandVolume not implemented")
@@ -633,6 +648,24 @@ func _Controller_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Controller_GetSnapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSnapshotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServer).GetSnapshot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Controller_GetSnapshot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServer).GetSnapshot(ctx, req.(*GetSnapshotRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Controller_ControllerExpandVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ControllerExpandVolumeRequest)
 	if err := dec(in); err != nil {
@@ -737,6 +770,10 @@ var Controller_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSnapshots",
 			Handler:    _Controller_ListSnapshots_Handler,
+		},
+		{
+			MethodName: "GetSnapshot",
+			Handler:    _Controller_GetSnapshot_Handler,
 		},
 		{
 			MethodName: "ControllerExpandVolume",

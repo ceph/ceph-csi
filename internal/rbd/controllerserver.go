@@ -1709,3 +1709,38 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
+
+func (cs *ControllerServer) GetSnapshot(
+	ctx context.Context,
+	req *csi.GetSnapshotRequest,
+) (*csi.GetSnapshotResponse, error) {
+	err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_GET_SNAPSHOT)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid get snapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
+	snapID := req.GetSnapshotId()
+	if snapID == "" {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot ID cannot be empty")
+	}
+
+	mgr := NewManager(cs.Driver.GetInstanceID(), nil, req.GetSecrets())
+	defer mgr.Destroy(ctx)
+
+	snapshot, err := mgr.GetSnapshotByID(ctx, snapID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "failed to find snapshot with ID %q: %s", snapID, err.Error())
+	}
+	defer snapshot.Destroy(ctx)
+
+	csiSnap, err := snapshot.ToCSI(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.GetSnapshotResponse{
+		Snapshot: csiSnap,
+	}, nil
+}

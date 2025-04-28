@@ -217,7 +217,7 @@ github.com/ceph/go-ceph/rbd/admin
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/container-storage-interface/spec v1.11.0
+# github.com/container-storage-interface/spec v1.11.1-0.20250515121015-a539b4f9fe41
 ## explicit; go 1.18
 github.com/container-storage-interface/spec/lib/go/csi
 # github.com/csi-addons/kubernetes-csi-addons v0.12.0
