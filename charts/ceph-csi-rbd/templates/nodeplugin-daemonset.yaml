@@ -60,6 +60,7 @@ spec:
             - "--stagingpath={{ .Values.kubeletDir }}/plugins/kubernetes.io/csi/"
             - "--type=rbd"
             - "--nodeserver=true"
+            - "--automaxprocs=true"
             - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"

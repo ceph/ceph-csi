@@ -83,6 +83,7 @@ spec:
             - "--nodeid=$(NODE_ID)"
             - "--type=cephfs"
             - "--controllerserver=true"
+            - "--automaxprocs=true"
             - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"

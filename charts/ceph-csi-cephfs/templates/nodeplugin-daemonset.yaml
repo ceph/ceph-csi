@@ -58,6 +58,7 @@ spec:
             - "--nodeid=$(NODE_ID)"
             - "--type=cephfs"
             - "--nodeserver=true"
+            - "--automaxprocs=true"
             - "--pidlimit=-1"
 {{- if .Values.nodeplugin.forcecephkernelclient }}
             - "--forcecephkernelclient={{ .Values.nodeplugin.forcecephkernelclient }}"
