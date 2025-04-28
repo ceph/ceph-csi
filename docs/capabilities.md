@@ -28,7 +28,7 @@ capabilities:
 
 ```
 mgr "allow rw"
-osd "allow rw tag cephfs metadata=cephfs, allow rw tag cephfs data=cephfs"
+osd "allow rwx tag cephfs metadata=cephfs, allow rw tag cephfs data=cephfs"
 mds "allow r fsname=cephfs path=/volumes, allow rws fsname=cephfs path=/volumes/csi"
 mon "allow r fsname=cephfs"
 ```
@@ -63,7 +63,7 @@ FS_NAME=cephfs
 SUB_VOL=csi
 ceph auth get-or-create client.$USER \
   mgr "allow rw" \
-  osd "allow rw tag cephfs metadata=$FS_NAME, allow rw tag cephfs data=$FS_NAME" \
+  osd "allow rwx tag cephfs metadata=$FS_NAME, allow rw tag cephfs data=$FS_NAME" \
   mds "allow r fsname=$FS_NAME path=/volumes, allow rws fsname=$FS_NAME path=/volumes/$SUB_VOL" \
   mon "allow r fsname=$FS_NAME"
 ```
