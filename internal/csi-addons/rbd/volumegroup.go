@@ -403,7 +403,7 @@ func (vs *VolumeGroupServer) ModifyVolumeGroupMembership(
 				codes.InvalidArgument,
 				"failed to get the CSI ID of volume %q: %v",
 				vol,
-				err)
+				idErr)
 		}
 
 		beforeIDs[id] = vol
