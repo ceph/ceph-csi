@@ -60,7 +60,7 @@ var policyV2Support = []kernel.KernelVersion{
 	},
 }
 
-// error values
+// Error values.
 var (
 	ErrBadAuth = errors.New("key authentication check failed")
 )
@@ -278,7 +278,7 @@ func initializeAndUnlock(
 	return nil
 }
 
-// getInodeEncryptedAttribute returns the inode's encrypt attribute similar to lsattr(1)
+// getInodeEncryptedAttribute returns the inode's encrypt attribute similar to lsattr(1).
 func getInodeEncryptedAttribute(p string) (bool, error) {
 	file, err := os.Open(p)
 	if err != nil {
