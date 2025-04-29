@@ -58,6 +58,21 @@ func NewKernelMounter() KernelMounter {
 	}
 }
 
+func (m *kernelMounter) Mount(
+	ctx context.Context,
+	mountPoint string,
+	cr *util.Credentials,
+	volOptions *store.VolumeOptions,
+) error {
+	if err := util.CreateMountPoint(mountPoint); err != nil {
+		return err
+	}
+
+	return m.mountKernel(ctx, mountPoint, cr, volOptions)
+}
+
+func (m *kernelMounter) Name() string { return "Ceph kernel client" }
+
 func (m *kernelMounter) mountKernel(
 	ctx context.Context,
 	mountPoint string,
@@ -102,21 +117,6 @@ func (m *kernelMounter) mountKernel(
 
 	return err
 }
-
-func (m *kernelMounter) Mount(
-	ctx context.Context,
-	mountPoint string,
-	cr *util.Credentials,
-	volOptions *store.VolumeOptions,
-) error {
-	if err := util.CreateMountPoint(mountPoint); err != nil {
-		return err
-	}
-
-	return m.mountKernel(ctx, mountPoint, cr, volOptions)
-}
-
-func (m *kernelMounter) Name() string { return "Ceph kernel client" }
 
 // filesystemSupported checks if the passed name of the filesystem is included
 // in /proc/filesystems.

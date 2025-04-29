@@ -281,6 +281,54 @@ func initVaultTokensKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
+// FetchDEK returns passphrase from Vault. The passphrase is stored in a
+// data.data.passphrase structure.
+func (vtc *vaultTenantConnection) FetchDEK(ctx context.Context, key string) (string, error) {
+	// Since the second return variable loss.Version is not used, there it is ignored.
+	s, _, err := vtc.secrets.GetSecret(key, vtc.keyContext)
+	if err != nil {
+		return "", err
+	}
+
+	data, ok := s["data"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("failed parsing data for get passphrase request for %s", key)
+	}
+	passphrase, ok := data["passphrase"].(string)
+	if !ok {
+		return "", fmt.Errorf("failed parsing passphrase for get passphrase request for %s", key)
+	}
+
+	return passphrase, nil
+}
+
+// StoreDEK saves new passphrase in Vault.
+func (vtc *vaultTenantConnection) StoreDEK(ctx context.Context, key, value string) error {
+	data := map[string]interface{}{
+		"data": map[string]string{
+			"passphrase": value,
+		},
+	}
+
+	// Since the first return variable loss.Version is not used, there it is ignored.
+	_, err := vtc.secrets.PutSecret(key, data, vtc.keyContext)
+	if err != nil {
+		return fmt.Errorf("saving passphrase at %s request to vault failed: %w", key, err)
+	}
+
+	return nil
+}
+
+// RemoveDEK deletes passphrase from Vault.
+func (vtc *vaultTenantConnection) RemoveDEK(ctx context.Context, key string) error {
+	err := vtc.secrets.DeleteSecret(key, vtc.getDeleteKeyContext())
+	if err != nil {
+		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", key, err)
+	}
+
+	return nil
+}
+
 func (kms *vaultTokensKMS) configureTenant(config map[string]interface{}, tenant string) error {
 	kms.Tenant = tenant
 	tenantConfig, found := fetchTenantConfig(config, tenant)
@@ -459,54 +507,6 @@ func (vtc *vaultTenantConnection) getK8sClient() (*kubernetes.Clientset, error) 
 	}
 
 	return vtc.client, nil
-}
-
-// FetchDEK returns passphrase from Vault. The passphrase is stored in a
-// data.data.passphrase structure.
-func (vtc *vaultTenantConnection) FetchDEK(ctx context.Context, key string) (string, error) {
-	// Since the second return variable loss.Version is not used, there it is ignored.
-	s, _, err := vtc.secrets.GetSecret(key, vtc.keyContext)
-	if err != nil {
-		return "", err
-	}
-
-	data, ok := s["data"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("failed parsing data for get passphrase request for %s", key)
-	}
-	passphrase, ok := data["passphrase"].(string)
-	if !ok {
-		return "", fmt.Errorf("failed parsing passphrase for get passphrase request for %s", key)
-	}
-
-	return passphrase, nil
-}
-
-// StoreDEK saves new passphrase in Vault.
-func (vtc *vaultTenantConnection) StoreDEK(ctx context.Context, key, value string) error {
-	data := map[string]interface{}{
-		"data": map[string]string{
-			"passphrase": value,
-		},
-	}
-
-	// Since the first return variable loss.Version is not used, there it is ignored.
-	_, err := vtc.secrets.PutSecret(key, data, vtc.keyContext)
-	if err != nil {
-		return fmt.Errorf("saving passphrase at %s request to vault failed: %w", key, err)
-	}
-
-	return nil
-}
-
-// RemoveDEK deletes passphrase from Vault.
-func (vtc *vaultTenantConnection) RemoveDEK(ctx context.Context, key string) error {
-	err := vtc.secrets.DeleteSecret(key, vtc.getDeleteKeyContext())
-	if err != nil {
-		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", key, err)
-	}
-
-	return nil
 }
 
 func (kms *vaultTokensKMS) getToken() (string, error) {

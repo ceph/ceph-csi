@@ -115,6 +115,49 @@ func initAWSSTSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
+// EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
+func (as *awsSTSMetadataKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string, error) {
+	svc, err := as.getServiceWithSTS()
+	if err != nil {
+		return "", fmt.Errorf("failed to get KMS service: %w", err)
+	}
+
+	result, err := svc.Encrypt(&awsKMS.EncryptInput{
+		KeyId:     aws.String(as.cmk),
+		Plaintext: []byte(plainDEK),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt DEK: %w", err)
+	}
+
+	// base64 encode the encrypted DEK, so that storing it should not have
+	// issues
+	return base64.StdEncoding.EncodeToString(result.CiphertextBlob), nil
+}
+
+// DecryptDEK uses the Amazon KMS and the configured CMK to decrypt the DEK.
+func (as *awsSTSMetadataKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (string, error) {
+	svc, err := as.getServiceWithSTS()
+	if err != nil {
+		return "", fmt.Errorf("failed to get KMS service: %w", err)
+	}
+
+	ciphertextBlob, err := base64.StdEncoding.DecodeString(encryptedDEK)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 cipher: %w",
+			err)
+	}
+
+	result, err := svc.Decrypt(&awsKMS.DecryptInput{
+		CiphertextBlob: ciphertextBlob,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt DEK: %w", err)
+	}
+
+	return string(result.Plaintext), nil
+}
+
 // getSecrets returns required STS configuration options from the Kubernetes Secret.
 func (as *awsSTSMetadataKMS) getSecrets() (map[string]string, error) {
 	c, err := k8s.NewK8sClient()
@@ -190,47 +233,4 @@ func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.KMS, error) {
 	}
 
 	return awsKMS.New(sess), nil
-}
-
-// EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
-func (as *awsSTSMetadataKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string, error) {
-	svc, err := as.getServiceWithSTS()
-	if err != nil {
-		return "", fmt.Errorf("failed to get KMS service: %w", err)
-	}
-
-	result, err := svc.Encrypt(&awsKMS.EncryptInput{
-		KeyId:     aws.String(as.cmk),
-		Plaintext: []byte(plainDEK),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to encrypt DEK: %w", err)
-	}
-
-	// base64 encode the encrypted DEK, so that storing it should not have
-	// issues
-	return base64.StdEncoding.EncodeToString(result.CiphertextBlob), nil
-}
-
-// DecryptDEK uses the Amazon KMS and the configured CMK to decrypt the DEK.
-func (as *awsSTSMetadataKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (string, error) {
-	svc, err := as.getServiceWithSTS()
-	if err != nil {
-		return "", fmt.Errorf("failed to get KMS service: %w", err)
-	}
-
-	ciphertextBlob, err := base64.StdEncoding.DecodeString(encryptedDEK)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 cipher: %w",
-			err)
-	}
-
-	result, err := svc.Decrypt(&awsKMS.DecryptInput{
-		CiphertextBlob: ciphertextBlob,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to decrypt DEK: %w", err)
-	}
-
-	return string(result.Plaintext), nil
 }

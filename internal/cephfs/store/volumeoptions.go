@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//nolint:funcorder // reordering causes a lot of churn in this file
 package store
 
 import (

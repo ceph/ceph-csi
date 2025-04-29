@@ -116,53 +116,6 @@ func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return smKMS, nil
 }
 
-// fetchEncryptionPassphrase fetches encryptionPassphrase from user provided secret.
-func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
-	config map[string]interface{},
-	defaultNamespace string,
-) (string, error) {
-	var (
-		secretName      string
-		secretNamespace string
-	)
-
-	err := setConfigString(&secretName, config, metadataSecretNameKey)
-	if err != nil {
-		return "", err
-	}
-
-	err = setConfigString(&secretNamespace, config, metadataSecretNamespaceKey)
-	if err != nil {
-		if !errors.Is(err, errConfigOptionMissing) {
-			return "", err
-		}
-		// if 'secretNamespace' option is not specified, defaults to namespace in
-		// which PVC was created
-		secretNamespace = defaultNamespace
-	}
-
-	c, err := k8s.NewK8sClient()
-	if err != nil {
-		return "", fmt.Errorf("can not get Secret %s/%s, failed to "+
-			"connect to Kubernetes: %w", secretNamespace, secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(secretNamespace).Get(context.TODO(),
-		secretName, metav1.GetOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to get Secret %s/%s: %w",
-			secretNamespace, secretName, err)
-	}
-
-	passphraseValue, ok := secret.Data[encryptionPassphraseKey]
-	if !ok {
-		return "", fmt.Errorf("missing %q in Secret %s/%s",
-			encryptionPassphraseKey, secretNamespace, secretName)
-	}
-
-	return string(passphraseValue), nil
-}
-
 // Destroy frees all used resources.
 func (kms secretsMetadataKMS) Destroy() {
 	// nothing to do
@@ -285,6 +238,53 @@ func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encrypte
 func (kms secretsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	// use the passphrase from the secretKMS
 	return kms.FetchDEK(ctx, volumeID)
+}
+
+// fetchEncryptionPassphrase fetches encryptionPassphrase from user provided secret.
+func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
+	config map[string]interface{},
+	defaultNamespace string,
+) (string, error) {
+	var (
+		secretName      string
+		secretNamespace string
+	)
+
+	err := setConfigString(&secretName, config, metadataSecretNameKey)
+	if err != nil {
+		return "", err
+	}
+
+	err = setConfigString(&secretNamespace, config, metadataSecretNamespaceKey)
+	if err != nil {
+		if !errors.Is(err, errConfigOptionMissing) {
+			return "", err
+		}
+		// if 'secretNamespace' option is not specified, defaults to namespace in
+		// which PVC was created
+		secretNamespace = defaultNamespace
+	}
+
+	c, err := k8s.NewK8sClient()
+	if err != nil {
+		return "", fmt.Errorf("can not get Secret %s/%s, failed to "+
+			"connect to Kubernetes: %w", secretNamespace, secretName, err)
+	}
+
+	secret, err := c.CoreV1().Secrets(secretNamespace).Get(context.TODO(),
+		secretName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get Secret %s/%s: %w",
+			secretNamespace, secretName, err)
+	}
+
+	passphraseValue, ok := secret.Data[encryptionPassphraseKey]
+	if !ok {
+		return "", fmt.Errorf("missing %q in Secret %s/%s",
+			encryptionPassphraseKey, secretNamespace, secretName)
+	}
+
+	return string(passphraseValue), nil
 }
 
 // generateCipher returns a AEAD cipher based on a passphrase and salt

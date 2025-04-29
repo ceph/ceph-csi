@@ -134,15 +134,6 @@ func (c *FakeIOContext) GetLastVersion() (uint64, error) {
 	return c.LastObjVersion, nil
 }
 
-func (c *FakeIOContext) getObj(oid string) (*FakeObj, error) {
-	obj, ok := c.Rados.Objs[oid]
-	if !ok {
-		return nil, rados.ErrNotFound
-	}
-
-	return obj, nil
-}
-
 func (c *FakeIOContext) GetXattr(oid, key string, data []byte) (int, error) {
 	obj, ok := c.Rados.Objs[oid]
 	if !ok {
@@ -198,6 +189,15 @@ func (c *FakeIOContext) CreateReadOp() ReadOpW {
 		IoCtx: c,
 		steps: make(map[fakeReadOpStepExecutorIdx]fakeReadOpStepExecutor),
 	}
+}
+
+func (c *FakeIOContext) getObj(oid string) (*FakeObj, error) {
+	obj, ok := c.Rados.Objs[oid]
+	if !ok {
+		return nil, rados.ErrNotFound
+	}
+
+	return obj, nil
 }
 
 func (r *FakeReadOp) Operate(oid string) error {

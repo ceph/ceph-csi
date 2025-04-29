@@ -293,6 +293,10 @@ func (kms *kmipKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 
+func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
+	return "", ErrGetSecretUnsupported
+}
+
 // getSecrets returns required options from the Kubernetes Secret.
 func (kms *kmipKMS) getSecrets() (map[string]string, error) {
 	c, err := k8s.NewK8sClient()
@@ -498,10 +502,6 @@ func (kms *kmipKMS) verifyResponse(
 	}
 
 	return &batchItem, nil
-}
-
-func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
-	return "", ErrGetSecretUnsupported
 }
 
 // TODO: use the following structs from https://github.com/gemalto/kmip-go

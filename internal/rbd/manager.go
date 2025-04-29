@@ -67,113 +67,6 @@ func (mgr *rbdManager) Destroy(ctx context.Context) {
 	}
 }
 
-// getCredentials sets up credentials and connects to the journal.
-func (mgr *rbdManager) getCredentials() (*util.Credentials, error) {
-	if mgr.creds != nil {
-		return mgr.creds, nil
-	}
-
-	creds, err := util.NewUserCredentials(mgr.secrets)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get credentials: %w", err)
-	}
-
-	mgr.creds = creds
-
-	return creds, nil
-}
-
-// getVolumeGroupNamePrefix returns the prefix for the volume group if set, or
-// an empty string if none is configured.
-func (mgr *rbdManager) getVolumeGroupNamePrefix() string {
-	return mgr.parameters["volumeGroupNamePrefix"]
-}
-
-func (mgr *rbdManager) getVolumeGroupJournal(clusterID string) (journal.VolumeGroupJournal, error) {
-	if mgr.vgJournal != nil {
-		return mgr.vgJournal, nil
-	}
-
-	creds, err := mgr.getCredentials()
-	if err != nil {
-		return nil, err
-	}
-
-	monitors, err := util.Mons(util.CsiConfigFile, clusterID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find MONs for cluster %q: %w", clusterID, err)
-	}
-
-	ns, err := util.GetRBDRadosNamespace(util.CsiConfigFile, clusterID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find the RADOS namespace for cluster %q: %w", clusterID, err)
-	}
-
-	vgJournalConfig := journal.NewCSIVolumeGroupJournalWithNamespace(mgr.driverInstance, ns)
-
-	vgJournal, err := vgJournalConfig.Connect(monitors, ns, creds)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to journal: %w", err)
-	}
-
-	mgr.vgJournal = vgJournal
-
-	return vgJournal, nil
-}
-
-// getGroupUUID checks if a UUID in the volume group journal is already
-// reserved. If none is reserved, a new reservation is made. Upon exit of
-// getGroupUUID, the function returns:
-// 1. the UUID that was reserved
-// 2. an undo() function that reverts the reservation (if that succeeded), should be called in a defer
-// 3. an error or nil.
-func (mgr *rbdManager) getGroupUUID(
-	ctx context.Context,
-	clusterID, journalPool, name string,
-) (string, func(), error) {
-	nothingToUndo := func() {
-		// the reservation was not done, no need to undo the reservation
-	}
-
-	prefix := mgr.getVolumeGroupNamePrefix()
-
-	vgJournal, err := mgr.getVolumeGroupJournal(clusterID)
-	if err != nil {
-		return "", nothingToUndo, err
-	}
-
-	vgsData, err := vgJournal.CheckReservation(ctx, journalPool, name, prefix)
-	if err != nil {
-		return "", nothingToUndo, fmt.Errorf("failed to check reservation for group %q: %w", name, err)
-	}
-
-	var uuid string
-	if vgsData != nil && vgsData.GroupUUID != "" {
-		uuid = vgsData.GroupUUID
-	} else {
-		log.DebugLog(ctx, "the journal does not contain a reservation for group %q yet", name)
-
-		uuid, _ /*vgsName*/, err = vgJournal.ReserveName(ctx, journalPool, name, uuid, prefix)
-		if err != nil {
-			return "", nothingToUndo, fmt.Errorf("failed to reserve a UUID for group %q: %w", name, err)
-		}
-	}
-
-	log.DebugLog(ctx, "got UUID %q for group %q", uuid, name)
-
-	// undo contains the cleanup that should be done by the caller when the
-	// reservation was made, and further actions fulfilling the final
-	// request failed
-	undo := func() {
-		err = vgJournal.UndoReservation(ctx, journalPool, uuid, name)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to undo the reservation for group %q: %w", name, err)
-		}
-	}
-
-	return uuid, undo, nil
-}
-
 func (mgr *rbdManager) GetVolumeByID(ctx context.Context, id string) (types.Volume, error) {
 	creds, err := mgr.getCredentials()
 	if err != nil {
@@ -724,4 +617,111 @@ func (mgr *rbdManager) VolumesInSameGroup(ctx context.Context, volumes []types.V
 	}
 
 	return true, nil
+}
+
+// getCredentials sets up credentials and connects to the journal.
+func (mgr *rbdManager) getCredentials() (*util.Credentials, error) {
+	if mgr.creds != nil {
+		return mgr.creds, nil
+	}
+
+	creds, err := util.NewUserCredentials(mgr.secrets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get credentials: %w", err)
+	}
+
+	mgr.creds = creds
+
+	return creds, nil
+}
+
+// getVolumeGroupNamePrefix returns the prefix for the volume group if set, or
+// an empty string if none is configured.
+func (mgr *rbdManager) getVolumeGroupNamePrefix() string {
+	return mgr.parameters["volumeGroupNamePrefix"]
+}
+
+func (mgr *rbdManager) getVolumeGroupJournal(clusterID string) (journal.VolumeGroupJournal, error) {
+	if mgr.vgJournal != nil {
+		return mgr.vgJournal, nil
+	}
+
+	creds, err := mgr.getCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	monitors, err := util.Mons(util.CsiConfigFile, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find MONs for cluster %q: %w", clusterID, err)
+	}
+
+	ns, err := util.GetRBDRadosNamespace(util.CsiConfigFile, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find the RADOS namespace for cluster %q: %w", clusterID, err)
+	}
+
+	vgJournalConfig := journal.NewCSIVolumeGroupJournalWithNamespace(mgr.driverInstance, ns)
+
+	vgJournal, err := vgJournalConfig.Connect(monitors, ns, creds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to journal: %w", err)
+	}
+
+	mgr.vgJournal = vgJournal
+
+	return vgJournal, nil
+}
+
+// getGroupUUID checks if a UUID in the volume group journal is already
+// reserved. If none is reserved, a new reservation is made. Upon exit of
+// getGroupUUID, the function returns:
+// 1. the UUID that was reserved
+// 2. an undo() function that reverts the reservation (if that succeeded), should be called in a defer
+// 3. an error or nil.
+func (mgr *rbdManager) getGroupUUID(
+	ctx context.Context,
+	clusterID, journalPool, name string,
+) (string, func(), error) {
+	nothingToUndo := func() {
+		// the reservation was not done, no need to undo the reservation
+	}
+
+	prefix := mgr.getVolumeGroupNamePrefix()
+
+	vgJournal, err := mgr.getVolumeGroupJournal(clusterID)
+	if err != nil {
+		return "", nothingToUndo, err
+	}
+
+	vgsData, err := vgJournal.CheckReservation(ctx, journalPool, name, prefix)
+	if err != nil {
+		return "", nothingToUndo, fmt.Errorf("failed to check reservation for group %q: %w", name, err)
+	}
+
+	var uuid string
+	if vgsData != nil && vgsData.GroupUUID != "" {
+		uuid = vgsData.GroupUUID
+	} else {
+		log.DebugLog(ctx, "the journal does not contain a reservation for group %q yet", name)
+
+		uuid, _ /*vgsName*/, err = vgJournal.ReserveName(ctx, journalPool, name, uuid, prefix)
+		if err != nil {
+			return "", nothingToUndo, fmt.Errorf("failed to reserve a UUID for group %q: %w", name, err)
+		}
+	}
+
+	log.DebugLog(ctx, "got UUID %q for group %q", uuid, name)
+
+	// undo contains the cleanup that should be done by the caller when the
+	// reservation was made, and further actions fulfilling the final
+	// request failed
+	undo := func() {
+		err = vgJournal.UndoReservation(ctx, journalPool, uuid, name)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to undo the reservation for group %q: %w", name, err)
+		}
+	}
+
+	return uuid, undo, nil
 }

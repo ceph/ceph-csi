@@ -147,60 +147,12 @@ func initKeyProtectKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
-func (kms *keyProtectKMS) getSecrets() (map[string]interface{}, error) {
-	c, err := k8s.NewK8sClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
-			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
-		kms.secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
-			kms.namespace, kms.secretName, err)
-	}
-
-	config := make(map[string]interface{})
-
-	for k, v := range secret.Data {
-		switch k {
-		case keyProtectServiceAPIKey, KeyProtectCustomerRootKey, keyProtectSessionToken, keyProtectCRK:
-			config[k] = string(v)
-		default:
-			return nil, fmt.Errorf("unsupported option for KMS "+
-				"provider %q: %s", kmsTypeKeyProtectMetadata, k)
-		}
-	}
-
-	return config, nil
-}
-
 func (kms *keyProtectKMS) Destroy() {
 	// Nothing to do.
 }
 
 func (kms *keyProtectKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
-}
-
-func (kms *keyProtectKMS) getService() error {
-	// Use your Service API Key and your KeyProtect Service Instance ID to create a ClientConfig
-	cc := kp.ClientConfig{
-		BaseURL:    kms.baseURL,
-		TokenURL:   kms.tokenURL,
-		APIKey:     kms.serviceAPIKey,
-		InstanceID: kms.serviceInstanceID,
-	}
-
-	// Build a new client from the config
-	client, err := kp.New(cc, kp.DefaultTransport())
-	if err != nil {
-		return fmt.Errorf("failed to create keyprotect client: %w", err)
-	}
-	kms.client = client
-
-	return nil
 }
 
 // EncryptDEK uses the KeyProtect KMS and the configured CRK to encrypt the DEK.
@@ -245,4 +197,52 @@ func (kms *keyProtectKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK
 
 func (kms *keyProtectKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	return "", ErrGetSecretUnsupported
+}
+
+func (kms *keyProtectKMS) getSecrets() (map[string]interface{}, error) {
+	c, err := k8s.NewK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
+			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
+	}
+
+	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
+		kms.secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
+			kms.namespace, kms.secretName, err)
+	}
+
+	config := make(map[string]interface{})
+
+	for k, v := range secret.Data {
+		switch k {
+		case keyProtectServiceAPIKey, KeyProtectCustomerRootKey, keyProtectSessionToken, keyProtectCRK:
+			config[k] = string(v)
+		default:
+			return nil, fmt.Errorf("unsupported option for KMS "+
+				"provider %q: %s", kmsTypeKeyProtectMetadata, k)
+		}
+	}
+
+	return config, nil
+}
+
+func (kms *keyProtectKMS) getService() error {
+	// Use your Service API Key and your KeyProtect Service Instance ID to create a ClientConfig
+	cc := kp.ClientConfig{
+		BaseURL:    kms.baseURL,
+		TokenURL:   kms.tokenURL,
+		APIKey:     kms.serviceAPIKey,
+		InstanceID: kms.serviceInstanceID,
+	}
+
+	// Build a new client from the config
+	client, err := kp.New(cc, kp.DefaultTransport())
+	if err != nil {
+		return fmt.Errorf("failed to create keyprotect client: %w", err)
+	}
+	kms.client = client
+
+	return nil
 }

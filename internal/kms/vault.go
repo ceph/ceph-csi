@@ -122,6 +122,19 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 	return nil
 }
 
+// Destroy frees allocated resources. For a vaultConnection that means removing
+// the created temporary files.
+func (vc *vaultConnection) Destroy() {
+	if vc.vaultConfig != nil {
+		tmpFile, ok := vc.vaultConfig[api.EnvVaultCACert]
+		if ok {
+			// ignore error on failure to remove tmpfile (gosec complains)
+			//nolint:forcetypeassert,errcheck // ignore error on failure to remove tmpfile
+			_ = os.Remove(tmpFile.(string))
+		}
+	}
+}
+
 // initConnection sets VAULT_* environment variables in the vc.vaultConfig map,
 // these settings will be used when connecting to the Vault service with
 // vc.connectVault().
@@ -296,19 +309,6 @@ func (vc *vaultConnection) connectVault() error {
 	vc.secrets = v
 
 	return nil
-}
-
-// Destroy frees allocated resources. For a vaultConnection that means removing
-// the created temporary files.
-func (vc *vaultConnection) Destroy() {
-	if vc.vaultConfig != nil {
-		tmpFile, ok := vc.vaultConfig[api.EnvVaultCACert]
-		if ok {
-			// ignore error on failure to remove tmpfile (gosec complains)
-			//nolint:forcetypeassert,errcheck // ignore error on failure to remove tmpfile
-			_ = os.Remove(tmpFile.(string))
-		}
-	}
 }
 
 // getDeleteKeyContext creates a new KeyContext that has an optional value set

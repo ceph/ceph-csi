@@ -187,26 +187,6 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	return nil
 }
 
-// createExportCommand returns the "ceph nfs export create ..." command
-// arguments (without "ceph"). The order of the parameters matches old Ceph
-// releases, new Ceph releases added --option formats, which can be added  when
-// passing the parameters to this function.
-func (nv *NFSVolume) createExportCommand(nfsCluster, fs, export, path string) []string {
-	return []string{
-		"--id", nv.cr.ID,
-		"--keyfile=" + nv.cr.KeyFile,
-		"-m", nv.mons,
-		"nfs",
-		"export",
-		"create",
-		"cephfs",
-		fs,
-		nfsCluster,
-		export,
-		path,
-	}
-}
-
 // DeleteExport removes the NFS-export from the Ceph managed NFS-server.
 func (nv *NFSVolume) DeleteExport() error {
 	if !nv.connected {
@@ -248,6 +228,26 @@ func (nv *NFSVolume) DeleteExport() error {
 	}
 
 	return nil
+}
+
+// createExportCommand returns the "ceph nfs export create ..." command
+// arguments (without "ceph"). The order of the parameters matches old Ceph
+// releases, new Ceph releases added --option formats, which can be added  when
+// passing the parameters to this function.
+func (nv *NFSVolume) createExportCommand(nfsCluster, fs, export, path string) []string {
+	return []string{
+		"--id", nv.cr.ID,
+		"--keyfile=" + nv.cr.KeyFile,
+		"-m", nv.mons,
+		"nfs",
+		"export",
+		"create",
+		"cephfs",
+		fs,
+		nfsCluster,
+		export,
+		path,
+	}
 }
 
 // deleteExportCommand returns the "ceph nfs export delete ..." command

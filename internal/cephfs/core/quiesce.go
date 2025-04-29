@@ -130,22 +130,6 @@ func (fq *fsQuiesce) GetVolumes() []Volume {
 	return fq.volumes
 }
 
-// getMembers returns the list of names in the format
-// group/subvolume that are to be quiesced. This is the format that the
-// ceph fs quiesce expects.
-// Example: ["group1/subvolume1", "group1/subvolume2", "group2/subvolume1"].
-func (fq *fsQuiesce) getMembers() []string {
-	volName := []string{}
-	for svg, sb := range fq.subVolumeGroupMapping {
-		for _, s := range sb {
-			name := svg + "/" + s
-			volName = append(volName, name)
-		}
-	}
-
-	return volName
-}
-
 func (fq *fsQuiesce) FSQuiesce(
 	ctx context.Context,
 	reserveName string,
@@ -247,4 +231,20 @@ func (fq *fsQuiesce) ReleaseFSQuiesce(ctx context.Context,
 	log.ErrorLog(ctx, "failed to release quiesce of filesystem %s", err)
 
 	return nil, err
+}
+
+// getMembers returns the list of names in the format
+// group/subvolume that are to be quiesced. This is the format that the
+// ceph fs quiesce expects.
+// Example: ["group1/subvolume1", "group1/subvolume2", "group2/subvolume1"].
+func (fq *fsQuiesce) getMembers() []string {
+	volName := []string{}
+	for svg, sb := range fq.subVolumeGroupMapping {
+		for _, s := range sb {
+			name := svg + "/" + s
+			volName = append(volName, name)
+		}
+	}
+
+	return volName
 }

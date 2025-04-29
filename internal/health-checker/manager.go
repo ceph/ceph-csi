@@ -99,6 +99,46 @@ func (hcm *healthCheckManager) StartChecker(volumeID, path string, ct CheckerTyp
 	return hcm.createChecker(volumeID, path, ct, false)
 }
 
+func (hcm *healthCheckManager) StopSharedChecker(volumeID string) {
+	hcm.StopChecker(volumeID, "")
+}
+
+func (hcm *healthCheckManager) StopChecker(volumeID, path string) {
+	old, ok := hcm.checkers.LoadAndDelete(fallbackKey(volumeID, path))
+	if !ok {
+		// nothing was loaded, nothing to do
+		return
+	}
+
+	// 'old' was loaded, cast it to ConditionChecker
+	cc, ok := old.(ConditionChecker)
+	if !ok {
+		// failed to cast, should not be possible
+		return
+	}
+	cc.stop()
+}
+
+func (hcm *healthCheckManager) IsHealthy(volumeID, path string) (bool, error) {
+	// load the 'old' ConditionChecker if it exists
+	old, ok := hcm.checkers.Load(volumeID)
+	if !ok {
+		// try fallback which include an optional (unique) path (usually publishTargetPath)
+		old, ok = hcm.checkers.Load(fallbackKey(volumeID, path))
+		if !ok {
+			return true, fmt.Errorf("no ConditionChecker for volume-id: %s", volumeID)
+		}
+	}
+
+	// 'old' was loaded, cast it to ConditionChecker
+	cc, ok := old.(ConditionChecker)
+	if !ok {
+		return true, fmt.Errorf("failed to cast cc to ConditionChecker for volume-id %q", volumeID)
+	}
+
+	return cc.isHealthy()
+}
+
 // createChecker decides based on the CheckerType what checker to start for
 // the volume.
 func (hcm *healthCheckManager) createChecker(volumeID, path string, ct CheckerType, shared bool) error {
@@ -156,46 +196,6 @@ func (hcm *healthCheckManager) startChecker(cc ConditionChecker, volumeID, path 
 	}
 
 	return nil
-}
-
-func (hcm *healthCheckManager) StopSharedChecker(volumeID string) {
-	hcm.StopChecker(volumeID, "")
-}
-
-func (hcm *healthCheckManager) StopChecker(volumeID, path string) {
-	old, ok := hcm.checkers.LoadAndDelete(fallbackKey(volumeID, path))
-	if !ok {
-		// nothing was loaded, nothing to do
-		return
-	}
-
-	// 'old' was loaded, cast it to ConditionChecker
-	cc, ok := old.(ConditionChecker)
-	if !ok {
-		// failed to cast, should not be possible
-		return
-	}
-	cc.stop()
-}
-
-func (hcm *healthCheckManager) IsHealthy(volumeID, path string) (bool, error) {
-	// load the 'old' ConditionChecker if it exists
-	old, ok := hcm.checkers.Load(volumeID)
-	if !ok {
-		// try fallback which include an optional (unique) path (usually publishTargetPath)
-		old, ok = hcm.checkers.Load(fallbackKey(volumeID, path))
-		if !ok {
-			return true, fmt.Errorf("no ConditionChecker for volume-id: %s", volumeID)
-		}
-	}
-
-	// 'old' was loaded, cast it to ConditionChecker
-	cc, ok := old.(ConditionChecker)
-	if !ok {
-		return true, fmt.Errorf("failed to cast cc to ConditionChecker for volume-id %q", volumeID)
-	}
-
-	return cc.isHealthy()
 }
 
 // fallbackKey returns the key for a checker in the map. If the path is empty,

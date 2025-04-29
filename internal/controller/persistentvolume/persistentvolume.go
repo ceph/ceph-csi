@@ -60,78 +60,31 @@ func (r *ReconcilePersistentVolume) Add(mgr manager.Manager, config ctrl.Config)
 	return add(mgr, newPVReconciler(mgr, config))
 }
 
-// newReconciler returns a ReconcilePersistentVolume.
-func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconciler {
-	r := &ReconcilePersistentVolume{
-		client: mgr.GetClient(),
-		config: config,
-		Locks:  util.NewVolumeLocks(),
-	}
-
-	return r
-}
-
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New(
-		"persistentvolume-controller",
-		mgr,
-		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
+// Reconcile reconciles the PersistentVolume object and creates a new omap entries
+// for the volume.
+func (r *ReconcilePersistentVolume) Reconcile(ctx context.Context,
+	request reconcile.Request,
+) (reconcile.Result, error) {
+	pv := &corev1.PersistentVolume{}
+	err := r.client.Get(ctx, request.NamespacedName, pv)
 	if err != nil {
-		return err
+		if apierrors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+
+		return reconcile.Result{}, err
+	}
+	// Check if the object is under deletion
+	if !pv.GetDeletionTimestamp().IsZero() {
+		return reconcile.Result{}, nil
 	}
 
-	// Watch for changes to PersistentVolumes
-	err = c.Watch(source.Kind(
-		mgr.GetCache(),
-		&corev1.PersistentVolume{},
-		&handler.TypedEnqueueRequestForObject[*corev1.PersistentVolume]{}),
-	)
+	err = r.reconcilePV(ctx, pv)
 	if err != nil {
-		return fmt.Errorf("failed to watch the changes: %w", err)
+		return reconcile.Result{}, err
 	}
 
-	return nil
-}
-
-func (r *ReconcilePersistentVolume) getCredentials(
-	ctx context.Context,
-	name,
-	namespace string,
-) (*util.Credentials, error) {
-	var cr *util.Credentials
-
-	if name == "" || namespace == "" {
-		errStr := "secret name or secret namespace is empty"
-		log.ErrorLogMsg("%v", errStr)
-
-		return nil, errors.New(errStr)
-	}
-	secret := &corev1.Secret{}
-	err := r.client.Get(ctx,
-		types.NamespacedName{Name: name, Namespace: namespace},
-		secret)
-	if err != nil {
-		return nil, fmt.Errorf("error getting secret %s in namespace %s: %w", name, namespace, err)
-	}
-
-	credentials := map[string]string{}
-	for key, value := range secret.Data {
-		credentials[key] = string(value)
-	}
-
-	cr, err = util.NewUserCredentials(credentials)
-	if err != nil {
-		log.ErrorLogMsg("failed to get user credentials %s", err)
-
-		return nil, err
-	}
-
-	return cr, nil
-}
-
-func checkStaticVolume(pv *corev1.PersistentVolume) bool {
-	return pv.Spec.CSI.VolumeAttributes["staticVolume"] == "true"
+	return reconcile.Result{}, nil
 }
 
 // reconcilePV will extract the image details from the pv spec and regenerates
@@ -204,29 +157,76 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 	return nil
 }
 
-// Reconcile reconciles the PersistentVolume object and creates a new omap entries
-// for the volume.
-func (r *ReconcilePersistentVolume) Reconcile(ctx context.Context,
-	request reconcile.Request,
-) (reconcile.Result, error) {
-	pv := &corev1.PersistentVolume{}
-	err := r.client.Get(ctx, request.NamespacedName, pv)
+// newReconciler returns a ReconcilePersistentVolume.
+func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconciler {
+	r := &ReconcilePersistentVolume{
+		client: mgr.GetClient(),
+		config: config,
+		Locks:  util.NewVolumeLocks(),
+	}
+
+	return r
+}
+
+func add(mgr manager.Manager, r reconcile.Reconciler) error {
+	// Create a new controller
+	c, err := controller.New(
+		"persistentvolume-controller",
+		mgr,
+		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, nil
-		}
-
-		return reconcile.Result{}, err
-	}
-	// Check if the object is under deletion
-	if !pv.GetDeletionTimestamp().IsZero() {
-		return reconcile.Result{}, nil
+		return err
 	}
 
-	err = r.reconcilePV(ctx, pv)
+	// Watch for changes to PersistentVolumes
+	err = c.Watch(source.Kind(
+		mgr.GetCache(),
+		&corev1.PersistentVolume{},
+		&handler.TypedEnqueueRequestForObject[*corev1.PersistentVolume]{}),
+	)
 	if err != nil {
-		return reconcile.Result{}, err
+		return fmt.Errorf("failed to watch the changes: %w", err)
 	}
 
-	return reconcile.Result{}, nil
+	return nil
+}
+
+func (r *ReconcilePersistentVolume) getCredentials(
+	ctx context.Context,
+	name,
+	namespace string,
+) (*util.Credentials, error) {
+	var cr *util.Credentials
+
+	if name == "" || namespace == "" {
+		errStr := "secret name or secret namespace is empty"
+		log.ErrorLogMsg("%v", errStr)
+
+		return nil, errors.New(errStr)
+	}
+	secret := &corev1.Secret{}
+	err := r.client.Get(ctx,
+		types.NamespacedName{Name: name, Namespace: namespace},
+		secret)
+	if err != nil {
+		return nil, fmt.Errorf("error getting secret %s in namespace %s: %w", name, namespace, err)
+	}
+
+	credentials := map[string]string{}
+	for key, value := range secret.Data {
+		credentials[key] = string(value)
+	}
+
+	cr, err = util.NewUserCredentials(credentials)
+	if err != nil {
+		log.ErrorLogMsg("failed to get user credentials %s", err)
+
+		return nil, err
+	}
+
+	return cr, nil
+}
+
+func checkStaticVolume(pv *corev1.PersistentVolume) bool {
+	return pv.Spec.CSI.VolumeAttributes["staticVolume"] == "true"
 }

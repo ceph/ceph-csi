@@ -59,23 +59,6 @@ func NewConnPool(interval, expiry time.Duration) *ConnPool {
 	return &cp
 }
 
-// loop through all cp.conns and destroy objects that have not been used for cp.expiry.
-func (cp *ConnPool) gc() {
-	cp.lock.Lock()
-	defer cp.lock.Unlock()
-
-	now := time.Now()
-	for key, ce := range cp.conns {
-		if ce.users == 0 && (now.Sub(ce.lastUsed)) > cp.expiry {
-			ce.destroy()
-			delete(cp.conns, key)
-		}
-	}
-
-	// schedule the next gc() run
-	cp.timer.Reset(cp.interval)
-}
-
 // Destroy stops the garbage collector and destroys all connections in the pool.
 func (cp *ConnPool) Destroy() {
 	cp.timer.Stop()
@@ -92,30 +75,6 @@ func (cp *ConnPool) Destroy() {
 		ce.destroy()
 		delete(cp.conns, key)
 	}
-}
-
-func (cp *ConnPool) generateUniqueKey(monitors, user, keyfile string) (string, error) {
-	// the keyfile can be unique for operations, contents will be the same
-	key, err := os.ReadFile(keyfile) // #nosec:G304, file inclusion via variable.
-	if err != nil {
-		return "", fmt.Errorf("could not open keyfile %s: %w", keyfile, err)
-	}
-
-	return fmt.Sprintf("%s|%s|%s", monitors, user, string(key)), nil
-}
-
-// getExisting returns the existing rados.Conn associated with the unique key.
-//
-// Requires: locked cp.lock because of ce.get().
-func (cp *ConnPool) getConn(unique string) *rados.Conn {
-	ce, exists := cp.conns[unique]
-	if exists {
-		ce.get()
-
-		return ce.conn
-	}
-
-	return nil
 }
 
 // Get returns a rados.Conn for the given arguments. Creates a new rados.Conn in
@@ -204,6 +163,47 @@ func (cp *ConnPool) Put(conn *rados.Conn) {
 			return
 		}
 	}
+}
+
+// loop through all cp.conns and destroy objects that have not been used for cp.expiry.
+func (cp *ConnPool) gc() {
+	cp.lock.Lock()
+	defer cp.lock.Unlock()
+
+	now := time.Now()
+	for key, ce := range cp.conns {
+		if ce.users == 0 && (now.Sub(ce.lastUsed)) > cp.expiry {
+			ce.destroy()
+			delete(cp.conns, key)
+		}
+	}
+
+	// schedule the next gc() run
+	cp.timer.Reset(cp.interval)
+}
+
+func (cp *ConnPool) generateUniqueKey(monitors, user, keyfile string) (string, error) {
+	// the keyfile can be unique for operations, contents will be the same
+	key, err := os.ReadFile(keyfile) // #nosec:G304, file inclusion via variable.
+	if err != nil {
+		return "", fmt.Errorf("could not open keyfile %s: %w", keyfile, err)
+	}
+
+	return fmt.Sprintf("%s|%s|%s", monitors, user, string(key)), nil
+}
+
+// getExisting returns the existing rados.Conn associated with the unique key.
+//
+// Requires: locked cp.lock because of ce.get().
+func (cp *ConnPool) getConn(unique string) *rados.Conn {
+	ce, exists := cp.conns[unique]
+	if exists {
+		ce.get()
+
+		return ce.conn
+	}
+
+	return nil
 }
 
 // Add a reference to the connEntry.

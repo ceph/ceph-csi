@@ -124,35 +124,6 @@ func initAWSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
-func (kms *awsMetadataKMS) getSecrets() (map[string]interface{}, error) {
-	c, err := k8s.NewK8sClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
-			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
-		kms.secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
-			kms.namespace, kms.secretName, err)
-	}
-
-	config := make(map[string]interface{})
-
-	for k, v := range secret.Data {
-		switch k {
-		case awsSecretAccessKey, awsAccessKey, awsSessionToken, awsCMK:
-			config[k] = string(v)
-		default:
-			return nil, fmt.Errorf("unsupported option for KMS "+
-				"provider %q: %s", kmsTypeAWSMetadata, k)
-		}
-	}
-
-	return config, nil
-}
-
 func (kms *awsMetadataKMS) Destroy() {
 	// Nothing to do.
 }
@@ -162,24 +133,6 @@ func (kms *awsMetadataKMS) Destroy() {
 // AWS as that adds additional costs.
 func (kms *awsMetadataKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
-}
-
-func (kms *awsMetadataKMS) getService() (*awsKMS.KMS, error) {
-	creds := awsCreds.NewStaticCredentials(kms.accessKey,
-		kms.secretAccessKey, kms.sessionToken)
-
-	sess, err := awsSession.NewSessionWithOptions(awsSession.Options{
-		SharedConfigState: awsSession.SharedConfigDisable,
-		Config: aws.Config{
-			Credentials: creds,
-			Region:      aws.String(kms.region),
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	return awsKMS.New(sess), nil
 }
 
 // EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
@@ -229,4 +182,51 @@ func (kms *awsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDE
 
 func (kms *awsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
 	return "", ErrGetSecretUnsupported
+}
+
+func (kms *awsMetadataKMS) getSecrets() (map[string]interface{}, error) {
+	c, err := k8s.NewK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
+			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
+	}
+
+	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
+		kms.secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
+			kms.namespace, kms.secretName, err)
+	}
+
+	config := make(map[string]interface{})
+
+	for k, v := range secret.Data {
+		switch k {
+		case awsSecretAccessKey, awsAccessKey, awsSessionToken, awsCMK:
+			config[k] = string(v)
+		default:
+			return nil, fmt.Errorf("unsupported option for KMS "+
+				"provider %q: %s", kmsTypeAWSMetadata, k)
+		}
+	}
+
+	return config, nil
+}
+
+func (kms *awsMetadataKMS) getService() (*awsKMS.KMS, error) {
+	creds := awsCreds.NewStaticCredentials(kms.accessKey,
+		kms.secretAccessKey, kms.sessionToken)
+
+	sess, err := awsSession.NewSessionWithOptions(awsSession.Options{
+		SharedConfigState: awsSession.SharedConfigDisable,
+		Config: aws.Config{
+			Credentials: creds,
+			Region:      aws.String(kms.region),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	return awsKMS.New(sess), nil
 }

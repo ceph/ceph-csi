@@ -109,11 +109,6 @@ func NewCSIVolumeGroupJournal(suffix string) VolumeGroupJournalConfig {
 	}
 }
 
-// SetNamespace sets the namespace for the journal.
-func (vgc *VolumeGroupJournalConfig) SetNamespace(ns string) {
-	vgc.Config.namespace = ns
-}
-
 // NewCSIVolumeGroupJournalWithNamespace returns an instance of VolumeGroupJournal for
 // volume groups using a predetermined namespace value.
 func NewCSIVolumeGroupJournalWithNamespace(suffix, ns string) VolumeGroupJournalConfig {
@@ -121,6 +116,11 @@ func NewCSIVolumeGroupJournalWithNamespace(suffix, ns string) VolumeGroupJournal
 	j.SetNamespace(ns)
 
 	return j
+}
+
+// SetNamespace sets the namespace for the journal.
+func (vgc *VolumeGroupJournalConfig) SetNamespace(ns string) {
+	vgc.Config.namespace = ns
 }
 
 // Connect establishes a new connection to a ceph cluster for journal metadata.

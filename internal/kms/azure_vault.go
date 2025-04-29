@@ -117,50 +117,6 @@ func (kms *azureKMS) Destroy() {
 	// Nothing to do.
 }
 
-func (kms *azureKMS) getService() (*azsecrets.Client, error) {
-	certs, key, err := azidentity.ParseCertificates([]byte(kms.clientCertificate), []byte{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse Azure client certificate: %w", err)
-	}
-	creds, err := azidentity.NewClientCertificateCredential(kms.tenantID, kms.clientID, certs, key, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Azure credentials: %w", err)
-	}
-
-	azClient, err := azsecrets.NewClient(kms.vaultURL, creds, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Azure client: %w", err)
-	}
-
-	return azClient, nil
-}
-
-func (kms *azureKMS) getSecrets() (map[string]interface{}, error) {
-	c, err := k8s.NewK8sClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to kubernetes to "+
-			"get secret %s/%s: %w", kms.namespace, kms.secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
-		kms.secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get secret %s/%s: %w", kms.namespace, kms.secretName, err)
-	}
-
-	config := make(map[string]interface{})
-	for k, v := range secret.Data {
-		switch k {
-		case azureClientCertificate:
-			config[k] = string(v)
-		default:
-			return nil, fmt.Errorf("unsupported option for KMS provider %q: %s", kmsTypeAzure, k)
-		}
-	}
-
-	return config, nil
-}
-
 // FetchDEK returns passphrase from Azure key vault.
 func (kms *azureKMS) FetchDEK(ctx context.Context, key string) (string, error) {
 	svc, err := kms.getService()
@@ -207,4 +163,48 @@ func (kms *azureKMS) RemoveDEK(ctx context.Context, key string) error {
 	}
 
 	return nil
+}
+
+func (kms *azureKMS) getService() (*azsecrets.Client, error) {
+	certs, key, err := azidentity.ParseCertificates([]byte(kms.clientCertificate), []byte{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Azure client certificate: %w", err)
+	}
+	creds, err := azidentity.NewClientCertificateCredential(kms.tenantID, kms.clientID, certs, key, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Azure credentials: %w", err)
+	}
+
+	azClient, err := azsecrets.NewClient(kms.vaultURL, creds, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Azure client: %w", err)
+	}
+
+	return azClient, nil
+}
+
+func (kms *azureKMS) getSecrets() (map[string]interface{}, error) {
+	c, err := k8s.NewK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to kubernetes to "+
+			"get secret %s/%s: %w", kms.namespace, kms.secretName, err)
+	}
+
+	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
+		kms.secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret %s/%s: %w", kms.namespace, kms.secretName, err)
+	}
+
+	config := make(map[string]interface{})
+	for k, v := range secret.Data {
+		switch k {
+		case azureClientCertificate:
+			config[k] = string(v)
+		default:
+			return nil, fmt.Errorf("unsupported option for KMS provider %q: %s", kmsTypeAzure, k)
+		}
+	}
+
+	return config, nil
 }

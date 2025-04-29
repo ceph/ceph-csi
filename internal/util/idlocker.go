@@ -108,6 +108,59 @@ func NewOperationLock() *OperationLock {
 	}
 }
 
+// GetSnapshotCreateLock gets the snapshot lock on given volumeID.
+func (ol *OperationLock) GetSnapshotCreateLock(volumeID string) error {
+	return ol.tryAcquire(createOp, volumeID)
+}
+
+// GetCloneLock gets the clone lock on given volumeID.
+func (ol *OperationLock) GetCloneLock(volumeID string) error {
+	return ol.tryAcquire(cloneOpt, volumeID)
+}
+
+// GetDeleteLock gets the delete lock on given volumeID,ensures that there is
+// no clone,restore and expand operation on given volumeID.
+func (ol *OperationLock) GetDeleteLock(volumeID string) error {
+	return ol.tryAcquire(deleteOp, volumeID)
+}
+
+// GetRestoreLock gets the restore lock on given volumeID,ensures that there is
+// no delete operation on given volumeID.
+func (ol *OperationLock) GetRestoreLock(volumeID string) error {
+	return ol.tryAcquire(restoreOp, volumeID)
+}
+
+// GetExpandLock gets the expand lock on given volumeID,ensures that there is
+// no delete and clone operation on given volumeID.
+func (ol *OperationLock) GetExpandLock(volumeID string) error {
+	return ol.tryAcquire(expandOp, volumeID)
+}
+
+// ReleaseSnapshotCreateLock releases the create lock on given volumeID.
+func (ol *OperationLock) ReleaseSnapshotCreateLock(volumeID string) {
+	ol.release(createOp, volumeID)
+}
+
+// ReleaseCloneLock releases the clone lock on given volumeID.
+func (ol *OperationLock) ReleaseCloneLock(volumeID string) {
+	ol.release(cloneOpt, volumeID)
+}
+
+// ReleaseDeleteLock releases the delete lock on given volumeID.
+func (ol *OperationLock) ReleaseDeleteLock(volumeID string) {
+	ol.release(deleteOp, volumeID)
+}
+
+// ReleaseRestoreLock releases the restore lock on given volumeID.
+func (ol *OperationLock) ReleaseRestoreLock(volumeID string) {
+	ol.release(restoreOp, volumeID)
+}
+
+// ReleaseExpandLock releases the expand lock on given volumeID.
+func (ol *OperationLock) ReleaseExpandLock(volumeID string) {
+	ol.release(expandOp, volumeID)
+}
+
 // tryAcquire tries to acquire the lock for operating on volumeID and returns true if successful.
 // If another operation is already using volumeID, returns false.
 func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
@@ -176,59 +229,6 @@ func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
 	}
 
 	return nil
-}
-
-// GetSnapshotCreateLock gets the snapshot lock on given volumeID.
-func (ol *OperationLock) GetSnapshotCreateLock(volumeID string) error {
-	return ol.tryAcquire(createOp, volumeID)
-}
-
-// GetCloneLock gets the clone lock on given volumeID.
-func (ol *OperationLock) GetCloneLock(volumeID string) error {
-	return ol.tryAcquire(cloneOpt, volumeID)
-}
-
-// GetDeleteLock gets the delete lock on given volumeID,ensures that there is
-// no clone,restore and expand operation on given volumeID.
-func (ol *OperationLock) GetDeleteLock(volumeID string) error {
-	return ol.tryAcquire(deleteOp, volumeID)
-}
-
-// GetRestoreLock gets the restore lock on given volumeID,ensures that there is
-// no delete operation on given volumeID.
-func (ol *OperationLock) GetRestoreLock(volumeID string) error {
-	return ol.tryAcquire(restoreOp, volumeID)
-}
-
-// GetExpandLock gets the expand lock on given volumeID,ensures that there is
-// no delete and clone operation on given volumeID.
-func (ol *OperationLock) GetExpandLock(volumeID string) error {
-	return ol.tryAcquire(expandOp, volumeID)
-}
-
-// ReleaseSnapshotCreateLock releases the create lock on given volumeID.
-func (ol *OperationLock) ReleaseSnapshotCreateLock(volumeID string) {
-	ol.release(createOp, volumeID)
-}
-
-// ReleaseCloneLock releases the clone lock on given volumeID.
-func (ol *OperationLock) ReleaseCloneLock(volumeID string) {
-	ol.release(cloneOpt, volumeID)
-}
-
-// ReleaseDeleteLock releases the delete lock on given volumeID.
-func (ol *OperationLock) ReleaseDeleteLock(volumeID string) {
-	ol.release(deleteOp, volumeID)
-}
-
-// ReleaseRestoreLock releases the restore lock on given volumeID.
-func (ol *OperationLock) ReleaseRestoreLock(volumeID string) {
-	ol.release(restoreOp, volumeID)
-}
-
-// ReleaseExpandLock releases the expand lock on given volumeID.
-func (ol *OperationLock) ReleaseExpandLock(volumeID string) {
-	ol.release(expandOp, volumeID)
 }
 
 // release deletes the lock on volumeID.

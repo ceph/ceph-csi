@@ -43,6 +43,48 @@ type Credentials struct {
 	KeyFile string
 }
 
+// NewUserCredentials creates new user credentials from secret.
+func NewUserCredentials(secrets map[string]string) (*Credentials, error) {
+	return newCredentialsFromSecret(credUserID, credUserKey, secrets)
+}
+
+// NewAdminCredentials creates new admin credentials from secret.
+func NewAdminCredentials(secrets map[string]string) (*Credentials, error) {
+	// Use userID and userKey if found else fallback to adminID and adminKey
+	if cred, err := newCredentialsFromSecret(credUserID, credUserKey, secrets); err == nil {
+		return cred, nil
+	}
+	log.WarningLogMsg("adminID and adminKey are deprecated, please use userID and userKey instead")
+
+	return newCredentialsFromSecret(credAdminID, credAdminKey, secrets)
+}
+
+// NewUserCredentialsWithMigration takes secret map from the request and validate it is
+// a migration secret, if yes, it continues to create CR from it after parsing the migration
+// secret. If it is not a migration it will continue the attempt to create credentials from it
+// without parsing the secret. This function returns credentials and error.
+func NewUserCredentialsWithMigration(secrets map[string]string) (*Credentials, error) {
+	if isMigrationSecret(secrets) {
+		migSecret, err := ParseAndSetSecretMapFromMigSecret(secrets)
+		if err != nil {
+			return nil, err
+		}
+		secrets = migSecret
+	}
+	cr, cErr := NewUserCredentials(secrets)
+	if cErr != nil {
+		return nil, cErr
+	}
+
+	return cr, nil
+}
+
+// DeleteCredentials removes the KeyFile.
+func (cr *Credentials) DeleteCredentials() {
+	// don't complain about unhandled error
+	_ = os.Remove(cr.KeyFile)
+}
+
 func storeKey(key string) (string, error) {
 	tmpfile, err := os.CreateTemp(tmpKeyFileLocation, tmpKeyFileNamePrefix)
 	if err != nil {
@@ -99,28 +141,6 @@ func newCredentialsFromSecret(idField, keyField string, secrets map[string]strin
 	return c, err
 }
 
-// DeleteCredentials removes the KeyFile.
-func (cr *Credentials) DeleteCredentials() {
-	// don't complain about unhandled error
-	_ = os.Remove(cr.KeyFile)
-}
-
-// NewUserCredentials creates new user credentials from secret.
-func NewUserCredentials(secrets map[string]string) (*Credentials, error) {
-	return newCredentialsFromSecret(credUserID, credUserKey, secrets)
-}
-
-// NewAdminCredentials creates new admin credentials from secret.
-func NewAdminCredentials(secrets map[string]string) (*Credentials, error) {
-	// Use userID and userKey if found else fallback to adminID and adminKey
-	if cred, err := newCredentialsFromSecret(credUserID, credUserKey, secrets); err == nil {
-		return cred, nil
-	}
-	log.WarningLogMsg("adminID and adminKey are deprecated, please use userID and userKey instead")
-
-	return newCredentialsFromSecret(credAdminID, credAdminKey, secrets)
-}
-
 // GetMonValFromSecret returns monitors from secret.
 func GetMonValFromSecret(secrets map[string]string) (string, error) {
 	if mons, ok := secrets[credMonitors]; ok {
@@ -159,24 +179,4 @@ func isMigrationSecret(secrets map[string]string) bool {
 	// it is good to have this check in place, also it gives clear error about this
 	// was hit on migration request compared to general one.
 	return len(secrets) != 0 && secrets[migUserKey] != ""
-}
-
-// NewUserCredentialsWithMigration takes secret map from the request and validate it is
-// a migration secret, if yes, it continues to create CR from it after parsing the migration
-// secret. If it is not a migration it will continue the attempt to create credentials from it
-// without parsing the secret. This function returns credentials and error.
-func NewUserCredentialsWithMigration(secrets map[string]string) (*Credentials, error) {
-	if isMigrationSecret(secrets) {
-		migSecret, err := ParseAndSetSecretMapFromMigSecret(secrets)
-		if err != nil {
-			return nil, err
-		}
-		secrets = migSecret
-	}
-	cr, cErr := NewUserCredentials(secrets)
-	if cErr != nil {
-		return nil, cErr
-	}
-
-	return cr, nil
 }

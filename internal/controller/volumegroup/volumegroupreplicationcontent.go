@@ -150,6 +150,29 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
+// Reconcile reconciles the VolumeGroupReplicationContent object and creates a new omap entries
+// for the volume group.
+func (r *ReconcileVGRContent) Reconcile(ctx context.Context,
+	request reconcile.Request,
+) (reconcile.Result, error) {
+	vgrc := &replicationv1alpha1.VolumeGroupReplicationContent{}
+	err := r.client.Get(ctx, request.NamespacedName, vgrc)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+
+		return reconcile.Result{}, err
+	}
+
+	// Proceed with reconciliation only if the object is not marked for deletion.
+	if vgrc.GetDeletionTimestamp().IsZero() {
+		err = r.reconcileVGRContent(ctx, vgrc)
+	}
+
+	return reconcile.Result{}, err
+}
+
 func (r *ReconcileVGRContent) getSecrets(
 	ctx context.Context,
 	name,
@@ -221,27 +244,4 @@ func (r *ReconcileVGRContent) reconcileVGRContent(ctx context.Context, obj runti
 	}
 
 	return nil
-}
-
-// Reconcile reconciles the VolumeGroupReplicationContent object and creates a new omap entries
-// for the volume group.
-func (r *ReconcileVGRContent) Reconcile(ctx context.Context,
-	request reconcile.Request,
-) (reconcile.Result, error) {
-	vgrc := &replicationv1alpha1.VolumeGroupReplicationContent{}
-	err := r.client.Get(ctx, request.NamespacedName, vgrc)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, nil
-		}
-
-		return reconcile.Result{}, err
-	}
-
-	// Proceed with reconciliation only if the object is not marked for deletion.
-	if vgrc.GetDeletionTimestamp().IsZero() {
-		err = r.reconcileVGRContent(ctx, vgrc)
-	}
-
-	return reconcile.Result{}, err
 }

@@ -108,6 +108,15 @@ func (cas *CSIAddonsServer) Start(middlewareConfig csicommon.MiddlewareServerOpt
 	return nil
 }
 
+// Stop can be used to stop the internal gRPC server.
+func (cas *CSIAddonsServer) Stop() {
+	if cas.server == nil {
+		return
+	}
+
+	cas.server.GracefulStop()
+}
+
 // serve starts the actual process of listening for requests on the gRPC
 // server. This is a blocking call, so it should get executed in a go-routine.
 func (cas *CSIAddonsServer) serve(listener net.Listener) {
@@ -120,13 +129,4 @@ func (cas *CSIAddonsServer) serve(listener net.Listener) {
 	}
 
 	log.DefaultLog("the CSI-Addons server at %q has been stopped", listener.Addr())
-}
-
-// Stop can be used to stop the internal gRPC server.
-func (cas *CSIAddonsServer) Stop() {
-	if cas.server == nil {
-		return
-	}
-
-	cas.server.GracefulStop()
 }
