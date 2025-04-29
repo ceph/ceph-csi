@@ -94,7 +94,7 @@ func TestDefaultVaultDestroyKeys(t *testing.T) {
 	require.NoError(t, err)
 	keyContext := vc.getDeleteKeyContext()
 	destroySecret, ok := keyContext[loss.DestroySecret]
-	require.NotEqual(t, "", destroySecret)
+	require.NotEmpty(t, destroySecret)
 	require.True(t, ok)
 
 	// setting vaultDestroyKeys to !true should remove the loss.DestroySecret entry

@@ -68,15 +68,15 @@ func TestKMSWorkflow(t *testing.T) {
 func TestFetchEncryptionType(t *testing.T) {
 	t.Parallel()
 	volOpts := map[string]string{}
-	require.EqualValues(t, crypto.EncryptionTypeBlock, FetchEncryptionType(volOpts, crypto.EncryptionTypeBlock))
-	require.EqualValues(t, crypto.EncryptionTypeFile, FetchEncryptionType(volOpts, crypto.EncryptionTypeFile))
-	require.EqualValues(t, crypto.EncryptionTypeNone, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
+	require.Equal(t, crypto.EncryptionTypeBlock, FetchEncryptionType(volOpts, crypto.EncryptionTypeBlock))
+	require.Equal(t, crypto.EncryptionTypeFile, FetchEncryptionType(volOpts, crypto.EncryptionTypeFile))
+	require.Equal(t, crypto.EncryptionTypeNone, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = ""
-	require.EqualValues(t, crypto.EncryptionTypeInvalid, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
+	require.Equal(t, crypto.EncryptionTypeInvalid, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = "block"
-	require.EqualValues(t, crypto.EncryptionTypeBlock, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
+	require.Equal(t, crypto.EncryptionTypeBlock, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = "file"
-	require.EqualValues(t, crypto.EncryptionTypeFile, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
+	require.Equal(t, crypto.EncryptionTypeFile, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 	volOpts["encryptionType"] = "INVALID"
-	require.EqualValues(t, crypto.EncryptionTypeInvalid, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
+	require.Equal(t, crypto.EncryptionTypeInvalid, FetchEncryptionType(volOpts, crypto.EncryptionTypeNone))
 }

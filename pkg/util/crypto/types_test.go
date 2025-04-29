@@ -24,15 +24,15 @@ import (
 
 func TestEncryptionType(t *testing.T) {
 	t.Parallel()
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("wat?"))
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("both"))
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("file,block"))
-	require.EqualValues(t, EncryptionTypeInvalid, ParseEncryptionType("block,file"))
-	require.EqualValues(t, EncryptionTypeBlock, ParseEncryptionType("block"))
-	require.EqualValues(t, EncryptionTypeFile, ParseEncryptionType("file"))
-	require.EqualValues(t, EncryptionTypeNone, ParseEncryptionType(""))
+	require.Equal(t, EncryptionTypeInvalid, ParseEncryptionType("wat?"))
+	require.Equal(t, EncryptionTypeInvalid, ParseEncryptionType("both"))
+	require.Equal(t, EncryptionTypeInvalid, ParseEncryptionType("file,block"))
+	require.Equal(t, EncryptionTypeInvalid, ParseEncryptionType("block,file"))
+	require.Equal(t, EncryptionTypeBlock, ParseEncryptionType("block"))
+	require.Equal(t, EncryptionTypeFile, ParseEncryptionType("file"))
+	require.Equal(t, EncryptionTypeNone, ParseEncryptionType(""))
 
 	for _, s := range []string{"file", "block", ""} {
-		require.EqualValues(t, s, ParseEncryptionType(s).String())
+		require.Equal(t, s, ParseEncryptionType(s).String())
 	}
 }
