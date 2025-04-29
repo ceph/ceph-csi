@@ -115,7 +115,7 @@ func (hcm *healthCheckManager) createChecker(volumeID, path string, ct CheckerTy
 // startFileChecker initializes the fileChecker and starts it.
 func (hcm *healthCheckManager) startFileChecker(volumeID, path string, shared bool) error {
 	workdir := filepath.Join(path, ".csi")
-	err := os.Mkdir(workdir, 0o755)
+	err := os.Mkdir(workdir, 0o750)
 	if err != nil && !os.IsExist(err) {
 		return fmt.Errorf("failed to created workdir %q for health-checker: %w", workdir, err)
 	}

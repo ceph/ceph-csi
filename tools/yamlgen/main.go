@@ -98,6 +98,7 @@ func writeArtifact(artifact deploymentArtifact) {
 	dir := path.Dir(artifact.filename)
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
+		//nolint:gosec // 0o750 is recommended, but the contents should be public
 		err = os.MkdirAll(dir, 0o775)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create directory %q: %v", dir, err))

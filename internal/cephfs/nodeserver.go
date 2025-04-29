@@ -432,6 +432,7 @@ func getBackingSnapshotRoot(
 
 	snapshotsBase := path.Join(stagingTargetPath, ".snap")
 
+	//nolint:gosec // intended use of a variable for the path
 	dir, err := os.Open(snapshotsBase)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to open %s when searching for snapshot root: %v", snapshotsBase, err)

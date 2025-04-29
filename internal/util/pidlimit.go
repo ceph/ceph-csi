@@ -120,6 +120,7 @@ func SetPIDLimit(limit int) error {
 		return err
 	}
 
+	//nolint:gosec // pidsMax is the intended file to use
 	f, err := os.Create(pidsMax)
 	if err != nil {
 		return err
