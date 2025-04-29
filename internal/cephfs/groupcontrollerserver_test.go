@@ -47,7 +47,7 @@ func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T)
 		{
 			"valid CreateVolumeGroupSnapshotRequest",
 			args{
-				context.Background(), &csi.CreateVolumeGroupSnapshotRequest{
+				t.Context(), &csi.CreateVolumeGroupSnapshotRequest{
 					Name:            "vg-snap-1",
 					SourceVolumeIds: []string{"vg-1"},
 					Parameters: map[string]string{
@@ -62,7 +62,7 @@ func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T)
 		{
 			"empty request name in CreateVolumeGroupSnapshotRequest",
 			args{
-				context.Background(), &csi.CreateVolumeGroupSnapshotRequest{
+				t.Context(), &csi.CreateVolumeGroupSnapshotRequest{
 					SourceVolumeIds: []string{"vg-1"},
 				},
 			},
@@ -72,7 +72,7 @@ func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T)
 		{
 			"empty SourceVolumeIds in CreateVolumeGroupSnapshotRequest",
 			args{
-				context.Background(), &csi.CreateVolumeGroupSnapshotRequest{
+				t.Context(), &csi.CreateVolumeGroupSnapshotRequest{
 					Name:            "vg-snap-1",
 					SourceVolumeIds: []string{"vg-1"},
 				},
@@ -83,7 +83,7 @@ func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T)
 		{
 			"empty clusterID in CreateVolumeGroupSnapshotRequest",
 			args{
-				context.Background(), &csi.CreateVolumeGroupSnapshotRequest{
+				t.Context(), &csi.CreateVolumeGroupSnapshotRequest{
 					Name:            "vg-snap-1",
 					SourceVolumeIds: []string{"vg-1"},
 					Parameters:      map[string]string{"fsName": "value"},
@@ -95,7 +95,7 @@ func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T)
 		{
 			"empty fsName in CreateVolumeGroupSnapshotRequest",
 			args{
-				context.Background(), &csi.CreateVolumeGroupSnapshotRequest{
+				t.Context(), &csi.CreateVolumeGroupSnapshotRequest{
 					Name:            "vg-snap-1",
 					SourceVolumeIds: []string{"vg-1"},
 					Parameters:      map[string]string{"clusterID": "value"},

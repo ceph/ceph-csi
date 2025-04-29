@@ -17,7 +17,6 @@ limitations under the License.
 package cephfs
 
 import (
-	"context"
 	"testing"
 
 	"github.com/csi-addons/spec/lib/go/fence"
@@ -38,7 +37,7 @@ func TestFenceClusterNetwork(t *testing.T) {
 		Cidrs:      nil,
 	}
 
-	_, err := controller.FenceClusterNetwork(context.TODO(), req)
+	_, err := controller.FenceClusterNetwork(t.Context(), req)
 	require.Error(t, err)
 }
 
@@ -54,6 +53,6 @@ func TestUnfenceClusterNetwork(t *testing.T) {
 		Secrets:    nil,
 		Cidrs:      nil,
 	}
-	_, err := controller.UnfenceClusterNetwork(context.TODO(), req)
+	_, err := controller.UnfenceClusterNetwork(t.Context(), req)
 	require.Error(t, err)
 }

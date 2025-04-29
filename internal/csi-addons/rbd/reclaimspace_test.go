@@ -17,7 +17,6 @@ limitations under the License.
 package rbd
 
 import (
-	"context"
 	"testing"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -39,7 +38,7 @@ func TestControllerReclaimSpace(t *testing.T) {
 		Secrets:  nil,
 	}
 
-	_, err := controller.ControllerReclaimSpace(context.TODO(), req)
+	_, err := controller.ControllerReclaimSpace(t.Context(), req)
 	require.Error(t, err)
 }
 
@@ -58,6 +57,6 @@ func TestNodeReclaimSpace(t *testing.T) {
 		Secrets:          nil,
 	}
 
-	_, err := node.NodeReclaimSpace(context.TODO(), req)
+	_, err := node.NodeReclaimSpace(t.Context(), req)
 	require.Error(t, err)
 }

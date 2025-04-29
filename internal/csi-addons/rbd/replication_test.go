@@ -83,7 +83,7 @@ func TestValidateSchedulingInterval(t *testing.T) {
 
 func TestValidateSchedulingDetails(t *testing.T) {
 	t.Parallel()
-	ctx := context.TODO()
+	ctx := t.Context()
 	tests := []struct {
 		name       string
 		parameters map[string]string
@@ -213,7 +213,7 @@ func TestGetSchedulingDetails(t *testing.T) {
 }
 
 func TestCheckVolumeResyncStatus(t *testing.T) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	t.Parallel()
 	tests := []struct {
 		name    string
@@ -406,7 +406,7 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if ready := checkRemoteSiteStatus(context.TODO(), tt.args.GetAllSitesStatus()); ready != tt.wantReady {
+			if ready := checkRemoteSiteStatus(t.Context(), tt.args.GetAllSitesStatus()); ready != tt.wantReady {
 				t.Errorf("checkRemoteSiteStatus() ready = %v, expect ready = %v", ready, tt.wantReady)
 			}
 		})
@@ -546,7 +546,7 @@ func Test_getFlattenMode(t *testing.T) {
 		{
 			name: "flattenMode option not set",
 			args: args{
-				ctx:        context.TODO(),
+				ctx:        t.Context(),
 				parameters: map[string]string{},
 			},
 			want: types.FlattenModeNever,
@@ -554,7 +554,7 @@ func Test_getFlattenMode(t *testing.T) {
 		{
 			name: "flattenMode option set to never",
 			args: args{
-				ctx: context.TODO(),
+				ctx: t.Context(),
 				parameters: map[string]string{
 					flattenModeKey: string(types.FlattenModeNever),
 				},
@@ -564,7 +564,7 @@ func Test_getFlattenMode(t *testing.T) {
 		{
 			name: "flattenMode option set to force",
 			args: args{
-				ctx: context.TODO(),
+				ctx: t.Context(),
 				parameters: map[string]string{
 					flattenModeKey: string(types.FlattenModeForce),
 				},
@@ -575,7 +575,7 @@ func Test_getFlattenMode(t *testing.T) {
 		{
 			name: "flattenMode option set to invalid value",
 			args: args{
-				ctx: context.TODO(),
+				ctx: t.Context(),
 				parameters: map[string]string{
 					flattenModeKey: "invalid123",
 				},

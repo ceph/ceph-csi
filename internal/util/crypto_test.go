@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"context"
 	"encoding/base64"
 	"testing"
 
@@ -56,7 +55,7 @@ func TestKMSWorkflow(t *testing.T) {
 	require.Equal(t, kms.DefaultKMSType, ve.GetID())
 
 	volumeID := "volume-id"
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	err = ve.StoreNewCryptoPassphrase(ctx, volumeID, defaultEncryptionPassphraseSize)
 	require.NoError(t, err)

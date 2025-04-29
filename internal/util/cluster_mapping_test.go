@@ -295,7 +295,7 @@ func TestGetMappedID(t *testing.T) {
 
 func TestFetchMappedClusterIDAndMons(t *testing.T) {
 	t.Parallel()
-	ctx := context.TODO()
+	ctx := t.Context()
 	type args struct {
 		ctx       context.Context
 		clusterID string

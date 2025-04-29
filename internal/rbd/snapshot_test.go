@@ -17,7 +17,6 @@ limitations under the License.
 package rbd
 
 import (
-	"context"
 	"testing"
 	"time"
 )
@@ -78,7 +77,7 @@ func TestToCSISnapshot(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := tt.rs.ToCSI(context.TODO()); (err != nil) != tt.wantErr {
+			if _, err := tt.rs.ToCSI(t.Context()); (err != nil) != tt.wantErr {
 				t.Errorf("ToCSI() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

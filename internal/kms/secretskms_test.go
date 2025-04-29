@@ -17,7 +17,6 @@ limitations under the License.
 package kms
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -93,7 +92,7 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	// plainDEK is the (LUKS) passphrase for the volume
 	plainDEK := "usually created with generateNewEncryptionPassphrase()"
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	// with missing encryptionPassphraseKey, encrypting should fail
 	_, err = kms.EncryptDEK(ctx, volumeID, plainDEK)

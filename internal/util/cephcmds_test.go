@@ -41,7 +41,7 @@ func TestExecCommandWithTimeout(t *testing.T) {
 		{
 			name: "echo hello",
 			args: args{
-				ctx:     context.TODO(),
+				ctx:     t.Context(),
 				program: "echo",
 				timeout: time.Second,
 				args:    []string{"hello"},
@@ -53,7 +53,7 @@ func TestExecCommandWithTimeout(t *testing.T) {
 		{
 			name: "sleep with timeout",
 			args: args{
-				ctx:     context.TODO(),
+				ctx:     t.Context(),
 				program: "sleep",
 				timeout: time.Second,
 				args:    []string{"3"},

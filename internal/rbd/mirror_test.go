@@ -17,7 +17,6 @@ limitations under the License.
 package rbd
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -27,7 +26,6 @@ import (
 
 func TestValidateLastSyncInfo(t *testing.T) {
 	t.Parallel()
-	ctx := context.TODO()
 	duration := int64(56743)
 	zero := int64(0)
 
@@ -124,7 +122,7 @@ func TestValidateLastSyncInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			teststruct, err := newSyncInfo(ctx, tt.description)
+			teststruct, err := newSyncInfo(t.Context(), tt.description)
 			if err != nil && !strings.Contains(err.Error(), tt.expectedErr) {
 				// returned error
 				t.Errorf("newSyncInfo() returned error, expected: %v, got: %v",

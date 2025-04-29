@@ -17,7 +17,6 @@ limitations under the License.
 package networkfence
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -252,7 +251,7 @@ listed 1 entries`,
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := nf.parseBlocklistForCIDR(context.TODO(), tc.blocklist, tc.cidr)
+			result := nf.parseBlocklistForCIDR(t.Context(), tc.blocklist, tc.cidr)
 			require.Equal(t, tc.expected, result)
 		})
 	}

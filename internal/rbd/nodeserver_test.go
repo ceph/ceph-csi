@@ -17,7 +17,6 @@ limitations under the License.
 package rbd
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -67,7 +66,7 @@ func TestGetStagingPath(t *testing.T) {
 
 func TestParseBoolOption(t *testing.T) {
 	t.Parallel()
-	ctx := context.TODO()
+	ctx := t.Context()
 	optionName := "myOption"
 	defaultValue := false
 

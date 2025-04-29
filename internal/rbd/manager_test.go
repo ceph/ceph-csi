@@ -17,7 +17,6 @@ limitations under the License.
 package rbd
 
 import (
-	"context"
 	"testing"
 )
 
@@ -84,7 +83,7 @@ func TestMakeVolumeGroupID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			mgr := NewManager("rbd.example.org", tt.parameters, nil)
 			defer mgr.Destroy(ctx)
 

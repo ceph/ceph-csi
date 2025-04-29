@@ -17,7 +17,6 @@ limitations under the License.
 package rbd
 
 import (
-	"context"
 	"testing"
 )
 
@@ -41,7 +40,7 @@ func checkQOS(
 
 func TestSetQOS(t *testing.T) {
 	t.Parallel()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	tests := map[string]string{
 		baseReadIops:  "2000",

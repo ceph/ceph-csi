@@ -17,7 +17,6 @@ limitations under the License.
 package csicommon
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -233,7 +232,7 @@ func TestFilesystemNodeGetVolumeStats(t *testing.T) {
 
 	// retry until a mountpoint is found
 	for {
-		stats, err := FilesystemNodeGetVolumeStats(context.TODO(), mount.New(""), cwd, true)
+		stats, err := FilesystemNodeGetVolumeStats(t.Context(), mount.New(""), cwd, true)
 		if err != nil && cwd != "/" && strings.HasSuffix(err.Error(), "is not mounted") {
 			// try again with the parent directory
 			cwd = filepath.Dir(cwd)
