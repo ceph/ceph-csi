@@ -31,7 +31,6 @@ func TestGzipLogFile(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer os.Remove(logFile.Name())
 
 	if err = GzipLogFile(logFile.Name()); err != nil {
 		t.Errorf("GzipLogFile failed: %v", err)
@@ -41,6 +40,4 @@ func TestGzipLogFile(t *testing.T) {
 	if _, err = os.Stat(newExt); errors.Is(err, os.ErrNotExist) {
 		t.Errorf("compressed logFile (%s) not found: %v", newExt, err)
 	}
-
-	os.Remove(newExt)
 }

@@ -440,7 +440,7 @@ func getBackingSnapshotRoot(
 
 		return "", status.Error(codes.Internal, err.Error())
 	}
-	defer dir.Close()
+	defer dir.Close() //nolint:errcheck // other more important errors are returned
 
 	// Read the contents of <root path>/.snap directory into a string slice.
 

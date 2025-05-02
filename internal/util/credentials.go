@@ -81,8 +81,7 @@ func NewUserCredentialsWithMigration(secrets map[string]string) (*Credentials, e
 
 // DeleteCredentials removes the KeyFile.
 func (cr *Credentials) DeleteCredentials() {
-	// don't complain about unhandled error
-	_ = os.Remove(cr.KeyFile)
+	os.Remove(cr.KeyFile) //nolint:errcheck,gosec // no way to return/report the issue here
 }
 
 func storeKey(key string) (string, error) {
@@ -92,8 +91,7 @@ func storeKey(key string) (string, error) {
 	}
 	defer func() {
 		if err != nil {
-			// don't complain about unhandled error
-			_ = os.Remove(tmpfile.Name())
+			os.Remove(tmpfile.Name()) //nolint:errcheck,gosec // no way to return/report the issue here
 		}
 	}()
 

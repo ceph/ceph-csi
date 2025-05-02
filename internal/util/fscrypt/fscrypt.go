@@ -135,7 +135,7 @@ func fsyncEncryptedDirectory(dirPath string) error {
 	if err != nil {
 		return err
 	}
-	defer dir.Close()
+	defer dir.Close() //nolint:errcheck // still open? sync may have returned an error too
 
 	return dir.Sync()
 }
@@ -284,7 +284,7 @@ func getInodeEncryptedAttribute(p string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // failed to close, assume SYS_IOCTL returned an error too
 
 	var attr int
 	_, _, errno := unix.Syscall(unix.SYS_IOCTL, file.Fd(), unix.FS_IOC_GETFLAGS,

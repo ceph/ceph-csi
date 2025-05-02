@@ -154,6 +154,7 @@ func initVaultTenantSA(args ProviderInitArgs) (EncryptionKMS, error) {
 // destroys the vaultTenantConnection object.
 func (kms *vaultTenantSA) Destroy() {
 	if kms.saTokenDir != "" {
+		//nolint:errcheck // Destroy() isn't supposed to return an error
 		_ = os.RemoveAll(kms.saTokenDir)
 	}
 

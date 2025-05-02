@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // Sparsify checks the size of the objects in the RBD image and calls
@@ -28,7 +29,7 @@ import (
 // of the image.
 // This function will return ErrImageInUse if the image is in use, since
 // sparsifying an image on which i/o is in progress is not optimal.
-func (ri *rbdImage) Sparsify(_ context.Context) error {
+func (ri *rbdImage) Sparsify(ctx context.Context) error {
 	inUse, err := ri.isInUse()
 	if err != nil {
 		return fmt.Errorf("failed to check if image is in use: %w", err)
@@ -42,7 +43,12 @@ func (ri *rbdImage) Sparsify(_ context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	imageInfo, err := image.Stat()
 	if err != nil {

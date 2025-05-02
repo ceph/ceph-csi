@@ -515,7 +515,7 @@ func (ri *rbdImage) getImageID() error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	id, err := image.GetId()
 	if err != nil {
@@ -563,7 +563,7 @@ func (ri *rbdImage) isInUse() (bool, error) {
 		// any error should assume something else is using the image
 		return true, err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	watchers, err := image.ListWatchers()
 	if err != nil {
@@ -933,7 +933,7 @@ func (ri *rbdImage) getParentName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rbdImage.Close()
+	defer rbdImage.Close() //nolint:errcheck // not a critical failure
 
 	parentInfo, err := rbdImage.GetParent()
 	if err != nil {
@@ -948,7 +948,7 @@ func (ri *rbdImage) flatten() error {
 	if err != nil {
 		return err
 	}
-	defer rbdImage.Close()
+	defer rbdImage.Close() //nolint:errcheck // not a critical failure
 
 	err = rbdImage.Flatten()
 	if err != nil {
@@ -1519,7 +1519,12 @@ func (ri *rbdImage) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) erro
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	_, err = image.CreateSnapshot(pOpts.RbdSnapName)
 
@@ -1532,7 +1537,12 @@ func (ri *rbdImage) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) erro
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	snap := image.GetSnapshot(pOpts.RbdSnapName)
 	if snap == nil {
@@ -1691,7 +1701,7 @@ func (ri *rbdImage) getImageInfo() error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	imageInfo, err := image.Stat()
 	if err != nil {
@@ -1787,7 +1797,7 @@ func (ri *rbdImage) checkSnapExists(rbdSnap *rbdSnapshot) error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	snaps, err := image.GetSnapshotNames()
 	if err != nil {
@@ -1947,7 +1957,7 @@ func (ri *rbdImage) resize(newSize int64) error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	err = image.Resize(uint64(util.RoundOffVolSize(newSize) * helpers.MiB))
 	if err != nil {
@@ -1964,7 +1974,7 @@ func (ri *rbdImage) GetMetadata(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	return image.GetMetadata(key)
 }
@@ -1974,7 +1984,7 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	return image.SetMetadata(key, value)
 }
@@ -1985,7 +1995,7 @@ func (ri *rbdImage) RemoveMetadata(key string) error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	return image.RemoveMetadata(key)
 }
@@ -2050,7 +2060,7 @@ func (ri *rbdImage) DeepCopy(dest *rbdImage) error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	err = image.DeepCopy(dest.ioctx, dest.RbdImageName, opts)
 	if err != nil {
@@ -2067,7 +2077,7 @@ func (ri *rbdImage) DisableDeepFlatten() error {
 	if err != nil {
 		return err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	return image.UpdateFeatures(librbd.FeatureDeepFlatten, false)
 }
@@ -2085,7 +2095,7 @@ func (ri *rbdImage) listSnapAndChildren() (*snapAndChildrenInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer image.Close()
+	defer image.Close() //nolint:errcheck // not a critical failure
 
 	snaps, err := image.GetSnapshotNames()
 	if err != nil {

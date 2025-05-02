@@ -34,6 +34,7 @@ func CreateTempFile(prefix, contents string) (*os.File, error) {
 	// In case of error, remove the file if it was created
 	defer func() {
 		if err != nil {
+			//nolint:errcheck // temporary file failed to remove, shrug
 			_ = os.Remove(file.Name())
 		}
 	}()

@@ -45,7 +45,7 @@ func getCgroupPidsFile() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer cgroup.Close() // #nosec: error on close is not critical here
+	defer cgroup.Close() //nolint:errcheck,nosec // error on close is not critical here
 
 	pidsMax := ""
 	scanner := bufio.NewScanner(cgroup)
@@ -88,7 +88,7 @@ func GetPIDLimit() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close() // #nosec: error on close is not critical here
+	defer f.Close() //nolint:errcheck,nosec // error on close is not critical here
 
 	maxPidsStr, err := bufio.NewReader(f).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -128,7 +128,7 @@ func SetPIDLimit(limit int) error {
 
 	_, err = f.WriteString(limitStr)
 	if err != nil {
-		f.Close() // #nosec: a write error will be more useful to return
+		f.Close() //nolint:errcheck,gosec // a write error will be more useful to return
 
 		return err
 	}

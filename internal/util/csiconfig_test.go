@@ -28,16 +28,10 @@ import (
 )
 
 var (
-	basePath     = "./test_artifacts"
-	csiClusters  = "csi-clusters.json"
-	pathToConfig = basePath + "/" + csiClusters
-	clusterID1   = "test1"
-	clusterID2   = "test2"
+	csiClusters = "csi-clusters.json"
+	clusterID1  = "test1"
+	clusterID2  = "test2"
 )
-
-func cleanupTestData() {
-	os.RemoveAll(basePath)
-}
 
 func TestCSIConfig(t *testing.T) {
 	t.Parallel()
@@ -45,7 +39,8 @@ func TestCSIConfig(t *testing.T) {
 	var data string
 	var content string
 
-	defer cleanupTestData()
+	basePath := t.TempDir() + "/test_artifacts"
+	pathToConfig := basePath + "/" + csiClusters
 
 	err = os.MkdirAll(basePath, 0o700)
 	if err != nil {

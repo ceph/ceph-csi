@@ -355,7 +355,12 @@ func (rv *rbdVolume) NewSnapshotByID(
 	if err != nil {
 		return nil, fmt.Errorf("failed to open snapshot image %q: %w", snap, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	snapImage, err = image.CreateSnapshot(snap.RbdSnapName)
 	if err != nil && !errors.Is(err, librbd.ErrExist) {

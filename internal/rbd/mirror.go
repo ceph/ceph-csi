@@ -103,12 +103,17 @@ func (ri *rbdImage) ToMirror() (types.Mirror, error) {
 }
 
 // EnableMirroring enables mirroring on an image.
-func (rm *rbdMirror) EnableMirroring(_ context.Context, mode librbd.ImageMirrorMode) error {
+func (rm *rbdMirror) EnableMirroring(ctx context.Context, mode librbd.ImageMirrorMode) error {
 	image, err := rm.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	err = image.MirrorEnable(mode)
 	if err != nil {
@@ -119,12 +124,17 @@ func (rm *rbdMirror) EnableMirroring(_ context.Context, mode librbd.ImageMirrorM
 }
 
 // DisableMirroring disables mirroring on an image.
-func (rm *rbdMirror) DisableMirroring(_ context.Context, force bool) error {
+func (rm *rbdMirror) DisableMirroring(ctx context.Context, force bool) error {
 	image, err := rm.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	err = image.MirrorDisable(force)
 	if err != nil {
@@ -135,12 +145,17 @@ func (rm *rbdMirror) DisableMirroring(_ context.Context, force bool) error {
 }
 
 // GetMirroringInfo gets mirroring information of an image.
-func (rm *rbdMirror) GetMirroringInfo(_ context.Context) (types.MirrorInfo, error) {
+func (rm *rbdMirror) GetMirroringInfo(ctx context.Context) (types.MirrorInfo, error) {
 	image, err := rm.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	info, err := image.GetMirrorImageInfo()
 	if err != nil {
@@ -151,12 +166,18 @@ func (rm *rbdMirror) GetMirroringInfo(_ context.Context) (types.MirrorInfo, erro
 }
 
 // Promote promotes image to primary.
-func (rm *rbdMirror) Promote(_ context.Context, force bool) error {
+func (rm *rbdMirror) Promote(ctx context.Context, force bool) error {
 	image, err := rm.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
+
 	err = image.MirrorPromote(force)
 	if err != nil {
 		return fmt.Errorf("failed to promote image %q with error: %w", rm, err)
@@ -196,12 +217,18 @@ func (rm *rbdMirror) ForcePromote(ctx context.Context, cr *util.Credentials) err
 }
 
 // Demote demotes image to secondary.
-func (rm *rbdMirror) Demote(_ context.Context) error {
+func (rm *rbdMirror) Demote(ctx context.Context) error {
 	image, err := rm.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
+
 	err = image.MirrorDemote()
 	if err != nil {
 		return fmt.Errorf("failed to demote image %q with error: %w", rm, err)
@@ -220,7 +247,13 @@ func (rm *rbdMirror) Resync(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
+
 	err = image.MirrorResync()
 	if err != nil {
 		return fmt.Errorf("failed to resync image %q with error: %w", rm, err)
@@ -270,12 +303,18 @@ func (rm *rbdMirror) Resync(ctx context.Context) error {
 }
 
 // GetGlobalMirroringStatus get the mirroring status of an image.
-func (rm *rbdMirror) GetGlobalMirroringStatus(_ context.Context) (types.GlobalStatus, error) {
+func (rm *rbdMirror) GetGlobalMirroringStatus(ctx context.Context) (types.GlobalStatus, error) {
 	image, err := rm.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
+
 	statusInfo, err := image.GetGlobalMirrorStatus()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image mirroring status %q with error: %w", rm, err)

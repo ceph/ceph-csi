@@ -24,6 +24,7 @@ import (
 
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // AddToGroup adds the image to the group. This is called from the rbd_group
@@ -45,7 +46,12 @@ func (rv *rbdVolume) AddToGroup(ctx context.Context, vg types.VolumeGroup) error
 	if err != nil {
 		return fmt.Errorf("failed to open image %q: %w", rv, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	info, err := image.GetGroup()
 	if err != nil {
@@ -88,7 +94,12 @@ func (rv *rbdVolume) GetVolumeGroupID(ctx context.Context, resolver types.Volume
 	if err != nil {
 		return "", fmt.Errorf("failed to open image %q: %w", rv, err)
 	}
-	defer image.Close()
+	defer func() {
+		cErr := image.Close()
+		if cErr != nil {
+			log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+		}
+	}()
 
 	info, err := image.GetGroup()
 	if err != nil {

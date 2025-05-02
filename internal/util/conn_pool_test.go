@@ -79,14 +79,13 @@ func TestConnPool(t *testing.T) {
 	defer cp.Destroy()
 
 	// create a keyfile with some contents
-	keyfile := "/tmp/conn_utils.keyfile"
+	keyfile := t.TempDir() + "/conn_utils.keyfile"
 	err := os.WriteFile(keyfile, []byte("the-key"), 0o600)
 	if err != nil {
 		t.Errorf("failed to create keyfile: %v", err)
 
 		return
 	}
-	defer os.Remove(keyfile)
 
 	var conn *rados.Conn
 	var unique string

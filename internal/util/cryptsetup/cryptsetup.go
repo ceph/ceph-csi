@@ -116,13 +116,13 @@ func (l *luksWrapper) AddKey(devicePath, passphrase, newPassphrase, slot string)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(passFile.Name())
+	defer os.Remove(passFile.Name()) //nolint:errcheck // failed to delete temp file :-(
 
 	newPassFile, err := file.CreateTempFile("luks-", newPassphrase)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(newPassFile.Name())
+	defer os.Remove(newPassFile.Name()) //nolint:errcheck // failed to delete temp file :-(
 
 	_, stderr, err := l.execCryptsetupCommand(
 		nil,
@@ -185,7 +185,7 @@ func (l *luksWrapper) RemoveKey(devicePath, passphrase, slot string) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(keyFile.Name())
+	defer os.Remove(keyFile.Name()) //nolint:errcheck // failed to delete temp file :-(
 
 	_, stderr, err := l.execCryptsetupCommand(
 		nil,
@@ -212,7 +212,7 @@ func (l *luksWrapper) VerifyKey(devicePath, passphrase, slot string) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	defer os.Remove(keyFile.Name())
+	defer os.Remove(keyFile.Name()) //nolint:errcheck // failed to delete temp file :-(
 
 	_, stderr, err := l.execCryptsetupCommand(
 		nil,

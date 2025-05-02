@@ -36,13 +36,13 @@ func GzipLogFile(pathToFile string) error {
 	if err != nil {
 		return err
 	}
-	defer gf.Close() // #nosec:G307, error on close is not critical here
+	defer gf.Close() //nolint:errcheck,nosec // G307, error on close is not critical here
 
 	// Write compressed data.
 	w := gzip.NewWriter(gf)
-	defer w.Close()
+	defer w.Close() //nolint:errcheck // error on close is not critical here
 	if _, err = w.Write(content); err != nil {
-		os.Remove(newExt) // #nosec:G104, not important error to handle
+		os.Remove(newExt) //nolint:errcheck,gosec // G104: not important error to handle
 
 		return err
 	}

@@ -302,7 +302,6 @@ func TestStrategicActionOnLogFile(t *testing.T) {
 				if _, err = os.Stat(newExt); os.IsNotExist(err) {
 					t.Errorf("compressed logFile (%s) not found: %v", newExt, err)
 				}
-				os.Remove(newExt)
 			case "remove":
 				if _, err = os.Stat(tt.args.logFile); !os.IsNotExist(err) {
 					t.Errorf("logFile (%s) not removed: %v", tt.args.logFile, err)
@@ -311,7 +310,6 @@ func TestStrategicActionOnLogFile(t *testing.T) {
 				if _, err = os.Stat(tt.args.logFile); os.IsNotExist(err) {
 					t.Errorf("logFile (%s) not preserved: %v", tt.args.logFile, err)
 				}
-				os.Remove(tt.args.logFile)
 			}
 		})
 	}

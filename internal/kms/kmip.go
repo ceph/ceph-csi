@@ -185,7 +185,7 @@ func (kms *kmipKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string,
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck // more important errors are returned
 
 	emd := encryptedMetedataDEK{}
 	emd.Nonce, err = generateNonce(nonceSize)
@@ -241,7 +241,7 @@ func (kms *kmipKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (str
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck // more important errors are returned
 
 	emd := encryptedMetedataDEK{}
 	err = json.Unmarshal([]byte(encryptedDEK), &emd)
@@ -346,7 +346,7 @@ func (kms *kmipKMS) connect() (*tls.Conn, error) {
 	}
 	defer func() {
 		if err != nil {
-			conn.Close()
+			conn.Close() //nolint:errcheck,gosec // more important failures are returned
 		}
 	}()
 
