@@ -33,6 +33,7 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -354,6 +355,56 @@ func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSna
 	}
 
 	return nil
+}
+
+func (cs *ControllerServer) ListSnapshots(
+	ctx context.Context,
+	req *csi.ListSnapshotsRequest,
+) (*csi.ListSnapshotsResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
+		log.ErrorLog(ctx, "invalid list snapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
+	mgr := NewManager(cs.Driver.GetInstanceID(), nil, req.GetSecrets())
+	defer mgr.Destroy(ctx)
+
+	snap, err := mgr.GetSnapshotByID(ctx, req.GetSnapshotId())
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "failed to find snapshot with ID %q: %s", req.GetSnapshotId(), err.Error())
+	}
+	defer snap.Destroy(ctx)
+
+	// We need type casting here as SourceVolumeID is unset
+	// We fetch the source volume ID from the request and return
+	// that in the response
+	rbdSnap, ok := snap.(*rbdSnapshot)
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "failed to cast to rbdSnapshot instance for snap: %s", req.GetSnapshotId())
+	}
+	defer rbdSnap.Destroy(ctx)
+
+	snapCreationTime, err := rbdSnap.GetCreationTime(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.ListSnapshotsResponse{
+		Entries: []*csi.ListSnapshotsResponse_Entry{
+			{
+				Snapshot: &csi.Snapshot{
+					SizeBytes:       rbdSnap.VolSize,
+					SnapshotId:      rbdSnap.VolID,
+					SourceVolumeId:  req.GetSourceVolumeId(),
+					CreationTime:    timestamppb.New(*snapCreationTime),
+					ReadyToUse:      true,
+					GroupSnapshotId: rbdSnap.groupID,
+				},
+			},
+		},
+	}, nil
 }
 
 // CreateVolume creates the volume in backend.
