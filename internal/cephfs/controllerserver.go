@@ -974,6 +974,62 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	return nil
 }
 
+func (cs *ControllerServer) ListSnapshots(
+	ctx context.Context,
+	req *csi.ListSnapshotsRequest,
+) (*csi.ListSnapshotsResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
+		log.ErrorLog(ctx, "invalid list snapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
+	cr, err := util.NewAdminCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	snapshotID := req.GetSnapshotId()
+	if snapshotID == "" {
+		return nil, status.Error(codes.InvalidArgument, "snapshot ID cannot be empty")
+	}
+
+	volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, snapshotID, cr,
+		req.GetSecrets(), cs.ClusterName, cs.SetMetadata)
+	if err != nil {
+		switch {
+		case errors.Is(err, cerrors.ErrSnapNotFound):
+			return nil, status.Error(codes.NotFound, err.Error())
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+	defer volOpt.Destroy()
+
+	subVolClient := core.NewSubVolume(volOpt.GetConnection(), &volOpt.SubVolume,
+		volOpt.ClusterID, cs.ClusterName, cs.SetMetadata)
+	info, err := subVolClient.GetSubVolumeInfo(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.ListSnapshotsResponse{
+		Entries: []*csi.ListSnapshotsResponse_Entry{
+			{
+				Snapshot: &csi.Snapshot{
+					SizeBytes:      info.BytesQuota,
+					SnapshotId:     sid.SnapshotID,
+					SourceVolumeId: req.GetSourceVolumeId(),
+					CreationTime:   sid.CreationTime,
+					ReadyToUse:     true,
+				},
+			},
+		},
+	}, nil
+}
+
 // DeleteSnapshot deletes the snapshot in backend and removes the
 // snapshot metadata from store.
 func (cs *ControllerServer) DeleteSnapshot(
