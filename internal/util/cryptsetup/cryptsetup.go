@@ -78,7 +78,7 @@ func (l *luksWrapper) Format(devicePath, passphrase string) (string, string, err
 		strconv.Itoa(pkdbfMemoryLimit),
 		devicePath,
 		"-d",
-		"/dev/stdin")
+		"-")
 }
 
 // LuksOpen opens LUKS encrypted partition and sets up a mapping.
@@ -92,7 +92,7 @@ func (l *luksWrapper) Open(devicePath, mapperFile, passphrase string) (string, s
 		mapperFile,
 		"--disable-keyring",
 		"-d",
-		"/dev/stdin")
+		"-")
 }
 
 // LuksResize resizes LUKS encrypted partition.
