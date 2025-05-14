@@ -812,7 +812,10 @@ func (ri *rbdImage) getCloneDepth(maxDepth uint) (uint, error) {
 	// Close this image, it is not used anymore. Using defer to close it
 	// and replacing the image with an other image can result in resource
 	// leaks according to golangci-lint.
-	image.Close()
+	cErr := image.Close()
+	if cErr != nil {
+		log.WarningLogMsg("failed to close image %s: %v", ri, cErr)
+	}
 
 	for {
 		if errors.Is(err, librbd.ErrNotFound) {
@@ -840,7 +843,8 @@ func (ri *rbdImage) getCloneDepth(maxDepth uint) (uint, error) {
 
 		// open the parent image, so that the for-loop can continue
 		// with checking for the parent of the parent
-		image, err = librbd.OpenImageByIdReadOnly(ri.ioctx, info.Image.ImageID, librbd.NoSnapshot)
+		imageID := info.Image.ImageID
+		image, err = librbd.OpenImageByIdReadOnly(ri.ioctx, imageID, librbd.NoSnapshot)
 		if err != nil && errors.Is(err, librbd.ErrNotFound) {
 			// parent image does not exist, no parent after all
 			break
@@ -858,7 +862,10 @@ func (ri *rbdImage) getCloneDepth(maxDepth uint) (uint, error) {
 
 		// Using defer in a for loop seems to be problematic. Just
 		// always close the image.
-		image.Close()
+		cErr = image.Close()
+		if cErr != nil {
+			log.WarningLogMsg("failed to close image with id %s: %v", imageID, cErr)
+		}
 	}
 
 	return depth, nil
