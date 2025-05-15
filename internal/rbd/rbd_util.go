@@ -1140,6 +1140,32 @@ func updateSnapshotDetails(ctx context.Context, rbdSnap *rbdSnapshot) error {
 	}
 	rbdSnap.VolSize = vol.VolSize
 
+	// get the parent to set rbdSnap.SourceVolumeID
+	parent, err := rbdSnap.getParent()
+	if err != nil && !errors.Is(err, rbderrors.ErrImageNotFound) {
+		return fmt.Errorf("failed to get parent of snapshot %q: %w", rbdSnap, err)
+	} else if parent == nil {
+		// no need to set rbdSnap.SourceVolumeID
+		return nil
+	}
+
+	poolID, err := util.GetPoolID(parent.Monitors, rbdSnap.conn.Creds, parent.Pool)
+	if err != nil {
+		return fmt.Errorf("failed to get the pool id for parent %q: %w", parent, err)
+	}
+
+	rbdSnap.SourceVolumeID, err = util.GenerateVolID(
+		ctx,
+		parent.Monitors,
+		rbdSnap.conn.Creds,
+		poolID,
+		parent.Pool,
+		parent.ClusterID,
+		parent.ReservedID)
+	if err != nil {
+		return fmt.Errorf("failed to generate source volume-id for parent %q: %w", parent, err)
+	}
+
 	return nil
 }
 
