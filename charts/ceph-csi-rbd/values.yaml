@@ -302,7 +302,7 @@ provisioner:
   snapshotter:
     image:
       repository: registry.k8s.io/sig-storage/csi-snapshotter
-      tag: v8.2.0
+      tag: v8.2.1
       pullPolicy: IfNotPresent
     resources: {}
     args:
