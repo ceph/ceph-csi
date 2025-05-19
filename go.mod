@@ -8,7 +8,7 @@ toolchain go1.24.2
 replace github.com/ceph/ceph-csi/api => ./api
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.9.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.3.1
 	github.com/IBM/keyprotect-go-client v0.15.1
 	github.com/aws/aws-sdk-go v1.55.7
