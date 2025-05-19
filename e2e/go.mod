@@ -16,24 +16,24 @@ require (
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	// when updating k8s.io modules, update the 'replace' section below too
-	k8s.io/api v0.33.0
-	k8s.io/apimachinery v0.33.0
+	k8s.io/api v0.33.1
+	k8s.io/apimachinery v0.33.1
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/cloud-provider v0.33.0
-	k8s.io/kubernetes v1.33.0
-	k8s.io/pod-security-admission v0.33.0
+	k8s.io/cloud-provider v0.33.1
+	k8s.io/kubernetes v1.33.1
+	k8s.io/pod-security-admission v0.33.1
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.33.0
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.33.0
-	k8s.io/client-go => k8s.io/client-go v0.33.0
-	k8s.io/cri-client => k8s.io/cri-client v0.33.0
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.33.0
-	k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.33.0
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.33.0
-	k8s.io/kubectl => k8s.io/kubectl v0.33.0
-	k8s.io/kubelet => k8s.io/kubelet v0.33.0
+	k8s.io/api => k8s.io/api v0.33.1
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.33.1
+	k8s.io/client-go => k8s.io/client-go v0.33.1
+	k8s.io/cri-client => k8s.io/cri-client v0.33.1
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.33.1
+	k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.33.1
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.33.1
+	k8s.io/kubectl => k8s.io/kubectl v0.33.1
+	k8s.io/kubelet => k8s.io/kubelet v0.33.1
 )
 
 require github.com/ceph/ceph-csi v2.0.1+incompatible
@@ -119,14 +119,14 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a // indirect
@@ -136,21 +136,21 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.32.1 // indirect
-	k8s.io/apiserver v0.33.0 // indirect
-	k8s.io/component-base v0.33.0 // indirect
-	k8s.io/component-helpers v0.33.0 // indirect
-	k8s.io/controller-manager v0.33.0 // indirect
-	k8s.io/cri-api v0.33.0 // indirect
+	k8s.io/apiextensions-apiserver v0.33.1 // indirect
+	k8s.io/apiserver v0.33.1 // indirect
+	k8s.io/component-base v0.33.1 // indirect
+	k8s.io/component-helpers v0.33.1 // indirect
+	k8s.io/controller-manager v0.33.1 // indirect
+	k8s.io/cri-api v0.33.1 // indirect
 	k8s.io/cri-client v0.0.0 // indirect
-	k8s.io/csi-translation-lib v0.32.2 // indirect
+	k8s.io/csi-translation-lib v0.33.1 // indirect
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/kube-scheduler v0.0.0 // indirect
 	k8s.io/kubectl v0.0.0 // indirect
-	k8s.io/kubelet v0.33.0 // indirect
-	k8s.io/mount-utils v0.32.2 // indirect
+	k8s.io/kubelet v0.33.1 // indirect
+	k8s.io/mount-utils v0.33.1 // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.2 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
