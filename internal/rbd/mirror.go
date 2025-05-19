@@ -120,6 +120,8 @@ func (rm *rbdMirror) EnableMirroring(ctx context.Context, mode librbd.ImageMirro
 		return fmt.Errorf("failed to enable mirroring on %q with error: %w", rm, err)
 	}
 
+	log.DebugLog(ctx, "mirroring is enabled on the image %q", rm)
+
 	return nil
 }
 
@@ -140,6 +142,8 @@ func (rm *rbdMirror) DisableMirroring(ctx context.Context, force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to disable mirroring on %q with error: %w", rm, err)
 	}
+
+	log.DebugLog(ctx, "mirroring is disabled on the image %q", rm)
 
 	return nil
 }
@@ -183,6 +187,8 @@ func (rm *rbdMirror) Promote(ctx context.Context, force bool) error {
 		return fmt.Errorf("failed to promote image %q with error: %w", rm, err)
 	}
 
+	log.DebugLog(ctx, "image %q has been promoted", rm)
+
 	return nil
 }
 
@@ -213,6 +219,8 @@ func (rm *rbdMirror) ForcePromote(ctx context.Context, cr *util.Credentials) err
 		return fmt.Errorf("failed to promote image %q with stderror: %s", rm, stderr)
 	}
 
+	log.DebugLog(ctx, "image %q has been force promoted", rm)
+
 	return nil
 }
 
@@ -233,6 +241,8 @@ func (rm *rbdMirror) Demote(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to demote image %q with error: %w", rm, err)
 	}
+
+	log.DebugLog(ctx, "image %q has been demoted", rm)
 
 	return nil
 }
@@ -258,6 +268,8 @@ func (rm *rbdMirror) Resync(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to resync image %q with error: %w", rm, err)
 	}
+
+	log.DebugLog(ctx, "issued resync on image %q", rm)
 
 	// delay until the state is syncing, or until 1+2+4+8+16 seconds passed
 	delay := 1 * time.Second

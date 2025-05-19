@@ -29,6 +29,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/replication"
+	"github.com/csi-addons/spec/lib/go/volumegroup"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
@@ -222,18 +223,23 @@ func getReqID(req interface{}) string {
 		reqID = r.GetGroupSnapshotId()
 
 	// Replication
-	case *replication.EnableVolumeReplicationRequest:
+	case *replication.EnableVolumeReplicationRequest,
+		*replication.DisableVolumeReplicationRequest,
+		*replication.PromoteVolumeRequest,
+		*replication.DemoteVolumeRequest,
+		*replication.ResyncVolumeRequest,
+		*replication.GetVolumeReplicationInfoRequest:
 		reqID = GetIDFromReplication(r)
-	case *replication.DisableVolumeReplicationRequest:
-		reqID = GetIDFromReplication(r)
-	case *replication.PromoteVolumeRequest:
-		reqID = GetIDFromReplication(r)
-	case *replication.DemoteVolumeRequest:
-		reqID = GetIDFromReplication(r)
-	case *replication.ResyncVolumeRequest:
-		reqID = GetIDFromReplication(r)
-	case *replication.GetVolumeReplicationInfoRequest:
-		reqID = GetIDFromReplication(r)
+
+	// VolumeGroup
+	case *volumegroup.CreateVolumeGroupRequest:
+		reqID = r.GetName()
+	case *volumegroup.ModifyVolumeGroupMembershipRequest:
+		reqID = r.GetVolumeGroupId()
+	case *volumegroup.DeleteVolumeGroupRequest:
+		reqID = r.GetVolumeGroupId()
+	case *volumegroup.ControllerGetVolumeGroupRequest:
+		reqID = r.GetVolumeGroupId()
 	}
 
 	return reqID
