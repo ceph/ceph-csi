@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Copying labels
-        uses: Mergifyio/gha-mergify-merge-queue-labels-copier@1d2b277f94d52987008ec05b571fb68f2357e63f  # main
+        uses: Mergifyio/gha-mergify-merge-queue-labels-copier@00cb4a6fcf7ae385ce1f8a4e72e8aa154f90e3e7  # main
         with:
           additional-labels: 'ok-to-test'
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
