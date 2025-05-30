@@ -178,22 +178,22 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 		}
 
 		log.DebugLog(ctx, "existing volume group %q has been resolved: %+v", groupName, vg)
-	}
 
-	// TODO: check the number of volumes in the vg, it needs to be empty, or match len(volumes)
-	matches, err := mgr.CompareVolumesInGroup(ctx, volumes, vg)
-	if err != nil {
-		return nil, status.Errorf(
-			codes.Internal,
-			"failed to compare %d volumes with volume group %q: %s",
-			len(volumes),
-			groupName,
-			err.Error())
-	} else if !matches {
-		return nil, status.Errorf(
-			codes.Internal,
-			"volume group %q does not match with requested volumes",
-			groupName)
+		// verify that all the volumes are part of the existing volume group
+		matches, err := mgr.CompareVolumesInGroup(ctx, volumes, vg)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"failed to compare %d volumes with volume group %q: %s",
+				len(volumes),
+				groupName,
+				err.Error())
+		} else if !matches {
+			return nil, status.Errorf(
+				codes.Internal,
+				"volume group %q does not match with requested volumes",
+				groupName)
+		}
 	}
 
 	vols, err := vg.ListVolumes(ctx)
