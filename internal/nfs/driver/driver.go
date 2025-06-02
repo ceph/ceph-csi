@@ -63,7 +63,7 @@ func (fs *Driver) Run(conf *util.Config) {
 
 	// Create gRPC servers
 	server := csicommon.NewNonBlockingGRPCServer()
-	srv := csicommon.Servers{
+	srv := &csicommon.Servers{
 		IS: identity.NewIdentityServer(cd),
 	}
 

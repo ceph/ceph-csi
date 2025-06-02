@@ -31,7 +31,7 @@ import (
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces.
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
-	Start(endpoint string, srv Servers, middlewareConfig MiddlewareServerOptionConfig)
+	Start(endpoint string, srv *Servers, middlewareConfig MiddlewareServerOptionConfig)
 	// Waits for the service to stop
 	Wait()
 	// Stops the service gracefully
@@ -62,11 +62,11 @@ type nonBlockingGRPCServer struct {
 // Start start service on endpoint.
 func (s *nonBlockingGRPCServer) Start(
 	endpoint string,
-	srv Servers,
+	srv *Servers,
 	middlewareConfig MiddlewareServerOptionConfig,
 ) {
 	s.wg.Add(1)
-	go s.serve(endpoint, srv, middlewareConfig)
+	go s.serve(endpoint, *srv, middlewareConfig)
 }
 
 // Wait blocks until the WaitGroup counter.

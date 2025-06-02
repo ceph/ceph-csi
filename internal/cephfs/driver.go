@@ -193,7 +193,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	}
 
 	server := csicommon.NewNonBlockingGRPCServer()
-	srv := csicommon.Servers{
+	srv := &csicommon.Servers{
 		IS: fs.is,
 		CS: fs.cs,
 		NS: fs.ns,
