@@ -107,8 +107,10 @@ func (s *nonBlockingGRPCServer) serve(
 		klog.Fatalf("Failed to listen: %v", err)
 	}
 
-	server := grpc.NewServer(NewMiddlewareServerOption(middlewareConfig))
-	s.server = server
+	middleWareServerOption := NewMiddlewareServerOption(middlewareConfig)
+	middleWareStreamServerOption := NewMiddlewareStreamServerOption()
+
+	server := grpc.NewServer(middleWareServerOption, middleWareStreamServerOption)
 
 	if srv.IS != nil {
 		csi.RegisterIdentityServer(server, srv.IS)

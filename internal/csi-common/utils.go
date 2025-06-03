@@ -142,6 +142,12 @@ func NewMiddlewareServerOption(config MiddlewareServerOptionConfig) grpc.ServerO
 	return grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(middleWare...))
 }
 
+// NewMiddlewareStreamServerOptions creates a new Stream Server specific grpc.ServerOption
+// that configures a common format for log messages and other gRPC related handlers.
+func NewMiddlewareStreamServerOption() grpc.ServerOption {
+	return grpc.StreamInterceptor(streamInterceptor)
+}
+
 // GetIDFromReplication returns the volumeID for Replication.
 func GetIDFromReplication(req interface{}) string {
 	getID := func(r interface {
@@ -260,6 +266,70 @@ func contextIDInjector(
 	}
 
 	return handler(ctx, req)
+}
+
+// wrapper Server Stream wraps around grpc.ServerStream
+// to inject ID, ReqID and additional logging.
+type wrapperServerStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+// Context returns the wrapperServerStream's ctx,
+// overwriting the nested grpc.ServerStream.Context().
+func (s *wrapperServerStream) Context() context.Context {
+	return s.ctx
+}
+
+// RecvMsg wraps around grpc.ServerStream.RecvMsg to inject
+// ReqID and log request details.
+func (s *wrapperServerStream) RecvMsg(req interface{}) error {
+	err := s.ServerStream.RecvMsg(req)
+
+	// reqID is intentionally extracted after .RecvMsg(req) as the req
+	// object is only populated after the call to .RecvMsg(req).
+	reqID := ""
+	switch r := req.(type) {
+	case *csi.GetMetadataAllocatedRequest:
+		reqID = r.GetSnapshotId()
+	case *csi.GetMetadataDeltaRequest:
+		reqID = r.GetTargetSnapshotId()
+	}
+	s.ctx = context.WithValue(s.ctx, log.ReqID, reqID)
+	log.TraceLog(s.ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
+
+	if err != nil {
+		klog.Errorf(log.Log(s.ctx, "GRPC error: %v"), err)
+	}
+
+	return err
+}
+
+// streamInterceptor intercepts and wraps server stream to inject
+// additional logging details.
+func streamInterceptor(
+	srv any,
+	stream grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
+	atomic.AddUint64(&id, 1)
+	ctx := stream.Context()
+	ctx = context.WithValue(ctx, log.CtxKey, id)
+
+	log.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
+
+	streamWithID := &wrapperServerStream{
+		ServerStream: stream,
+		ctx:          ctx,
+	}
+
+	err := handler(srv, streamWithID)
+	if err != nil {
+		klog.Errorf(log.Log(ctx, "GRPC error: %v"), err)
+	}
+
+	return err
 }
 
 func logGRPC(
