@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -56,6 +57,15 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 
 		vgNeedsDeletion = true
 	)
+
+	err = cs.Driver.ValidateGroupControllerServiceRequest(
+		csi.GroupControllerServiceCapability_RPC_CREATE_DELETE_GET_VOLUME_GROUP_SNAPSHOT,
+	)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid create groupsnapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
 
 	// Existence and conflict checks
 	if acquired := cs.VolumeGroupLocks.TryAcquire(vgsName); !acquired {
@@ -254,6 +264,15 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(
 	ctx context.Context,
 	req *csi.DeleteVolumeGroupSnapshotRequest,
 ) (*csi.DeleteVolumeGroupSnapshotResponse, error) {
+	err := cs.Driver.ValidateGroupControllerServiceRequest(
+		csi.GroupControllerServiceCapability_RPC_CREATE_DELETE_GET_VOLUME_GROUP_SNAPSHOT,
+	)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid create groupsnapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
 	// FIXME: more checking of the request in needed
 	// 1. verify that all snapshots in the request are all snapshots in the group
 	// 2. delete the group
@@ -304,6 +323,15 @@ func (cs *ControllerServer) GetVolumeGroupSnapshot(
 	ctx context.Context,
 	req *csi.GetVolumeGroupSnapshotRequest,
 ) (*csi.GetVolumeGroupSnapshotResponse, error) {
+	err := cs.Driver.ValidateGroupControllerServiceRequest(
+		csi.GroupControllerServiceCapability_RPC_CREATE_DELETE_GET_VOLUME_GROUP_SNAPSHOT,
+	)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid create groupsnapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
 	groupSnapshotID := req.GetGroupSnapshotId()
 
 	// Existence and conflict checks
