@@ -66,7 +66,7 @@ func (s *nonBlockingGRPCServer) Start(
 	middlewareConfig MiddlewareServerOptionConfig,
 ) {
 	s.wg.Add(1)
-	go s.serve(endpoint, *srv, middlewareConfig)
+	go s.serve(endpoint, srv, middlewareConfig)
 }
 
 // Wait blocks until the WaitGroup counter.
@@ -86,7 +86,7 @@ func (s *nonBlockingGRPCServer) ForceStop() {
 
 func (s *nonBlockingGRPCServer) serve(
 	endpoint string,
-	srv Servers,
+	srv *Servers,
 	middlewareConfig MiddlewareServerOptionConfig,
 ) {
 	proto, addr, err := parseEndpoint(endpoint)
