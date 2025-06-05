@@ -104,7 +104,7 @@ spec:
               mountPath: /run/secrets/tokens
               readOnly: true
         - name: csi-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.3.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
