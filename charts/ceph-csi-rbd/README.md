@@ -88,7 +88,7 @@ kubectl delete namespace ceph-csi-rbd
 
 ### Configuration
 
-The following table lists the configurable parameters of the ceph-csi-cephfs
+The following table lists the configurable parameters of the ceph-csi-rbd
 charts and their default values.
 
 | Parameter                                      | Description                                                                                                                                          | Default                                            |
