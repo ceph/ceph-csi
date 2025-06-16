@@ -132,8 +132,8 @@ github.com/cenkalti/backoff/v3 v3.2.2/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4r
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
-github.com/ceph/go-ceph v0.33.0 h1:xT9v/MAa+DIBmflyITyFkGRgWngATghGegKJguEOInQ=
-github.com/ceph/go-ceph v0.33.0/go.mod h1:6ef0lIyDHnwArykqfWZDWCfbbJAVTXL1tOYrM1M4bAE=
+github.com/ceph/go-ceph v0.34.0 h1:C45yU8VRl0Rg+/I0qw5bzT337HG6DL0yBQ0VR6QHv4o=
+github.com/ceph/go-ceph v0.34.0/go.mod h1:otRLwpVgM81lK5zdGYOfr4OELdeS97luDBE/PjXAB5o=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=

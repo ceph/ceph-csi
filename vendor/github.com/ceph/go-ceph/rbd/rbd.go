@@ -773,23 +773,28 @@ func (image *Image) Read(data []byte) (int, error) {
 //
 //	ssize_t rbd_write(rbd_image_t image, uint64_t ofs, size_t len,
 //	                  const char *buf);
-func (image *Image) Write(data []byte) (n int, err error) {
+func (image *Image) Write(data []byte) (int, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
+	}
+
+	if len(data) == 0 {
+		return 0, nil
 	}
 
 	ret := int(C.rbd_write(image.image, C.uint64_t(image.offset),
 		C.size_t(len(data)), (*C.char)(unsafe.Pointer(&data[0]))))
 
-	if ret >= 0 {
-		image.offset += int64(ret)
+	if ret < 0 {
+		return 0, getError(C.int(ret))
 	}
 
-	if ret != len(data) {
-		err = getError(-C.EPERM)
+	image.offset += int64(ret)
+	if ret < len(data) {
+		return ret, io.EOF
 	}
 
-	return ret, err
+	return ret, nil
 }
 
 // Seek updates the internal file position for the current image.
@@ -859,7 +864,7 @@ func (image *Image) ReadAt(data []byte, off int64) (int, error) {
 }
 
 // WriteAt copies data from the supplied buffer to the image.
-func (image *Image) WriteAt(data []byte, off int64) (n int, err error) {
+func (image *Image) WriteAt(data []byte, off int64) (int, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
 	}
@@ -871,11 +876,15 @@ func (image *Image) WriteAt(data []byte, off int64) (n int, err error) {
 	ret := int(C.rbd_write(image.image, C.uint64_t(off),
 		C.size_t(len(data)), (*C.char)(unsafe.Pointer(&data[0]))))
 
-	if ret != len(data) {
-		err = getError(-C.EPERM)
+	if ret < 0 {
+		return 0, getError(C.int(ret))
 	}
 
-	return ret, err
+	if ret < len(data) {
+		return ret, io.EOF
+	}
+
+	return ret, nil
 }
 
 // WriteSame repeats writing data from starting point ofs until n bytes have
