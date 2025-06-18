@@ -30,6 +30,7 @@ import (
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
+	"github.com/csi-addons/spec/lib/go/replication"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -592,6 +593,197 @@ func Test_getFlattenMode(t *testing.T) {
 			}
 			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getFlattenMode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getCurrentReplicationStatus(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	tests := []struct {
+		name      string
+		args      corerbd.GlobalMirrorStatus
+		status    replication.GetVolumeReplicationInfoResponse_Status
+		statusMsg string
+	}{
+		{
+			name: "test when mirroring is down",
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID:  "",
+							State:       librbd.MirrorImageStatusStateUnknown,
+							Description: "status is unknown",
+							Up:          false,
+						},
+						{
+							MirrorUUID:  "remote",
+							State:       librbd.MirrorImageStatusStateUnknown,
+							Description: "status is unknown",
+							Up:          false,
+						},
+					},
+				},
+			},
+			status:    replication.GetVolumeReplicationInfoResponse_DEGRADED,
+			statusMsg: "status is unknown",
+		},
+		{
+			name: "test when mirroring is up and local is primary",
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID:  "",
+							State:       librbd.MirrorImageStatusStateStopped,
+							Description: "local image is primary",
+							Up:          true,
+						},
+						{
+							MirrorUUID: "remote",
+							State:      librbd.MirrorImageStatusStateReplaying,
+							//nolint:lll // sample output cannot be split into multiple lines.
+							Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+							Up:          true,
+						},
+					},
+				},
+			},
+			status:    replication.GetVolumeReplicationInfoResponse_HEALTHY,
+			statusMsg: "local image is primary",
+		},
+		{
+			name: "test when mirroring is up and local is secondary",
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID: "",
+							State:      librbd.MirrorImageStatusStateReplaying,
+							//nolint:lll // sample output cannot be split into multiple lines.
+							Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+							Up:          true,
+						},
+						{
+							MirrorUUID:  "remote",
+							State:       librbd.MirrorImageStatusStateStopped,
+							Description: "local image is primary",
+							Up:          true,
+						},
+					},
+				},
+			},
+			status:    replication.GetVolumeReplicationInfoResponse_HEALTHY,
+			statusMsg: "replaying",
+		},
+		{
+			name: "test when mirroring is up and in error state",
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID:  "",
+							State:       librbd.MirrorImageStatusStateError,
+							Description: "error",
+							Up:          true,
+						},
+						{
+							MirrorUUID: "remote",
+							State:      librbd.MirrorImageStatusStateReplaying,
+							//nolint:lll // sample output cannot be split into multiple lines.
+							Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+							Up:          true,
+						},
+					},
+				},
+			},
+			status:    replication.GetVolumeReplicationInfoResponse_ERROR,
+			statusMsg: "error",
+		},
+		{
+			name: "test when resync is required",
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID:  "",
+							State:       librbd.MirrorImageStatusStateError,
+							Description: "split-brain detected",
+							Up:          true,
+						},
+						{
+							MirrorUUID:  "remote",
+							State:       librbd.MirrorImageStatusStateStopped,
+							Description: "local image is primary",
+							Up:          true,
+						},
+					},
+				},
+			},
+			status:    replication.GetVolumeReplicationInfoResponse_ERROR,
+			statusMsg: "split-brain detected",
+		},
+		{
+			name: "test when both the clusters are secondary and sync is complete",
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID:  "",
+							State:       librbd.MirrorImageStatusStateUnknown,
+							Description: "remote image is not primary",
+							Up:          true,
+						},
+						{
+							MirrorUUID:  "remote",
+							State:       librbd.MirrorImageStatusStateUnknown,
+							Description: "remote image is not primary",
+							Up:          true,
+						},
+					},
+				},
+			},
+			status:    replication.GetVolumeReplicationInfoResponse_UNKNOWN,
+			statusMsg: "remote image is not primary",
+		},
+		{
+			name: "test when secondary is starting replaying",
+			args: corerbd.GlobalMirrorStatus{
+				GlobalMirrorImageStatus: librbd.GlobalMirrorImageStatus{
+					SiteStatuses: []librbd.SiteMirrorImageStatus{
+						{
+							MirrorUUID:  "",
+							State:       librbd.MirrorImageStatusStateStartingReplay,
+							Description: "starting replay",
+							Up:          true,
+						},
+						{
+							MirrorUUID:  "remote",
+							State:       librbd.MirrorImageStatusStateStopped,
+							Description: "local image is primary",
+							Up:          true,
+						},
+					},
+				},
+			},
+			status:    replication.GetVolumeReplicationInfoResponse_UNKNOWN,
+			statusMsg: "starting replay",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			respStatus, respStatusMsg, err := getCurrentReplicationStatus(ctx, tt.args)
+			if err != nil {
+				t.Errorf("getCurrentReplicationStatus() returned error = %v", err)
+			}
+			if !reflect.DeepEqual(tt.status, respStatus) {
+				t.Errorf("getCurrentReplicationStatus() returned status = %v, want = %v", respStatus, tt.status)
+			}
+			if !reflect.DeepEqual(tt.statusMsg, respStatusMsg) {
+				t.Errorf("getCurrentReplicationStatus() returned statusMsg = %v, want = %v", respStatusMsg, tt.statusMsg)
 			}
 		})
 	}
