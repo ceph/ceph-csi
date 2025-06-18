@@ -223,7 +223,7 @@ github.com/container-storage-interface/spec/lib/go/csi
 # github.com/csi-addons/kubernetes-csi-addons v0.12.0
 ## explicit; go 1.23.0
 github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1
-# github.com/csi-addons/spec v0.2.1-0.20241104111131-27825f744db5
+# github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79
 ## explicit
 github.com/csi-addons/spec/lib/go/encryptionkeyrotation
 github.com/csi-addons/spec/lib/go/fence

@@ -162,8 +162,8 @@ github.com/container-storage-interface/spec v1.11.0/go.mod h1:DtUvaQszPml1YJfIK7
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/csi-addons/kubernetes-csi-addons v0.12.0 h1:RbF2dCjWV4ljynibEOkA0wbwwt/09awjOKgEFC14Bns=
 github.com/csi-addons/kubernetes-csi-addons v0.12.0/go.mod h1:8vrXJUZrlI2ms2aZ6qRfp8ieRlpHEefTX5azOFi67o0=
-github.com/csi-addons/spec v0.2.1-0.20241104111131-27825f744db5 h1:j9NaWj5KmzEVarmsjxS/NDAhes6Uzq1qhkUGHvDlVBk=
-github.com/csi-addons/spec v0.2.1-0.20241104111131-27825f744db5/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
+github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79 h1:ditFTa+wl7DLanGQHSS/AwuITGuWeBXyl7syPO4n+4s=
+github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=

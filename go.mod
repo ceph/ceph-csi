@@ -17,7 +17,7 @@ require (
 	github.com/ceph/go-ceph v0.34.0
 	github.com/container-storage-interface/spec v1.11.0
 	github.com/csi-addons/kubernetes-csi-addons v0.12.0
-	github.com/csi-addons/spec v0.2.1-0.20241104111131-27825f744db5
+	github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79
 	github.com/gemalto/kmip-go v0.0.10
 	github.com/golang/protobuf v1.5.4
 	github.com/google/fscrypt v0.3.6-0.20240502174735-068b9f8f5dec
