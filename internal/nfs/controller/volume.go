@@ -166,6 +166,8 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	switch {
 	case err == nil:
 		return nil
+	case strings.Contains(err.Error(), "Export already exists"):
+		return nil
 	case strings.Contains(err.Error(), "rados: ret=-2"): // try with the old command
 		break
 	default: // any other error
