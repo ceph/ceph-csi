@@ -21,6 +21,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	VolumeGroupReplicationNameAnnotation = "replication.storage.openshift.io/volume-group-replication-name"
+)
+
 // VolumeGroupReplicationSpec defines the desired state of VolumeGroupReplication
 type VolumeGroupReplicationSpec struct {
 	// volumeGroupReplicationClassName is the volumeGroupReplicationClass name for this VolumeGroupReplication resource

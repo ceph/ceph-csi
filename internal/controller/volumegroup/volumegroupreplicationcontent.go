@@ -53,8 +53,8 @@ var (
 )
 
 const (
-	secretNameParameterName      = "replication.storage.openshift.io/group-replication-secret-name"
-	secretNamespaceParameterName = "replication.storage.openshift.io/group-replication-secret-namespace"
+	secretNameKey      = "replication.storage.openshift.io/group-replication-secret-name"
+	secretNamespaceKey = "replication.storage.openshift.io/group-replication-secret-namespace"
 
 	volumeGroupReplicationContentResourceName = "VolumeGroupReplicationContent"
 	volumeGroupReplicationClassResourceName   = "VolumeGroupReplicationClass"
@@ -203,6 +203,7 @@ func (r *ReconcileVGRContent) reconcileVGRContent(ctx context.Context, obj runti
 	if vgrc.Spec.Provisioner != r.config.DriverName {
 		return nil
 	}
+	vgrClass := &replicationv1alpha1.VolumeGroupReplicationClass{}
 
 	reqName := vgrc.Name
 	groupHandle := vgrc.Spec.VolumeGroupReplicationHandle
@@ -212,27 +213,33 @@ func (r *ReconcileVGRContent) reconcileVGRContent(ctx context.Context, obj runti
 		return errors.New("volume group replication handle is empty")
 	}
 
-	vgrClass := &replicationv1alpha1.VolumeGroupReplicationClass{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: vgrc.Spec.VolumeGroupReplicationClassName}, vgrClass)
-	if err != nil {
-		return err
-	}
-
 	if ok = r.Locks.TryAcquire(groupHandle); !ok {
 		return fmt.Errorf("failed to acquire lock for group handle %s", groupHandle)
 	}
 	defer r.Locks.Release(groupHandle)
 
-	parameters := vgrClass.Spec.Parameters
-	secretName := vgrClass.Spec.Parameters[secretNameParameterName]
-	secretNamespace := vgrClass.Spec.Parameters[secretNamespaceParameterName]
+	attributes := vgrc.Spec.VolumeGroupAttributes
+	secretName := vgrc.Annotations[secretNameKey]
+	secretNamespace := vgrc.Annotations[secretNamespaceKey]
+	if attributes == nil {
+		// Cluster has the older version of the CRD.
+		// Fallback to VolumeGroupReplicationClass to fetch the parameters.
+		err := r.client.Get(ctx, types.NamespacedName{Name: vgrc.Spec.VolumeGroupReplicationClassName}, vgrClass)
+		if err != nil {
+			return err
+		}
+
+		attributes = vgrClass.Spec.Parameters
+		secretName = vgrClass.Spec.Parameters[secretNameKey]
+		secretNamespace = vgrClass.Spec.Parameters[secretNamespaceKey]
+	}
 
 	secrets, err := r.getSecrets(ctx, secretName, secretNamespace)
 	if err != nil {
 		return err
 	}
 
-	mgr := rbd.NewManager(r.config.InstanceID, parameters, secrets)
+	mgr := rbd.NewManager(r.config.InstanceID, attributes, secrets)
 	defer mgr.Destroy(ctx)
 
 	groupID, err := mgr.RegenerateVolumeGroupJournal(ctx, groupHandle, reqName, volumeIds)
