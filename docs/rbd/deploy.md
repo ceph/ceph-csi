@@ -550,3 +550,36 @@ kubectl edit cm ceph-config
 
 This will update the `ceph.conf` of the underlying ceph cluster to enable
 librbd logs in `csi-rbdplugin` container.
+
+## Changed Block Tracking (CBT)
+
+> **Warning**: Requires Ceph version that supports RBD snap diff by ID feature.
+For details, see ceph tracker:
+["diff-iterate by snap ID"](https://tracker.ceph.com/issues/65720).
+
+Ceph-CSI implements Changed Block Tracking (CBT) for RBD volumes using
+the SnapshotMetadataService (SMS) APIs. This feature enables efficient
+and reliable differential backup of data stored in CSI volumes.
+
+The feature is exposed through the CSI Controller Server's
+SnapshotMetadataService APIs with two primary operations:
+
+* `GetMetadataAllocated`:
+
+   * Streams metadata about allocated blocks in a snapshot
+   * Useful for full backup operations
+   * Returns block ranges that contain actual data
+
+* `GetMetadataDelta`:
+
+   * Streams metadata about block differences between two snapshots
+   * Optimal for incremental backups
+   * Returns only blocks that changed between snapshots
+
+Additional Resources:
+
+* CSI Differential Snapshot for Block Volumes KEP:
+  [kep-3314](https://github.com/kubernetes/enhancements/issues/3314)
+
+* External Snapshot Metadata sidecar project:
+  [repository](https://github.com/kubernetes-csi/external-snapshot-metadata)
