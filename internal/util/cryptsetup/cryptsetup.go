@@ -30,6 +30,8 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/log"
 	"github.com/ceph/ceph-csi/internal/util/stripsecrets"
+
+	"k8s.io/cloud-provider/volume/helpers"
 )
 
 const (
@@ -37,7 +39,19 @@ const (
 	ExecutionTimeout = 2*time.Minute + 30*time.Second
 
 	// Limit memory used by Argon2i PBKDF to 32 MiB.
-	pkdbfMemoryLimit = 32 << 10 // 32768 KiB
+	cryptsetupPBKDFMemoryLimit = 32 << 10 // 32768 KiB
+	luks2MetadataSize          = 32 << 7  // 4096 KiB
+	luks2KeySlotsSize          = 32 << 8  // 8192 KiB
+
+	// The LUKS2 header size is variable and it can be adjusted
+	// on creation by using the `--luks2-metadata-size` and
+	// `--luks2-keyslots-size` options.
+	Luks2HeaderSize = uint64((((2 * luks2MetadataSize) + luks2KeySlotsSize) * helpers.KiB))
+
+	// Older Images provisioned (with <=3.14 Ceph-CSI) didn't use the
+	// `--luks2-metadata-size` and `--luks2-keyslots-size` options
+	// during luksFormat, So the header size will be default 16MiB.
+	DefaultLuks2HeaderSize = 16 * helpers.MiB
 )
 
 // LuksWrapper is a struct that provides a context-aware wrapper around cryptsetup commands.
@@ -74,8 +88,12 @@ func (l *luksWrapper) Format(devicePath, passphrase string) (string, string, err
 		"luks2",
 		"--hash",
 		"sha256",
+		"--luks2-metadata-size",
+		strconv.Itoa(luks2MetadataSize)+"k",
+		"--luks2-keyslots-size",
+		strconv.Itoa(luks2KeySlotsSize)+"k",
 		"--pbkdf-memory",
-		strconv.Itoa(pkdbfMemoryLimit),
+		strconv.Itoa(cryptsetupPBKDFMemoryLimit),
 		devicePath,
 		"-d",
 		"-")

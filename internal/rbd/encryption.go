@@ -62,6 +62,9 @@ const (
 	metadataDEK    = "rbd.csi.ceph.com/dek"
 	oldMetadataDEK = ".rbd.csi.ceph.com/dek"
 
+	// luks2 header size metadata key.
+	luks2HeaderSizeKey = "rbd.csi.ceph.com/luks2HeaderSize"
+
 	encryptionPassphraseSize = 20
 
 	// rbdDefaultEncryptionType is the default to use when the
@@ -73,6 +76,35 @@ const (
 	luksSlot0 = "0"
 	luksSlot1 = "1"
 )
+
+// getLuksHeaderSizeMetadata retrieves the LUKS header size from the
+// image metadata. Older images (<=3.14) did not set the metadata
+// luks2HeaderSizeKey, so the default value is returned in that case
+// i.e, DefaultLuks2HeaderSize.
+// If the image is not block encrypted, 0 is returned.
+//
+//nolint:unused // Unused code will be used in future.
+func (ri *rbdImage) getLuksHeaderSizeMetadata() (uint64, error) {
+	if !ri.isBlockEncrypted() {
+		return 0, nil
+	}
+
+	value, err := ri.GetMetadata(luks2HeaderSizeKey)
+	if err != nil {
+		if !errors.Is(err, librbd.ErrNotFound) {
+			return 0, fmt.Errorf("failed to get %s metadata on image %s: %w", luks2HeaderSizeKey, ri, err)
+		}
+
+		return cryptsetup.DefaultLuks2HeaderSize, nil
+	}
+
+	headerSize, parseErr := strconv.ParseUint(value, 10, 64)
+	if parseErr != nil {
+		return 0, fmt.Errorf("failed to parse %s metadata on image %s: %w", luks2HeaderSizeKey, ri, parseErr)
+	}
+
+	return headerSize, nil
+}
 
 // checkRbdImageEncrypted verifies if rbd image was encrypted when created.
 func (ri *rbdImage) checkRbdImageEncrypted(ctx context.Context) (rbdEncryptionState, error) {
@@ -97,6 +129,11 @@ func (ri *rbdImage) ensureEncryptionMetadataSet(status rbdEncryptionState) error
 	err := ri.SetMetadata(encryptionMetaKey, string(status))
 	if err != nil {
 		return fmt.Errorf("failed to save encryption status for %s: %w", ri, err)
+	}
+
+	headerSize := strconv.FormatUint(cryptsetup.Luks2HeaderSize, 10)
+	if err := ri.SetMetadata(luks2HeaderSizeKey, headerSize); err != nil {
+		return fmt.Errorf("failed to save luks2 header size for %s: %w", ri, err)
 	}
 
 	return nil
