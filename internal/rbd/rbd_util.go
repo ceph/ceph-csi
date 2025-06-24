@@ -824,12 +824,13 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 func flattenClonedRbdImages(
 	ctx context.Context,
 	children []string,
-	pool, monitors, rbdImageName string,
+	pool, monitors, radosNamespace, rbdImageName string,
 	cr *util.Credentials,
 ) error {
 	rv := &rbdVolume{}
 	rv.Monitors = monitors
 	rv.Pool = pool
+	rv.RadosNamespace = radosNamespace
 	rv.RbdImageName = rbdImageName
 
 	defer rv.Destroy(ctx)

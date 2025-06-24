@@ -633,6 +633,7 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			children,
 			rbdVol.Pool,
 			rbdVol.Monitors,
+			rbdVol.RadosNamespace,
 			rbdVol.RbdImageName,
 			cr)
 		if err != nil {
@@ -668,6 +669,7 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			children,
 			rbdVol.Pool,
 			rbdVol.Monitors,
+			rbdVol.RadosNamespace,
 			rbdVol.RbdImageName,
 			cr)
 		if err != nil {
