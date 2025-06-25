@@ -25,7 +25,10 @@ github.com/blang/semver/v4
 github.com/cenkalti/backoff/v4
 # github.com/ceph/ceph-csi v2.0.1+incompatible => ../
 ## explicit; go 1.24.0
+github.com/ceph/ceph-csi/internal/util/cryptsetup
+github.com/ceph/ceph-csi/internal/util/file
 github.com/ceph/ceph-csi/internal/util/log
+github.com/ceph/ceph-csi/internal/util/stripsecrets
 github.com/ceph/ceph-csi/pkg/util/crypto
 github.com/ceph/ceph-csi/pkg/util/kernel
 # github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000 => ../api

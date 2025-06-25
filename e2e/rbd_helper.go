@@ -21,10 +21,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/ceph/ceph-csi/pkg/util/kernel"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
@@ -637,6 +639,18 @@ func validateEncryptedImage(f *framework.Framework, rbdImageSpec, pvName, appNam
 	}
 	if encryptedState != "encrypted" {
 		return fmt.Errorf("%v not equal to encrypted", encryptedState)
+	}
+
+	headerSizeValue, err := getImageMeta(rbdImageSpec, "rbd.csi.ceph.com/luks2HeaderSize", f)
+	if err != nil {
+		return err
+	}
+	headerSize, parseErr := strconv.ParseUint(headerSizeValue, 10, 64)
+	if parseErr != nil {
+		return fmt.Errorf("failed to parse luks2 header size for %s: %w", rbdImageSpec, parseErr)
+	}
+	if headerSize != cryptsetup.Luks2HeaderSize {
+		return fmt.Errorf("luks2 header size for %s is %d, expected %d", rbdImageSpec, headerSize, cryptsetup.Luks2HeaderSize)
 	}
 
 	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
