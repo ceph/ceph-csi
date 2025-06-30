@@ -524,3 +524,29 @@ module is enabled on the nodes running ceph-csi attachers.
 
 If custom image is built for the rbd-plugin instance, make sure that it contains
 `cryptsetup` tool installed to be able to use encryption.
+
+## Enable librbd logs for RBD operations
+
+For debugging, a user might need the librbd logs for each RBD command executed
+by ceph-csi through go-ceph. Therefore, one can enable these logs in the
+`csi-rbdplugin` container in `csi-rbdplugin-provisioner-*`, `csi-rbdplugin-*`
+controller, nodeplugin pod respectively by following the steps mentioned below:
+
+In the [ceph-conf](../../deploy/ceph-conf.yaml) configmap, uncomment the
+`debug_rbd` and `log_to_stderr` key/value pairs and update the configmap in the
+cluster in the same namespace as the `csi-*` pods.
+
+```bash
+kubectl apply -f ceph-conf.yaml
+```
+
+And, if the ``ceph-config` configmap already exists from previous installation
+then, edit the configmap to add `log_to_stderr = true`,`debug_rbd = 30`
+values to `ceph.conf` field using:
+
+```bash
+kubectl edit cm ceph-config
+```
+
+This will update the `ceph.conf` of the underlying ceph cluster to enable
+librbd logs in `csi-rbdplugin` container.

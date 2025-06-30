@@ -14,6 +14,11 @@ data:
     auth_cluster_required = cephx
     auth_service_required = cephx
     auth_client_required = cephx
+    # enable ceph librbd,librados logs in rbd/cephfs/nfs container logs
+    # log_to_stderr = true
+    # debug_rbd = 30  # enable debug rbd logs
+    # debug_rados = 30  # enable debug rados logs
+    # debug_rbd_mirror = 30  # enable debugging logs for rbd mirroring daemon
 
   # keyring is a required key and its value should be empty
   keyring: |
