@@ -128,7 +128,7 @@ spec:
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 8090
-              name: http-endpoint
+              name: provisioner
               protocol: TCP
           volumeMounts:
             - name: socket-dir
@@ -153,7 +153,7 @@ spec:
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 8092
-              name: http-endpoint
+              name: snapshotter
               protocol: TCP
           volumeMounts:
             - name: socket-dir
@@ -177,7 +177,7 @@ spec:
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 8093
-              name: http-endpoint
+              name: attacher
               protocol: TCP
           volumeMounts:
             - name: socket-dir
@@ -203,7 +203,7 @@ spec:
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 8091
-              name: http-endpoint
+              name: resizer
               protocol: TCP
           volumeMounts:
             - name: socket-dir
