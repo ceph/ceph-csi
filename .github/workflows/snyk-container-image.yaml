@@ -31,7 +31,6 @@ jobs:
       - name: Build a Docker image
         run: make image-cephcsi
       - name: Run Snyk to check Docker image for vulnerabilities
-        continue-on-error: true
         # yamllint disable-line rule:line-length
         uses: snyk/actions/docker@cdb760004ba9ea4d525f2e043745dfe85bb9077e  # master
         env:
@@ -39,8 +38,3 @@ jobs:
         with:
           image: quay.io/cephcsi/cephcsi:${{ github.base_ref }}
           args: --file=./deploy/cephcsi/image/Dockerfile
-      - name: Upload result to GitHub Code Scanning
-        # yamllint disable-line rule:line-length
-        uses: github/codeql-action/upload-sarif@08bc0cf022445eacafaa248bf48da20f26b8fd40  # v3.28.6
-        with:
-          sarif_file: snyk.sarif
