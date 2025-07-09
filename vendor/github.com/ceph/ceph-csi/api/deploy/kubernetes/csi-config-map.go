@@ -16,6 +16,10 @@ limitations under the License.
 
 package kubernetes
 
+import (
+	corev1 "k8s.io/api/core/v1"
+)
+
 type ClusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
@@ -42,6 +46,9 @@ type CephFS struct {
 	KernelMountOptions string `json:"kernelMountOptions"`
 	// FuseMountOptions contains the fuse mount options for CephFS volumes
 	FuseMountOptions string `json:"fuseMountOptions"`
+	// ControllerPublishSecretRef contains the secret reference for controller
+	// publish operations.
+	ControllerPublishSecretRef corev1.SecretReference `json:"controllerPublishSecretRef"`
 }
 type RBD struct {
 	// symlink filepath for the network namespace where we need to execute commands.
@@ -50,6 +57,9 @@ type RBD struct {
 	RadosNamespace string `json:"radosNamespace"`
 	// RBD mirror daemons running in the ceph cluster.
 	MirrorDaemonCount int `json:"mirrorDaemonCount"`
+	// ControllerPublishSecretRef contains the secret reference for controller
+	// publish operations.
+	ControllerPublishSecretRef corev1.SecretReference `json:"controllerPublishSecretRef"`
 }
 
 type NFS struct {
