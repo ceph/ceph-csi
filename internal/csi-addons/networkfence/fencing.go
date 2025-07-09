@@ -248,30 +248,7 @@ func (nf *NetworkFence) AddNetworkFence(ctx context.Context) error {
 
 // addCephBlocklist adds an IP to ceph osd blocklist.
 func (nf *NetworkFence) addCephBlocklist(ctx context.Context, ip string, useRange bool) error {
-	arg := []string{
-		"--id", nf.cr.ID,
-		"--keyfile=" + nf.cr.KeyFile,
-		"-m", nf.Monitors,
-	}
-	// TODO: add blocklist till infinity.
-	// Currently, ceph does not provide the functionality to blocklist IPs
-	// for infinite time. As a workaround, add a blocklist for 5 YEARS to
-	// represent infinity from ceph-csi side.
-	// At any point in this time, the IPs can be unblocked by an UnfenceClusterReq.
-	// This needs to be updated once ceph provides functionality for the same.
-	cmd := []string{"osd", "blocklist"}
-	if useRange {
-		cmd = append(cmd, "range")
-	}
-	cmd = append(cmd, "add", ip, blocklistTime)
-	cmd = append(cmd, arg...)
-	_, stdErr, err := util.ExecCommand(ctx, "ceph", cmd...)
-	if err != nil {
-		return fmt.Errorf("failed to blocklist IP %q: %w stderr: %q", ip, err, stdErr)
-	}
-	log.DebugLog(ctx, "blocklisted IP %q successfully", ip)
-
-	return nil
+	return util.AddCephBlocklist(ctx, nf.Monitors, nf.cr, ip, useRange)
 }
 
 func (nf *NetworkFence) listActiveClients(ctx context.Context) ([]activeClient, error) {
@@ -404,33 +381,7 @@ func GetCIDR(cidrs Cidrs) ([]string, error) {
 // removeCephBlocklist removes an IP from ceph osd blocklist.
 // the value of nonce is ignored if useRange is true.
 func (nf *NetworkFence) removeCephBlocklist(ctx context.Context, ip, nonce string, useRange bool) error {
-	arg := []string{
-		"--id", nf.cr.ID,
-		"--keyfile=" + nf.cr.KeyFile,
-		"-m", nf.Monitors,
-	}
-	cmd := []string{"osd", "blocklist"}
-	if useRange {
-		cmd = append(cmd, "range")
-	}
-
-	// If nonce is not empty and we are not using
-	// range based blocks, we need to add the nonce
-	if nonce != "" && !useRange {
-		cmd = append(cmd, "rm", fmt.Sprintf("%s:0/%s", ip, nonce))
-	} else {
-		cmd = append(cmd, "rm", ip)
-	}
-
-	cmd = append(cmd, arg...)
-
-	_, stdErr, err := util.ExecCommand(ctx, "ceph", cmd...)
-	if err != nil {
-		return fmt.Errorf("failed to unblock IP %q: %v %w", ip, stdErr, err)
-	}
-	log.DebugLog(ctx, "unblocked IP %q successfully", ip)
-
-	return nil
+	return util.RemoveCephBlocklist(ctx, nf.Monitors, nf.cr, ip, nonce, useRange)
 }
 
 // getCephBlocklist fetches the ceph blocklist and returns it as a string.

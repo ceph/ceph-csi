@@ -31,8 +31,11 @@ import (
 	"github.com/ceph/go-ceph/rados"
 )
 
-// InvalidPoolID used to denote an invalid pool.
-const InvalidPoolID int64 = -1
+const (
+	// InvalidPoolID used to denote an invalid pool.
+	InvalidPoolID int64 = -1
+	blocklistTime       = "157784760"
+)
 
 // ExecuteCommandWithNSEnter executes passed in program with args with nsenter
 // and returns separate stdout and stderr streams. In case ctx is not set to
@@ -291,6 +294,68 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 		return err
 	}
+
+	return nil
+}
+
+// AddCephBlocklist adds the IP to the Ceph blocklist.
+func AddCephBlocklist(ctx context.Context, monitors string, cr *Credentials, ip string, useRange bool) error {
+	arg := []string{
+		"--id=" + cr.ID,
+		"--keyfile=" + cr.KeyFile,
+		"-m=" + monitors,
+	}
+
+	// TODO: add blocklist till infinity.
+	// Currently, ceph does not provide the functionality to blocklist IPs
+	// for infinite time. As a workaround, add a blocklist for 5 YEARS to
+	// represent infinity from ceph-csi side.
+	// At any point in this time, the IPs can be unblocked by an UnfenceClusterReq.
+	// This needs to be updated once ceph provides functionality for the same.
+	cmd := []string{"osd", "blocklist"}
+	if useRange {
+		cmd = append(cmd, "range")
+	}
+	cmd = append(cmd, "add", ip, blocklistTime)
+	cmd = append(cmd, arg...)
+	_, stderr, err := ExecCommand(ctx, "ceph", cmd...)
+	if err != nil {
+		return fmt.Errorf("failed to blocklist IP %q: %w stderr: %q", ip, err, stderr)
+	}
+	log.DebugLog(ctx, "blocklisted IP %q successfully", ip)
+
+	return nil
+}
+
+// RemoveCephBlocklist removes the IP from the Ceph blocklist.
+// The value of nonce is ignored if useRange is true.
+func RemoveCephBlocklist(ctx context.Context, monitors string, cr *Credentials, ip, nonce string, useRange bool) error {
+	arg := []string{
+		"--id=" + cr.ID,
+		"--keyfile=" + cr.KeyFile,
+		"-m=" + monitors,
+	}
+
+	cmd := []string{"osd", "blocklist"}
+	if useRange {
+		cmd = append(cmd, "range")
+	}
+
+	// If nonce is not empty and we are not using
+	// range based blocks, we need to add the nonce
+	if nonce != "" && !useRange {
+		cmd = append(cmd, "rm", fmt.Sprintf("%s:0/%s", ip, nonce))
+	} else {
+		cmd = append(cmd, "rm", ip)
+	}
+
+	cmd = append(cmd, arg...)
+
+	_, stdErr, err := ExecCommand(ctx, "ceph", cmd...)
+	if err != nil {
+		return fmt.Errorf("failed to unblock IP %q: %v %w", ip, stdErr, err)
+	}
+	log.DebugLog(ctx, "unblocked IP %q successfully", ip)
 
 	return nil
 }
