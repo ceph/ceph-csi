@@ -104,7 +104,7 @@ spec:
               mountPath: /run/secrets/tokens
               readOnly: true
         - name: csi-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.3.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
@@ -134,7 +134,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.2.0
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.3.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
@@ -159,7 +159,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-attacher
-          image: registry.k8s.io/sig-storage/csi-attacher:v4.8.0
+          image: registry.k8s.io/sig-storage/csi-attacher:v4.9.0
           args:
             - "--v=1"
             - "--csi-address=$(ADDRESS)"
@@ -183,7 +183,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-resizer
-          image: registry.k8s.io/sig-storage/csi-resizer:v1.13.1
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.14.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
