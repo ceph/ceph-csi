@@ -64,13 +64,13 @@ functionality in the future.
 The Controller-plugin should implement the following CSI procedures:
 
 - `CreateVolume` / `DeleteVolume`
-  1. Create RBD-image on the Ceph cluster (see Considerations)
-  1. Create the NVMe-subsystem (see Considerations)
-  1. Expose the RBD-image through the NVMe-oF Gateway
+   1. Create RBD-image on the Ceph cluster through Ceph-CSI/RBD
+   1. Create the NVMe-subsystem (if it does not exist yet)
+   1. Expose the RBD-image through the NVMe-oF Gateway
 
 - `ControllerPublishVolume` / `ControllerUnpublishVolume`
-  1. Allow access to the subsystem from the host where the Node-plugin will
-     attach the volume
+   1. Allow access to the subsystem from the host where the Node-plugin will
+      attach the volume
 
 There are several parameters that can be configurable when a user creates a
 volume. Some of these parameters are set by the Container Platform
@@ -80,8 +80,10 @@ Administrator settable parameters, this extends the parameters that can be set
 for RBD volumes (set in a StorageClass):
 
 - _all parameters for the Ceph-CSI RBD driver_
-- NVMe-oF Gateway (or gateway group?)
-- NVMe subsystem (or possibly detected based on Kubernetes Namespace?)
+- NVMe-oF Gateway Group (hostname, could be a Kubernetes Service)
+- NVMe subsystem name
+   - if given, the name for the subsystem should be used
+   - if not given, base the name on the owner (Kubernetes Namespace)
 
 User controlled parameters (set in a PersistentVolumeClaim):
 
@@ -93,11 +95,11 @@ User controlled parameters (set in a PersistentVolumeClaim):
 The Node-plugin should implement the following CSI procedures:
 
 - `NodeStageVolume` / `NodeUnstageVolume`
-  1. attach the NVMe-oF namespace from the NVMe-oF Gateway
-  1. (Filesystem-mode only) mount the filesystem of the block-device
+   1. attach the NVMe-oF namespace from the NVMe-oF Gateway
+   1. (Filesystem-mode only) mount the filesystem of the block-device
 
 - `NodePublishVolume` / `NodeUnpublishVolume`
-  1. bind mount the block-device or filesystem in the target location
+   1. bind mount the block-device or filesystem in the target location
 
 There are likely additional requirements for attaching the NVMe-oF namespace,
 including loading of kernel modules and access to nvme-tools in the
@@ -216,20 +218,12 @@ NVMe-oF initiator.
 > [!WARNING]  
 > Details that are under discussion and/or investigation are listed here.
 
-- Which component should create RBD-images?
-
-  1. the `ceph-nvmeof` gateway with `ns add --rbd-create-image`
-  1. Ceph-CSI RBD so that all Ceph-CSI procedures work 'normally'
-
-  The preference goes to Ceph-CSI RBD creating the RBD-images. It will make it
-  easier to do other CSI procedures for resizing, snapshotting and cloning.
-
 - Are credentials required for attaching a NVMe namespace on a host?
 
-  1. Can these credentials be stored in the VolumeContext of a
-     PersistentVolume? (Probably they should not.)
-  1. Are the credentials unique per NVMe namespace?
-  1. Can these credentials be obtained from the NVMe Gateway?
+   1. Can these credentials be stored in the VolumeContext of a
+      PersistentVolume? (Probably they should not.)
+   1. Are the credentials unique per NVMe namespace?
+   1. Can these credentials be obtained from the NVMe Gateway?
 
   Credentials are optional, some access permissions are in place through the
   ControllerPublishVolume CSI procedure where the worker node that attaches the
@@ -239,26 +233,14 @@ NVMe-oF initiator.
 
 - What is the difference for using a single NVMe-oF Gateway vs a Gateway Group?
 
-  1. Is there a single address for a group that can be used (like a
-     Kubernetes Service, redirecting to one of the gateways)?
-  1. Are gRPC API calls for configuring subsystems/namespaces different?
-  1. A Gateway or Gateway Group should probably be configured by the admin in
-     the StorageClass (different StorageClasses for different Gateway
-     Groups).
+   1. Is there a single address for a group that can be used (like a
+      Kubernetes Service, redirecting to one of the gateways)?
+   1. Are gRPC API calls for configuring subsystems/namespaces different?
+   1. A Gateway or Gateway Group should probably be configured by the admin in
+      the StorageClass (different StorageClasses for different Gateway
+      Groups).
 
   Gateway groups are recommended to use, it provides high-availability. This
   means that the Node-plugin should use `nvme connect-all` and only call `nvme
   disconnect` when the last volume is detached from the host in
   NodeUnstageVolume.
-
-- What component should create the NVMe-subsystem(s)?
-
-  There are two options for creating a subsystem:
-
-  1. Should be created in advance while deploying the NVMe-oF Gateway (would be
-     empty). The subsystem should be included in the parameters of the
-     StorageClass. All NVMe-namespaces would be added to a the single subsystem.
-
-  1. The Controller-plugin creates the namespace during CreateVolume.  This
-     would allow additional logic for placing namespaces in different
-     subsystems (based on Kubernetes namespaces aka tenants).
