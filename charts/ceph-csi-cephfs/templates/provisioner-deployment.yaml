@@ -151,6 +151,7 @@ spec:
             - "--retry-interval-start=500ms"
             - "--extra-create-metadata=true"
             - "--feature-gates=HonorPVReclaimPolicy=true"
+            - "--automaxprocs=true"
             - "--prevent-volume-mode-conversion=true"
 {{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}
             - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.provisioner.args.httpEndpointPort }}"
@@ -185,6 +186,7 @@ spec:
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
             - "--extra-create-metadata=true"
+            - "--automaxprocs=true"
             - "--feature-gates=CSIVolumeGroupSnapshot={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
 {{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
             - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.snapshotter.args.httpEndpointPort }}"
@@ -256,6 +258,7 @@ spec:
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
+            - "--automaxprocs=true"
 {{- if and .Values.provisioner.resizer.args .Values.provisioner.resizer.args.httpEndpointPort }}
             - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.resizer.args.httpEndpointPort }}"
 {{- end }}
