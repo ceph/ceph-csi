@@ -241,3 +241,16 @@ func GetCephFSMountOptions(pathToConfig, clusterID string) (string, string, erro
 
 	return cluster.CephFS.KernelMountOptions, cluster.CephFS.FuseMountOptions, nil
 }
+
+// GetRBDControllerPublishSecretRef returns the secret name and namespace used for
+// controller publish operations for RBD volumes.
+func GetRBDControllerPublishSecretRef(pathToConfig, clusterID string) (string, string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", "", err
+	}
+
+	secretRef := cluster.RBD.ControllerPublishSecretRef
+
+	return secretRef.Name, secretRef.Namespace, nil
+}

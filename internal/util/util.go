@@ -326,3 +326,36 @@ func ParseClientIP(addr string) (string, error) {
 
 	return "", fmt.Errorf("failed to extract IP address, incorrect format: %s", addr)
 }
+
+// GetControllerPublishSecret retrieves the controller publish secret from ceph-csi-config ConfigMap
+// for a given clusterID. Fetches the secret from Kubernetes, and returns it as a map of key-value pairs.
+func GetControllerPublishSecret(clusterID, driverType string) (map[string]string, error) {
+	var getSecretRefFunc func(string, string) (string, string, error)
+
+	switch driverType {
+	case RBDType:
+		getSecretRefFunc = GetRBDControllerPublishSecretRef
+	default:
+		return nil, fmt.Errorf("unsupported driver type: %s", driverType)
+	}
+
+	secretName, secretNamespace, err := getSecretRefFunc(CsiConfigFile, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
+	}
+
+	if secretName == "" || secretNamespace == "" {
+		return nil, fmt.Errorf("controller publish secret name or namespace is empty"+
+			" in csi config file for cluster %s", clusterID)
+	}
+
+	secrets, err := k8s.GetSecret(secretName, secretNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
+	}
+	if secrets == nil {
+		return nil, errors.New("controller publish secret is empty in k8s")
+	}
+
+	return secrets, nil
+}

@@ -87,6 +87,8 @@ func NewNodeServer(
 //
 // This also configures and starts a new CSI-Addons service, by calling
 // setupCSIAddonsServer().
+//
+//nolint:gocyclo,cyclop // TODO: reduce complexity
 func (r *Driver) Run(conf *util.Config) {
 	var (
 		err                                    error
@@ -108,12 +110,21 @@ func (r *Driver) Run(conf *util.Config) {
 		log.FatalLogMsg("Failed to initialize CSI Driver.")
 	}
 	if conf.IsControllerServer || !conf.IsNodeServer {
-		r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+		controllerServiceCapabilities := []csi.ControllerServiceCapability_RPC_Type{
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
-		})
+		}
+		// if fencing is enabled, we can add the PUBLISH_UNPUBLISH_VOLUME capability.
+		if r.cd.IsFencingEnabled() {
+			controllerServiceCapabilities = append(
+				controllerServiceCapabilities,
+				csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+			)
+		}
+		r.cd.AddControllerServiceCapabilities(controllerServiceCapabilities)
+
 		// We only support the multi-writer option when using block, but it's a supported capability for the plugin in
 		// general
 		// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
