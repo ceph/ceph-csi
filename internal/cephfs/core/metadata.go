@@ -27,10 +27,20 @@ import (
 const (
 	// clusterNameKey cluster Key, set on cephfs subvolume.
 	clusterNameKey = "csi.ceph.com/cluster/name"
+
+	// clientAddressKey is the key used to store the client address.
+	// starts with `.` to avoid copying it to the mirrored subvolume.
+	clientAddressKey = ".cephfs.csi.ceph.com/clientAddress"
 )
 
 // ErrSubVolMetadataNotSupported is returned when set/get/list/remove subvolume metadata options are not supported.
 var ErrSubVolMetadataNotSupported = errors.New("subvolume metadata operations are not supported")
+
+// GetClientAddressKey returns the key to store the client address in the
+// subvolume metadata.
+func GetClientAddressKey(nodeId string) string {
+	return fmt.Sprintf("%s/%s", clientAddressKey, nodeId)
+}
 
 func (s *subVolumeClient) supportsSubVolMetadata() bool {
 	newLocalClusterState(s.clusterID)

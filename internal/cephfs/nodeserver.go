@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
@@ -200,6 +201,8 @@ func maybeInitializeFileEncryption(
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
+//
+//nolint:gocyclo,cyclop // TODO: reduce complexity
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
@@ -271,6 +274,11 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	err = ns.setClientAddress(ctx, volOptions)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	if isMnt {
 		log.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
 		if err = maybeUnlockFileEncryption(ctx, volOptions, stagingTargetPath, volID); err != nil {
@@ -283,7 +291,6 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	// It's not, mount now
-
 	if err = ns.mount(
 		ctx,
 		mnt,
@@ -324,6 +331,46 @@ func (ns *NodeServer) NodeStageVolume(
 	ns.startSharedHealthChecker(ctx, req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+// setClientAddress extracts the client IP address and stores it in the subvolume metadata.
+// The connection.GetAddrs() method returns an address in the format "10.244.0.1:0/2686266785".
+// We parse this to extract just the IP address portion (e.g., "10.244.0.1") and store in metadata.
+// If '--enable-fencing' flag is set to false in CSI driver configuration, this function does nothing.
+func (ns *NodeServer) setClientAddress(
+	ctx context.Context,
+	volOptions *store.VolumeOptions,
+) error {
+	if !ns.Driver.IsFencingEnabled() {
+		return nil
+	}	
+	
+	nodeId := ns.Driver.GetNodeID()
+	metadataKey := core.GetClientAddressKey(nodeId)
+	conn := volOptions.GetConnection()
+	address, err := conn.GetAddrs()
+	if err != nil {
+		return fmt.Errorf("failed to get client address: %w", err)
+	}
+
+	// The address we get is 10.244.0.1:0/2686266785 from
+	// which we need to extract the IP address.
+	ipAddress, err := util.ParseClientIP(address)
+	if err != nil {
+		return fmt.Errorf("failed to parse client address: %w", err)
+	}
+
+	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "", true)
+	params := map[string]string{metadataKey: ipAddress}
+	err = subvolumeClient.SetAllMetadata(params)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to set client address for subvolume %s: %v", volOptions.VolID, err)
+	}
+
+	log.DebugLog(ctx, "client address %s set in metadata %s for subvolume %s",
+		address, metadataKey, volOptions.SubVolume.VolID)
+
+	return nil
 }
 
 // startSharedHealthChecker starts a health-checker on the stagingTargetPath.
