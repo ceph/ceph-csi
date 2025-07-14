@@ -16,7 +16,7 @@ require (
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.34.0
 	github.com/container-storage-interface/spec v1.11.0
-	github.com/csi-addons/kubernetes-csi-addons v0.10.1-0.20250619114017-8816325e2e14
+	github.com/csi-addons/kubernetes-csi-addons v0.12.0
 	github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79
 	github.com/gemalto/kmip-go v0.0.10
 	github.com/golang/protobuf v1.5.4
@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/vault/api v1.20.0
 	github.com/kubernetes-csi/csi-lib-utils v0.22.0
 	github.com/libopenstorage/secrets v0.0.0-20231011182615-5f4b25ceede1
-	github.com/pkg/xattr v0.4.11
+	github.com/pkg/xattr v0.4.12
 	github.com/prometheus/client_golang v1.22.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/automaxprocs v1.6.0

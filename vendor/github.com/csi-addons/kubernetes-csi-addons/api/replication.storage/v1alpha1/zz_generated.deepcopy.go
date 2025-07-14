@@ -236,13 +236,6 @@ func (in *VolumeGroupReplicationContentSpec) DeepCopyInto(out *VolumeGroupReplic
 		*out = new(corev1.ObjectReference)
 		**out = **in
 	}
-	if in.VolumeGroupAttributes != nil {
-		in, out := &in.VolumeGroupAttributes, &out.VolumeGroupAttributes
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	in.Source.DeepCopyInto(&out.Source)
 }
 
