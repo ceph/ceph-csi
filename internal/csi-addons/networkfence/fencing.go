@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -315,7 +314,7 @@ func isIPInCIDR(ctx context.Context, ip, cidr string) bool {
 func (ac *activeClient) fetchIP() (string, error) {
 	// example: "inst": "client.4305 172.21.9.34:0/422650892",
 	// then returning value will be 172.21.9.34
-	return ParseClientIP(ac.Inst)
+	return util.ParseClientIP(ac.Inst)
 }
 
 func (ac *activeClient) fetchID() (int, error) {
@@ -452,30 +451,4 @@ func (nf *NetworkFence) parseBlocklistForCIDR(ctx context.Context, blocklist, ci
 	}
 
 	return matchingHosts
-}
-
-func ParseClientIP(addr string) (string, error) {
-	// Attempt to extract the IP address using a regular expression
-	// the regular expression aims to match either a complete IPv6
-	// address or a complete IPv4 address follows by any prefix (v1 or v2)
-	// if exists
-	// (?:v[0-9]+:): this allows for an optional prefix starting with "v"
-	// followed by one or more digits and a colon.
-	// The ? outside the group makes the entire prefix section optional.
-	// (?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}: this allows to check for
-	// standard IPv6 address.
-	// |: Alternation operator to allow matching either the IPv6 pattern
-	// with a prefix or the IPv4 pattern.
-	// '(?:\d+\.){3}\d+: This part matches a standard IPv4 address.
-	re := regexp.MustCompile(`(?:v[0-9]+:)?([0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){7}|(?:\d+\.){3}\d+)`)
-	ipMatches := re.FindStringSubmatch(addr)
-
-	if len(ipMatches) > 0 {
-		ip := net.ParseIP(ipMatches[1])
-		if ip != nil {
-			return ip.String(), nil
-		}
-	}
-
-	return "", fmt.Errorf("failed to extract IP address, incorrect format: %s", addr)
 }
