@@ -127,7 +127,8 @@ func (fs *Driver) Run(conf *util.Config) {
 		fsutil.RadosNamespace)
 	// Initialize default library driver
 
-	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID)
+	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID,
+		conf.EnableFencing)
 	if fs.cd == nil {
 		log.FatalLogMsg("failed to initialize CSI driver")
 	}

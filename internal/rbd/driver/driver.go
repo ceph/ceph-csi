@@ -102,7 +102,8 @@ func (r *Driver) Run(conf *util.Config) {
 	rbd.InitJournals(conf.InstanceID)
 
 	// Initialize default library driver
-	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID)
+	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID,
+		conf.EnableFencing)
 	if r.cd == nil {
 		log.FatalLogMsg("Failed to initialize CSI Driver.")
 	}

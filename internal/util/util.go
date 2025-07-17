@@ -155,6 +155,9 @@ type Config struct {
 	// rbd image or the image chain has the deep-flatten feature.
 	SkipForceFlatten bool
 
+	// enable fencing of nodes during non-graceful shutdowns.
+	EnableFencing bool
+
 	// cephfs related flags
 	ForceKernelCephFS    bool   // force to use the ceph kernel client even if the kernel is < 4.17
 	RadosNamespaceCephFS string // RadosNamespace used to store CSI specific objects and keys

@@ -31,7 +31,7 @@ func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T)
 	t.Parallel()
 	cs := ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(
-			csicommon.NewCSIDriver("cephfs.csi.ceph.com", "1.0.0", "test", "default")),
+			csicommon.NewCSIDriver("cephfs.csi.ceph.com", "1.0.0", "test", "default", false)),
 	}
 
 	type args struct {
