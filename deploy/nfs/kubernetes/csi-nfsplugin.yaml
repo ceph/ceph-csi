@@ -26,7 +26,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/cephcsi:v3.14-canary
+          image: quay.io/cephcsi/cephcsi:v3.14.2
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=nfs"
