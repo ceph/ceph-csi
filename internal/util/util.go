@@ -335,6 +335,8 @@ func GetControllerPublishSecret(clusterID, driverType string) (map[string]string
 	switch driverType {
 	case RBDType:
 		getSecretRefFunc = GetRBDControllerPublishSecretRef
+	case CephFsType:
+		getSecretRefFunc = GetCephFSControllerPublishSecretRef
 	default:
 		return nil, fmt.Errorf("unsupported driver type: %s", driverType)
 	}

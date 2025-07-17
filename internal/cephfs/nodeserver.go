@@ -343,8 +343,8 @@ func (ns *NodeServer) setClientAddress(
 ) error {
 	if !ns.Driver.IsFencingEnabled() {
 		return nil
-	}	
-	
+	}
+
 	nodeId := ns.Driver.GetNodeID()
 	metadataKey := core.GetClientAddressKey(nodeId)
 	conn := volOptions.GetConnection()

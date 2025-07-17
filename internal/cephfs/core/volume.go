@@ -85,6 +85,8 @@ type SubVolumeClient interface {
 	SetAllMetadata(parameters map[string]string) error
 	// UnsetAllMetadata unset all the metadata from arg keys on subvolume.
 	UnsetAllMetadata(keys []string) error
+	// ListMetadata gets the metadata for the subvolume.
+	ListMetadata() (map[string]string, error)
 }
 
 // subVolumeClient implements SubVolumeClient interface.

@@ -254,3 +254,16 @@ func GetRBDControllerPublishSecretRef(pathToConfig, clusterID string) (string, s
 
 	return secretRef.Name, secretRef.Namespace, nil
 }
+
+// GetCephFSControllerPublishSecretRef returns the secret name and namespace used for
+// controller publish operations for CephFS volumes.
+func GetCephFSControllerPublishSecretRef(pathToConfig, clusterID string) (string, string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", "", err
+	}
+
+	secretRef := cluster.CephFS.ControllerPublishSecretRef
+
+	return secretRef.Name, secretRef.Namespace, nil
+}
