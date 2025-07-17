@@ -103,12 +103,12 @@ For example, upgrading from 3.11 to 3.14 is not recommended.
 [release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.14.0) before
 proceeding further.**
 
-git checkout v3.14.0 tag
+git checkout v3.14.2 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.14.0
+git checkout v3.14.2
 ```
 
 ```console

@@ -56,6 +56,7 @@ environments.
 
 | Ceph CSI Version | Container Orchestrator Name | Version Tested     |
 | -----------------| --------------------------- | -------------------|
+| v3.14.2          | Kubernetes                  | v1.30, v1.31, v1.32|
 | v3.14.1          | Kubernetes                  | v1.30, v1.31, v1.32|
 | v3.14.0          | Kubernetes                  | v1.30, v1.31, v1.32|
 | v3.13.1          | Kubernetes                  | v1.29, v1.30, v1.31|
@@ -131,6 +132,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | devel (Branch)          | quay.io/cephcsi/cephcsi      | canary    |
+| v3.14.2 (Release)       | quay.io/cephcsi/cephcsi      | v3.14.2   |
 | v3.14.1 (Release)       | quay.io/cephcsi/cephcsi      | v3.14.1   |
 | v3.14.0 (Release)       | quay.io/cephcsi/cephcsi      | v3.14.0   |
 | v3.13.1 (Release)       | quay.io/cephcsi/cephcsi      | v3.13.1   |
