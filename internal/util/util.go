@@ -36,6 +36,15 @@ import (
 	mount "k8s.io/mount-utils"
 )
 
+// Driver types to identify type of driver running.
+const (
+	RBDType        = "rbd"
+	CephFsType     = "cephfs"
+	NFSType        = "nfs"
+	LivenessType   = "liveness"
+	ControllerType = "controller"
+)
+
 // RoundOffVolSize rounds up given quantity up to chunks of MiB/GiB.
 func RoundOffVolSize(size int64) int64 {
 	size = RoundOffBytes(size)
