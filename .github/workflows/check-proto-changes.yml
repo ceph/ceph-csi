@@ -1,0 +1,67 @@
+# yamllint disable rule:truthy
+---
+name: Check Proto Changes
+
+on:
+  pull_request:
+    paths:
+      - 'internal/nvme/gateway/proto/gateway.proto'
+      - 'build.env'
+  push:
+    branches:
+      - devel
+    paths:
+      - 'internal/nvme/gateway/proto/gateway.proto'
+      - 'build.env'
+
+jobs:
+  check-proto-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Verify committed proto file matches build.env specification
+        # yamllint disable rule:line-length
+        run: |
+          # Source build.env to get version information
+          source build.env
+
+          # Fetch the specific version from ceph-nvmeof based on build.env
+          echo "Fetching proto file from ${PROTO_SOURCE_REPO} branch " \
+            "${PROTO_SOURCE_BRANCH} SHA ${PROTO_SOURCE_SHA}..."
+
+          # Create fetch URL, handle 'latest' case
+          if [[ "${PROTO_SOURCE_SHA}" == "latest" ]]; then
+            # Fetch from branch tip
+            FETCH_URL="${PROTO_SOURCE_REPO}/raw/refs/heads/${PROTO_SOURCE_BRANCH}/control/proto/gateway.proto"
+          else
+            # Fetch from specific SHA
+            FETCH_URL="${PROTO_SOURCE_REPO}/raw/${PROTO_SOURCE_SHA}/control/proto/gateway.proto"
+          fi
+
+          # Fetch proto file
+          curl -fsSL "${FETCH_URL}" -o /tmp/gateway.proto.expected
+
+          # Normalize the committed proto file by removing go_package option
+          echo "Normalizing committed proto file (removing go_package option)..."
+          grep -v "option go_package" internal/nvme/gateway/proto/gateway.proto > \
+            /tmp/gateway.proto.normalized
+
+          # Compare normalized committed file with fetched file
+          if diff -u /tmp/gateway.proto.normalized /tmp/gateway.proto.expected; then
+            echo "✅ Committed proto file matches build.env specification"
+            echo "  Repository: ${PROTO_SOURCE_REPO}"
+            echo "  Branch: ${PROTO_SOURCE_BRANCH}"
+            echo "  SHA: ${PROTO_SOURCE_SHA}"
+            echo "  Note: go_package option is added by the build process"
+          else
+            echo "❌ Committed proto file does not match build.env specification"
+            echo "  Expected: ${PROTO_SOURCE_REPO} branch ${PROTO_SOURCE_BRANCH} SHA " \
+              "${PROTO_SOURCE_SHA}"
+            echo "  Please update the committed proto file to match the build.env specification"
+            exit 1
+          fi

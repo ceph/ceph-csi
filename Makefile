@@ -168,10 +168,22 @@ commitlint:
 	@test $(REBASE) -eq 0 || git -c user.name=commitlint -c user.email=commitline@localhost rebase FETCH_HEAD
 	commitlint --verbose --from $(GIT_SINCE)
 
-.PHONY: cephcsi
-cephcsi: check-env
+.PHONY: cephcsi generate-proto clean-proto force-generate-proto
+cephcsi: check-env generate-proto
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
 	GOOS=linux go build $(GO_TAGS) -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
+
+generate-proto: check-env
+	@echo "Generating protobuf stubs..."
+	./scripts/generate-proto.sh
+
+clean-proto: check-env
+	@echo "Cleaning protobuf generated files..."
+	./scripts/generate-proto.sh --clean
+
+force-generate-proto: check-env
+	@echo "Force regenerating protobuf stubs..."
+	./scripts/generate-proto.sh --force
 
 e2e.test: check-env
 	cd e2e && go test $(GO_TAGS) -mod=vendor -c -o ../e2e.test ./
@@ -216,6 +228,9 @@ run-e2e:
 containerized-build: TARGET = cephcsi
 containerized-build: .container-cmd .devel-container-id
 	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET) CONTAINERIZED=yes
+
+containerized-generate-proto: .container-cmd .devel-container-id
+	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make generate-proto CONTAINERIZED=yes
 
 containerized-test: TARGET = test
 containerized-test: REBASE ?= 0
@@ -272,6 +287,7 @@ clean:
 	rm -f _output/cephcsi
 	$(RM) scripts/golangci.yml
 	$(RM) e2e.test
+	rm -f internal/nvme/gateway/proto/*.pb.go
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
 	$(RM) .devel-container-id
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test

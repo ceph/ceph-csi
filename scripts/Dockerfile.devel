@@ -29,9 +29,6 @@ RUN true \
 
 RUN mkdir -p /etc/selinux && touch /etc/selinux/config
 
-# other/conflicting versions of protobuf get installed as dependency
-RUN dnf -y remove protobuf
-
 RUN dnf -y install \
 	git \
 	make \
@@ -39,9 +36,15 @@ RUN dnf -y install \
 	librados-devel \
         libcephfs-devel \
 	librbd-devel \
+	protobuf-compiler \
     && dnf -y --nobest update \
     && dnf clean all \
     && rm -rf /var/cache/yum \
     && true
+
+# Install Go protobuf plugins using versions from build.env
+RUN source /build.env \
+    && go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION} \
+    && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION}
 
 WORKDIR "/go/src/github.com/ceph/ceph-csi"
