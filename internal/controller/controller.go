@@ -21,11 +21,13 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	replicationv1alpha1 "github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -77,6 +79,16 @@ func Start(config Config) error {
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaderElectionID:           electionID,
 		Scheme:                     scheme,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				// Disable cache for the PV and secret object, we dont want to cache these objects
+				// in larger clusters which in turn increases the memory consumption.
+				DisableFor: []client.Object{
+					&corev1.PersistentVolume{},
+					&corev1.Secret{},
+				},
+			},
+		},
 	}
 
 	kubeConfig := clientConfig.GetConfigOrDie()

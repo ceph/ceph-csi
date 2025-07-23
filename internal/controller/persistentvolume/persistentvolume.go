@@ -29,12 +29,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // ReconcilePersistentVolume reconciles a PersistentVolume object.
@@ -57,7 +59,7 @@ func Init() {
 
 // Add adds the newPVReconciler.
 func (r *ReconcilePersistentVolume) Add(mgr manager.Manager, config ctrl.Config) error {
-	return add(mgr, newPVReconciler(mgr, config))
+	return add(mgr, newPVReconciler(mgr, config), config)
 }
 
 // Reconcile reconciles the PersistentVolume object and creates a new omap entries
@@ -168,27 +170,62 @@ func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconcil
 	return r
 }
 
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New(
-		"persistentvolume-controller",
-		mgr,
-		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
-	if err != nil {
-		return err
+// shouldReconcileBasedOnDriver determines if reconciliation should proceed based on the driver name.
+//
+// It returns false in the following cases:
+// - The object is nil.
+// - The object has a deletion timestamp.
+//
+// If the "pv.kubernetes.io/provisioned-by" annotation is missing, returns true.
+// If the annotation exists, returns true only if the value matches the provided driverName.
+func shouldReconcileBasedOnDriver(obj client.Object, driverName string) bool {
+	if obj == nil {
+		return false
 	}
 
-	// Watch for changes to PersistentVolumes
-	err = c.Watch(source.Kind(
-		mgr.GetCache(),
-		&corev1.PersistentVolume{},
-		&handler.TypedEnqueueRequestForObject[*corev1.PersistentVolume]{}),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to watch the changes: %w", err)
+	if !obj.GetDeletionTimestamp().IsZero() {
+		// skip if the PV is under deletion
+		return false
 	}
 
-	return nil
+	annotations := obj.GetAnnotations()
+	val, ok := annotations["pv.kubernetes.io/provisioned-by"]
+
+	if !ok {
+		// return true as this annotation might have been removed.
+		return true
+	}
+
+	return val == driverName
+}
+
+func add(mgr manager.Manager, r reconcile.Reconciler, config ctrl.Config) error {
+	eventFilterPredicate := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return shouldReconcileBasedOnDriver(e.Object, config.DriverName)
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return shouldReconcileBasedOnDriver(e.ObjectNew, config.DriverName)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Ignore delete events
+			return false
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return shouldReconcileBasedOnDriver(e.Object, config.DriverName)
+		},
+	}
+	// Create a new controller builder
+	build := builder.ControllerManagedBy(mgr).Named(
+		"persistentvolume-controller").WithOptions(
+		controller.Options{MaxConcurrentReconciles: 1})
+
+	// Watch for changes to PersistentVolumes metadata.
+	// This will only cache the PV metadata not the complete spec and status in cache
+	err := build.WatchesMetadata(&corev1.PersistentVolume{}, &handler.EnqueueRequestForObject{}).
+		WithEventFilter(eventFilterPredicate).Complete(r)
+
+	return err
 }
 
 func (r *ReconcilePersistentVolume) getCredentials(
