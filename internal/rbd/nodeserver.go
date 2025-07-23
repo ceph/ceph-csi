@@ -369,6 +369,11 @@ func (ns *NodeServer) NodeStageVolume(
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
+	// Set ClientAddress in the image metadata
+	err = ns.setClientAddress(ctx, cr, rv)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to set client address for %s: %v", rv, err)
+	}
 	// Stash image details prior to mapping the image (useful during Unstage as it has no
 	// voloptions passed to the RPC as per the CSI spec)
 	err = stashRBDImageMetadata(rv, stagingParentPath)
@@ -395,6 +400,56 @@ func (ns *NodeServer) NodeStageVolume(
 		stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+// setClientAddress extracts the client IP address and stores it in the RBD image metadata.
+// The connection.GetAddrs() method returns an address in the format "10.244.0.1:0/2686266785".
+// We parse this to extract just the IP address portion (e.g., "10.244.0.1") and store in metadata.
+// If '--enable-fencing' flag is set to false in CSI driver configuration, this function does nothing.
+func (ns *NodeServer) setClientAddress(
+	ctx context.Context,
+	cr *util.Credentials,
+	rv *rbdVolume,
+) error {
+	if !ns.Driver.IsFencingEnabled() {
+		return nil
+	}
+
+	nodeId := ns.Driver.GetNodeID()
+	metadataKey := getClientAddressKey(nodeId)
+	monitors, _ /* clusterID*/, err := util.GetMonsAndClusterID(ctx, rv.ClusterID, false)
+	if err != nil {
+		return fmt.Errorf("failed to get monitors for cluster %s: %w", rv.ClusterID, err)
+	}
+
+	// Get the cluster ID of the ceph cluster.
+	conn := &util.ClusterConnection{}
+	err = conn.Connect(monitors, cr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to MONs %s: %w", monitors, err)
+	}
+	defer conn.Destroy()
+
+	address, err := conn.GetAddrs()
+	if err != nil {
+		return fmt.Errorf("failed to get client address: %w", err)
+	}
+
+	// The address we get is 10.244.0.1:0/2686266785 from
+	// which we need to extract the IP address.
+	ipAddress, err := util.ParseClientIP(address)
+	if err != nil {
+		return fmt.Errorf("failed to parse client address: %w", err)
+	}
+
+	err = rv.SetMetadata(metadataKey, ipAddress)
+	if err != nil {
+		return fmt.Errorf("failed to set client address for %s: %w", rv, err)
+	}
+
+	log.DebugLog(ctx, "metadata %s set for image %s", metadataKey, rv)
+
+	return nil
 }
 
 func (ns *NodeServer) stageTransaction(

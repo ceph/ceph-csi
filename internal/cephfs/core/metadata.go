@@ -27,10 +27,20 @@ import (
 const (
 	// clusterNameKey cluster Key, set on cephfs subvolume.
 	clusterNameKey = "csi.ceph.com/cluster/name"
+
+	// clientAddressKey is the key used to store the client address.
+	// starts with `.` to avoid copying it to the mirrored subvolume.
+	clientAddressKey = ".cephfs.csi.ceph.com/clientAddress"
 )
 
 // ErrSubVolMetadataNotSupported is returned when set/get/list/remove subvolume metadata options are not supported.
 var ErrSubVolMetadataNotSupported = errors.New("subvolume metadata operations are not supported")
+
+// GetClientAddressKey returns the key to store the client address in the
+// subvolume metadata.
+func GetClientAddressKey(nodeId string) string {
+	return fmt.Sprintf("%s/%s", clientAddressKey, nodeId)
+}
 
 func (s *subVolumeClient) supportsSubVolMetadata() bool {
 	newLocalClusterState(s.clusterID)
@@ -87,6 +97,24 @@ func (s *subVolumeClient) removeMetadata(key string) error {
 	}
 
 	return err
+}
+
+// listMetadata lists custom metadata set on the subvolume in a volume
+// and returns a map of key-value pairs.
+func (s *subVolumeClient) listMetadata() (map[string]string, error) {
+	if !s.supportsSubVolMetadata() {
+		return nil, ErrSubVolMetadataNotSupported
+	}
+	fsa, err := s.conn.GetFSAdmin()
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := fsa.ListMetadata(s.FsName, s.SubvolumeGroup, s.VolID)
+	if !s.isUnsupportedSubVolMetadata(err) {
+		return nil, ErrSubVolMetadataNotSupported
+	}
+
+	return metadata, err
 }
 
 // SetAllMetadata set all the metadata from arg parameters on Ssubvolume.
@@ -148,4 +176,23 @@ func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
 	}
 
 	return nil
+}
+
+// ListMetadata returns all the metadata set on the subvolume in a volume.
+// It returns a map of key-value pairs.
+func (s *subVolumeClient) ListMetadata() (map[string]string, error) {
+	if !s.enableMetadata {
+		return nil, nil
+	}
+
+	metadata, err := s.listMetadata()
+	// If listMetadata is not supported return nil
+	if errors.Is(err, ErrSubVolMetadataNotSupported) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to list metadata on subvolume %v: %w", s, err)
+	}
+
+	return metadata, nil
 }

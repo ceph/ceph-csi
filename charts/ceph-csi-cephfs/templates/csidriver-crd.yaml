@@ -9,7 +9,7 @@ metadata:
     heritage: {{ .Release.Service }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
-  attachRequired: false
+  attachRequired: {{ .Values.provisioner.attacher.enabled }}
   podInfoOnMount: false
   fsGroupPolicy: {{ .Values.CSIDriver.fsGroupPolicy }}
   seLinuxMount: {{ .Values.CSIDriver.seLinuxMount }}

@@ -157,7 +157,7 @@ func (fcs *FenceControllerServer) GetFenceClients(
 
 	// The example address we get is 10.244.0.1:0/2686266785 from
 	// which we need to extract the IP address.
-	addr, err := nf.ParseClientIP(address)
+	addr, err := util.ParseClientIP(address)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to parse client address: %s", err)
 	}

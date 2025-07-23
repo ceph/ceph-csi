@@ -87,6 +87,10 @@ const (
 	// clusterNameKey cluster Key, set on RBD image.
 	clusterNameKey = "csi.ceph.com/cluster/name"
 
+	// clientAddressKey is the key used to store the client address.
+	// starts with `.` to avoid copying it to the mirrored image.
+	clientAddressKey = ".rbd.csi.ceph.com/clientAddress"
+
 	// Suffix added to the temp cloned image name.
 	// This will always be (rbd image name + "-temp").
 	tempImageSuffix = "-temp"
@@ -281,6 +285,11 @@ var (
 		},
 	}
 )
+
+// getClientAddressKey returns the key for storing client address metadata for a specific node.
+func getClientAddressKey(nodeId string) string {
+	return fmt.Sprintf("%s/%s", clientAddressKey, nodeId)
+}
 
 // prepareKrbdFeatureAttrs prepare krbd fearure set based on kernel version.
 // Minimum kernel version should be 3.8, else it will return error.

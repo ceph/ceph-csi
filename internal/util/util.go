@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"os"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -32,6 +34,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cloud-provider/volume/helpers"
 	mount "k8s.io/mount-utils"
+)
+
+// Driver types to identify type of driver running.
+const (
+	RBDType        = "rbd"
+	CephFsType     = "cephfs"
+	NFSType        = "nfs"
+	LivenessType   = "liveness"
+	ControllerType = "controller"
 )
 
 // RoundOffVolSize rounds up given quantity up to chunks of MiB/GiB.
@@ -143,6 +154,9 @@ type Config struct {
 	// SkipForceFlatten is set to false if the kernel supports mounting of
 	// rbd image or the image chain has the deep-flatten feature.
 	SkipForceFlatten bool
+
+	// enable fencing of nodes during non-graceful shutdowns.
+	EnableFencing bool
 
 	// cephfs related flags
 	ForceKernelCephFS    bool   // force to use the ceph kernel client even if the kernel is < 4.17
@@ -282,4 +296,68 @@ func GetVolumeContext(parameters map[string]string) map[string]string {
 	volumeContext = k8s.RemoveCSIPrefixedParameters(volumeContext)
 
 	return volumeContext
+}
+
+// ParseClientIP extracts and normalizes an IP address from a address string.
+// Handles both IPv4 and IPv6 addresses.
+// Example: "10.244.0.1:0/2686266785" returns "10.244.0.1".
+func ParseClientIP(addr string) (string, error) {
+	// Attempt to extract the IP address using a regular expression
+	// the regular expression aims to match either a complete IPv6
+	// address or a complete IPv4 address follows by any prefix (v1 or v2)
+	// if exists
+	// (?:v[0-9]+:): this allows for an optional prefix starting with "v"
+	// followed by one or more digits and a colon.
+	// The ? outside the group makes the entire prefix section optional.
+	// (?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}: this allows to check for
+	// standard IPv6 address.
+	// |: Alternation operator to allow matching either the IPv6 pattern
+	// with a prefix or the IPv4 pattern.
+	// '(?:\d+\.){3}\d+: This part matches a standard IPv4 address.
+	re := regexp.MustCompile(`(?:v[0-9]+:)?([0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){7}|(?:\d+\.){3}\d+)`)
+	ipMatches := re.FindStringSubmatch(addr)
+
+	if len(ipMatches) > 0 {
+		ip := net.ParseIP(ipMatches[1])
+		if ip != nil {
+			return ip.String(), nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to extract IP address, incorrect format: %s", addr)
+}
+
+// GetControllerPublishSecret retrieves the controller publish secret from ceph-csi-config ConfigMap
+// for a given clusterID. Fetches the secret from Kubernetes, and returns it as a map of key-value pairs.
+func GetControllerPublishSecret(clusterID, driverType string) (map[string]string, error) {
+	var getSecretRefFunc func(string, string) (string, string, error)
+
+	switch driverType {
+	case RBDType:
+		getSecretRefFunc = GetRBDControllerPublishSecretRef
+	case CephFsType:
+		getSecretRefFunc = GetCephFSControllerPublishSecretRef
+	default:
+		return nil, fmt.Errorf("unsupported driver type: %s", driverType)
+	}
+
+	secretName, secretNamespace, err := getSecretRefFunc(CsiConfigFile, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
+	}
+
+	if secretName == "" || secretNamespace == "" {
+		return nil, fmt.Errorf("controller publish secret name or namespace is empty"+
+			" in csi config file for cluster %s", clusterID)
+	}
+
+	secrets, err := k8s.GetSecret(secretName, secretNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
+	}
+	if secrets == nil {
+		return nil, errors.New("controller publish secret is empty in k8s")
+	}
+
+	return secrets, nil
 }
