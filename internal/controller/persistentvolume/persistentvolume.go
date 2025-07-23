@@ -29,12 +29,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // ReconcilePersistentVolume reconciles a PersistentVolume object.
@@ -169,26 +169,16 @@ func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconcil
 }
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New(
-		"persistentvolume-controller",
-		mgr,
-		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
-	if err != nil {
-		return err
-	}
+	// Create a new controller builder
+	build := builder.ControllerManagedBy(mgr).Named(
+		"persistentvolume-controller").WithOptions(
+		controller.Options{MaxConcurrentReconciles: 1})
 
-	// Watch for changes to PersistentVolumes
-	err = c.Watch(source.Kind(
-		mgr.GetCache(),
-		&corev1.PersistentVolume{},
-		&handler.TypedEnqueueRequestForObject[*corev1.PersistentVolume]{}),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to watch the changes: %w", err)
-	}
+	// Watch for changes to PersistentVolumes metadata.
+	// This will only cache the PV metadata not the complete spec and status in cache
+	err := build.WatchesMetadata(&corev1.PersistentVolume{}, &handler.EnqueueRequestForObject{}).Complete(r)
 
-	return nil
+	return err
 }
 
 func (r *ReconcilePersistentVolume) getCredentials(
