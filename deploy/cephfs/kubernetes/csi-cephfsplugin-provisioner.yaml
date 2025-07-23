@@ -118,6 +118,29 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: csi-attacher
+          image: registry.k8s.io/sig-storage/csi-attacher:v4.8.0
+          args:
+            - "--v=1"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election=true"
+            - "--retry-interval-start=500ms"
+            - "--http-endpoint=$(POD_IP):8093"
+          env:
+            - name: ADDRESS
+              value: /csi/csi-provisioner.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 8093
+              name: attacher
+              protocol: TCP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: csi-resizer
           image: registry.k8s.io/sig-storage/csi-resizer:v1.13.1
           args:

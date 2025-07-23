@@ -244,6 +244,23 @@ provisioner:
   # set metadata on volume
   setmetadata: true
 
+  attacher:
+    name: attacher
+    enabled: true
+    image:
+      repository: registry.k8s.io/sig-storage/csi-attacher
+      tag: v4.8.0
+      pullPolicy: IfNotPresent
+    resources: {}
+    args:
+    #   # httpEndpointPort specifies the http server port for
+    #   # diagnostics, health checks and metrics.
+    #   # Uncomment below line to enable the `http-endpoint` arg for sidecar
+    #   httpEndpointPort: 8093
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-attacher#command-line-options
+    extraArgs: []
+
   resizer:
     name: resizer
     enabled: true

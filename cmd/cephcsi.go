@@ -41,12 +41,6 @@ import (
 )
 
 const (
-	rbdType        = "rbd"
-	cephFSType     = "cephfs"
-	nfsType        = "nfs"
-	livenessType   = "liveness"
-	controllerType = "controller"
-
 	rbdDefaultName      = "rbd.csi.ceph.com"
 	cephFSDefaultName   = "cephfs.csi.ceph.com"
 	nfsDefaultName      = "nfs.csi.ceph.com"
@@ -75,6 +69,7 @@ func init() {
 	flag.StringVar(&conf.StagingPath, "stagingpath", defaultStagingPath, "staging path")
 	flag.StringVar(&conf.ClusterName, "clustername", "", "name of the cluster")
 	flag.BoolVar(&conf.SetMetadata, "setmetadata", true, "set metadata on the volume")
+	flag.BoolVar(&conf.EnableFencing, "enable-fencing", false, "enable fencing of nodes during non-graceful shutdowns")
 	flag.StringVar(&conf.InstanceID, "instanceid", "default", "Unique ID distinguishing this instance of Ceph-CSI"+
 		" among other instances, when sharing Ceph clusters across CSI instances for provisioning")
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
@@ -177,13 +172,13 @@ func getDriverName() string {
 	}
 	// select driver name based on volume type
 	switch conf.Vtype {
-	case rbdType:
+	case util.RBDType:
 		return rbdDefaultName
-	case cephFSType:
+	case util.CephFsType:
 		return cephFSDefaultName
-	case nfsType:
+	case util.NFSType:
 		return nfsDefaultName
-	case livenessType:
+	case util.LivenessType:
 		return livenessDefaultName
 	default:
 		return ""
@@ -229,7 +224,7 @@ func main() {
 	// set the PID limit (for native Ceph threads) after conf.AutoMaxProcs
 	setPIDLimit(&conf)
 
-	if conf.EnableProfiling || conf.Vtype == livenessType {
+	if conf.EnableProfiling || conf.Vtype == util.LivenessType {
 		// validate metrics endpoint
 		conf.MetricsIP = os.Getenv("POD_IP")
 
@@ -249,24 +244,24 @@ func main() {
 
 	log.DefaultLog("Starting driver type: %v with name: %v", conf.Vtype, dname)
 	switch conf.Vtype {
-	case rbdType:
+	case util.RBDType:
 		validateCloneDepthFlag(&conf)
 		validateMaxSnapshotFlag(&conf)
 		driver := rbddriver.NewDriver()
 		driver.Run(&conf)
 
-	case cephFSType:
+	case util.CephFsType:
 		driver := cephfs.NewDriver()
 		driver.Run(&conf)
 
-	case nfsType:
+	case util.NFSType:
 		driver := nfsdriver.NewDriver()
 		driver.Run(&conf)
 
-	case livenessType:
+	case util.LivenessType:
 		liveness.Run(&conf)
 
-	case controllerType:
+	case util.ControllerType:
 		cfg := controller.Config{
 			DriverName:  dname,
 			Namespace:   conf.DriverNamespace,

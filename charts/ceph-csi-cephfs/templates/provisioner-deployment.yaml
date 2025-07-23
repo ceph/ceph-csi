@@ -203,6 +203,40 @@ spec:
               mountPath: /csi
           resources:
 {{ toYaml .Values.provisioner.snapshotter.resources | indent 12 }}
+{{- if .Values.provisioner.attacher.enabled }}
+        - name: csi-attacher
+          image: "{{ .Values.provisioner.attacher.image.repository }}:{{ .Values.provisioner.attacher.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.attacher.image.pullPolicy }}
+          args:
+            - "--v={{ .Values.sidecarLogLevel }}"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election=true"
+            - "--retry-interval-start=500ms"
+{{- if and .Values.provisioner.attacher.args .Values.provisioner.attacher.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.attacher.args.httpEndpointPort }}"
+{{- end }}
+{{- range .Values.provisioner.attacher.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.attacher.args .Values.provisioner.attacher.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.attacher.args.httpEndpointPort }}
+              name: attacher
+              protocol: TCP
+{{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.provisioner.attacher.resources | indent 12 }}
+{{- end }}
 {{- if .Values.provisioner.resizer.enabled }}
         - name: csi-resizer
           image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"

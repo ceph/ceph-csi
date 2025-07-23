@@ -11,7 +11,7 @@ kind: CSIDriver
 metadata:
   name: "cephfs.csi.ceph.com"
 spec:
-  attachRequired: false
+  attachRequired: true
   podInfoOnMount: false
   fsGroupPolicy: File
   seLinuxMount: true

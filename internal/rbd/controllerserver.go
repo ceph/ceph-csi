@@ -1679,11 +1679,19 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}, nil
 }
 
-// ControllerPublishVolume is a dummy publish implementation to mimic a successful attach operation being a NOOP.
+// ControllerPublishVolume implements the CSI ControllerPublishVolume RPC.
+// This function is responsible for unfencing a node when a volume is published.
 func (cs *ControllerServer) ControllerPublishVolume(
 	ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
+	// If the CSI driver is not running on Kubernetes, we do not need to
+	// unfence the node, so we return immediately.
+	// This is because the unfencing logic is specific to Kubernetes environments.
+	if !k8s.RunsOnKubernetes() {
+		return &csi.ControllerPublishVolumeResponse{}, nil
+	}
+
 	if req.GetVolumeId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
 	}
@@ -1694,20 +1702,228 @@ func (cs *ControllerServer) ControllerPublishVolume(
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
 	}
 
-	return &csi.ControllerPublishVolumeResponse{
-		// the dummy response carry an empty map in its response.
-		PublishContext: map[string]string{},
-	}, nil
+	if acquired := cs.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
+	}
+	defer cs.VolumeLocks.Release(req.GetVolumeId())
+
+	err := cs.unfenceNode(ctx, req.GetNodeId(), req.GetVolumeId(), req.GetSecrets())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unfence node %s: %v", req.GetNodeId(), err)
+	}
+
+	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
-// ControllerUnPublishVolume is a dummy unpublish implementation to mimic a successful attach operation being a NOOP.
+// ControllerUnpublishVolume implements the CSI ControllerUnpublishVolume RPC.
+// This function is responsible for fencing a node when a volume is unpublished.
 func (cs *ControllerServer) ControllerUnpublishVolume(
 	ctx context.Context,
 	req *csi.ControllerUnpublishVolumeRequest,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
+	// If the CSI driver is not running on Kubernetes, we do not need to
+	// fence the node, so we return immediately.
+	// This is because the fencing logic is specific to Kubernetes environments.
+	if !k8s.RunsOnKubernetes() {
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
+	}
 	if req.GetVolumeId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
 	}
 
+	if acquired := cs.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
+	}
+	defer cs.VolumeLocks.Release(req.GetVolumeId())
+
+	err := cs.fenceNode(ctx, req.GetNodeId(), req.GetVolumeId(), req.GetSecrets())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fence node %s: %v", req.GetNodeId(), err)
+	}
+
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
+}
+
+// fenceNode attempts to fence a client node from accessing the RBD volume.
+//
+// Parameters:
+//   - nodeId: The ID of the node that may be fenced.
+//   - volumeId: The CSI volume ID corresponding to the RBD image.
+//   - secrets: A map of secrets. If nil, the function attempts to retrieve the
+//     controller publish secret from the ceph-csi-config ConfigMap.
+//
+// Behavior:
+//   - If `IsFencingEnabled` is false, the function returns immediately
+//   - If the node is not tainted with `out-of-service`, the function removes the
+//     client address metadata from the image.
+//   - If the node is tainted with `out-of-service`, it retrieves the client address
+//     from the image metadata and adds it to the Ceph blocklist.
+//   - Handles missing or empty metadata gracefully and logs appropriate warnings.
+//
+// Returns an error if any step in the fencing process fails.
+func (cs *ControllerServer) fenceNode(
+	ctx context.Context,
+	nodeId, volumeId string,
+	secrets map[string]string,
+) error {
+	if !cs.Driver.IsFencingEnabled() {
+		return nil
+	}
+	if nodeId == "" {
+		return errors.New("nodeId cannot be empty")
+	}
+
+	if secrets == nil {
+		var vi util.CSIIdentifier
+		err := vi.DecomposeCSIID(volumeId)
+		if err != nil {
+			return fmt.Errorf("failed to decode volume ID (%s): %w", volumeId, err)
+		}
+
+		secrets, err = util.GetControllerPublishSecret(vi.ClusterID, util.RBDType)
+		if err != nil {
+			log.WarningLog(ctx, "controller publish secret not found: %v", err)
+
+			return nil
+		}
+	}
+
+	metadataKey := getClientAddressKey(nodeId)
+	credentials, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		return fmt.Errorf("failed to create credentials from secrets: %w", err)
+	}
+	defer credentials.DeleteCredentials()
+
+	rv, err := GenVolFromVolID(ctx, volumeId, credentials, secrets)
+	if err != nil {
+		return fmt.Errorf("failed to generate volume from volume ID %q: %w",
+			volumeId, err)
+	}
+
+	isOutOfService, err := k8s.IsNodeOutOfService(nodeId)
+	if err != nil {
+		return fmt.Errorf("failed to check if node %s is out of service: %w", nodeId, err)
+	}
+
+	if !isOutOfService {
+		// If the node is not tainted with `out-of-service`,
+		// we remove the client address metadata from the volume metadata.
+		err = rv.RemoveMetadata(metadataKey)
+		if err != nil && !errors.Is(err, librbd.ErrNotExist) {
+			return fmt.Errorf("failed to remove image metadata %s from image %s: %w", metadataKey, rv, err)
+		}
+		log.DebugLog(ctx, "node is not marked as out-of-service, removed metadata %s from image %s if it existed",
+			metadataKey, rv)
+
+		return nil
+	}
+
+	clientAddress, err := rv.GetMetadata(metadataKey)
+	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			log.WarningLog(ctx, "metadata %s is not set for image %s", metadataKey, rv)
+
+			return nil
+		}
+
+		return fmt.Errorf("failed to get metadata %s for image %s: %w", metadataKey, rv, err)
+	}
+
+	if clientAddress == "" {
+		// If the metadata is empty, we do not need to add it to the blocklist
+		// as it does not contain any client address to block.
+		log.DebugLog(ctx, "metadata %s for image %s is empty, skipping fencing for nodeId", metadataKey, rv, nodeId)
+
+		return nil
+	}
+
+	err = util.AddCephBlocklist(ctx, rv.Monitors, credentials, clientAddress, false)
+	if err != nil {
+		return fmt.Errorf("failed to add client address %s to Ceph blocklist: %w", clientAddress, err)
+	}
+
+	return nil
+}
+
+// unfenceNode removes fencing of a client node,
+// allowing it to access the specified RBD volume again.
+//
+// Parameters:
+//   - nodeId: The ID of the node to be unfenced.
+//   - volumeId: The CSI volume ID associated with the RBD image.
+//   - secrets: A map of secrets. If nil, the function attempts to retrieve the
+//     controller publish secret from the ceph-csi-config ConfigMap.
+//
+// Behavior:
+//   - If `IsFencingEnabled` is false, the function returns immediately
+//   - Retrieves the client address from the image metadata corresponding to the node.
+//   - If the metadata exists and contains a client address, removes it from the Ceph blocklist.
+//   - Removes the associated client address metadata from the image.
+//   - Gracefully handles cases where metadata is missing or empty, logging warnings as needed.
+//
+// Returns an error if any step in the unfencing process fails.
+func (cs *ControllerServer) unfenceNode(
+	ctx context.Context,
+	nodeId, volumeId string,
+	secrets map[string]string,
+) error {
+	if !cs.Driver.IsFencingEnabled() {
+		return nil
+	}
+	if secrets == nil {
+		var vi util.CSIIdentifier
+		err := vi.DecomposeCSIID(volumeId)
+		if err != nil {
+			return fmt.Errorf("failed to decode volume ID (%s): %w", volumeId, err)
+		}
+
+		secrets, err = util.GetControllerPublishSecret(vi.ClusterID, util.RBDType)
+		if err != nil {
+			log.WarningLog(ctx, "controller publish secret not found: %v", err)
+
+			return nil
+		}
+	}
+
+	metadataKey := getClientAddressKey(nodeId)
+	credentials, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		return fmt.Errorf("failed to create credentials from secrets: %w", err)
+	}
+	defer credentials.DeleteCredentials()
+
+	rv, err := GenVolFromVolID(ctx, volumeId, credentials, secrets)
+	if err != nil {
+		return fmt.Errorf("failed to generate volume from volume ID %s: %w", volumeId, err)
+	}
+
+	clientAddress, err := rv.GetMetadata(metadataKey)
+	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			log.WarningLog(ctx, "metadata %s is not set for image %s", metadataKey, rv)
+
+			return nil
+		}
+
+		return fmt.Errorf("failed to get metadata %s for image %s: %w", metadataKey, rv, err)
+	}
+
+	if clientAddress == "" {
+		// If the metadata is empty, we do not need to add it to the blocklist
+		// as it does not contain any client address to block.
+		log.DebugLog(ctx, "metadata %s for image %s is empty, skipping unfencing for nodeId", metadataKey, rv, nodeId)
+
+		return nil
+	}
+
+	if err = util.RemoveCephBlocklist(ctx, rv.Monitors, credentials, clientAddress, "", false); err != nil {
+		return fmt.Errorf("failed to remove client address %s from blocklist for image %s: %w", clientAddress, rv, err)
+	}
+
+	if err = rv.RemoveMetadata(metadataKey); err != nil {
+		return fmt.Errorf("failed to remove metadata %s from image %s: %w", metadataKey, rv, err)
+	}
+
+	return nil
 }

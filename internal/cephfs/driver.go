@@ -127,20 +127,29 @@ func (fs *Driver) Run(conf *util.Config) {
 		fsutil.RadosNamespace)
 	// Initialize default library driver
 
-	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID)
+	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID,
+		conf.EnableFencing)
 	if fs.cd == nil {
 		log.FatalLogMsg("failed to initialize CSI driver")
 	}
 
 	if conf.IsControllerServer || !conf.IsNodeServer {
-		fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+		controllerServiceCapabilities := []csi.ControllerServiceCapability_RPC_Type{
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 			csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
-		})
+		}
+		// if fencing is enabled, we can add the PUBLISH_UNPUBLISH_VOLUME capability.
+		if fs.cd.IsFencingEnabled() {
+			controllerServiceCapabilities = append(
+				controllerServiceCapabilities,
+				csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+			)
+		}
 
+		fs.cd.AddControllerServiceCapabilities(controllerServiceCapabilities)
 		fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
 			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 			csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,

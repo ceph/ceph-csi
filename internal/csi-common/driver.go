@@ -35,6 +35,9 @@ type CSIDriver struct {
 	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
 	instance string
 
+	// enableFencing indicates whether fencing is enabled for this driver.
+	enableFencing bool
+
 	// topology constraints that this nodeserver will advertise
 	topology          map[string]string
 	capabilities      []*csi.ControllerServiceCapability
@@ -45,7 +48,7 @@ type CSIDriver struct {
 // NewCSIDriver Creates a NewCSIDriver object. Assumes vendor
 // version is equal to driver version &  does not support optional
 // driver plugin info manifest field. Refer to CSI spec for more details.
-func NewCSIDriver(name, v, nodeID, instance string) *CSIDriver {
+func NewCSIDriver(name, v, nodeID, instance string, enableFencing bool) *CSIDriver {
 	if name == "" {
 		klog.Errorf("Driver name missing")
 
@@ -71,10 +74,11 @@ func NewCSIDriver(name, v, nodeID, instance string) *CSIDriver {
 	}
 
 	driver := CSIDriver{
-		name:     name,
-		version:  v,
-		nodeID:   nodeID,
-		instance: instance,
+		name:          name,
+		version:       v,
+		nodeID:        nodeID,
+		instance:      instance,
+		enableFencing: enableFencing,
 	}
 
 	return &driver
@@ -83,6 +87,18 @@ func NewCSIDriver(name, v, nodeID, instance string) *CSIDriver {
 // GetInstance returns the instance identification of the CSI driver.
 func (d *CSIDriver) GetInstanceID() string {
 	return d.instance
+}
+
+// GetNodeID returns the node identification of the CSI driver.
+// This is used to identify the node where the driver is running.
+func (d *CSIDriver) GetNodeID() string {
+	return d.nodeID
+}
+
+// IsFencingEnabled returns true if the driver is configured to enable
+// fencing of nodes during non-graceful shutdowns.
+func (d *CSIDriver) IsFencingEnabled() bool {
+	return d.enableFencing
 }
 
 // ValidateControllerServiceRequest validates the controller
