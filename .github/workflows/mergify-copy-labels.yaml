@@ -7,6 +7,12 @@ on:
     types:
       - opened
 
+# cancel the in-progress workflow when PR is refreshed.
+concurrency:
+  # yamllint disable-line rule:truthy rule:line-length
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   mergify-merge-queue-labels-copier:
     runs-on: ubuntu-latest
