@@ -194,28 +194,12 @@ func (ns *NodeServer) populateRbdVol(
 	// get rbd image name from the volume journal
 	// for static volumes, the image name is actually the volume ID itself
 	if isStaticVol {
-		if req.GetVolumeContext()[intreeMigrationKey] == intreeMigrationLabel {
-			// if migration static volume, use imageName as volID
-			volID = req.GetVolumeContext()["imageName"]
-		}
-		rv, err = genVolFromVolumeOptions(ctx, req.GetVolumeContext(), disableInUseChecks, true)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		rv.RbdImageName = volID
+		rv, err = initStaticVol(ctx, volID, req.GetVolumeContext(), disableInUseChecks)
 	} else {
-		rv, err = GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
-		if err != nil {
-			rv.Destroy(ctx)
-			log.ErrorLog(ctx, "error generating volume %s: %v", volID, err)
-
-			return nil, status.Errorf(codes.Internal, "error generating volume %s: %v", volID, err)
-		}
-		rv.DataPool = req.GetVolumeContext()["dataPool"]
-		var ok bool
-		if rv.Mounter, ok = req.GetVolumeContext()["mounter"]; !ok {
-			rv.Mounter = rbdDefaultMounter
-		}
+		rv, err = initDynamicVol(ctx, volID, cr, req.GetSecrets(), req.GetVolumeContext())
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	rv.DisableInUseChecks = disableInUseChecks
@@ -270,8 +254,6 @@ func (ns *NodeServer) populateRbdVol(
 		return nil, err
 	}
 
-	rv.VolID = volID
-
 	rv.LogDir = req.GetVolumeContext()["cephLogDir"]
 	if rv.LogDir == "" {
 		rv.LogDir = defaultLogDir
@@ -282,6 +264,54 @@ func (ns *NodeServer) populateRbdVol(
 	}
 
 	return rv, err
+}
+
+func initStaticVol(
+	ctx context.Context,
+	volID string,
+	volCtx map[string]string,
+	disableInUseChecks bool,
+) (*rbdVolume, error) {
+	if volCtx[intreeMigrationKey] == intreeMigrationLabel {
+		volID = volCtx["imageName"]
+	}
+
+	rv, err := genVolFromVolumeOptions(ctx, volCtx, disableInUseChecks, true)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	rv.RbdImageName = volID
+	rv.VolID = volID
+
+	return rv, nil
+}
+
+func initDynamicVol(
+	ctx context.Context,
+	volID string,
+	cr *util.Credentials,
+	secrets map[string]string,
+	volCtx map[string]string,
+) (*rbdVolume, error) {
+	rv, err := GenVolFromVolID(ctx, volID, cr, secrets)
+	if err != nil {
+		if rv != nil {
+			rv.Destroy(ctx)
+		}
+		log.ErrorLog(ctx, "error generating volume %s: %v", volID, err)
+
+		return nil, status.Errorf(codes.Internal, "error generating volume %s: %v", volID, err)
+	}
+
+	rv.DataPool = volCtx["dataPool"]
+	if mounter, ok := volCtx["mounter"]; ok {
+		rv.Mounter = mounter
+	} else {
+		rv.Mounter = rbdDefaultMounter
+	}
+	rv.VolID = volID
+
+	return rv, nil
 }
 
 // appendReadAffinityMapOptions appends readAffinityMapOptions to mapOptions
