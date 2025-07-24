@@ -168,26 +168,24 @@ func (ns *NodeServer) populateRbdVol(
 	volID := req.GetVolumeId()
 
 	isBlock, isMultiNode := csicommon.IsBlockMultiNode([]*csi.VolumeCapability{req.GetVolumeCapability()})
-	disableInUseChecks := false
+	// disableInUseChecks is set to true if the volume is MultiNode Block volume or else false.
+	disableInUseChecks := isMultiNode && isBlock
 
 	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
-	if isMultiNode {
-		if !isBlock {
-			log.WarningLog(
-				ctx,
-				"MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`,"+
-					"invalid AccessMode for volume: %v",
-				req.GetVolumeId(),
-			)
+	if isMultiNode && !isBlock {
+		log.WarningLog(
+			ctx,
+			"MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`,"+
+				"invalid AccessMode for volume: %v",
+			req.GetVolumeId(),
+		)
 
-			return nil, status.Error(
-				codes.InvalidArgument,
-				"rbd: RWX access mode request is only valid for volumes with access type `block`",
-			)
-		}
-
-		disableInUseChecks = true
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"rbd: RWX access mode request is only valid for volumes with access type `block`",
+		)
 	}
+
 	var rv *rbdVolume
 
 	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
@@ -254,14 +252,8 @@ func (ns *NodeServer) populateRbdVol(
 		return nil, err
 	}
 
-	rv.LogDir = req.GetVolumeContext()["cephLogDir"]
-	if rv.LogDir == "" {
-		rv.LogDir = defaultLogDir
-	}
-	rv.LogStrategy = req.GetVolumeContext()["cephLogStrategy"]
-	if rv.LogStrategy == "" {
-		rv.LogStrategy = defaultLogStrategy
-	}
+	rv.LogDir = defaultIfEmpty(req.GetVolumeContext()["cephLogDir"], defaultLogDir)
+	rv.LogStrategy = defaultIfEmpty(req.GetVolumeContext()["cephLogStrategy"], defaultLogStrategy)
 
 	return rv, err
 }
@@ -312,6 +304,14 @@ func initDynamicVol(
 	rv.VolID = volID
 
 	return rv, nil
+}
+
+func defaultIfEmpty(value, defaultVal string) string {
+	if value == "" {
+		return defaultVal
+	}
+
+	return value
 }
 
 // appendReadAffinityMapOptions appends readAffinityMapOptions to mapOptions
