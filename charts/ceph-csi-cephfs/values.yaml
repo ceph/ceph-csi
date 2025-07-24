@@ -163,6 +163,9 @@ nodeplugin:
   kernelmountoptions: ""
   fusemountoptions: ""
 
+  # enable fencing
+  fencing: false
+
 provisioner:
   name: provisioner
   replicaCount: 3
@@ -243,6 +246,9 @@ provisioner:
 
   # set metadata on volume
   setmetadata: true
+
+  # enable fencing
+  fencing: false
 
   attacher:
     name: attacher
@@ -382,6 +388,8 @@ storageClass:
   provisionerSecretNamespace: ""
   controllerExpandSecret: csi-cephfs-secret
   controllerExpandSecretNamespace: ""
+  controllerPublishSecret: csi-cephfs-secret
+  controllerPublishSecretNamespace: ""
   nodeStageSecret: csi-cephfs-secret
   nodeStageSecretNamespace: ""
   reclaimPolicy: Delete
