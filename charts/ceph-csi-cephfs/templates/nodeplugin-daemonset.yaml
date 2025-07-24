@@ -81,6 +81,9 @@ spec:
 {{- if and .Values.readAffinity .Values.readAffinity.enabled }}
             - "--crush-location-labels={{ .Values.readAffinity.crushLocationLabels | join "," }}"
 {{- end }}
+{{- if .Values.nodeplugin.fencing }}
+            - "--enable-fencing={{ .Values.nodeplugin.fencing }}"
+{{- end }}
             - "--logslowopinterval={{ .Values.logSlowOperationInterval }}"
           env:
             - name: POD_IP
