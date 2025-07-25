@@ -401,7 +401,7 @@ def get_pool_name(arg, vol_id, is_rbd):
         else:
             pool_id = pool_id[3]
         for pool in pools:
-            if int(pool_id) is int(pool['poolnum']):
+            if int(pool_id, 16) is int(pool['poolnum']):
                 return pool['poolname']
     else:
         for pool in pools:
