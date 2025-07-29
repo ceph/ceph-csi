@@ -56,11 +56,13 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 		"-r", volOptions.RootPath,
 	}
 
-	fmo := "nonempty"
+	fmo := ""
 	if volOptions.FuseMountOptions != "" {
-		fmo += "," + strings.TrimSpace(volOptions.FuseMountOptions)
+		fmo = strings.TrimSpace(volOptions.FuseMountOptions)
 	}
-	args = append(args, "-o", fmo)
+	if fmo != "" {
+		args = append(args, "-o", fmo)
+	}
 
 	if volOptions.FsName != "" {
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
