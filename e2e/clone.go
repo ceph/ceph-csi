@@ -59,14 +59,14 @@ func validateBiggerCloneFromPVC(f *framework.Framework,
 
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(newSize)
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		framework.Failf("failed to load application: %v", err)
+		logAndFail("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	appClone.Labels = label

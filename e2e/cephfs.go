@@ -65,12 +65,12 @@ func deployCephfsPlugin() {
 
 	err := deleteResource(cephFSDirPath + cephFSProvisionerRBAC)
 	if err != nil {
-		framework.Failf("failed to delete provisioner rbac %s: %v", cephFSDirPath+cephFSProvisionerRBAC, err)
+		logAndFail("failed to delete provisioner rbac %s: %v", cephFSDirPath+cephFSProvisionerRBAC, err)
 	}
 
 	err = deleteResource(cephFSDirPath + cephFSNodePluginRBAC)
 	if err != nil {
-		framework.Failf("failed to delete nodeplugin rbac %s: %v", cephFSDirPath+cephFSNodePluginRBAC, err)
+		logAndFail("failed to delete nodeplugin rbac %s: %v", cephFSDirPath+cephFSNodePluginRBAC, err)
 	}
 
 	createORDeleteCephfsResources(kubectlCreate)
@@ -118,7 +118,7 @@ func createORDeleteCephfsResources(action kubectlAction) {
 	for _, r := range resources {
 		err := r.Do(action)
 		if err != nil {
-			framework.Failf("failed to %s resource: %v", action, err)
+			logAndFail("failed to %s resource: %v", action, err)
 		}
 	}
 }
@@ -126,10 +126,10 @@ func createORDeleteCephfsResources(action kubectlAction) {
 func validateSubvolumeCount(f *framework.Framework, count int, fileSystemName, subvolumegroup string) {
 	subVol, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
 	if err != nil {
-		framework.Failf("failed to list CephFS subvolumes: %v", err)
+		logAndFail("failed to list CephFS subvolumes: %v", err)
 	}
 	if len(subVol) != count {
-		framework.Failf("subvolumes [%v]. subvolume count %d not matching expected count %d", subVol, len(subVol), count)
+		logAndFail("subvolumes [%v]. subvolume count %d not matching expected count %d", subVol, len(subVol), count)
 	}
 }
 
@@ -143,10 +143,10 @@ func validateCephFSSnapshotCount(
 	fsName := pv.Spec.CSI.VolumeAttributes["fsName"]
 	snaps, err := listCephFSSnapshots(f, fsName, subVolumeName, subvolumegroup)
 	if err != nil {
-		framework.Failf("failed to list subvolume snapshots: %v", err)
+		logAndFail("failed to list subvolume snapshots: %v", err)
 	}
 	if len(snaps) != count {
-		framework.Failf("snapshots [%v]. snapshots count %d not matching expected count %d", snaps, len(snaps), count)
+		logAndFail("snapshots [%v]. snapshots count %d not matching expected count %d", snaps, len(snaps), count)
 	}
 }
 
@@ -208,7 +208,7 @@ var _ = Describe(cephfsType, func() {
 		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
 			err := createNamespace(c, cephCSINamespace)
 			if err != nil {
-				framework.Failf("failed to create namespace %s: %v", cephCSINamespace, err)
+				logAndFail("failed to create namespace %s: %v", cephCSINamespace, err)
 			}
 		}
 
@@ -217,36 +217,36 @@ var _ = Describe(cephfsType, func() {
 		}
 		err := createConfigMap(cephFSDirPath, f.ClientSet, f)
 		if err != nil {
-			framework.Failf("failed to create configmap: %v", err)
+			logAndFail("failed to create configmap: %v", err)
 		}
 		// create cephFS provisioner secret
 		key, err := createCephUser(f, keyringCephFSProvisionerUsername, cephFSProvisionerCaps())
 		if err != nil {
-			framework.Failf("failed to create user %s: %v", keyringCephFSProvisionerUsername, err)
+			logAndFail("failed to create user %s: %v", keyringCephFSProvisionerUsername, err)
 		}
 		err = createCephfsSecret(f, cephFSProvisionerSecretName, keyringCephFSProvisionerUsername, key)
 		if err != nil {
-			framework.Failf("failed to create provisioner secret: %v", err)
+			logAndFail("failed to create provisioner secret: %v", err)
 		}
 		// create cephFS plugin secret
 		key, err = createCephUser(f, keyringCephFSNodePluginUsername, cephFSNodePluginCaps())
 		if err != nil {
-			framework.Failf("failed to create user %s: %v", keyringCephFSNodePluginUsername, err)
+			logAndFail("failed to create user %s: %v", keyringCephFSNodePluginUsername, err)
 		}
 		err = createCephfsSecret(f, cephFSNodePluginSecretName, keyringCephFSNodePluginUsername, key)
 		if err != nil {
-			framework.Failf("failed to create node secret: %v", err)
+			logAndFail("failed to create node secret: %v", err)
 		}
 		deployVault(f.ClientSet, deployTimeout)
 
 		err = cephFSDeployment.setClusterName(defaultClusterName)
 		if err != nil {
-			framework.Failf("failed to set cluster name: %v", err)
+			logAndFail("failed to set cluster name: %v", err)
 		}
 
 		err = createSubvolumegroup(f, fileSystemName, subvolumegroup)
 		if err != nil {
-			framework.Failf("failed to create subvolumegroup %s: %v", subvolumegroup, err)
+			logAndFail("failed to create subvolumegroup %s: %v", subvolumegroup, err)
 		}
 	})
 
@@ -268,29 +268,29 @@ var _ = Describe(cephfsType, func() {
 		}
 		err := deleteConfigMap(cephFSDirPath)
 		if err != nil {
-			framework.Failf("failed to delete configmap: %v", err)
+			logAndFail("failed to delete configmap: %v", err)
 		}
 		err = c.CoreV1().
 			Secrets(cephCSINamespace).
 			Delete(context.TODO(), cephFSProvisionerSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			framework.Failf("failed to delete provisioner secret: %v", err)
+			logAndFail("failed to delete provisioner secret: %v", err)
 		}
 		err = c.CoreV1().
 			Secrets(cephCSINamespace).
 			Delete(context.TODO(), cephFSNodePluginSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			framework.Failf("failed to delete node secret: %v", err)
+			logAndFail("failed to delete node secret: %v", err)
 		}
 		err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 		if err != nil {
-			framework.Failf("failed to delete storageclass: %v", err)
+			logAndFail("failed to delete storageclass: %v", err)
 		}
 		deleteVault()
 
 		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
 		if err != nil {
-			framework.Failf("failed to delete subvolumegroup %s: %v", subvolumegroup, err)
+			logAndFail("failed to delete subvolumegroup %s: %v", subvolumegroup, err)
 		}
 
 		if deployCephFS {
@@ -300,7 +300,7 @@ var _ = Describe(cephfsType, func() {
 		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
 			err = deleteNamespace(c, cephCSINamespace)
 			if err != nil {
-				framework.Failf("failed to delete namespace %s: %v", cephCSINamespace, err)
+				logAndFail("failed to delete namespace %s: %v", cephCSINamespace, err)
 			}
 		}
 	})
@@ -325,20 +325,20 @@ var _ = Describe(cephfsType, func() {
 
 			metadataPool, getErr := getCephFSMetadataPoolName(f, fileSystemName)
 			if getErr != nil {
-				framework.Failf("failed getting cephFS metadata pool name: %v", getErr)
+				logAndFail("failed getting cephFS metadata pool name: %v", getErr)
 			}
 
 			By("checking provisioner deployment is running", func() {
 				err := waitForDeploymentComplete(f.ClientSet, cephFSDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment %s: %v", cephFSDeployment.getDeploymentName(), err)
+					logAndFail("timeout waiting for deployment %s: %v", cephFSDeployment.getDeploymentName(), err)
 				}
 			})
 
 			By("checking nodeplugin daemonset pods are running", func() {
 				err := waitForDaemonSets(cephFSDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for daemonset %s: %v", cephFSDeployment.getDaemonsetName(), err)
+					logAndFail("timeout waiting for daemonset %s: %v", cephFSDeployment.getDaemonsetName(), err)
 				}
 			})
 
@@ -347,16 +347,16 @@ var _ = Describe(cephfsType, func() {
 				By("verify PVC and app binding on helm installation", func() {
 					err := validatePVCAndAppBinding(pvcPath, appPath, f)
 					if err != nil {
-						framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+						logAndFail("failed to validate CephFS pvc and application binding: %v", err)
 					}
 					//  Deleting the storageclass and secret created by helm
 					err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 					if err != nil {
-						framework.Failf("failed to delete CephFS storageclass: %v", err)
+						logAndFail("failed to delete CephFS storageclass: %v", err)
 					}
 					err = deleteResource(cephFSExamplePath + "secret.yaml")
 					if err != nil {
-						framework.Failf("failed to delete CephFS storageclass: %v", err)
+						logAndFail("failed to delete CephFS storageclass: %v", err)
 					}
 				})
 			}
@@ -364,12 +364,12 @@ var _ = Describe(cephfsType, func() {
 			By("verify PVC and App Binding with volumeBindingMode:WaitForFirstConsumer", func() {
 				err := createCephfsStorageClassWaitForFirstConsumer(f.ClientSet, f, true, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 
 				err = validatePVCAndAppWaitForFirstConsumer(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+					logAndFail("failed to validate CephFS pvc and application binding: %v", err)
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
@@ -377,25 +377,25 @@ var _ = Describe(cephfsType, func() {
 
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
 			By("verify mountOptions support", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 
 				err = verifySeLinuxMountOption(f, pvcPath, appPath,
 					cephFSDeployment.getDaemonsetName(), cephFSContainerName, cephCSINamespace)
 				if err != nil {
-					framework.Failf("failed to verify mount options: %v", err)
+					logAndFail("failed to verify mount options: %v", err)
 				}
 
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
@@ -406,16 +406,16 @@ var _ = Describe(cephfsType, func() {
 				}
 				err := createCephfsStorageClass(f.ClientSet, f, true, params)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				mountFlags := []string{"default_permissions"}
 				err = checkMountOptions(pvcPath, appPath, f, mountFlags)
 				if err != nil {
-					framework.Failf("failed to validate fuse mount options: %v", err)
+					logAndFail("failed to validate fuse mount options: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
@@ -426,33 +426,33 @@ var _ = Describe(cephfsType, func() {
 				}
 				err := createCephfsStorageClass(f.ClientSet, f, true, params)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				mountFlags := []string{"nocrc"}
 				err = checkMountOptions(pvcPath, appPath, f, mountFlags)
 				if err != nil {
-					framework.Failf("failed to validate kernel mount options: %v", err)
+					logAndFail("failed to validate kernel mount options: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
 			By("verify generic ephemeral volume support", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				// create application
 				app, err := loadApp(appEphemeralPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
 				err = createApp(f.ClientSet, app, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create application: %v", err)
+					logAndFail("failed to create application: %v", err)
 				}
 				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
@@ -460,38 +460,38 @@ var _ = Describe(cephfsType, func() {
 				// delete pod
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete application: %v", err)
+					logAndFail("failed to delete application: %v", err)
 				}
 
 				// wait for the associated PVC to be deleted
 				err = waitForPVCToBeDeleted(f.ClientSet, app.Namespace, pvcName, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to wait for PVC deletion: %v", err)
+					logAndFail("failed to wait for PVC deletion: %v", err)
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
 			By("verify RWOP volume support", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				pvc, err := loadPVC(pvcRWOPPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 
 				// create application
 				app, err := loadApp(appRWOPPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
 				baseAppName := app.Name
@@ -503,24 +503,24 @@ var _ = Describe(cephfsType, func() {
 
 						return
 					}
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 				err = createApp(f.ClientSet, app, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create application: %v", err)
+					logAndFail("failed to create application: %v", err)
 				}
 				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
 
 				err = validateRWOPPodCreation(f, pvc, app, baseAppName)
 				if err != nil {
-					framework.Failf("failed to validate RWOP pod creation: %v", err)
+					logAndFail("failed to validate RWOP pod creation: %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
@@ -528,22 +528,22 @@ var _ = Describe(cephfsType, func() {
 				scPath := cephFSExamplePath + "secret.yaml"
 				err := validateCephFsStaticPV(f, appPath, scPath, fileSystemName)
 				if err != nil {
-					framework.Failf("failed to validate CephFS static pv with filesystem name: %v", err)
+					logAndFail("failed to validate CephFS static pv with filesystem name: %v", err)
 				}
 			})
 
 			By("create a storageclass with pool and a PVC then bind it to an app", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+					logAndFail("failed to validate CephFS pvc and application binding: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
@@ -563,7 +563,7 @@ var _ = Describe(cephfsType, func() {
 						}
 						err := createCephfsStorageClass(f.ClientSet, f, true, scOpts)
 						if err != nil {
-							framework.Failf("failed to create CephFS storageclass: %v", err)
+							logAndFail("failed to create CephFS storageclass: %v", err)
 						}
 
 						if kmsID == "vault-tokens-test" {
@@ -571,16 +571,16 @@ var _ = Describe(cephfsType, func() {
 							tenant := f.UniqueName
 							token, err = getSecret(vaultExamplePath + "tenant-token.yaml")
 							if err != nil {
-								framework.Failf("failed to load tenant token from secret: %v", err)
+								logAndFail("failed to load tenant token from secret: %v", err)
 							}
 							_, err = c.CoreV1().Secrets(tenant).Create(context.TODO(), &token, metav1.CreateOptions{})
 							if err != nil {
-								framework.Failf("failed to create Secret with tenant token: %v", err)
+								logAndFail("failed to create Secret with tenant token: %v", err)
 							}
 							defer func() {
 								err = c.CoreV1().Secrets(tenant).Delete(context.TODO(), token.Name, metav1.DeleteOptions{})
 								if err != nil {
-									framework.Failf("failed to delete Secret with tenant token: %v", err)
+									logAndFail("failed to delete Secret with tenant token: %v", err)
 								}
 							}()
 
@@ -588,19 +588,19 @@ var _ = Describe(cephfsType, func() {
 						if kmsID == "vault-tenant-sa-test" {
 							err = createTenantServiceAccount(f.ClientSet, f.UniqueName)
 							if err != nil {
-								framework.Failf("failed to create ServiceAccount: %v", err)
+								logAndFail("failed to create ServiceAccount: %v", err)
 							}
 							defer deleteTenantServiceAccount(f.UniqueName)
 						}
 
 						err = validateFscryptAndAppBinding(pvcPath, appPath, kmsConf, f)
 						if err != nil {
-							framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+							logAndFail("failed to validate CephFS pvc and application binding: %v", err)
 						}
 
 						err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {
-							framework.Failf("failed to delete CephFS storageclass: %v", err)
+							logAndFail("failed to delete CephFS storageclass: %v", err)
 						}
 					})
 				}
@@ -609,17 +609,17 @@ var _ = Describe(cephfsType, func() {
 			By("create a PVC and check PVC/PV metadata on CephFS subvolume", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
@@ -634,35 +634,35 @@ var _ = Describe(cephfsType, func() {
 				}
 				subvol, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
 				if err != nil {
-					framework.Failf("failed to list CephFS subvolumes: %v", err)
+					logAndFail("failed to list CephFS subvolumes: %v", err)
 				}
 				if len(subvol) == 0 {
-					framework.Failf("cephFS subvolumes list is empty %s", fileSystemName)
+					logAndFail("cephFS subvolumes list is empty %s", fileSystemName)
 				}
 				metadata, err := listCephFSSubvolumeMetadata(f, fileSystemName, subvol[0].Name, subvolumegroup)
 				if err != nil {
-					framework.Failf("failed to list subvolume metadata: %v", err)
+					logAndFail("failed to list subvolume metadata: %v", err)
 				}
 
 				if metadata.PVCNameKey != pvc.Name {
-					framework.Failf("expected pvcName %q got %q", pvc.Name, metadata.PVCNameKey)
+					logAndFail("expected pvcName %q got %q", pvc.Name, metadata.PVCNameKey)
 				} else if metadata.PVCNamespaceKey != pvc.Namespace {
-					framework.Failf("expected pvcNamespace %q got %q", pvc.Namespace, metadata.PVCNamespaceKey)
+					logAndFail("expected pvcNamespace %q got %q", pvc.Namespace, metadata.PVCNamespaceKey)
 				} else if metadata.PVNameKey != pvcObj.Spec.VolumeName {
-					framework.Failf("expected pvName %q got %q", pvcObj.Spec.VolumeName, metadata.PVNameKey)
+					logAndFail("expected pvName %q got %q", pvcObj.Spec.VolumeName, metadata.PVNameKey)
 				} else if metadata.ClusterNameKey != defaultClusterName {
-					framework.Failf("expected clusterName %q got %q", defaultClusterName, metadata.ClusterNameKey)
+					logAndFail("expected clusterName %q got %q", defaultClusterName, metadata.ClusterNameKey)
 				}
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
@@ -674,17 +674,17 @@ var _ = Describe(cephfsType, func() {
 					false,
 					map[string]string{"volumeNamePrefix": volumeNamePrefix})
 				if err != nil {
-					framework.Failf("failed to create storageclass: %v", err)
+					logAndFail("failed to create storageclass: %v", err)
 				}
 				// set up PVC
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
@@ -693,7 +693,7 @@ var _ = Describe(cephfsType, func() {
 				foundIt := false
 				subvolumes, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
 				if err != nil {
-					framework.Failf("failed to list subvolumes: %v", err)
+					logAndFail("failed to list subvolumes: %v", err)
 				}
 				for _, subVol := range subvolumes {
 					fmt.Printf("Checking prefix on %s\n", subVol)
@@ -706,16 +706,16 @@ var _ = Describe(cephfsType, func() {
 				// clean up after ourselves
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete storageclass: %v", err)
+					logAndFail("failed to delete storageclass: %v", err)
 				}
 				if !foundIt {
-					framework.Failf("could not find subvolume with prefix %s", volumeNamePrefix)
+					logAndFail("could not find subvolume with prefix %s", volumeNamePrefix)
 				}
 			})
 
@@ -725,15 +725,15 @@ var _ = Describe(cephfsType, func() {
 				}
 				err := createCephfsStorageClass(f.ClientSet, f, true, params)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+					logAndFail("failed to validate CephFS pvc and application binding: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
@@ -744,41 +744,41 @@ var _ = Describe(cephfsType, func() {
 				}
 				err := createCephfsStorageClass(f.ClientSet, f, true, params)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+					logAndFail("failed to validate CephFS pvc and application binding: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
 			By("verifying that ceph-fuse recovery works for new pods", func() {
 				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 				err = createCephfsStorageClass(f.ClientSet, f, true, map[string]string{
 					"mounter": "fuse",
 				})
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				replicas := int32(2)
 				pvc, depl, err := validatePVCAndDeploymentAppBinding(
 					f, pvcPath, deplPath, f.UniqueName, &replicas, deployTimeout,
 				)
 				if err != nil {
-					framework.Failf("failed to create PVC and Deployment: %v", err)
+					logAndFail("failed to create PVC and Deployment: %v", err)
 				}
 				deplPods, err := listPods(f, depl.Namespace, &metav1.ListOptions{
 					LabelSelector: "app=" + depl.Labels["app"],
 				})
 				if err != nil {
-					framework.Failf("failed to list pods for Deployment: %v", err)
+					logAndFail("failed to list pods for Deployment: %v", err)
 				}
 
 				doStat := func(podName string) (string, error) {
@@ -810,13 +810,13 @@ var _ = Describe(cephfsType, func() {
 				for i := range deplPods {
 					err = ensureStatSucceeds(deplPods[i].Name)
 					if err != nil {
-						framework.Failf("ensureStatSucceeds failed for pod %q: %v", deplPods[i].Name, err.Error())
+						logAndFail("ensureStatSucceeds failed for pod %q: %v", deplPods[i].Name, err.Error())
 					}
 				}
 				// Kill ceph-fuse in cephfs-csi node plugin Pods.
 				nodePluginSelector, err := getDaemonSetLabelSelector(f, cephCSINamespace, cephFSDeployment.getDaemonsetName())
 				if err != nil {
-					framework.Failf("failed to get node plugin DaemonSet label selector: %v", err)
+					logAndFail("failed to get node plugin DaemonSet label selector: %v", err)
 				}
 				_, stdErr, err := execCommandInContainer(
 					f, "killall -9 ceph-fuse", cephCSINamespace, "csi-cephfsplugin", &metav1.ListOptions{
@@ -824,12 +824,12 @@ var _ = Describe(cephfsType, func() {
 					},
 				)
 				if err != nil {
-					framework.Failf("killall command failed: err %v, stderr %s", err, stdErr)
+					logAndFail("killall command failed: err %v, stderr %s", err, stdErr)
 				}
 				// Verify Pod pod2Name that stat()-ing the mountpoint results in ENOTCONN.
 				stdErr, err = doStat(pod2Name)
 				if err == nil || !strings.Contains(stdErr, "not connected") {
-					framework.Failf(
+					logAndFail(
 						"expected stat to fail with 'Transport endpoint not connected' or 'Socket not connected'; got err %v, stderr %s",
 						err, stdErr,
 					)
@@ -839,19 +839,19 @@ var _ = Describe(cephfsType, func() {
 				// the pod with hopefully mounts working again.
 				err = deletePod(pod2Name, depl.Namespace, c, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete pod %s: %v", pod2Name, err.Error())
+					logAndFail("failed to delete pod %s: %v", pod2Name, err.Error())
 				}
 				// Wait for the second Pod to be recreated.
 				err = waitForDeploymentComplete(c, depl.Name, depl.Namespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment %s: %v", depl.Name, err.Error())
+					logAndFail("timeout waiting for deployment %s: %v", depl.Name, err.Error())
 				}
 				// List Deployment's pods again to get name of the new pod.
 				deplPods, err = listPods(f, depl.Namespace, &metav1.ListOptions{
 					LabelSelector: "app=" + depl.Labels["app"],
 				})
 				if err != nil {
-					framework.Failf("failed to list pods for Deployment: %v", err)
+					logAndFail("failed to list pods for Deployment: %v", err)
 				}
 				for i := range deplPods {
 					if deplPods[i].Name != pod1Name {
@@ -865,40 +865,40 @@ var _ = Describe(cephfsType, func() {
 					for i := range deplPods {
 						podNames[i] = deplPods[i].Name
 					}
-					framework.Failf("no new replica found ; found replicas %v", podNames)
+					logAndFail("no new replica found ; found replicas %v", podNames)
 				}
 				// Verify Pod pod2Name has its ceph-fuse mount working again.
 				err = ensureStatSucceeds(pod2Name)
 				if err != nil {
-					framework.Failf("ensureStatSucceeds failed for pod %q: %v", pod2Name, err.Error())
+					logAndFail("ensureStatSucceeds failed for pod %q: %v", pod2Name, err.Error())
 				}
 
 				// Delete created resources.
 				err = deletePVCAndDeploymentApp(f, pvc, depl)
 				if err != nil {
-					framework.Failf("failed to delete PVC and Deployment: %v", err)
+					logAndFail("failed to delete PVC and Deployment: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
 			By("create a PVC and bind it to an app", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to validate CephFS pvc and application  binding: %v", err)
+					logAndFail("failed to validate CephFS pvc and application  binding: %v", err)
 				}
 			})
 
 			By("create a PVC and bind it to an app with normal user", func() {
 				err := validateNormalUserPVCAccess(pvcPath, f)
 				if err != nil {
-					framework.Failf("failed to validate normal user CephFS pvc and application binding: %v", err)
+					logAndFail("failed to validate normal user CephFS pvc and application binding: %v", err)
 				}
 			})
 
@@ -906,13 +906,13 @@ var _ = Describe(cephfsType, func() {
 				totalCount := 2
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
 				// create PVC and app
@@ -921,11 +921,11 @@ var _ = Describe(cephfsType, func() {
 					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					err = createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
-						framework.Failf("failed to create PVC or application: %v", err)
+						logAndFail("failed to create PVC or application: %v", err)
 					}
 					err = validateSubvolumePath(f, pvc.Name, pvc.Namespace, fileSystemName, subvolumegroup)
 					if err != nil {
-						framework.Failf("failed to validate subvolumePath: %v", err)
+						logAndFail("failed to validate subvolumePath: %v", err)
 					}
 				}
 
@@ -936,7 +936,7 @@ var _ = Describe(cephfsType, func() {
 					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					err = deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
-						framework.Failf("failed to delete PVC or application: %v", err)
+						logAndFail("failed to delete PVC or application: %v", err)
 					}
 
 				}
@@ -947,54 +947,54 @@ var _ = Describe(cephfsType, func() {
 			By("check data persist after recreating pod", func() {
 				err := checkDataPersist(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to check data persist in pvc: %v", err)
+					logAndFail("failed to check data persist in pvc: %v", err)
 				}
 			})
 
 			By("Create PVC, bind it to an app, unmount volume and check app deletion", func() {
 				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC or application: %v", err)
+					logAndFail("failed to create PVC or application: %v", err)
 				}
 
 				err = unmountCephFSVolume(f, app.Name, pvc.Name)
 				if err != nil {
-					framework.Failf("failed to unmount volume: %v", err)
+					logAndFail("failed to unmount volume: %v", err)
 				}
 
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 			})
 
 			By("create PVC, delete backing subvolume and check pv deletion", func() {
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				err = deleteBackingCephFSVolume(f, pvc)
 				if err != nil {
-					framework.Failf("failed to delete CephFS subvolume: %v", err)
+					logAndFail("failed to delete CephFS subvolume: %v", err)
 				}
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 			})
 
 			By("validate multiple subvolumegroup creation", func() {
 				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete storageclass: %v", err)
+					logAndFail("failed to delete storageclass: %v", err)
 				}
 
 				// re-define configmap with information of multiple clusters.
@@ -1010,35 +1010,35 @@ var _ = Describe(cephfsType, func() {
 
 				err = createSubvolumegroup(f, fileSystemName, subvolgrp1)
 				if err != nil {
-					framework.Failf("failed to create subvolumegroup %s: %v", subvolgrp1, err)
+					logAndFail("failed to create subvolumegroup %s: %v", subvolgrp1, err)
 				}
 				err = createSubvolumegroup(f, fileSystemName, subvolgrp2)
 				if err != nil {
-					framework.Failf("failed to create subvolumegroup %s: %v", subvolgrp2, err)
+					logAndFail("failed to create subvolumegroup %s: %v", subvolgrp2, err)
 				}
 				err = createCustomConfigMap(f.ClientSet, cephFSDirPath, clusterInfo)
 				if err != nil {
-					framework.Failf("failed to create configmap: %v", err)
+					logAndFail("failed to create configmap: %v", err)
 				}
 				params := map[string]string{
 					"clusterID": "clusterID-1",
 				}
 				err = createCephfsStorageClass(f.ClientSet, f, false, params)
 				if err != nil {
-					framework.Failf("failed to create storageclass: %v", err)
+					logAndFail("failed to create storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to validate pvc and application: %v", err)
+					logAndFail("failed to validate pvc and application: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete storageclass: %v", err)
+					logAndFail("failed to delete storageclass: %v", err)
 				}
 				// verify subvolume group creation.
 				err = validateSubvolumegroup(f, subvolgrp1)
 				if err != nil {
-					framework.Failf("failed to validate subvolume group: %v", err)
+					logAndFail("failed to validate subvolume group: %v", err)
 				}
 
 				// create resources and verify subvolume group creation
@@ -1046,46 +1046,46 @@ var _ = Describe(cephfsType, func() {
 				params["clusterID"] = "clusterID-2"
 				err = createCephfsStorageClass(f.ClientSet, f, false, params)
 				if err != nil {
-					framework.Failf("failed to create storageclass: %v", err)
+					logAndFail("failed to create storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to validate pvc and application: %v", err)
+					logAndFail("failed to validate pvc and application: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete storageclass: %v", err)
+					logAndFail("failed to delete storageclass: %v", err)
 				}
 				err = validateSubvolumegroup(f, subvolgrp2)
 				if err != nil {
-					framework.Failf("failed to validate subvolume group: %v", err)
+					logAndFail("failed to validate subvolume group: %v", err)
 				}
 				err = deleteSubvolumegroup(f, fileSystemName, subvolgrp1)
 				if err != nil {
-					framework.Failf("failed to delete subvolumegroup %s: %v", subvolgrp1, err)
+					logAndFail("failed to delete subvolumegroup %s: %v", subvolgrp1, err)
 				}
 				err = deleteSubvolumegroup(f, fileSystemName, subvolgrp2)
 				if err != nil {
-					framework.Failf("failed to delete subvolumegroup %s: %v", subvolgrp2, err)
+					logAndFail("failed to delete subvolumegroup %s: %v", subvolgrp2, err)
 				}
 				err = deleteConfigMap(cephFSDirPath)
 				if err != nil {
-					framework.Failf("failed to delete configmap: %v", err)
+					logAndFail("failed to delete configmap: %v", err)
 				}
 				err = createConfigMap(cephFSDirPath, f.ClientSet, f)
 				if err != nil {
-					framework.Failf("failed to create configmap: %v", err)
+					logAndFail("failed to create configmap: %v", err)
 				}
 				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					framework.Failf("failed to create storageclass: %v", err)
+					logAndFail("failed to create storageclass: %v", err)
 				}
 			})
 
 			By("Resize PVC and check application directory size", func() {
 				err := resizePVCAndValidateSize(pvcPath, appPath, f)
 				if err != nil {
-					framework.Failf("failed to resize PVC: %v", err)
+					logAndFail("failed to resize PVC: %v", err)
 				}
 			})
 
@@ -1093,13 +1093,13 @@ var _ = Describe(cephfsType, func() {
 				// create PVC and bind it to an app
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 
 				app.Namespace = f.UniqueName
@@ -1111,7 +1111,7 @@ var _ = Describe(cephfsType, func() {
 				app.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC or application: %v", err)
+					logAndFail("failed to create PVC or application: %v", err)
 				}
 
 				opt := metav1.ListOptions{
@@ -1127,29 +1127,29 @@ var _ = Describe(cephfsType, func() {
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					framework.Failf("failed to execute command %s: %v", cmd, stdErr)
+					logAndFail("failed to execute command %s: %v", cmd, stdErr)
 				}
 
 				// delete PVC and app
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 			})
 
 			By("Test subvolume snapshot and restored PVC metadata", func() {
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
-					framework.Failf("failed to create CephFS snapshotclass: %v", err)
+					logAndFail("failed to create CephFS snapshotclass: %v", err)
 				}
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 				snap := getSnapshot(snapshotPath)
 				snap.Namespace = f.UniqueName
@@ -1158,59 +1158,59 @@ var _ = Describe(cephfsType, func() {
 				snap.Name = f.UniqueName
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+					logAndFail("failed to create snapshot (%s): %v", snap.Name, err)
 				}
 				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 				if err != nil {
-					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+					logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
 				}
 				subVolumeName := pv.Spec.CSI.VolumeAttributes["subvolumeName"]
 				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
 				snaps, err := listCephFSSnapshots(f, fileSystemName, subVolumeName, subvolumegroup)
 				if err != nil {
-					framework.Failf("failed to list subvolume snapshots: %v", err)
+					logAndFail("failed to list subvolume snapshots: %v", err)
 				}
 				content, err := getVolumeSnapshotContent(snap.Namespace, snap.Name)
 				if err != nil {
-					framework.Failf("failed to get snapshotcontent for %s in namespace %s: %v",
+					logAndFail("failed to get snapshotcontent for %s in namespace %s: %v",
 						snap.Name, snap.Namespace, err)
 				}
 				metadata, err := listCephFSSnapshotMetadata(f,
 					fileSystemName, subVolumeName, snaps[0].Name, subvolumegroup)
 				if err != nil {
-					framework.Failf("failed to list subvolume snapshots metadata: %v", err)
+					logAndFail("failed to list subvolume snapshots metadata: %v", err)
 				}
 				if metadata.VolSnapNameKey != snap.Name {
-					framework.Failf("failed, snapname expected:%s got:%s",
+					logAndFail("failed, snapname expected:%s got:%s",
 						snap.Name, metadata.VolSnapNameKey)
 				} else if metadata.VolSnapNamespaceKey != snap.Namespace {
-					framework.Failf("failed, snapnamespace expected:%s got:%s",
+					logAndFail("failed, snapnamespace expected:%s got:%s",
 						snap.Namespace, metadata.VolSnapNamespaceKey)
 				} else if metadata.VolSnapContentNameKey != content.Name {
-					framework.Failf("failed, contentname expected:%s got:%s",
+					logAndFail("failed, contentname expected:%s got:%s",
 						content.Name, metadata.VolSnapContentNameKey)
 				} else if metadata.ClusterNameKey != defaultClusterName {
-					framework.Failf("expected clusterName %q got %q", defaultClusterName, metadata.ClusterNameKey)
+					logAndFail("expected clusterName %q got %q", defaultClusterName, metadata.ClusterNameKey)
 				}
 
 				// Delete the parent pvc before restoring
 				// another one from snapshot.
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 
 				// Test Restore snapshot
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.DataSource.Name = snap.Name
 				// create PVC from the snapshot
 				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create pvc clone: %v", err)
+					logAndFail("failed to create pvc clone: %v", err)
 				}
 				pvcCloneObj, pvCloneObj, err := getPVCAndPV(f.ClientSet, pvcClone.Name, pvcClone.Namespace)
 				if err != nil {
@@ -1219,62 +1219,62 @@ var _ = Describe(cephfsType, func() {
 				subVolumeCloneName := pvCloneObj.Spec.CSI.VolumeAttributes["subvolumeName"]
 				cloneMetadata, err := listCephFSSubvolumeMetadata(f, fileSystemName, subVolumeCloneName, subvolumegroup)
 				if err != nil {
-					framework.Failf("failed to list subvolume clone metadata: %v", err)
+					logAndFail("failed to list subvolume clone metadata: %v", err)
 				}
 				if cloneMetadata.PVCNameKey != pvcClone.Name {
-					framework.Failf("expected pvcName %q got %q", pvcClone.Name, cloneMetadata.PVCNameKey)
+					logAndFail("expected pvcName %q got %q", pvcClone.Name, cloneMetadata.PVCNameKey)
 				} else if cloneMetadata.PVCNamespaceKey != pvcClone.Namespace {
-					framework.Failf("expected pvcNamespace %q got %q", pvcClone.Namespace, cloneMetadata.PVCNamespaceKey)
+					logAndFail("expected pvcNamespace %q got %q", pvcClone.Namespace, cloneMetadata.PVCNamespaceKey)
 				} else if cloneMetadata.PVNameKey != pvcCloneObj.Spec.VolumeName {
-					framework.Failf("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
+					logAndFail("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
 				} else if cloneMetadata.ClusterNameKey != defaultClusterName {
-					framework.Failf("expected clusterName %q got %q", defaultClusterName, cloneMetadata.ClusterNameKey)
+					logAndFail("expected clusterName %q got %q", defaultClusterName, cloneMetadata.ClusterNameKey)
 				}
 
 				// delete clone
 				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete pvc clone: %v", err)
+					logAndFail("failed to delete pvc clone: %v", err)
 				}
 				// delete snapshot
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
+					logAndFail("failed to delete snapshot (%s): %v", f.UniqueName, err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 
 				err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS snapshotclass: %v", err)
+					logAndFail("failed to delete CephFS snapshotclass: %v", err)
 				}
 			})
 
 			By("Test Clone metadata", func() {
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create pvc: %v", err)
+					logAndFail("failed to create pvc: %v", err)
 				}
 
 				pvcClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.DataSource.Name = pvc.Name
 				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create pvc clone: %v", err)
+					logAndFail("failed to create pvc clone: %v", err)
 				}
 				// delete parent PVC
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete pvc: %v", err)
+					logAndFail("failed to delete pvc: %v", err)
 				}
 
 				pvcCloneObj, pvCloneObj, err := getPVCAndPV(f.ClientSet, pvcClone.Name, pvcClone.Namespace)
@@ -1284,21 +1284,21 @@ var _ = Describe(cephfsType, func() {
 				subVolumeCloneName := pvCloneObj.Spec.CSI.VolumeAttributes["subvolumeName"]
 				cloneMetadata, err := listCephFSSubvolumeMetadata(f, fileSystemName, subVolumeCloneName, subvolumegroup)
 				if err != nil {
-					framework.Failf("failed to list subvolume clone metadata: %v", err)
+					logAndFail("failed to list subvolume clone metadata: %v", err)
 				}
 				if cloneMetadata.PVCNameKey != pvcClone.Name {
-					framework.Failf("expected pvcName %q got %q", pvc.Name, cloneMetadata.PVCNameKey)
+					logAndFail("expected pvcName %q got %q", pvc.Name, cloneMetadata.PVCNameKey)
 				} else if cloneMetadata.PVCNamespaceKey != pvcClone.Namespace {
-					framework.Failf("expected pvcNamespace %q got %q", pvc.Namespace, cloneMetadata.PVCNamespaceKey)
+					logAndFail("expected pvcNamespace %q got %q", pvc.Namespace, cloneMetadata.PVCNamespaceKey)
 				} else if cloneMetadata.PVNameKey != pvcCloneObj.Spec.VolumeName {
-					framework.Failf("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
+					logAndFail("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
 				} else if cloneMetadata.ClusterNameKey != defaultClusterName {
-					framework.Failf("expected clusterName %q got %q", defaultClusterName, cloneMetadata.ClusterNameKey)
+					logAndFail("expected clusterName %q got %q", defaultClusterName, cloneMetadata.ClusterNameKey)
 				}
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete pvc clone: %v", err)
+					logAndFail("failed to delete pvc clone: %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
@@ -1307,22 +1307,22 @@ var _ = Describe(cephfsType, func() {
 			By("Delete snapshot after deleting subvolume and snapshot from backend", func() {
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
-					framework.Failf("failed to create CephFS snapshotclass: %v", err)
+					logAndFail("failed to create CephFS snapshotclass: %v", err)
 				}
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 				if err != nil {
-					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+					logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
 				}
 
 				snap := getSnapshot(snapshotPath)
@@ -1332,34 +1332,34 @@ var _ = Describe(cephfsType, func() {
 				snap.Name = f.UniqueName
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+					logAndFail("failed to create snapshot (%s): %v", snap.Name, err)
 				}
 				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
 				err = deleteBackingCephFSSubvolumeSnapshot(f, pvc, &snap)
 				if err != nil {
-					framework.Failf("failed to delete backing snapshot for snapname:=%s", err)
+					logAndFail("failed to delete backing snapshot for snapname:=%s", err)
 				}
 
 				err = deleteBackingCephFSVolume(f, pvc)
 				if err != nil {
-					framework.Failf("failed to delete backing subvolume error=%s", err)
+					logAndFail("failed to delete backing subvolume error=%s", err)
 				}
 
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete snapshot:=%s", err)
+					logAndFail("failed to delete snapshot:=%s", err)
 				} else {
 					framework.Logf("successfully deleted snapshot")
 				}
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 
 				err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS snapshotclass: %v", err)
+					logAndFail("failed to delete CephFS snapshotclass: %v", err)
 				}
 			})
 
@@ -1371,22 +1371,22 @@ var _ = Describe(cephfsType, func() {
 
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
-					framework.Failf("failed to create CephFS snapshotclass: %v", err)
+					logAndFail("failed to create CephFS snapshotclass: %v", err)
 				}
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 				if err != nil {
-					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+					logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
 				}
 
 				snap := getSnapshot(snapshotPath)
@@ -1396,7 +1396,7 @@ var _ = Describe(cephfsType, func() {
 				snap.Name = f.UniqueName
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+					logAndFail("failed to create snapshot (%s): %v", snap.Name, err)
 				}
 
 				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
@@ -1404,17 +1404,17 @@ var _ = Describe(cephfsType, func() {
 				// another one from snapshot.
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 
 				pvcClone.Namespace = f.UniqueName
@@ -1431,18 +1431,18 @@ var _ = Describe(cephfsType, func() {
 				// delete clone and app
 				err = deletePVCAndApp(name, f, pvcClone, appClone)
 				if err != nil {
-					framework.Failf("failed to delete PVC and app (%s): %v", f.UniqueName, err)
+					logAndFail("failed to delete PVC and app (%s): %v", f.UniqueName, err)
 				}
 
 				// delete snapshot
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
+					logAndFail("failed to delete snapshot (%s): %v", f.UniqueName, err)
 				}
 
 				err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS snapshotclass: %v", err)
+					logAndFail("failed to delete CephFS snapshotclass: %v", err)
 				}
 			})
 
@@ -1456,27 +1456,27 @@ var _ = Describe(cephfsType, func() {
 				wg.Add(totalCount)
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 				if err != nil {
-					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+					logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
 				}
 
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 
 				app.Namespace = f.UniqueName
@@ -1489,7 +1489,7 @@ var _ = Describe(cephfsType, func() {
 				}
 				wErr := writeDataInPod(app, &opt, f)
 				if wErr != nil {
-					framework.Failf("failed to  write data : %v", wErr)
+					logAndFail("failed to  write data : %v", wErr)
 				}
 
 				uniqueName := uuid.NewString()
@@ -1515,17 +1515,17 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("creating snapshots failed, %d errors were logged", failed)
+					logAndFail("creating snapshots failed, %d errors were logged", failed)
 				}
 				validateCephFSSnapshotCount(f, totalCount, subvolumegroup, pv)
 
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				pvcClone.Namespace = f.UniqueName
 				appClone.Namespace = f.UniqueName
@@ -1556,7 +1556,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("creating PVCs and apps failed, %d errors were logged", failed)
+					logAndFail("creating PVCs and apps failed, %d errors were logged", failed)
 				}
 
 				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
@@ -1583,7 +1583,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+					logAndFail("deleting PVCs and apps failed, %d errors were logged", failed)
 				}
 
 				parentPVCCount := totalSubvolumes - totalCount
@@ -1617,7 +1617,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("creating PVCs and apps failed, %d errors were logged", failed)
+					logAndFail("creating PVCs and apps failed, %d errors were logged", failed)
 				}
 
 				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
@@ -1643,7 +1643,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("deleting snapshots failed, %d errors were logged", failed)
+					logAndFail("deleting snapshots failed, %d errors were logged", failed)
 				}
 
 				validateCephFSSnapshotCount(f, 0, subvolumegroup, pv)
@@ -1668,7 +1668,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+					logAndFail("deleting PVCs and apps failed, %d errors were logged", failed)
 				}
 
 				validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
@@ -1677,7 +1677,7 @@ var _ = Describe(cephfsType, func() {
 				// delete parent pvc
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
@@ -1686,7 +1686,7 @@ var _ = Describe(cephfsType, func() {
 
 				err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS snapshotclass: %v", err)
+					logAndFail("failed to delete CephFS snapshotclass: %v", err)
 				}
 			})
 
@@ -1695,7 +1695,7 @@ var _ = Describe(cephfsType, func() {
 					By("checking encrypted snapshot-backed volume with KMS "+kmsID, func() {
 						err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {
-							framework.Failf("failed to delete storageclass: %v", err)
+							logAndFail("failed to delete storageclass: %v", err)
 						}
 
 						scOpts := map[string]string{
@@ -1706,27 +1706,27 @@ var _ = Describe(cephfsType, func() {
 
 						err = createCephfsStorageClass(f.ClientSet, f, true, scOpts)
 						if err != nil {
-							framework.Failf("failed to create CephFS storageclass: %v", err)
+							logAndFail("failed to create CephFS storageclass: %v", err)
 						}
 
 						err = createCephFSSnapshotClass(f)
 						if err != nil {
-							framework.Failf("failed to delete CephFS storageclass: %v", err)
+							logAndFail("failed to delete CephFS storageclass: %v", err)
 						}
 
 						pvc, err := loadPVC(pvcPath)
 						if err != nil {
-							framework.Failf("failed to load PVC: %v", err)
+							logAndFail("failed to load PVC: %v", err)
 						}
 						pvc.Namespace = f.UniqueName
 						err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 						if err != nil {
-							framework.Failf("failed to create PVC: %v", err)
+							logAndFail("failed to create PVC: %v", err)
 						}
 
 						app, err := loadApp(appPath)
 						if err != nil {
-							framework.Failf("failed to load application: %v", err)
+							logAndFail("failed to load application: %v", err)
 						}
 						app.Namespace = f.UniqueName
 						app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
@@ -1739,7 +1739,7 @@ var _ = Describe(cephfsType, func() {
 						}
 						err = writeDataInPod(app, &optApp, f)
 						if err != nil {
-							framework.Failf("failed to write data: %v", err)
+							logAndFail("failed to write data: %v", err)
 						}
 
 						appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
@@ -1749,22 +1749,22 @@ var _ = Describe(cephfsType, func() {
 						snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 						err = createSnapshot(&snap, deployTimeout)
 						if err != nil {
-							framework.Failf("failed to create snapshot: %v", err)
+							logAndFail("failed to create snapshot: %v", err)
 						}
 
 						err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
 						if err != nil {
-							framework.Failf("failed to append data: %v", err)
+							logAndFail("failed to append data: %v", err)
 						}
 
 						parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
 						if err != nil {
-							framework.Failf("failed to get SHA512 sum for file: %v", err)
+							logAndFail("failed to get SHA512 sum for file: %v", err)
 						}
 
 						err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {
-							framework.Failf("failed to delete CephFS storageclass: %v", err)
+							logAndFail("failed to delete CephFS storageclass: %v", err)
 						}
 
 						err = createCephfsStorageClass(f.ClientSet, f, false, map[string]string{
@@ -1772,18 +1772,18 @@ var _ = Describe(cephfsType, func() {
 							"encryptionKMSID": kmsID,
 						})
 						if err != nil {
-							framework.Failf("failed to create CephFS storageclass: %v", err)
+							logAndFail("failed to create CephFS storageclass: %v", err)
 						}
 
 						pvcClone, err := loadPVC(pvcClonePath)
 						if err != nil {
-							framework.Failf("failed to load PVC: %v", err)
+							logAndFail("failed to load PVC: %v", err)
 						}
 						// Snapshot-backed volumes support read-only access modes only.
 						pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
 						appClone, err := loadApp(appClonePath)
 						if err != nil {
-							framework.Failf("failed to load application: %v", err)
+							logAndFail("failed to load application: %v", err)
 						}
 						appCloneLabels := map[string]string{
 							appKey: appCloneLabel,
@@ -1796,7 +1796,7 @@ var _ = Describe(cephfsType, func() {
 						appClone.Namespace = f.UniqueName
 						err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 						if err != nil {
-							framework.Failf("failed to create PVC and app: %v", err)
+							logAndFail("failed to create PVC and app: %v", err)
 						}
 
 						// Snapshot-backed volume shouldn't contribute to total subvolume count.
@@ -1806,43 +1806,43 @@ var _ = Describe(cephfsType, func() {
 						// deleted once all volumes that are backed by this snapshot are gone.
 						err = deleteSnapshot(&snap, deployTimeout)
 						if err != nil {
-							framework.Failf("failed to delete snapshot: %v", err)
+							logAndFail("failed to delete snapshot: %v", err)
 						}
 
 						appCloneTestFilePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 
 						snapFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
 						if err != nil {
-							framework.Failf("failed to get SHA512 sum for file: %v", err)
+							logAndFail("failed to get SHA512 sum for file: %v", err)
 						}
 
 						if parentFileSum == snapFileSum {
-							framework.Failf("SHA512 sums of files in parent subvol and snapshot should differ")
+							logAndFail("SHA512 sums of files in parent subvol and snapshot should differ")
 						}
 
 						err = deletePVCAndApp("", f, pvcClone, appClone)
 						if err != nil {
-							framework.Failf("failed to delete PVC or application: %v", err)
+							logAndFail("failed to delete PVC or application: %v", err)
 						}
 
 						err = deletePVCAndApp("", f, pvc, app)
 						if err != nil {
-							framework.Failf("failed to delete PVC or application: %v", err)
+							logAndFail("failed to delete PVC or application: %v", err)
 						}
 
 						err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {
-							framework.Failf("failed to delete CephFS storageclass: %v", err)
+							logAndFail("failed to delete CephFS storageclass: %v", err)
 						}
 
 						err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 						if err != nil {
-							framework.Failf("failed to delete CephFS snapshotclass: %v", err)
+							logAndFail("failed to delete CephFS snapshotclass: %v", err)
 						}
 
 						err = createCephfsStorageClass(f.ClientSet, f, false, nil)
 						if err != nil {
-							framework.Failf("failed to create CephFS storageclass: %v", err)
+							logAndFail("failed to create CephFS storageclass: %v", err)
 						}
 					})
 				}
@@ -1851,27 +1851,27 @@ var _ = Describe(cephfsType, func() {
 			By("checking snapshot-backed volume", func() {
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
-					framework.Failf("failed to create CephFS snapshotclass: %v", err)
+					logAndFail("failed to create CephFS snapshotclass: %v", err)
 				}
 
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 				if err != nil {
-					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+					logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
 				}
 
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
 				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
@@ -1884,7 +1884,7 @@ var _ = Describe(cephfsType, func() {
 				}
 				err = writeDataInPod(app, &optApp, f)
 				if err != nil {
-					framework.Failf("failed to write data: %v", err)
+					logAndFail("failed to write data: %v", err)
 				}
 
 				appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
@@ -1894,29 +1894,29 @@ var _ = Describe(cephfsType, func() {
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot: %v", err)
+					logAndFail("failed to create snapshot: %v", err)
 				}
 				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
 
 				err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
 				if err != nil {
-					framework.Failf("failed to append data: %v", err)
+					logAndFail("failed to append data: %v", err)
 				}
 
 				parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
 				if err != nil {
-					framework.Failf("failed to get SHA512 sum for file: %v", err)
+					logAndFail("failed to get SHA512 sum for file: %v", err)
 				}
 
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				// Snapshot-backed volumes support read-only access modes only.
 				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				appCloneLabels := map[string]string{
 					appKey: appCloneLabel,
@@ -1929,7 +1929,7 @@ var _ = Describe(cephfsType, func() {
 				appClone.Namespace = f.UniqueName
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC and app: %v", err)
+					logAndFail("failed to create PVC and app: %v", err)
 				}
 
 				// Snapshot-backed volume shouldn't contribute to total subvolume count.
@@ -1939,62 +1939,62 @@ var _ = Describe(cephfsType, func() {
 				// deleted once all volumes that are backed by this snapshot are gone.
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete snapshot: %v", err)
+					logAndFail("failed to delete snapshot: %v", err)
 				}
 
 				appCloneTestFilePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 
 				snapFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
 				if err != nil {
-					framework.Failf("failed to get SHA512 sum for file: %v", err)
+					logAndFail("failed to get SHA512 sum for file: %v", err)
 				}
 
 				if parentFileSum == snapFileSum {
-					framework.Failf("SHA512 sums of files in parent subvol and snapshot should differ")
+					logAndFail("SHA512 sums of files in parent subvol and snapshot should differ")
 				}
 
 				err = deletePVCAndApp("", f, pvcClone, appClone)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				validateCephFSSnapshotCount(f, 0, subvolumegroup, pv)
 
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 
 				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 			})
 
 			By("checking snapshot-backed volume by backing snapshot as false", func() {
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 				if err != nil {
-					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+					logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
 				}
 
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
 				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
@@ -2007,7 +2007,7 @@ var _ = Describe(cephfsType, func() {
 				}
 				err = writeDataInPod(app, &optApp, f)
 				if err != nil {
-					framework.Failf("failed to write data: %v", err)
+					logAndFail("failed to write data: %v", err)
 				}
 
 				appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
@@ -2017,41 +2017,41 @@ var _ = Describe(cephfsType, func() {
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot: %v", err)
+					logAndFail("failed to create snapshot: %v", err)
 				}
 				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
 
 				err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
 				if err != nil {
-					framework.Failf("failed to append data: %v", err)
+					logAndFail("failed to append data: %v", err)
 				}
 
 				parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
 				if err != nil {
-					framework.Failf("failed to get SHA512 sum for file: %v", err)
+					logAndFail("failed to get SHA512 sum for file: %v", err)
 				}
 
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 
 				err = createCephfsStorageClass(f.ClientSet, f, false, map[string]string{
 					"backingSnapshot": "false",
 				})
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				// Snapshot-backed volumes support read-only access modes only.
 				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				appCloneLabels := map[string]string{
 					appKey: appCloneLabel,
@@ -2064,7 +2064,7 @@ var _ = Describe(cephfsType, func() {
 				appClone.Namespace = f.UniqueName
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC and app: %v", err)
+					logAndFail("failed to create PVC and app: %v", err)
 				}
 
 				validateSubvolumeCount(f, 2, fileSystemName, subvolumegroup)
@@ -2073,7 +2073,7 @@ var _ = Describe(cephfsType, func() {
 				// deleted once all volumes that are backed by this snapshot are gone.
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete snapshot: %v", err)
+					logAndFail("failed to delete snapshot: %v", err)
 				}
 				validateCephFSSnapshotCount(f, 0, subvolumegroup, pv)
 
@@ -2081,53 +2081,53 @@ var _ = Describe(cephfsType, func() {
 
 				snapFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
 				if err != nil {
-					framework.Failf("failed to get SHA512 sum for file: %v", err)
+					logAndFail("failed to get SHA512 sum for file: %v", err)
 				}
 
 				if parentFileSum == snapFileSum {
-					framework.Failf("SHA512 sums of files in parent subvol and snapshot should differ")
+					logAndFail("SHA512 sums of files in parent subvol and snapshot should differ")
 				}
 
 				err = deletePVCAndApp("", f, pvcClone, appClone)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 
 				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 			})
 
 			By("create RWX clone from ROX PVC", func() {
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 				if err != nil {
-					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+					logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
 				}
 
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
 				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
@@ -2140,19 +2140,19 @@ var _ = Describe(cephfsType, func() {
 				}
 				err = writeDataInPod(app, &optApp, f)
 				if err != nil {
-					framework.Failf("failed to write data: %v", err)
+					logAndFail("failed to write data: %v", err)
 				}
 
 				appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 
 				err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
 				if err != nil {
-					framework.Failf("failed to append data: %v", err)
+					logAndFail("failed to append data: %v", err)
 				}
 
 				parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
 				if err != nil {
-					framework.Failf("failed to get SHA512 sum for file: %v", err)
+					logAndFail("failed to get SHA512 sum for file: %v", err)
 				}
 
 				snap := getSnapshot(snapshotPath)
@@ -2160,13 +2160,13 @@ var _ = Describe(cephfsType, func() {
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot: %v", err)
+					logAndFail("failed to create snapshot: %v", err)
 				}
 				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
 
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				// Snapshot-backed volumes support read-only access modes only.
 				pvcClone.Spec.DataSource.Name = snap.Name
@@ -2175,7 +2175,7 @@ var _ = Describe(cephfsType, func() {
 				pvcClone.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(c, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
@@ -2183,7 +2183,7 @@ var _ = Describe(cephfsType, func() {
 				// create RWX clone from ROX PVC
 				pvcRWXClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvcRWXClone.Spec.DataSource.Name = pvcClone.Name
 				pvcRWXClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteMany}
@@ -2191,7 +2191,7 @@ var _ = Describe(cephfsType, func() {
 
 				appClone, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				appCloneLabels := map[string]string{
 					appKey: appCloneLabel,
@@ -2206,7 +2206,7 @@ var _ = Describe(cephfsType, func() {
 
 				err = createPVCAndApp("", f, pvcRWXClone, appClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC and app: %v", err)
+					logAndFail("failed to create PVC and app: %v", err)
 				}
 				// 2 subvolumes should be created 1 for parent PVC and 1 for
 				// RWX clone PVC.
@@ -2216,11 +2216,11 @@ var _ = Describe(cephfsType, func() {
 
 				cloneFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
 				if err != nil {
-					framework.Failf("failed to get SHA512 sum for file: %v", err)
+					logAndFail("failed to get SHA512 sum for file: %v", err)
 				}
 
 				if parentFileSum != cloneFileSum {
-					framework.Failf(
+					logAndFail(
 						"SHA512 sums of files in parent and ROX should not differ. parentFileSum: %s cloneFileSum: %s",
 						parentFileSum,
 						cloneFileSum)
@@ -2229,31 +2229,31 @@ var _ = Describe(cephfsType, func() {
 				// Now try to write to the PVC as its a RWX PVC
 				err = appendToFileInContainer(f, app, appCloneTestFilePath, "testing", &optApp)
 				if err != nil {
-					framework.Failf("failed to append data: %v", err)
+					logAndFail("failed to append data: %v", err)
 				}
 
 				// Deleting snapshot before deleting pvcClone should succeed. It will be
 				// deleted once all volumes that are backed by this snapshot are gone.
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete snapshot: %v", err)
+					logAndFail("failed to delete snapshot: %v", err)
 				}
 
 				// delete parent pvc and app
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				// delete ROX clone PVC
 				err = deletePVCAndValidatePV(c, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 				// delete RWX clone PVC and app
 				err = deletePVCAndApp("", f, pvcRWXClone, appClone)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
@@ -2261,12 +2261,12 @@ var _ = Describe(cephfsType, func() {
 
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 
 				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 			})
 
@@ -2279,7 +2279,7 @@ var _ = Describe(cephfsType, func() {
 					By("create an encrypted PVC-PVC clone and bind it to an app with "+kmsID, func() {
 						err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {
-							framework.Failf("failed to delete storageclass: %v", err)
+							logAndFail("failed to delete storageclass: %v", err)
 						}
 
 						scOpts := map[string]string{
@@ -2289,18 +2289,18 @@ var _ = Describe(cephfsType, func() {
 
 						err = createCephfsStorageClass(f.ClientSet, f, true, scOpts)
 						if err != nil {
-							framework.Failf("failed to create CephFS storageclass: %v", err)
+							logAndFail("failed to create CephFS storageclass: %v", err)
 						}
 
 						validateFscryptClone(pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, kmsConf, f)
 
 						err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 						if err != nil {
-							framework.Failf("failed to delete storageclass: %v", err)
+							logAndFail("failed to delete storageclass: %v", err)
 						}
 						err = createCephfsStorageClass(f.ClientSet, f, false, nil)
 						if err != nil {
-							framework.Failf("failed to create CephFS storageclass: %v", err)
+							logAndFail("failed to create CephFS storageclass: %v", err)
 						}
 					})
 				}
@@ -2315,17 +2315,17 @@ var _ = Describe(cephfsType, func() {
 				totalSubvolumes := totalCount + 1
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
 				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
@@ -2337,18 +2337,18 @@ var _ = Describe(cephfsType, func() {
 				}
 				wErr := writeDataInPod(app, &opt, f)
 				if wErr != nil {
-					framework.Failf("failed to write data from application %v", wErr)
+					logAndFail("failed to write data from application %v", wErr)
 				}
 
 				pvcClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvcClone.Spec.DataSource.Name = pvc.Name
 				pvcClone.Namespace = f.UniqueName
 				appClone, err := loadApp(appSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				appClone.Namespace = f.UniqueName
 				wg.Add(totalCount)
@@ -2372,7 +2372,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+					logAndFail("deleting PVCs and apps failed, %d errors were logged", failed)
 				}
 
 				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
@@ -2381,7 +2381,7 @@ var _ = Describe(cephfsType, func() {
 				// delete parent pvc
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				wg.Add(totalCount)
@@ -2404,7 +2404,7 @@ var _ = Describe(cephfsType, func() {
 					}
 				}
 				if failed != 0 {
-					framework.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+					logAndFail("deleting PVCs and apps failed, %d errors were logged", failed)
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
@@ -2415,25 +2415,25 @@ var _ = Describe(cephfsType, func() {
 				// create PVC and bind it to an app
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 
 				pvc.Namespace = f.UniqueName
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				pvcClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.DataSource.Name = pvc.Name
 				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
 				app, err := loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 
 				app.Namespace = f.UniqueName
@@ -2444,7 +2444,7 @@ var _ = Describe(cephfsType, func() {
 				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 				err = createPVCAndApp("", f, pvcClone, app, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC or application: %v", err)
+					logAndFail("failed to create PVC or application: %v", err)
 				}
 
 				opt := metav1.ListOptions{
@@ -2460,19 +2460,19 @@ var _ = Describe(cephfsType, func() {
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					framework.Failf("failed to execute command %s: %v", cmd, stdErr)
+					logAndFail("failed to execute command %s: %v", cmd, stdErr)
 				}
 
 				// delete cloned ROX pvc and app
 				err = deletePVCAndApp("", f, pvcClone, app)
 				if err != nil {
-					framework.Failf("failed to delete PVC or application: %v", err)
+					logAndFail("failed to delete PVC or application: %v", err)
 				}
 
 				// delete parent pvc
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 			})
 
@@ -2484,7 +2484,7 @@ var _ = Describe(cephfsType, func() {
 					pvcClonePath,
 					appClonePath)
 				if err != nil {
-					framework.Failf("failed to validate restore bigger size clone: %v", err)
+					logAndFail("failed to validate restore bigger size clone: %v", err)
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
@@ -2498,7 +2498,7 @@ var _ = Describe(cephfsType, func() {
 					pvcSmartClonePath,
 					appSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to validate bigger size clone: %v", err)
+					logAndFail("failed to validate bigger size clone: %v", err)
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
@@ -2509,19 +2509,19 @@ var _ = Describe(cephfsType, func() {
 				size := "500M"
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
 
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					logAndFail("failed to create PVC: %v", err)
 				}
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 			})
 
@@ -2529,12 +2529,12 @@ var _ = Describe(cephfsType, func() {
 				scName := "csi-cephfs-sc"
 				snapshotter, err := newCephFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3, 0)
 				if err != nil {
-					framework.Failf("failed to create volumeGroupSnapshot Base: %v", err)
+					logAndFail("failed to create volumeGroupSnapshot Base: %v", err)
 				}
 
 				err = snapshotter.TestVolumeGroupSnapshot()
 				if err != nil {
-					framework.Failf("failed to test volumeGroupSnapshot: %v", err)
+					logAndFail("failed to test volumeGroupSnapshot: %v", err)
 				}
 			})
 
@@ -2544,18 +2544,18 @@ var _ = Describe(cephfsType, func() {
 					radosNamespace = radosNamespaceName
 					err := deleteConfigMap(cephFSDirPath)
 					if err != nil {
-						framework.Failf("failed to delete configmap:: %v", err)
+						logAndFail("failed to delete configmap:: %v", err)
 					}
 					err = createConfigMap(cephFSDirPath, f.ClientSet, f)
 					if err != nil {
-						framework.Failf("failed to create configmap: %v", err)
+						logAndFail("failed to create configmap: %v", err)
 					}
 
 					// restart csi pods for the configmap to take effect.
 					err = recreateCSIPods(f, cephFSDeployment.getPodSelector(),
 						cephFSDeployment.getDaemonsetName(), cephFSDeployment.getDeploymentName())
 					if err != nil {
-						framework.Failf("failed to recreate cephfs csi pods: %v", err)
+						logAndFail("failed to recreate cephfs csi pods: %v", err)
 					}
 				}
 
@@ -2571,26 +2571,26 @@ var _ = Describe(cephfsType, func() {
 
 				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 				err = createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
-					framework.Failf("failed to create CephFS storageclass: %v", err)
+					logAndFail("failed to create CephFS storageclass: %v", err)
 				}
 				// create a PVC and bind it to an app
 				pvc, pod, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+					logAndFail("failed to validate CephFS pvc and application binding: %v", err)
 				}
 
 				// snapshot test
 				err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS snapshotclass: %v", err)
+					logAndFail("failed to delete CephFS snapshotclass: %v", err)
 				}
 				err = createCephFSSnapshotClass(f)
 				if err != nil {
-					framework.Failf("failed to create CephFS snapshot class: %v", err)
+					logAndFail("failed to create CephFS snapshot class: %v", err)
 				}
 				snap := getSnapshot(snapshotPath)
 				snap.Namespace = f.UniqueName
@@ -2598,20 +2598,20 @@ var _ = Describe(cephfsType, func() {
 				snap.Name = f.UniqueName
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+					logAndFail("failed to create snapshot (%s): %v", snap.Name, err)
 				}
 
 				// restore pvc test
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
+					logAndFail("failed to load PVC: %v", err)
 				}
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.DataSource.Name = snap.Name
 				// create PVC from the snapshot
 				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create pvc clone: %v", err)
+					logAndFail("failed to create pvc clone: %v", err)
 				}
 
 				// validate OMAP count
@@ -2621,23 +2621,23 @@ var _ = Describe(cephfsType, func() {
 				// delete resources
 				err = deletePod(pod.Name, pod.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete application: %v", err)
+					logAndFail("failed to delete application: %v", err)
 				}
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete pvc clone: %v", err)
+					logAndFail("failed to delete pvc clone: %v", err)
 				}
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
+					logAndFail("failed to delete snapshot (%s): %v", f.UniqueName, err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					logAndFail("failed to delete CephFS storageclass: %v", err)
 				}
 
 				// validate OMAP count
@@ -2660,18 +2660,18 @@ var _ = Describe(cephfsType, func() {
 			By("Create a PVC and delete PVC when backend pool deleted", func() {
 				err := pvcDeleteWhenPoolNotFound(pvcPath, true, f)
 				if err != nil {
-					framework.Failf("failed to delete PVC: %v", err)
+					logAndFail("failed to delete PVC: %v", err)
 				}
 			})
 			// delete cephFS provisioner secret
 			err := deleteCephUser(f, keyringCephFSProvisionerUsername)
 			if err != nil {
-				framework.Failf("failed to delete user %s: %v", keyringCephFSProvisionerUsername, err)
+				logAndFail("failed to delete user %s: %v", keyringCephFSProvisionerUsername, err)
 			}
 			// delete cephFS plugin secret
 			err = deleteCephUser(f, keyringCephFSNodePluginUsername)
 			if err != nil {
-				framework.Failf("failed to delete user %s: %v", keyringCephFSNodePluginUsername, err)
+				logAndFail("failed to delete user %s: %v", keyringCephFSNodePluginUsername, err)
 			}
 		})
 	})

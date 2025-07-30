@@ -65,7 +65,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
 			err := createNamespace(c, cephCSINamespace)
 			if err != nil {
-				framework.Failf("failed to create namespace: %v", err)
+				logAndFail("failed to create namespace: %v", err)
 			}
 		}
 
@@ -74,50 +74,50 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		var err error
 		cwd, err = os.Getwd()
 		if err != nil {
-			framework.Failf("failed to do  getwd: %v", err)
+			logAndFail("failed to do  getwd: %v", err)
 		}
 
 		deployVault(f.ClientSet, deployTimeout)
 		err = upgradeAndDeployCSI(upgradeVersion, "rbd")
 		if err != nil {
-			framework.Failf("failed to upgrade and deploy CSI: %v", err)
+			logAndFail("failed to upgrade and deploy CSI: %v", err)
 		}
 		err = createConfigMap(rbdDirPath, f.ClientSet, f)
 		if err != nil {
-			framework.Failf("failed to create configmap: %v", err)
+			logAndFail("failed to create configmap: %v", err)
 		}
 		err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 		if err != nil {
-			framework.Failf("failed to create storageclass: %v", err)
+			logAndFail("failed to create storageclass: %v", err)
 		}
 		// create rbd provisioner secret
 		key, err := createCephUser(f, keyringRBDProvisionerUsername, rbdProvisionerCaps("", ""))
 		if err != nil {
-			framework.Failf("failed to create user %s: %v", keyringRBDProvisionerUsername, err)
+			logAndFail("failed to create user %s: %v", keyringRBDProvisionerUsername, err)
 		}
 		err = createRBDSecret(f, rbdProvisionerSecretName, keyringRBDProvisionerUsername, key)
 		if err != nil {
-			framework.Failf("failed to create provisioner secret: %v", err)
+			logAndFail("failed to create provisioner secret: %v", err)
 		}
 		// create rbd plugin secret
 		key, err = createCephUser(f, keyringRBDNodePluginUsername, rbdNodePluginCaps("", ""))
 		if err != nil {
-			framework.Failf("failed to create user %s: %v", keyringRBDNodePluginUsername, err)
+			logAndFail("failed to create user %s: %v", keyringRBDNodePluginUsername, err)
 		}
 		err = createRBDSecret(f, rbdNodePluginSecretName, keyringRBDNodePluginUsername, key)
 		if err != nil {
-			framework.Failf("failed to create node secret: %v", err)
+			logAndFail("failed to create node secret: %v", err)
 		}
 		err = createRBDSnapshotClass(f)
 		if err != nil {
-			framework.Failf("failed to create snapshotclass: %v", err)
+			logAndFail("failed to create snapshotclass: %v", err)
 		}
 		err = addLabelsToNodes(f, map[string]string{
 			nodeRegionLabel: regionValue,
 			nodeZoneLabel:   zoneValue,
 		})
 		if err != nil {
-			framework.Failf("failed to add node labels: %v", err)
+			logAndFail("failed to add node labels: %v", err)
 		}
 	})
 	AfterEach(func() {
@@ -138,27 +138,27 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 		err := deleteConfigMap(rbdDirPath)
 		if err != nil {
-			framework.Failf("failed to delete configmap: %v", err)
+			logAndFail("failed to delete configmap: %v", err)
 		}
 		err = c.CoreV1().
 			Secrets(cephCSINamespace).
 			Delete(context.TODO(), rbdProvisionerSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			framework.Failf("failed to delete provisioner secret: %v", err)
+			logAndFail("failed to delete provisioner secret: %v", err)
 		}
 		err = c.CoreV1().
 			Secrets(cephCSINamespace).
 			Delete(context.TODO(), rbdNodePluginSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			framework.Failf("failed to delete node secret: %v", err)
+			logAndFail("failed to delete node secret: %v", err)
 		}
 		err = deleteResource(rbdExamplePath + "storageclass.yaml")
 		if err != nil {
-			framework.Failf("failed to delete storageclass: %v", err)
+			logAndFail("failed to delete storageclass: %v", err)
 		}
 		err = deleteResource(rbdExamplePath + "snapshotclass.yaml")
 		if err != nil {
-			framework.Failf("failed to delete snapshotclass: %v", err)
+			logAndFail("failed to delete snapshotclass: %v", err)
 		}
 		deleteVault()
 		if deployRBD {
@@ -168,7 +168,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
 			err = deleteNamespace(c, cephCSINamespace)
 			if err != nil {
-				framework.Failf("failed to delete namespace: %v", err)
+				logAndFail("failed to delete namespace: %v", err)
 			}
 		}
 		err = deleteNodeLabels(c, []string{
@@ -176,7 +176,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			nodeZoneLabel,
 		})
 		if err != nil {
-			framework.Failf("failed to delete node labels: %v", err)
+			logAndFail("failed to delete node labels: %v", err)
 		}
 	})
 
@@ -192,14 +192,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			By("checking provisioner deployment is running", func() {
 				err := waitForDeploymentComplete(f.ClientSet, rbdDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for deployment %s: %v", rbdDeployment.getDeploymentName(), err)
+					logAndFail("timeout waiting for deployment %s: %v", rbdDeployment.getDeploymentName(), err)
 				}
 			})
 
 			By("checking nodeplugin deamonset pods are running", func() {
 				err := waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
+					logAndFail("timeout waiting for daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
 				}
 			})
 
@@ -211,13 +211,13 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 				pvc, err = loadPVC(pvcPath)
 				if err != nil {
-					framework.Failf("failed to load pvc: %v", err)
+					logAndFail("failed to load pvc: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 
 				app, err = loadApp(appPath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				label[appKey] = appLabel
 				app.Namespace = f.UniqueName
@@ -225,7 +225,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create pvc: %v", err)
+					logAndFail("failed to create pvc: %v", err)
 				}
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
@@ -241,13 +241,13 @@ var _ = Describe("RBD Upgrade Testing", func() {
 					app.Namespace,
 					&opt)
 				if stdErr != "" {
-					framework.Failf("failed to write data to a file %s", stdErr)
+					logAndFail("failed to write data to a file %s", stdErr)
 				}
 
 				// force an immediate write of all cached data to disk.
 				_, stdErr = execCommandInPodAndAllowFail(f, "sync "+filePath, app.Namespace, &opt)
 				if stdErr != "" {
-					framework.Failf("failed to sync data to a disk %s", stdErr)
+					logAndFail("failed to sync data to a disk %s", stdErr)
 				}
 
 				opt = metav1.ListOptions{
@@ -256,7 +256,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				framework.Logf("Calculating checksum of %s", filePath)
 				checkSum, err = calculateSHA512sum(f, app, filePath, &opt)
 				if err != nil {
-					framework.Failf("failed to calculate checksum: %v", err)
+					logAndFail("failed to calculate checksum: %v", err)
 				}
 
 				// Create snapshot of the pvc
@@ -267,30 +267,30 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create snapshot %v", err)
+					logAndFail("failed to create snapshot %v", err)
 				}
 
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to delete application: %v", err)
+					logAndFail("failed to delete application: %v", err)
 				}
 				deleteRBDPlugin()
 
 				err = os.Chdir(cwd)
 				if err != nil {
-					framework.Failf("failed to change directory: %v", err)
+					logAndFail("failed to change directory: %v", err)
 				}
 
 				deployRBDPlugin()
 
 				err = waitForDeploymentComplete(f.ClientSet, rbdDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for upgraded deployment %s: %v", rbdDeployment.getDeploymentName(), err)
+					logAndFail("timeout waiting for upgraded deployment %s: %v", rbdDeployment.getDeploymentName(), err)
 				}
 
 				err = waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					framework.Failf("timeout waiting for upgraded daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
+					logAndFail("timeout waiting for upgraded daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
 				}
 
 				// validate if the app gets bound to a pvc created by
@@ -298,7 +298,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				app.Labels = label
 				err = createApp(f.ClientSet, app, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create application: %v", err)
+					logAndFail("failed to create application: %v", err)
 				}
 			})
 
@@ -308,14 +308,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				label := make(map[string]string)
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					framework.Failf("failed to load pvc: %v", err)
+					logAndFail("failed to load pvc: %v", err)
 				}
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				pvcClone.Spec.DataSource.Name = "rbd-pvc-snapshot"
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				label[appKey] = "validate-snap-clone"
 				appClone.Namespace = f.UniqueName
@@ -323,7 +323,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				appClone.Labels = label
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create pvc: %v", err)
+					logAndFail("failed to create pvc: %v", err)
 				}
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
@@ -332,10 +332,10 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				testFilePath := filepath.Join(mountPath, "testClone")
 				newCheckSum, err := calculateSHA512sum(f, appClone, testFilePath, &opt)
 				if err != nil {
-					framework.Failf("failed to calculate checksum: %v", err)
+					logAndFail("failed to calculate checksum: %v", err)
 				}
 				if strings.Compare(newCheckSum, checkSum) != 0 {
-					framework.Failf(
+					logAndFail(
 						"The checksum of files did not match, expected %s received %s",
 						checkSum,
 						newCheckSum)
@@ -345,7 +345,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				// delete cloned pvc and pod
 				err = deletePVCAndApp("", f, pvcClone, appClone)
 				if err != nil {
-					framework.Failf("failed to delete pvc and application: %v", err)
+					logAndFail("failed to delete pvc and application: %v", err)
 				}
 			})
 
@@ -356,14 +356,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 				pvcClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to load pvc: %v", err)
+					logAndFail("failed to load pvc: %v", err)
 				}
 				pvcClone.Spec.DataSource.Name = pvc.Name
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				appClone, err := loadApp(appSmartClonePath)
 				if err != nil {
-					framework.Failf("failed to load application: %v", err)
+					logAndFail("failed to load application: %v", err)
 				}
 				label[appKey] = "validate-clone"
 				appClone.Namespace = f.UniqueName
@@ -371,7 +371,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				appClone.Labels = label
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to create pvc: %v", err)
+					logAndFail("failed to create pvc: %v", err)
 				}
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
@@ -380,10 +380,10 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				testFilePath := filepath.Join(mountPath, "testClone")
 				newCheckSum, err := calculateSHA512sum(f, appClone, testFilePath, &opt)
 				if err != nil {
-					framework.Failf("failed to calculate checksum: %v", err)
+					logAndFail("failed to calculate checksum: %v", err)
 				}
 				if strings.Compare(newCheckSum, checkSum) != 0 {
-					framework.Failf(
+					logAndFail(
 						"The checksum of files did not match, expected %s received %s",
 						checkSum,
 						newCheckSum)
@@ -393,7 +393,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				// delete cloned pvc and pod
 				err = deletePVCAndApp("", f, pvcClone, appClone)
 				if err != nil {
-					framework.Failf("failed to delete pvc and application: %v", err)
+					logAndFail("failed to delete pvc and application: %v", err)
 				}
 			})
 
@@ -408,41 +408,41 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				var err error
 				pvc, err = getPersistentVolumeClaim(f.ClientSet, pvc.Namespace, pvc.Name)
 				if err != nil {
-					framework.Failf("failed to get pvc: %v", err)
+					logAndFail("failed to get pvc: %v", err)
 				}
 
 				// resize PVC
 				err = expandPVCSize(f.ClientSet, pvc, pvcExpandSize, deployTimeout)
 				if err != nil {
-					framework.Failf("failed to expand pvc: %v", err)
+					logAndFail("failed to expand pvc: %v", err)
 				}
 				// wait for application pod to come up after resize
 				err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout, noError)
 				if err != nil {
-					framework.Failf("timeout waiting for pod to be in running state: %v", err)
+					logAndFail("timeout waiting for pod to be in running state: %v", err)
 				}
 				// validate if resize is successful.
 				err = checkDirSize(app, f, &opt, pvcExpandSize)
 				if err != nil {
-					framework.Failf("failed to check directory size: %v", err)
+					logAndFail("failed to check directory size: %v", err)
 				}
 			})
 
 			By("delete pvc and app", func() {
 				err := deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to delete pvc and application: %v", err)
+					logAndFail("failed to delete pvc and application: %v", err)
 				}
 			})
 			// delete RBD provisioner secret
 			err := deleteCephUser(f, keyringRBDProvisionerUsername)
 			if err != nil {
-				framework.Failf("failed to delete user %s: %v", keyringRBDProvisionerUsername, err)
+				logAndFail("failed to delete user %s: %v", keyringRBDProvisionerUsername, err)
 			}
 			// delete RBD plugin secret
 			err = deleteCephUser(f, keyringRBDNodePluginUsername)
 			if err != nil {
-				framework.Failf("failed to delete user %s: %v", keyringRBDNodePluginUsername, err)
+				logAndFail("failed to delete user %s: %v", keyringRBDNodePluginUsername, err)
 			}
 		})
 	})
