@@ -491,17 +491,17 @@ func validateFscryptClone(
 ) {
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		framework.Failf("failed to create PVC: %v", err)
+		logAndFail("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(appPath)
 	if err != nil {
-		framework.Failf("failed to load application: %v", err)
+		logAndFail("failed to load application: %v", err)
 	}
 	label := make(map[string]string)
 	label[appKey] = appLabel
@@ -513,18 +513,18 @@ func validateFscryptClone(
 	}
 	wErr := writeDataInPod(app, &opt, f)
 	if wErr != nil {
-		framework.Failf("failed to write data from application %v", wErr)
+		logAndFail("failed to write data from application %v", wErr)
 	}
 
 	pvcClone, err := loadPVC(pvcSmartClonePath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Namespace = f.UniqueName
 	appClone, err := loadApp(appSmartClonePath)
 	if err != nil {
-		framework.Failf("failed to load application: %v", err)
+		logAndFail("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	appClone.Labels = map[string]string{
@@ -533,12 +533,12 @@ func validateFscryptClone(
 
 	err = createPVCAndApp(f.UniqueName, f, pvcClone, appClone, deployTimeout)
 	if err != nil {
-		framework.Failf("failed to create PVC or application (%s): %v", f.UniqueName, err)
+		logAndFail("failed to create PVC or application (%s): %v", f.UniqueName, err)
 	}
 
 	_, csiVolumeHandle, err := getInfoFromPVC(pvcClone.Namespace, pvcClone.Name, f)
 	if err != nil {
-		framework.Failf("failed to get pvc info: %s", err)
+		logAndFail("failed to get pvc info: %s", err)
 	}
 
 	if kms != noKMS && kms.canGetPassphrase() {
@@ -548,33 +548,33 @@ func validateFscryptClone(
 			framework.Logf("successfully read the passphrase from vault: %s", stdOut)
 		}
 		if stdErr != "" {
-			framework.Failf("failed to read passphrase from vault: %s", stdErr)
+			logAndFail("failed to read passphrase from vault: %s", stdErr)
 		}
 	}
 
 	// delete parent pvc
 	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
-		framework.Failf("failed to delete PVC or application: %v", err)
+		logAndFail("failed to delete PVC or application: %v", err)
 	}
 
 	err = deletePVCAndApp(f.UniqueName, f, pvcClone, appClone)
 	if err != nil {
-		framework.Failf("failed to delete PVC or application (%s): %v", f.UniqueName, err)
+		logAndFail("failed to delete PVC or application (%s): %v", f.UniqueName, err)
 	}
 
 	if kms != noKMS && kms.canGetPassphrase() {
 		// check passphrase deleted
 		stdOut, _ := kms.getPassphrase(f, csiVolumeHandle)
 		if stdOut != "" {
-			framework.Failf("passphrase found in vault while should be deleted: %s", stdOut)
+			logAndFail("passphrase found in vault while should be deleted: %s", stdOut)
 		}
 	}
 
 	if kms != noKMS && kms.canVerifyKeyDestroyed() {
 		destroyed, msg := kms.verifyKeyDestroyed(f, csiVolumeHandle)
 		if !destroyed {
-			framework.Failf("passphrased was not destroyed: %s", msg)
+			logAndFail("passphrased was not destroyed: %s", msg)
 		} else if msg != "" {
 			framework.Logf("passphrase destroyed, but message returned: %s", msg)
 		}

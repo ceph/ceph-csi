@@ -284,11 +284,11 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 			if err != nil {
 				if !strings.Contains(err.Error(), exitOneErr) {
-					framework.Failf("failed to execute rados command '%s' : err=%v stdErr=%s", cmd, err, stdErr)
+					logAndFail("failed to execute rados command '%s' : err=%v stdErr=%s", cmd, err, stdErr)
 				}
 			}
 			if stdErr != "" {
-				framework.Failf("failed to execute rados command '%s' : stdErr=%s", cmd, stdErr)
+				logAndFail("failed to execute rados command '%s' : stdErr=%s", cmd, stdErr)
 			}
 			err = compareStdoutWithCount(stdOut, count)
 			if err == nil {
@@ -930,7 +930,7 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 
 	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {
-		framework.Failf("failed to delete pod: %v", err)
+		logAndFail("failed to delete pod: %v", err)
 	}
 
 	return checkSum, nil
@@ -951,18 +951,18 @@ func validatePVCClone(
 	chErrs := make([]error, totalCount)
 	pvc, err := loadPVC(sourcePvcPath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 
 	label := make(map[string]string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		framework.Failf("failed to create PVC: %v", err)
+		logAndFail("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(sourceAppPath)
 	if err != nil {
-		framework.Failf("failed to load app: %v", err)
+		logAndFail("failed to load app: %v", err)
 	}
 	label[appKey] = appLabel
 	app.Namespace = f.UniqueName
@@ -975,19 +975,19 @@ func validatePVCClone(
 	checkSum := ""
 	pvc, err = getPersistentVolumeClaim(f.ClientSet, pvc.Namespace, pvc.Name)
 	if err != nil {
-		framework.Failf("failed to get pvc %v", err)
+		logAndFail("failed to get pvc %v", err)
 	}
 	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
 		checkSum, err = writeDataAndCalChecksum(app, &opt, f)
 		if err != nil {
-			framework.Failf("failed to calculate checksum: %v", err)
+			logAndFail("failed to calculate checksum: %v", err)
 		}
 	}
 	// validate created backend rbd images
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	pvcClone, err := loadPVC(clonePvcPath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Namespace = f.UniqueName
@@ -997,7 +997,7 @@ func validatePVCClone(
 
 	appClone, err := loadApp(clonePvcAppPath)
 	if err != nil {
-		framework.Failf("failed to load application: %v", err)
+		logAndFail("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	wg.Add(totalCount)
@@ -1078,7 +1078,7 @@ func validatePVCClone(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("creating PVCs failed, %d errors were logged", failed)
+		logAndFail("creating PVCs failed, %d errors were logged", failed)
 	}
 
 	for i, err := range chErrs {
@@ -1089,7 +1089,7 @@ func validatePVCClone(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("calculating checksum failed, %d errors were logged", failed)
+		logAndFail("calculating checksum failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total
@@ -1099,7 +1099,7 @@ func validatePVCClone(
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		framework.Failf("failed to delete PVC: %v", err)
+		logAndFail("failed to delete PVC: %v", err)
 	}
 
 	totalCloneCount = totalCount + totalCount
@@ -1156,7 +1156,7 @@ func validatePVCClone(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+		logAndFail("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	validateRBDImageCount(f, 0, defaultRBDPool)
@@ -1175,28 +1175,28 @@ func validatePVCSnapshot(
 	chErrs := make([]error, totalCount)
 	err := createRBDSnapshotClass(f)
 	if err != nil {
-		framework.Failf("failed to create storageclass: %v", err)
+		logAndFail("failed to create storageclass: %v", err)
 	}
 	defer func() {
 		err = deleteRBDSnapshotClass()
 		if err != nil {
-			framework.Failf("failed to delete VolumeSnapshotClass: %v", err)
+			logAndFail("failed to delete VolumeSnapshotClass: %v", err)
 		}
 	}()
 
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 	label := make(map[string]string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		framework.Failf("failed to create PVC: %v", err)
+		logAndFail("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(appPath)
 	if err != nil {
-		framework.Failf("failed to load app: %v", err)
+		logAndFail("failed to load app: %v", err)
 	}
 	// write data in PVC
 	label[appKey] = appLabel
@@ -1208,7 +1208,7 @@ func validatePVCSnapshot(
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 	checkSum, err := writeDataAndCalChecksum(app, &opt, f)
 	if err != nil {
-		framework.Failf("failed to calculate checksum: %v", err)
+		logAndFail("failed to calculate checksum: %v", err)
 	}
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	snap := getSnapshot(snapshotPath)
@@ -1254,18 +1254,18 @@ func validatePVCSnapshot(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("creating snapshots failed, %d errors were logged", failed)
+		logAndFail("creating snapshots failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total snaps
 	validateRBDImageCount(f, totalCount+1, defaultRBDPool)
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		framework.Failf("failed to load application: %v", err)
+		logAndFail("failed to load application: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	appClone.Namespace = f.UniqueName
@@ -1335,7 +1335,7 @@ func validatePVCSnapshot(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("creating PVCs and applications failed, %d errors were logged", failed)
+		logAndFail("creating PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	for i, err := range chErrs {
@@ -1346,7 +1346,7 @@ func validatePVCSnapshot(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("calculating checksum failed, %d errors were logged", failed)
+		logAndFail("calculating checksum failed, %d errors were logged", failed)
 	}
 	// total images in cluster is 1 parent rbd image+ total
 	// snaps+ total clones
@@ -1372,7 +1372,7 @@ func validatePVCSnapshot(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+		logAndFail("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total
@@ -1403,7 +1403,7 @@ func validatePVCSnapshot(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("creating PVCs and applications failed, %d errors were logged", failed)
+		logAndFail("creating PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total
@@ -1413,7 +1413,7 @@ func validatePVCSnapshot(
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		framework.Failf("failed to delete PVC: %v", err)
+		logAndFail("failed to delete PVC: %v", err)
 	}
 
 	// total images in cluster is total snaps+ total clones
@@ -1469,7 +1469,7 @@ func validatePVCSnapshot(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("deleting snapshots failed, %d errors were logged", failed)
+		logAndFail("deleting snapshots failed, %d errors were logged", failed)
 	}
 
 	validateRBDImageCount(f, totalCount, defaultRBDPool)
@@ -1493,7 +1493,7 @@ func validatePVCSnapshot(
 		}
 	}
 	if failed != 0 {
-		framework.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+		logAndFail("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	// validate created backend rbd images
@@ -1575,7 +1575,7 @@ func validateController(
 	pv.ResourceVersion = ""
 	err = createPVCAndPV(f.ClientSet, pvc, pv)
 	if err != nil {
-		framework.Failf("failed to create PVC or PV: %v", err)
+		logAndFail("failed to create PVC or PV: %v", err)
 	}
 	// bind PVC to application
 	app, err := loadApp(appPath)
@@ -1636,7 +1636,7 @@ func validateController(
 func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 	v, err := c.Discovery().ServerVersion()
 	if err != nil {
-		framework.Failf("failed to get server version: %v", err)
+		logAndFail("failed to get server version: %v", err)
 		// Failf() marks the case as failure, and returns from the
 		// Go-routine that runs the case. This function will not have a
 		// return value.
@@ -1644,12 +1644,12 @@ func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 
 	vMajor, err := strconv.Atoi(v.Major)
 	if err != nil {
-		framework.Failf("failed to convert Kubernetes major version %q to int: %v", v.Major, err)
+		logAndFail("failed to convert Kubernetes major version %q to int: %v", v.Major, err)
 	}
 
 	vMinor, err := strconv.Atoi(v.Minor)
 	if err != nil {
-		framework.Failf("failed to convert Kubernetes minor version %q to int: %v", v.Minor, err)
+		logAndFail("failed to convert Kubernetes minor version %q to int: %v", v.Minor, err)
 	}
 
 	return (vMajor > major) || (vMajor == major && vMinor >= minor)
@@ -1974,4 +1974,9 @@ func deleteSubvolumegroup(f *framework.Framework, fileSystemName, subvolumegroup
 	}
 
 	return nil
+}
+
+func logAndFail(message string, args ...any) {
+	framework.Logf(message, args...)
+	framework.Failf(message, args...)
 }

@@ -343,14 +343,14 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 	}
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		framework.Failf("failed to load PVC: %v", err)
+		logAndFail("failed to load PVC: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	pvcClone.Spec.DataSource.Name = snap.Name
 	pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(newSize)
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		framework.Failf("failed to load application: %v", err)
+		logAndFail("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	appClone.Labels = label
@@ -386,28 +386,28 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 		)
 		imageList, err = listRBDImages(f, defaultRBDPool)
 		if err != nil {
-			framework.Failf("failed to list rbd images: %v", err)
+			logAndFail("failed to list rbd images: %v", err)
 		}
 		framework.Logf("list of rbd images: %v", imageList)
 		volSnapName, stdErr, err = execCommandInToolBoxPod(f,
 			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapNameKey),
 			rookNamespace)
 		if checkGetKeyError(err, stdErr) {
-			framework.Failf("found volume snapshot name %s/%s %s=%s: err=%v stdErr=%q",
+			logAndFail("found volume snapshot name %s/%s %s=%s: err=%v stdErr=%q",
 				rbdOptions(defaultRBDPool), imageList[0], volSnapNameKey, volSnapName, err, stdErr)
 		}
 		volSnapNamespace, stdErr, err = execCommandInToolBoxPod(f,
 			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapNamespaceKey),
 			rookNamespace)
 		if checkGetKeyError(err, stdErr) {
-			framework.Failf("found volume snapshot namespace %s/%s %s=%s: err=%v stdErr=%q",
+			logAndFail("found volume snapshot namespace %s/%s %s=%s: err=%v stdErr=%q",
 				rbdOptions(defaultRBDPool), imageList[0], volSnapNamespaceKey, volSnapNamespace, err, stdErr)
 		}
 		volSnapContentName, stdErr, err = execCommandInToolBoxPod(f,
 			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapContentNameKey),
 			rookNamespace)
 		if checkGetKeyError(err, stdErr) {
-			framework.Failf("found snapshotcontent name %s/%s %s=%s: err=%v stdErr=%q",
+			logAndFail("found snapshotcontent name %s/%s %s=%s: err=%v stdErr=%q",
 				rbdOptions(defaultRBDPool), imageList[0], volSnapContentNameKey,
 				volSnapContentName, err, stdErr)
 		}
