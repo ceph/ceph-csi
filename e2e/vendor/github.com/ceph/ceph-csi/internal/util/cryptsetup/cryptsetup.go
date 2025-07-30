@@ -45,10 +45,13 @@ const (
 
 	// The LUKS2 header size is variable and it can be adjusted
 	// on creation by using the `--luks2-metadata-size` and
-	// `--luks2-keyslots-size` options. By default, the header size is
-	// 16MiB.
-	DefaultLuks2HeaderSize = 16 * helpers.MiB
+	// `--luks2-keyslots-size` options.
 	Luks2HeaderSize = uint64((((2 * luks2MetadataSize) + luks2KeySlotsSize) * helpers.KiB))
+
+	// Older Images provisioned (with <=3.14 Ceph-CSI) didn't use the
+	// `--luks2-metadata-size` and `--luks2-keyslots-size` options
+	// during luksFormat, So the header size will be default 16MiB.
+	DefaultLuks2HeaderSize = 16 * helpers.MiB
 )
 
 // LuksWrapper is a struct that provides a context-aware wrapper around cryptsetup commands.
