@@ -1120,14 +1120,14 @@ var _ = Describe(cephfsType, func() {
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				cmd := "echo 'Hello World' >" + filePath
-				_, stdErr := execCommandInPodAndAllowFail(
+				stdOut, stdErr := execCommandInPodAndAllowFail(
 					f,
 					cmd,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					logAndFail("failed to execute command %s: %v", cmd, stdErr)
+					logAndFail("failed to execute command %s: stdOut:%s stdErr:%v", cmd, stdOut, stdErr)
 				}
 
 				// delete PVC and app
@@ -2453,14 +2453,14 @@ var _ = Describe(cephfsType, func() {
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				cmd := "echo 'Hello World' > " + filePath
-				_, stdErr := execCommandInPodAndAllowFail(
+				stdOut, stdErr := execCommandInPodAndAllowFail(
 					f,
 					cmd,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					logAndFail("failed to execute command %s: %v", cmd, stdErr)
+					logAndFail("failed to execute command %s: stdOut:%s stdErr:%v", cmd, stdOut, stdErr)
 				}
 
 				// delete cloned ROX pvc and app

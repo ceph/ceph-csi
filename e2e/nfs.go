@@ -662,14 +662,14 @@ var _ = Describe("nfs", func() {
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				cmd := "echo 'Hello World' > " + filePath
-				_, stdErr := execCommandInPodAndAllowFail(
+				output, stdErr := execCommandInPodAndAllowFail(
 					f,
 					cmd,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					logAndFail("failed to execute command %s: %v", cmd, stdErr)
+					logAndFail("failed to execute command %s: output:%s stdErr:%v", cmd, output, stdErr)
 				}
 
 				// delete PVC and app

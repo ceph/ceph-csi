@@ -236,9 +236,9 @@ func execWithRetry(f *framework.Framework, opts *e2epod.ExecOptions) (string, st
 				return false, nil
 			}
 
-			framework.Logf("failed to execute command: %v", execErr)
+			framework.Logf("failed to execute command: err:%v stdErr:%s", execErr, stdErr)
 
-			return false, fmt.Errorf("failed to execute command: %w", execErr)
+			return false, fmt.Errorf("failed to execute command: stdErr:%s err:%w", stdErr, execErr)
 		}
 
 		return true, nil
@@ -672,9 +672,9 @@ func verifyReadAffinity(
 	}
 
 	command := "cat /sys/devices/rbd/*/config_info"
-	configInfos, _, err := execCommandInContainer(f, command, ns, cn, &opt)
+	configInfos, stdErr, err := execCommandInContainer(f, command, ns, cn, &opt)
 	if err != nil {
-		return fmt.Errorf("failed to execute command %s: %w", command, err)
+		return fmt.Errorf("failed to execute command %s: stdErr:%s err:%w", command, stdErr, err)
 	}
 
 	var configInfo string
