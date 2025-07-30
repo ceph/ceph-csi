@@ -25,6 +25,7 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
 	"github.com/ceph/ceph-csi/pkg/util/kernel"
+	"github.com/google/uuid"
 
 	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
@@ -2801,9 +2802,10 @@ var _ = Describe("RBD", func() {
 					framework.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				uniqueName := uuid.NewString()
 				// create PVC and app
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					err := createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
 						framework.Failf("failed to create PVC and application: %v", err)
@@ -2815,7 +2817,7 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, totalCount, rbdType, defaultRBDPool, volumesType)
 				// delete PVC and app
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					err := deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
 						framework.Failf("failed to delete PVC and application: %v", err)
@@ -3400,9 +3402,10 @@ var _ = Describe("RBD", func() {
 				appClone.Namespace = f.UniqueName
 				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 
+				uniqueName := uuid.NewString()
 				// create PVC and app
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					label := map[string]string{
 						"app": name,
 					}
@@ -3415,7 +3418,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					opt := metav1.ListOptions{
 						LabelSelector: "app=" + name,
 					}
@@ -3435,7 +3438,7 @@ var _ = Describe("RBD", func() {
 
 				// delete app
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					appClone.Name = name
 					err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
@@ -3516,8 +3519,9 @@ var _ = Describe("RBD", func() {
 				totalCount := 3
 				appClone.Namespace = f.UniqueName
 				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = smartClonePVC.Name
+				uniqueName := uuid.NewString()
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					label := map[string]string{
 						"app": name,
 					}
@@ -3530,7 +3534,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					opt := metav1.ListOptions{
 						LabelSelector: "app=" + name,
 					}
@@ -3550,7 +3554,7 @@ var _ = Describe("RBD", func() {
 
 				// delete app
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					appClone.Name = name
 					err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {

@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
@@ -915,8 +916,9 @@ var _ = Describe(cephfsType, func() {
 				}
 				app.Namespace = f.UniqueName
 				// create PVC and app
+				uniqueName := uuid.NewString()
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					err = createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
 						framework.Failf("failed to create PVC or application: %v", err)
@@ -931,7 +933,7 @@ var _ = Describe(cephfsType, func() {
 				validateOmapCount(f, totalCount, cephfsType, metadataPool, volumesType)
 				// delete PVC and app
 				for i := range totalCount {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", uniqueName, i)
 					err = deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
 						framework.Failf("failed to delete PVC or application: %v", err)
@@ -1490,13 +1492,14 @@ var _ = Describe(cephfsType, func() {
 					framework.Failf("failed to  write data : %v", wErr)
 				}
 
+				uniqueName := uuid.NewString()
 				snap := getSnapshot(snapshotPath)
 				snap.Namespace = f.UniqueName
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 				// create snapshot
 				for i := range totalCount {
 					go func(n int, s snapapi.VolumeSnapshot) {
-						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						s.Name = fmt.Sprintf("%s-%d", uniqueName, n)
 						wgErrs[n] = createSnapshot(&s, deployTimeout)
 						wg.Done()
 					}(i, snap)
@@ -1507,7 +1510,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to create snapshot (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
@@ -1526,13 +1529,13 @@ var _ = Describe(cephfsType, func() {
 				}
 				pvcClone.Namespace = f.UniqueName
 				appClone.Namespace = f.UniqueName
-				pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+				pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s-%d", uniqueName, 0)
 
 				// create multiple PVC from same snapshot
 				wg.Add(totalCount)
 				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", uniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						if wgErrs[n] == nil {
 							err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
@@ -1548,7 +1551,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to create PVC and app (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to create PVC and app (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
@@ -1564,7 +1567,7 @@ var _ = Describe(cephfsType, func() {
 				// delete clone and app
 				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", uniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()
@@ -1575,7 +1578,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to delete PVC and app (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to delete PVC and app (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
@@ -1592,7 +1595,7 @@ var _ = Describe(cephfsType, func() {
 				wg.Add(totalCount)
 				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", uniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						if wgErrs[n] == nil {
@@ -1609,7 +1612,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to create PVC and app (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to create PVC and app (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
@@ -1625,7 +1628,7 @@ var _ = Describe(cephfsType, func() {
 				// delete snapshot
 				for i := range totalCount {
 					go func(n int, s snapapi.VolumeSnapshot) {
-						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						s.Name = fmt.Sprintf("%s-%d", uniqueName, n)
 						wgErrs[n] = deleteSnapshot(&s, deployTimeout)
 						wg.Done()
 					}(i, snap)
@@ -1635,7 +1638,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to delete snapshot (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
@@ -1649,7 +1652,7 @@ var _ = Describe(cephfsType, func() {
 				// delete clone and app
 				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", uniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()
@@ -1660,7 +1663,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to delete PVC and app (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to delete PVC and app (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
@@ -2349,10 +2352,11 @@ var _ = Describe(cephfsType, func() {
 				}
 				appClone.Namespace = f.UniqueName
 				wg.Add(totalCount)
+				uniqueName := uuid.NewString()
 				// create clone and bind it to an app
 				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", uniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						wg.Done()
 					}(i, *pvcClone, *appClone)
@@ -2363,7 +2367,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to create PVC or application (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to create PVC or application (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
@@ -2384,7 +2388,7 @@ var _ = Describe(cephfsType, func() {
 				// delete clone and app
 				for i := range totalCount {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", uniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()
@@ -2395,7 +2399,7 @@ var _ = Describe(cephfsType, func() {
 				for i, err := range wgErrs {
 					if err != nil {
 						// not using Failf() as it aborts the test and does not log other errors
-						framework.Logf("failed to delete PVC or application (%s%d): %v", f.UniqueName, i, err)
+						framework.Logf("failed to delete PVC or application (%s-%d): %v", uniqueName, i, err)
 						failed++
 					}
 				}
