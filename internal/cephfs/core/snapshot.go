@@ -180,6 +180,16 @@ func (s *snapshotClient) CloneSnapshot(
 		co.PoolLayout = cloneSubVol.Pool
 	}
 
+	log.DebugLog(ctx, "cloning the subvolume snapshot %s/%s/%s/%s to %s/%s/%s",
+		s.FsName,
+		s.SubvolumeGroup,
+		s.VolID,
+		s.SnapshotID,
+		s.FsName,
+		cloneSubVol.SubvolumeGroup,
+		cloneSubVol.VolID,
+	)
+
 	err = fsa.CloneSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID, cloneSubVol.VolID, co)
 	if err != nil {
 		log.ErrorLog(
