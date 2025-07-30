@@ -184,7 +184,7 @@ func (s *snapshotClient) CloneSnapshot(
 	if err != nil {
 		log.ErrorLog(
 			ctx,
-			"failed to clone subvolume snapshot %s %s in fs %s with error: %s",
+			"failed to clone subvolume snapshot %s %s into %s in fs %s with error: %s",
 			s.VolID,
 			s.SnapshotID,
 			cloneSubVol.VolID,
