@@ -193,7 +193,7 @@ func checkAppMntSize(f *framework.Framework, opt *metav1.ListOptions, size, cmd,
 			return false, err
 		}
 		if stdErr != "" {
-			framework.Logf("failed to execute command in app pod %v", stdErr)
+			framework.Logf("failed to execute command in app pod output=%s stdErr:%s err:%v", output, stdErr, err)
 
 			return false, nil
 		}

@@ -1729,7 +1729,7 @@ var _ = Describe("RBD", func() {
 					var stdErr string
 					_, stdErr, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, appClone.Namespace)
 					if err != nil {
-						framework.Logf("command %q failed: %v", cmd, err)
+						framework.Logf("command %q failed: stdErr:%s err:%v", cmd, stdErr, err)
 					}
 					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 					if !strings.Contains(stdErr, readOnlyErr) {
@@ -1862,7 +1862,7 @@ var _ = Describe("RBD", func() {
 					var stdErr string
 					_, stdErr, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, appClone.Namespace)
 					if err != nil {
-						framework.Logf("command %q failed: %v", cmd, err)
+						framework.Logf("command %q failed: err:%v stdErr:%s", cmd, err, stdErr)
 					}
 					readOnlyErr := fmt.Sprintf("'%s': Operation not permitted", devPath)
 					if !strings.Contains(stdErr, readOnlyErr) {
@@ -3425,14 +3425,14 @@ var _ = Describe("RBD", func() {
 
 					filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 					cmd := "echo 'Hello World' > " + filePath
-					_, stdErr := execCommandInPodAndAllowFail(
+					stdOut, stdErr := execCommandInPodAndAllowFail(
 						f,
 						cmd,
 						appClone.Namespace,
 						&opt)
 					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 					if !strings.Contains(stdErr, readOnlyErr) {
-						logAndFail("failed to execute command %s: %v", cmd, stdErr)
+						logAndFail("failed to execute command %s: stdOut=%v stdErr:%v", cmd, stdOut, stdErr)
 					}
 				}
 
@@ -3541,14 +3541,14 @@ var _ = Describe("RBD", func() {
 
 					filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 					cmd := "echo 'Hello World' > " + filePath
-					_, stdErr := execCommandInPodAndAllowFail(
+					stdOut, stdErr := execCommandInPodAndAllowFail(
 						f,
 						cmd,
 						appClone.Namespace,
 						&opt)
 					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 					if !strings.Contains(stdErr, readOnlyErr) {
-						logAndFail("failed to execute command %s: %v", cmd, stdErr)
+						framework.Logf("command %q failed: stdOut:%s stdErr:%s", cmd, stdOut, stdErr)
 					}
 				}
 
@@ -4195,14 +4195,14 @@ var _ = Describe("RBD", func() {
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				cmd := "echo 'Hello World' > " + filePath
-				_, stdErr := execCommandInPodAndAllowFail(
+				stdOut, stdErr := execCommandInPodAndAllowFail(
 					f,
 					cmd,
 					app.Namespace,
 					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
-					logAndFail("failed to execute command %s: %v", cmd, stdErr)
+					logAndFail("failed to execute command %s: stdOut:%s stdErr:%v", cmd, stdOut, stdErr)
 				}
 
 				// delete PVC and app
