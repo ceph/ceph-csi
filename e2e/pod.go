@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -532,7 +533,7 @@ func validateRWOPPodCreation(
 ) error {
 	var err error
 	// create one more  app with same PVC
-	name := fmt.Sprintf("%s%d", f.UniqueName, deployTimeout)
+	name := fmt.Sprintf("%s-%d", uuid.NewString(), deployTimeout)
 	app.Name = name
 
 	err = createAppErr(f.ClientSet, app, deployTimeout, errRWOPConflict)

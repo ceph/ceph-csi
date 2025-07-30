@@ -30,6 +30,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
@@ -1000,10 +1001,11 @@ func validatePVCClone(
 	}
 	appClone.Namespace = f.UniqueName
 	wg.Add(totalCount)
+	uniqueName := uuid.NewString()
 	// create clone and bind it to an app
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			label := make(map[string]string)
 			label[appKey] = name
 			a.Labels = label
@@ -1071,7 +1073,7 @@ func validatePVCClone(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to create PVC (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create PVC (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1082,7 +1084,7 @@ func validatePVCClone(
 	for i, err := range chErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to calculate checksum (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1106,7 +1108,7 @@ func validatePVCClone(
 	// delete clone and app
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			p.Spec.DataSource.Name = name
 			var imageData imageInfoFromPVC
 			var sErr error
@@ -1149,7 +1151,7 @@ func validatePVCClone(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete PVC and application (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1214,10 +1216,11 @@ func validatePVCSnapshot(
 	snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 
 	wg.Add(totalCount)
+	uniqueName := uuid.NewString()
 	// create snapshot
 	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
-			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			s.Name = fmt.Sprintf("%s-%d", uniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
 			if wgErrs[n] == nil && kms != noKMS {
 				if kms.canGetPassphrase() {
@@ -1246,7 +1249,7 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create snapshot (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1266,7 +1269,7 @@ func validatePVCSnapshot(
 	}
 	pvcClone.Namespace = f.UniqueName
 	appClone.Namespace = f.UniqueName
-	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s-%d", uniqueName, 0)
 	if restoreSCName != "" {
 		pvcClone.Spec.StorageClassName = &restoreSCName
 	}
@@ -1275,7 +1278,7 @@ func validatePVCSnapshot(
 	wg.Add(totalCount)
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			label := make(map[string]string)
 			label[appKey] = name
 			a.Labels = label
@@ -1327,7 +1330,7 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create PVC and application (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1338,7 +1341,7 @@ func validatePVCSnapshot(
 	for i, err := range chErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to calculate checksum (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1353,7 +1356,7 @@ func validatePVCSnapshot(
 	// delete clone and app
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 			wg.Done()
@@ -1364,7 +1367,7 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete PVC and application (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1380,7 +1383,7 @@ func validatePVCSnapshot(
 	wg.Add(totalCount)
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 			if wgErrs[n] == nil && dataPool != noDataPool {
@@ -1395,7 +1398,7 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create PVC and application (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1420,7 +1423,7 @@ func validatePVCSnapshot(
 	// delete snapshot
 	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
-			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			s.Name = fmt.Sprintf("%s-%d", uniqueName, n)
 			content := &snapapi.VolumeSnapshotContent{}
 			var err error
 			if kms != noKMS {
@@ -1461,7 +1464,7 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete snapshot (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}
@@ -1474,7 +1477,7 @@ func validatePVCSnapshot(
 	// delete clone and app
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 			wg.Done()
@@ -1485,7 +1488,7 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete PVC and application (%s-%d): %v", uniqueName, i, err)
 			failed++
 		}
 	}

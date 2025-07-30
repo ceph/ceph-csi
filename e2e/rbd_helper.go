@@ -27,6 +27,7 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util/kernel"
 
+	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
@@ -355,12 +356,12 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 	return deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 }
 
-func logErrors(f *framework.Framework, msg string, wgErrs []error) int {
+func logErrors(uniqueName, msg string, wgErrs []error) int {
 	failures := 0
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			framework.Logf("%s (%s%d): %v", msg, f.UniqueName, i, err)
+			framework.Logf("%s (%s%d): %v", msg, uniqueName, i, err)
 			failures++
 		}
 	}
@@ -387,17 +388,18 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	snap.Namespace = f.UniqueName
 	snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 	// create snapshot
+	uniqueName := uuid.NewString()
 	wg.Add(totalCount)
 	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
-			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			s.Name = fmt.Sprintf("%s-%d", uniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
 			wg.Done()
 		}(i, snap)
 	}
 	wg.Wait()
 
-	if failed := logErrors(f, "failed to create snapshot", wgErrs); failed != 0 {
+	if failed := logErrors("failed to create snapshot", uniqueName, wgErrs); failed != 0 {
 		return fmt.Errorf("creating snapshots failed, %d errors were logged", failed)
 	}
 
@@ -424,19 +426,19 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 		pvcClone.Spec.StorageClassName = &cloneSc
 	}
 	appClone.Namespace = f.UniqueName
-	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s-%d", uniqueName, 0)
 	// create multiple PVCs from same snapshot
 	wg.Add(totalCount)
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 			wg.Done()
 		}(i, *pvcClone, *appClone)
 	}
 	wg.Wait()
 
-	if failed := logErrors(f, "failed to create PVC and application", wgErrs); failed != 0 {
+	if failed := logErrors("failed to create PVC and application", uniqueName, wgErrs); failed != 0 {
 		return fmt.Errorf("creating PVCs and applications failed, %d errors were logged", failed)
 	}
 
@@ -453,7 +455,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	// delete clone and app
 	for i := range totalCount {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", uniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 			wg.Done()
@@ -461,7 +463,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	}
 	wg.Wait()
 
-	if failed := logErrors(f, "failed to delete PVC and application", wgErrs); failed != 0 {
+	if failed := logErrors("failed to delete PVC and application", uniqueName, wgErrs); failed != 0 {
 		return fmt.Errorf("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
@@ -477,14 +479,14 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	// delete snapshot
 	for i := range totalCount {
 		go func(n int, s snapapi.VolumeSnapshot) {
-			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			s.Name = fmt.Sprintf("%s-%d", uniqueName, n)
 			wgErrs[n] = deleteSnapshot(&s, deployTimeout)
 			wg.Done()
 		}(i, snap)
 	}
 	wg.Wait()
 
-	if failed := logErrors(f, "failed to delete snapshot", wgErrs); failed != 0 {
+	if failed := logErrors("failed to delete snapshot", uniqueName, wgErrs); failed != 0 {
 		return fmt.Errorf("deleting snapshots failed, %d errors were logged", failed)
 	}
 	// validate all pools are empty
