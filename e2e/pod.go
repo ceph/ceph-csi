@@ -236,9 +236,9 @@ func execWithRetry(f *framework.Framework, opts *e2epod.ExecOptions) (string, st
 				return false, nil
 			}
 
-			framework.Logf("failed to execute command: err:%v stdErr:%s", execErr, stdErr)
+			framework.Logf("failed to execute command: %v", execErr)
 
-			return false, fmt.Errorf("failed to execute command: stdErr:%s err:%w", stdErr, execErr)
+			return false, fmt.Errorf("failed to execute command: %w", execErr)
 		}
 
 		return true, nil
@@ -671,8 +671,23 @@ func verifyReadAffinity(
 		LabelSelector: selector,
 	}
 
+	configInfos := ""
+	stdErr := ""
 	command := "cat /sys/devices/rbd/*/config_info"
-	configInfos, stdErr, err := execCommandInContainer(f, command, ns, cn, &opt)
+	// Retry as in some cases the file will get created with some delay
+	for i := range 10 {
+		configInfos, stdErr, err = execCommandInContainer(f, command, ns, cn, &opt)
+		if strings.TrimSpace(configInfos) != "" {
+			framework.Logf("configInfos: %v, err=%v", configInfos, err)
+			//override error if the configInfo is found.
+			err = nil
+			break
+		}
+		// log and continue retry
+		framework.Logf("Attempt %d: failed to execute command %s: stdErr:%s err:%s", i, command, stdErr, err)
+		time.Sleep(1 * time.Second)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to execute command %s: stdErr:%s err:%w", command, stdErr, err)
 	}
