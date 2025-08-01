@@ -225,6 +225,9 @@ func (v *volumeGroupSnapshotterBase) CreatePVCClones(
 
 func (v *volumeGroupSnapshotterBase) CreatePods(pvcs []*v1.PersistentVolumeClaim) ([]*v1.Pod, error) {
 	pods := make([]*v1.Pod, len(pvcs))
+	var user int64 = 2000
+	runAsNonRoot := true
+	allowPrivilegeEscalation := false
 	for i, p := range pvcs {
 		pods[i] = &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -232,11 +235,30 @@ func (v *volumeGroupSnapshotterBase) CreatePods(pvcs []*v1.PersistentVolumeClaim
 				Namespace: p.Namespace,
 			},
 			Spec: v1.PodSpec{
+				SecurityContext: &v1.PodSecurityContext{
+					RunAsNonRoot: &runAsNonRoot,
+					FSGroup:      &user,
+					SeccompProfile: &v1.SeccompProfile{
+						Type: v1.SeccompProfileTypeRuntimeDefault,
+					},
+				},
 				Containers: []v1.Container{
 					{
 						Name:    "container",
 						Image:   "quay.io/centos/centos:latest",
 						Command: []string{"/bin/sleep", "999999"},
+						SecurityContext: &v1.SecurityContext{
+							AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+							RunAsNonRoot:             &runAsNonRoot,
+							RunAsUser:                &user,
+							Capabilities: &v1.Capabilities{
+								Drop: []v1.Capability{"ALL"},
+							},
+							SeccompProfile: &v1.SeccompProfile{
+								Type: v1.SeccompProfileTypeRuntimeDefault,
+							},
+						},
+						ImagePullPolicy: v1.PullIfNotPresent,
 					},
 				},
 			},

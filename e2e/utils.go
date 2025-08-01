@@ -659,6 +659,7 @@ func validateNormalUserPVCAccessFunc(
 		return err
 	}
 	var user int64 = 2000
+	runAsNonRoot := true
 	app := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -672,15 +673,29 @@ func validateNormalUserPVCAccessFunc(
 			},
 		},
 		Spec: v1.PodSpec{
-			SecurityContext: &v1.PodSecurityContext{FSGroup: &user},
+			SecurityContext: &v1.PodSecurityContext{
+				RunAsNonRoot: &runAsNonRoot,
+				FSGroup:      &user,
+				SeccompProfile: &v1.SeccompProfile{
+					Type: v1.SeccompProfileTypeRuntimeDefault,
+				},
+			},
 			Containers: []v1.Container{
 				{
 					Name:    "write-pod",
 					Image:   "quay.io/centos/centos:latest",
 					Command: []string{"/bin/sleep", "999999"},
 					SecurityContext: &v1.SecurityContext{
-						RunAsUser: &user,
+						RunAsNonRoot: &runAsNonRoot,
+						RunAsUser:    &user,
+						Capabilities: &v1.Capabilities{
+							Drop: []v1.Capability{"ALL"},
+						},
+						SeccompProfile: &v1.SeccompProfile{
+							Type: v1.SeccompProfileTypeRuntimeDefault,
+						},
 					},
+					ImagePullPolicy: v1.PullIfNotPresent,
 					VolumeMounts: []v1.VolumeMount{
 						{
 							MountPath: "/target",
