@@ -1,0 +1,39 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    description: NVMe-oF RWO Filesystem volumes, RWO and RWX Block volumes
+  name: csi-nvmeof-sc
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+provisioner: nvmeof.csi.ceph.com
+parameters:
+  csi.storage.k8s.io/controller-expand-secret-name: csi-nvmeof-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: csi-nvmeof-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+  csi.storage.k8s.io/provisioner-secret-name: csi-nvmeof-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+
+  # default Ceph-CSI / RBD parameters
+  clusterID: <clusterID>
+  csi.storage.k8s.io/fstype: ext4
+  imageFeatures: "layering"
+  pool: mypool
+
+  # subsystemNQN is the NQN of the subsystem where all volumes belong to
+  subsystemNQN: "nqn.2025-08.io.ceph:k8s-ceph-csi"
+
+  # connection details for the gateway (management API)
+  nvmeofGatewayAddress: 10.242.64.32
+  nvmeofGatewayPort: "5500"
+
+  # connection details for the listeners (NVMe-oF data protocol)
+  listeners: |
+    [{
+      "address": "10.242.64.32",
+      "port": "4420",
+      "hostname": "cephnvme-vm9"
+    }]
