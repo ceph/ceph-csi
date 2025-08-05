@@ -32,7 +32,7 @@ jobs:
         run: make image-cephcsi
       - name: Run Snyk to check Docker image for vulnerabilities
         # yamllint disable-line rule:line-length
-        uses: snyk/actions/docker@cdb760004ba9ea4d525f2e043745dfe85bb9077e  # master
+        uses: snyk/actions/docker@77490d94e966421e076e95ad8fa87aa55e5ca409  # master
         env:
           SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
         with:
