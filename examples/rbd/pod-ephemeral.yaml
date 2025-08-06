@@ -4,9 +4,25 @@ kind: Pod
 metadata:
   name: csi-rbd-demo-ephemeral-pod
 spec:
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   containers:
-    - name: web-server
-      image: docker.io/library/nginx:latest
+    - name: centos
+      image: quay.io/centos/centos:latest
+      command: ["/bin/sleep", "infinity"]
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
         - mountPath: /myspace
           name: mypvc

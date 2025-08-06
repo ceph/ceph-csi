@@ -16,8 +16,9 @@ spec:
         app: pod-fs-rx-volume
     spec:
       containers:
-        - name: web-server
-          image: docker.io/library/nginx:latest
+        - name: centos
+          image: "quay.io/centos/centos:latest"
+          command: ["/bin/sleep", "infinity"]
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: mypvc

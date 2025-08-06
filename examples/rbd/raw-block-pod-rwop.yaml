@@ -8,6 +8,7 @@ spec:
     - name: centos
       image: quay.io/centos/centos:latest
       command: ["/bin/sleep", "infinity"]
+      imagePullPolicy: IfNotPresent
       volumeDevices:
         - name: data
           devicePath: /dev/xvda

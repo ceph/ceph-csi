@@ -4,20 +4,36 @@ kind: Deployment
 metadata:
   name: csi-cephfs-demo-depl
   labels:
-    app: web-server
+    app: centos
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: web-server
+      app: centos
   template:
     metadata:
       labels:
-        app: web-server
+        app: centos
     spec:
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-        - name: web-server
-          image: docker.io/library/nginx:latest
+        - name: centos
+          image: quay.io/centos/centos:latest
+          command: ["/bin/sleep", "infinity"]
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 2000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - name: mypvc
               mountPath: /var/lib/www/html
