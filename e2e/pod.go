@@ -373,12 +373,20 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 				return false, nil
 			}
 
-			return false, fmt.Errorf("failed to get app: %w", err)
+			return false, fmt.Errorf("failed to get pod: %w", err)
 		}
+
 		switch pod.Status.Phase {
 		case v1.PodRunning:
 			return true, nil
 		case v1.PodFailed, v1.PodSucceeded:
+			framework.Logf(
+				"%s pod is in %s phase: message %v: reason %v",
+				name,
+				pod.Status.Phase,
+				pod.Status.Message,
+				pod.Status.Reason,
+			)
 			return false, conditions.ErrPodCompleted
 		case v1.PodPending:
 			if expectedError != "" {
@@ -396,9 +404,11 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 			}
 		case v1.PodUnknown:
 			framework.Logf(
-				"%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)",
+				"%s pod is in %s phase expected to be in Running state: message %v: reason: %v. (%d seconds elapsed)",
 				name,
 				pod.Status.Phase,
+				pod.Status.Message,
+				pod.Status.Reason,
 				int(time.Since(start).Seconds()))
 		}
 
