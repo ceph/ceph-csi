@@ -16,7 +16,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.2.0
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.37.0
+	github.com/onsi/gomega v1.38.0
 	// when updating k8s.io modules, update the 'replace' section below too
 	k8s.io/api v0.33.3
 	k8s.io/apimachinery v0.33.3
