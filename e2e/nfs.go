@@ -667,7 +667,7 @@ var _ = Describe("nfs", func() {
 					cmd,
 					app.Namespace,
 					&opt)
-				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+				readOnlyErr := fmt.Sprintf("%s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
 					logAndFail("failed to execute command %s: output:%s stdErr:%v", cmd, output, stdErr)
 				}

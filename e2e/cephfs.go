@@ -1125,7 +1125,7 @@ var _ = Describe(cephfsType, func() {
 					cmd,
 					app.Namespace,
 					&opt)
-				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+				readOnlyErr := fmt.Sprintf("%s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
 					logAndFail("failed to execute command %s: stdOut:%s stdErr:%v", cmd, stdOut, stdErr)
 				}
@@ -2458,7 +2458,7 @@ var _ = Describe(cephfsType, func() {
 					cmd,
 					app.Namespace,
 					&opt)
-				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+				readOnlyErr := fmt.Sprintf("%s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
 					logAndFail("failed to execute command %s: stdOut:%s stdErr:%v", cmd, stdOut, stdErr)
 				}
