@@ -43,10 +43,12 @@ func TestSetQOS(t *testing.T) {
 	ctx := t.Context()
 
 	tests := map[string]string{
+		baseIops:      "3000",
 		baseReadIops:  "2000",
 		baseWriteIops: "1000",
 	}
 	wants := map[string]string{
+		iopsLimit:      "3000",
 		readIopsLimit:  "2000",
 		writeIopsLimit: "1000",
 	}
@@ -59,14 +61,18 @@ func TestSetQOS(t *testing.T) {
 	checkQOS(t, rv.QosParameters, wants)
 
 	tests = map[string]string{
+		baseIops:                "3000",
 		baseReadIops:            "2000",
 		baseWriteIops:           "1000",
+		baseBytesPerSecond:      "314572800",
 		baseReadBytesPerSecond:  "209715200",
 		baseWriteBytesPerSecond: "104857600",
 	}
 	wants = map[string]string{
+		iopsLimit:      "3000",
 		readIopsLimit:  "2000",
 		writeIopsLimit: "1000",
+		bpsLimit:       "314572800",
 		readBpsLimit:   "209715200",
 		writeBpsLimit:  "104857600",
 	}
@@ -79,19 +85,25 @@ func TestSetQOS(t *testing.T) {
 	checkQOS(t, rv.QosParameters, wants)
 
 	tests = map[string]string{
+		baseIops:                "3000",
 		baseReadIops:            "2000",
 		baseWriteIops:           "1000",
+		baseBytesPerSecond:      "314572800",
 		baseReadBytesPerSecond:  "209715200",
 		baseWriteBytesPerSecond: "104857600",
+		iopsPerGiB:              "30",
 		readIopsPerGiB:          "20",
 		writeIopsPerGiB:         "10",
+		bpsPerGiB:               "3145728",
 		readBpsPerGiB:           "2097152",
 		writeBpsPerGiB:          "1048576",
 		baseVolSizeBytes:        "21474836480",
 	}
 	wants = map[string]string{
+		iopsLimit:      "3000",
 		readIopsLimit:  "2000",
 		writeIopsLimit: "1000",
+		bpsLimit:       "314572800",
 		readBpsLimit:   "209715200",
 		writeBpsLimit:  "104857600",
 	}
@@ -104,8 +116,10 @@ func TestSetQOS(t *testing.T) {
 	checkQOS(t, rv.QosParameters, wants)
 
 	wants = map[string]string{
+		iopsLimit:      "5400",
 		readIopsLimit:  "3600",
 		writeIopsLimit: "1800",
+		bpsLimit:       "566231040",
 		readBpsLimit:   "377487360",
 		writeBpsLimit:  "188743680",
 	}

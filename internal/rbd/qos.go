@@ -28,30 +28,40 @@ import (
 
 const (
 	// Qos parameters name of StorageClass.
+	baseIops                = "BaseIops"
 	baseReadIops            = "BaseReadIops"
 	baseWriteIops           = "BaseWriteIops"
+	baseBytesPerSecond      = "BaseBytesPerSecond"
 	baseReadBytesPerSecond  = "BaseReadBytesPerSecond"
 	baseWriteBytesPerSecond = "BaseWriteBytesPerSecond"
+	iopsPerGiB              = "IopsPerGiB"
 	readIopsPerGiB          = "ReadIopsPerGiB"
 	writeIopsPerGiB         = "WriteIopsPerGiB"
+	bpsPerGiB               = "BpsPerGiB"
 	readBpsPerGiB           = "ReadBpsPerGiB"
 	writeBpsPerGiB          = "WriteBpsPerGiB"
 	baseVolSizeBytes        = "BaseVolSizeBytes"
 
 	// Qos type name of rbd image.
+	iopsLimit          = "rbd_qos_iops_limit"
 	readIopsLimit      = "rbd_qos_read_iops_limit"
 	writeIopsLimit     = "rbd_qos_write_iops_limit"
+	bpsLimit           = "rbd_qos_bps_limit"
 	readBpsLimit       = "rbd_qos_read_bps_limit"
 	writeBpsLimit      = "rbd_qos_write_bps_limit"
 	metadataConfPrefix = "conf_"
 
 	// The params use to calc qos based on capacity.
+	baseQosIopsLimit      = "rbd_base_qos_iops_limit"
 	baseQosReadIopsLimit  = "rbd_base_qos_read_iops_limit"
 	baseQosWriteIopsLimit = "rbd_base_qos_write_iops_limit"
+	baseQosBpsLimit       = "rbd_base_qos_bps_limit"
 	baseQosReadBpsLimit   = "rbd_base_qos_read_bps_limit"
 	baseQosWriteBpsLimit  = "rbd_base_qos_write_bps_limit"
+	iopsPerGiBLimit       = "rbd_iops_per_gib_limit"
 	readIopsPerGiBLimit   = "rbd_read_iops_per_gib_limit"
 	writeIopsPerGiBLimit  = "rbd_write_iops_per_gib_limit"
+	bpsPerGiBLimit        = "rbd_bps_per_gib_limit"
 	readBpsPerGiBLimit    = "rbd_read_bps_per_gib_limit"
 	writeBpsPerGiBLimit   = "rbd_write_bps_per_gib_limit"
 	baseQosVolSize        = "rbd_base_qos_vol_size"
@@ -69,8 +79,10 @@ func parseQosParams(
 	scParams map[string]string,
 ) map[string]*qosSpec {
 	rbdQosParameters := map[string]*qosSpec{
+		baseIops:                {iopsLimit, "", iopsPerGiB, "", false},
 		baseReadIops:            {readIopsLimit, "", readIopsPerGiB, "", false},
 		baseWriteIops:           {writeIopsLimit, "", writeIopsPerGiB, "", false},
+		baseBytesPerSecond:      {bpsLimit, "", bpsPerGiB, "", false},
 		baseReadBytesPerSecond:  {readBpsLimit, "", readBpsPerGiB, "", false},
 		baseWriteBytesPerSecond: {writeBpsLimit, "", writeBpsPerGiB, "", false},
 	}
@@ -179,12 +191,16 @@ func (rv *rbdVolume) SaveQOS(
 	scParams map[string]string,
 ) error {
 	needSaveQosParameters := map[string]string{
+		baseIops:                baseQosIopsLimit,
 		baseReadIops:            baseQosReadIopsLimit,
 		baseWriteIops:           baseQosWriteIopsLimit,
+		baseBytesPerSecond:      baseQosBpsLimit,
 		baseReadBytesPerSecond:  baseQosReadBpsLimit,
 		baseWriteBytesPerSecond: baseQosWriteBpsLimit,
+		iopsPerGiB:              iopsPerGiBLimit,
 		readIopsPerGiB:          readIopsPerGiBLimit,
 		writeIopsPerGiB:         writeIopsPerGiBLimit,
+		bpsPerGiB:               bpsPerGiBLimit,
 		readBpsPerGiB:           readBpsPerGiBLimit,
 		writeBpsPerGiB:          writeBpsPerGiBLimit,
 		baseVolSizeBytes:        baseQosVolSize,
@@ -210,8 +226,10 @@ func (rv *rbdVolume) getRbdImageQOS(
 		rbdQosType       string
 		rbdQosPerGiBType string
 	}{
+		baseQosIopsLimit:      {iopsLimit, iopsPerGiBLimit},
 		baseQosReadIopsLimit:  {readIopsLimit, readIopsPerGiBLimit},
 		baseQosWriteIopsLimit: {writeIopsLimit, writeIopsPerGiBLimit},
+		baseQosBpsLimit:       {bpsLimit, bpsPerGiBLimit},
 		baseQosReadBpsLimit:   {readBpsLimit, readBpsPerGiBLimit},
 		baseQosWriteBpsLimit:  {writeBpsLimit, writeBpsPerGiBLimit},
 	}

@@ -176,18 +176,26 @@ parameters:
    # note: currently supports rbd-nbd mounter.
    #
    # For more details
+   # (optional) the base limit of operations per second.
+   # BaseIops: <>
    # (optional) the base limit of read operations per second.
    # BaseReadIops: <>
    # (optional) the base limit of write operations per second.
    # BaseWriteIops: <>
+   # (optional) the base limit of bytes per second.
+   # BaseBytesPerSecond: <>
    # (optional) the base limit of read bytes per second.
    # BaseReadBytesPerSecond: <>
    # (optional) the base limit of write bytes per second.
    # BaseWriteBytesPerSecond: <>
+   # (optional) the limit of operations per GiB.
+   # IopsPerGiB: <>
    # (optional) the limit of read operations per GiB.
    # ReadIopsPerGiB: <>
    # (optional) the limit of write operations per GiB.
    # WriteIopsPerGiB: <>
+   # (optional) the limit of bytes per GiB.
+   # BpsPerGiB: <>
    # (optional) the limit of read bytes per GiB.
    # ReadBpsPerGiB: <>
    # (optional) the limit of write bytes per GiB.
