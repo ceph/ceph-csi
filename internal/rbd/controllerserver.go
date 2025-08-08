@@ -1657,17 +1657,20 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 	// resize volume if required
 	if rbdVol.VolSize < volSize {
+		// need update RequestedVolSize, because calcQosBasedOnCapacity use it.
+		rbdVol.RequestedVolSize = volSize
+		// try adjust qos before resize volume.
+		err = rbdVol.AdjustQOS(ctx)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to adjust QOS for rbd image: %s with error: %v", rbdVol, err)
+
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
 		log.DebugLog(ctx, "rbd volume %s size is %v,resizing to %v", rbdVol, rbdVol.VolSize, volSize)
 		err = rbdVol.resize(volSize)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to resize rbd image: %s with error: %v", rbdVol, err)
-
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		// adjust rbd qos after resize volume.
-		err = rbdVol.AdjustQOS(ctx)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to adjust QOS for rbd image: %s with error: %v", rbdVol, err)
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
