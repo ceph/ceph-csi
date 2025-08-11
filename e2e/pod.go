@@ -364,7 +364,10 @@ func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errString st
 func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, expectedError string) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Running state", name)
+	framework.Logf(
+		"Waiting for %s pod is in Running phase (%d seconds elapsed)",
+		name,
+		int(time.Since(start).Seconds()))
 
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
@@ -375,6 +378,13 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 
 			return false, fmt.Errorf("failed to get app: %w", err)
 		}
+
+		framework.Logf(
+			"%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)",
+			name,
+			pod.Status.Phase,
+			int(time.Since(start).Seconds()))
+
 		switch pod.Status.Phase {
 		case v1.PodRunning:
 			return true, nil
@@ -394,12 +404,6 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 					return true, err
 				}
 			}
-		case v1.PodUnknown:
-			framework.Logf(
-				"%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)",
-				name,
-				pod.Status.Phase,
-				int(time.Since(start).Seconds()))
 		}
 
 		return false, nil
@@ -414,7 +418,7 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 		return fmt.Errorf("failed to delete app: %w", err)
 	}
 	start := time.Now()
-	framework.Logf("Waiting for pod %v to be deleted", name)
+	framework.Logf("Waiting for pod %s to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 
 	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
 		_, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
@@ -425,10 +429,11 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 			if apierrs.IsNotFound(err) {
 				return true, nil
 			}
-			framework.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 
 			return false, fmt.Errorf("failed to get app: %w", err)
 		}
+
+		framework.Logf("%s pod to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 
 		return false, nil
 	})
