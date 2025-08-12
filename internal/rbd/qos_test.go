@@ -61,12 +61,12 @@ func TestSetQOS(t *testing.T) {
 	checkQOS(t, rv.QosParameters, wants)
 
 	tests = map[string]string{
-		baseIops:                "3000",
-		baseReadIops:            "2000",
-		baseWriteIops:           "1000",
-		baseBytesPerSecond:      "314572800",
-		baseReadBytesPerSecond:  "209715200",
-		baseWriteBytesPerSecond: "104857600",
+		baseIops:      "3000",
+		baseReadIops:  "2000",
+		baseWriteIops: "1000",
+		baseBps:       "314572800",
+		baseReadBps:   "209715200",
+		baseWriteBps:  "104857600",
 	}
 	wants = map[string]string{
 		iopsLimit:      "3000",
@@ -85,19 +85,19 @@ func TestSetQOS(t *testing.T) {
 	checkQOS(t, rv.QosParameters, wants)
 
 	tests = map[string]string{
-		baseIops:                "3000",
-		baseReadIops:            "2000",
-		baseWriteIops:           "1000",
-		baseBytesPerSecond:      "314572800",
-		baseReadBytesPerSecond:  "209715200",
-		baseWriteBytesPerSecond: "104857600",
-		iopsPerGiB:              "30",
-		readIopsPerGiB:          "20",
-		writeIopsPerGiB:         "10",
-		bpsPerGiB:               "3145728",
-		readBpsPerGiB:           "2097152",
-		writeBpsPerGiB:          "1048576",
-		baseVolSizeBytes:        "21474836480",
+		baseIops:         "3000",
+		baseReadIops:     "2000",
+		baseWriteIops:    "1000",
+		baseBps:          "314572800",
+		baseReadBps:      "209715200",
+		baseWriteBps:     "104857600",
+		iopsPerGiB:       "30",
+		readIopsPerGiB:   "20",
+		writeIopsPerGiB:  "10",
+		bpsPerGiB:        "3145728",
+		readBpsPerGiB:    "2097152",
+		writeBpsPerGiB:   "1048576",
+		baseVolSizeBytes: "21474836480",
 	}
 	wants = map[string]string{
 		iopsLimit:      "3000",

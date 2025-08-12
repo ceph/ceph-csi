@@ -4714,21 +4714,21 @@ var _ = Describe("RBD", func() {
 
 			By("validate rbd image qos", func() {
 				var (
-					baseReadIops            = "2000"
-					baseWriteIops           = "1000"
-					baseReadBytesPerSecond  = "209715200"
-					baseWriteBytesPerSecond = "104857600"
-					readIopsPerGiB          = "20"
-					writeIopsPerGiB         = "10"
-					readBpsPerGiB           = "2097152"
-					writeBpsPerGiB          = "1048576"
-					baseVolSizeBytes        = "21474836480"
+					baseReadIops     = "2000"
+					baseWriteIops    = "1000"
+					baseReadBps      = "209715200"
+					baseWriteBps     = "104857600"
+					readIopsPerGiB   = "20"
+					writeIopsPerGiB  = "10"
+					readBpsPerGiB    = "2097152"
+					writeBpsPerGiB   = "1048576"
+					baseVolSizeBytes = "21474836480"
 				)
 				qosParameters := map[string]string{
-					"BaseReadIops":            baseReadIops,
-					"BaseWriteIops":           baseWriteIops,
-					"BaseReadBytesPerSecond":  baseReadBytesPerSecond,
-					"BaseWriteBytesPerSecond": baseWriteBytesPerSecond,
+					"baseReadIops":  baseReadIops,
+					"baseWriteIops": baseWriteIops,
+					"baseReadBps":   baseReadBps,
+					"baseWriteBps":  baseWriteBps,
 				}
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -4774,8 +4774,8 @@ var _ = Describe("RBD", func() {
 				wants := map[string]string{
 					"rbd_qos_read_iops_limit":  baseReadIops,
 					"rbd_qos_write_iops_limit": baseWriteIops,
-					"rbd_qos_read_bps_limit":   baseReadBytesPerSecond,
-					"rbd_qos_write_bps_limit":  baseWriteBytesPerSecond,
+					"rbd_qos_read_bps_limit":   baseReadBps,
+					"rbd_qos_write_bps_limit":  baseWriteBps,
 				}
 				err = validateQOS(f, pvc, wants)
 				if err != nil {
@@ -4789,15 +4789,15 @@ var _ = Describe("RBD", func() {
 				}
 
 				qosParameters = map[string]string{
-					"BaseReadIops":            baseReadIops,
-					"BaseWriteIops":           baseWriteIops,
-					"BaseReadBytesPerSecond":  baseReadBytesPerSecond,
-					"BaseWriteBytesPerSecond": baseWriteBytesPerSecond,
-					"ReadIopsPerGiB":          readIopsPerGiB,
-					"WriteIopsPerGiB":         writeIopsPerGiB,
-					"ReadBpsPerGiB":           readBpsPerGiB,
-					"WriteBpsPerGiB":          writeBpsPerGiB,
-					"BaseVolSizeBytes":        baseVolSizeBytes,
+					"baseReadIops":     baseReadIops,
+					"baseWriteIops":    baseWriteIops,
+					"baseReadBps":      baseReadBps,
+					"baseWriteBps":     baseWriteBps,
+					"readIopsPerGiB":   readIopsPerGiB,
+					"writeIopsPerGiB":  writeIopsPerGiB,
+					"readBpsPerGiB":    readBpsPerGiB,
+					"writeBpsPerGiB":   writeBpsPerGiB,
+					"baseVolSizeBytes": baseVolSizeBytes,
 				}
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {

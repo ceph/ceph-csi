@@ -177,31 +177,31 @@ parameters:
    #
    # For more details
    # (optional) the base limit of operations per second.
-   # BaseIops: <>
+   # baseIops: <>
    # (optional) the base limit of read operations per second.
-   # BaseReadIops: <>
+   # baseReadIops: <>
    # (optional) the base limit of write operations per second.
-   # BaseWriteIops: <>
+   # baseWriteIops: <>
    # (optional) the base limit of bytes per second.
-   # BaseBytesPerSecond: <>
+   # baseBps: <>
    # (optional) the base limit of read bytes per second.
-   # BaseReadBytesPerSecond: <>
+   # baseReadBps: <>
    # (optional) the base limit of write bytes per second.
-   # BaseWriteBytesPerSecond: <>
+   # baseWriteBps: <>
    # (optional) the limit of operations per GiB.
-   # IopsPerGiB: <>
+   # iopsPerGiB: <>
    # (optional) the limit of read operations per GiB.
-   # ReadIopsPerGiB: <>
+   # readIopsPerGiB: <>
    # (optional) the limit of write operations per GiB.
-   # WriteIopsPerGiB: <>
+   # writeIopsPerGiB: <>
    # (optional) the limit of bytes per GiB.
-   # BpsPerGiB: <>
+   # bpsPerGiB: <>
    # (optional) the limit of read bytes per GiB.
-   # ReadBpsPerGiB: <>
+   # readBpsPerGiB: <>
    # (optional) the limit of write bytes per GiB.
-   # WriteBpsPerGiB: <>
+   # writeBpsPerGiB: <>
    # (optional) min size of volume what use to calc qos beased on capacity.
-   # BaseVolSizeBytes:<>
+   # baseVolSizeBytes:<>
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 
