@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Checkout the ceph-csi repository
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
       - name: Run local retest github action
         uses: ./actions/retest  # path to the retest action
         with:
