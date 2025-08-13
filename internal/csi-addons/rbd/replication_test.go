@@ -775,10 +775,7 @@ func Test_getCurrentReplicationStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			respStatus, respStatusMsg, err := getCurrentReplicationStatus(ctx, tt.args)
-			if err != nil {
-				t.Errorf("getCurrentReplicationStatus() returned error = %v", err)
-			}
+			respStatus, respStatusMsg := getCurrentReplicationStatus(ctx, tt.args)
 			if !reflect.DeepEqual(tt.status, respStatus) {
 				t.Errorf("getCurrentReplicationStatus() returned status = %v, want = %v", respStatus, tt.status)
 			}

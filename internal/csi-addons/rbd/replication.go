@@ -916,7 +916,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	lastSyncInfo, err := remoteStatus.GetLastSyncInfo(ctx)
 	if err != nil {
 		if errors.Is(err, rbderrors.ErrLastSyncTimeNotFound) {
-			return nil, status.Errorf(codes.NotFound, "failed to get last sync info: %v", err)
+			return nil, status.Errorf(codes.FailedPrecondition, "failed to get last sync info: %v", err)
 		}
 
 		return nil, status.Errorf(codes.Internal, "failed to get last sync info: %v", err)
@@ -933,12 +933,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		resp.LastSyncDuration = durationpb.New(*lastDuration)
 	}
 
-	replicationStatus, statusMessage, err := getCurrentReplicationStatus(ctx, mirrorStatus)
-	if err != nil {
-		log.ErrorLog(ctx, err.Error())
-
-		return nil, status.Errorf(codes.Internal, "failed to get local status: %v", err)
-	}
+	replicationStatus, statusMessage := getCurrentReplicationStatus(ctx, mirrorStatus)
 
 	resp.Status = replicationStatus
 	resp.StatusMessage = statusMessage
@@ -962,11 +957,13 @@ func checkVolumeResyncStatus(ctx context.Context, localStatus types.SiteStatus) 
 }
 
 func getCurrentReplicationStatus(ctx context.Context, mirrorGlobalStatus types.GlobalStatus,
-) (replication.GetVolumeReplicationInfoResponse_Status, string, error) {
+) (replication.GetVolumeReplicationInfoResponse_Status, string) {
 	// get image local status
 	localStatus, err := mirrorGlobalStatus.GetLocalSiteStatus()
 	if err != nil {
-		return replication.GetVolumeReplicationInfoResponse_UNKNOWN, "", err
+		log.ErrorLog(ctx, err.Error())
+
+		return replication.GetVolumeReplicationInfoResponse_UNKNOWN, "status not found"
 	}
 
 	// parse only the message from the description of the image/group status
@@ -977,7 +974,7 @@ func getCurrentReplicationStatus(ctx context.Context, mirrorGlobalStatus types.G
 	isUp := localStatus.IsUP()
 
 	if !isUp {
-		return replication.GetVolumeReplicationInfoResponse_DEGRADED, desc, nil
+		return replication.GetVolumeReplicationInfoResponse_DEGRADED, desc
 	}
 
 	resp := replication.GetVolumeReplicationInfoResponse_UNKNOWN
@@ -994,5 +991,5 @@ func getCurrentReplicationStatus(ctx context.Context, mirrorGlobalStatus types.G
 			localStatus.GetState(), desc)
 	}
 
-	return resp, desc, nil
+	return resp, desc
 }
