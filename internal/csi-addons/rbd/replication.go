@@ -716,6 +716,8 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 			err.Error())
 	}
 
+	// If the savedImageTime is not empty,
+	// then the image might be in need of resync.
 	if savedImageTime != "" {
 		st, sErr := timestampFromString(savedImageTime)
 		if sErr != nil {
@@ -723,12 +725,23 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		}
 		log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime)
 
+		// Fetch the last sync info from the local status in order
+		// to determine if the image is syncing or not.
 		syncInfo, sErr := localStatus.GetLastSyncInfo(ctx)
-		if sErr != nil {
+		if sErr != nil && !errors.Is(sErr, rbderrors.ErrLastSyncTimeNotFound) {
 			return nil, status.Errorf(codes.Internal, "failed to get last sync info: %s", sErr.Error())
 		}
+		// consider the image to be not syncing if either
+		// - the last sync time was not found
+		// or
+		// - the sync info indicates the image is not syncing
+		isNotSyncing := errors.Is(sErr, rbderrors.ErrLastSyncTimeNotFound) || !syncInfo.IsSyncing()
 
-		if req.GetForce() && st.Equal(*creationTime) && !syncInfo.IsSyncing() {
+		// image needs to be resynced if
+		// - force option is set
+		// - image creation time is equal to the saved image creation time
+		// - image is not already in syncing state
+		if req.GetForce() && st.Equal(*creationTime) && isNotSyncing {
 			err = mirror.Resync(ctx)
 			if err != nil {
 				return nil, getGRPCError(err)
