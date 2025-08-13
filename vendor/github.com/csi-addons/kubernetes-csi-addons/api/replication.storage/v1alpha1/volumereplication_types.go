@@ -30,25 +30,29 @@ const (
 // "ConditionDegraded" means the condition is not fulfilled.
 // "ConditionResyncing" means the condition is resyncing.
 const (
-	ConditionCompleted = "Completed"
-	ConditionDegraded  = "Degraded"
-	ConditionResyncing = "Resyncing"
-	ConditionValidated = "Validated"
+	ConditionCompleted   = "Completed"
+	ConditionDegraded    = "Degraded"
+	ConditionResyncing   = "Resyncing"
+	ConditionValidated   = "Validated"
+	ConditionReplicating = "Replicating"
 )
 
 // These are valid messages for various conditions and states of volume replication.
 const (
-	MessagePromoted           = "is promoted to primary and replicating to secondary"
-	MessageHealthy            = "is healthy"
-	MessageNotResyncing       = "is not resyncing"
-	MessageValidated          = "is validated and met all prerequisites"
-	MessageFailedPromoted     = "failed to promote"
-	MessageFailedDemoted      = "failed to demote"
-	MessageFailedPreCondition = "failed to meet prerequisite"
-	MessageDemoted            = "is demoted to secondary"
-	MessageDegraded           = "is degraded"
-	MessageResyncTriggered    = "is resyncing changes from primary to secondary"
-	MessageResyncFailed       = "failed to resync"
+	MessagePromoted                = "is promoted to primary and replicating to secondary"
+	MessageHealthy                 = "is healthy"
+	MessageNotResyncing            = "is not resyncing"
+	MessageValidated               = "is validated and met all prerequisites"
+	MessageFailedPromoted          = "failed to promote"
+	MessageFailedDemoted           = "failed to demote"
+	MessageFailedPreCondition      = "failed to meet prerequisite"
+	MessageDemoted                 = "is demoted to secondary"
+	MessageDegraded                = "is degraded"
+	MessageResyncTriggered         = "is resyncing changes from primary to secondary"
+	MessageResyncFailed            = "failed to resync"
+	MessageReplicating             = "is replicating"
+	MessageNotReplicating          = "is not replicating"
+	MessageUnknownReplicationState = "replication status is unknown"
 )
 
 type Source string
@@ -87,6 +91,10 @@ const (
 	PrerequisiteMet = "PrerequisiteMet"
 	// PrerequisiteNotMet condition represents that the prerequisite is not met.
 	PrerequisiteNotMet = "PrerequisiteNotMet"
+	// Replicating condition represents that the volume/group is replicating.
+	Replicating = "Replicating"
+	// NotReplicating condition represents that the volume/group is not replicating.
+	NotReplicating = "NotReplicating"
 )
 
 // ReplicationState represents the replication operations to be performed on the volume.
