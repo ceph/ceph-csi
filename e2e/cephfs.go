@@ -456,7 +456,11 @@ var _ = Describe(cephfsType, func() {
 				}
 				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
-				pvcName := app.Spec.Volumes[0].Name
+				pvcName := fmt.Sprintf("%s-%s", app.Name, app.Spec.Volumes[0].Name)
+				pvc, err := getPersistentVolumeClaim(c, app.Namespace, pvcName)
+				if err != nil {
+					framework.Failf("failed to get pvc: %v", err)
+				}
 				// delete pod
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
@@ -464,7 +468,7 @@ var _ = Describe(cephfsType, func() {
 				}
 
 				// wait for the associated PVC to be deleted
-				err = waitForPVCToBeDeleted(f.ClientSet, app.Namespace, pvcName, deployTimeout)
+				err = waitForPVToBeDeleted(f.ClientSet, pvc.Spec.VolumeName, deployTimeout)
 				if err != nil {
 					logAndFail("failed to wait for PVC deletion: %v", err)
 				}

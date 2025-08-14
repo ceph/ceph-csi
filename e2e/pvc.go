@@ -453,34 +453,34 @@ func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t i
 	})
 }
 
-func waitForPVCToBeDeleted(c kubernetes.Interface, namespace, pvcName string, t int) error {
+func waitForPVToBeDeleted(c kubernetes.Interface, pvName string, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	ctx := context.TODO()
 	start := time.Now()
 
 	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
-		pvc, err := c.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
-		// Check that the PVC is really deleted.
+		pv, err := c.CoreV1().PersistentVolumes().Get(ctx, pvName, metav1.GetOptions{})
+		// Check that the PV is really deleted.
 		framework.Logf(
-			"waiting for PVC %s in state %s to be deleted (%d seconds elapsed)",
-			pvcName,
-			pvc.Status.String(),
+			"waiting for PV %s in state %s to be deleted (%d seconds elapsed)",
+			pvName,
+			pv.Status.String(),
 			int(time.Since(start).Seconds()))
 		if err == nil {
-			framework.Logf("PVC %s (status: %v) has not been deleted yet, rechecking...", pvcName, pvc.Status)
+			framework.Logf("PV %s (status: %v) has not been deleted yet, rechecking...", pvName, pv.Status)
 
 			return false, nil
 		}
 		if isRetryableAPIError(err) {
-			framework.Logf("failed to verify deletion of PVC %s (status: %v): %v", pvcName, pvc.Status, err)
+			framework.Logf("failed to verify deletion of PV %s (status: %v): %v", pvName, pv.Status, err)
 
 			return false, nil
 		}
 		if !apierrs.IsNotFound(err) {
-			return false, fmt.Errorf("get on deleted PVC %v failed with error other than \"not found\": %w", pvcName, err)
+			return false, fmt.Errorf("get on deleted PV %v failed with error other than \"not found\": %w", pvName, err)
 		}
 
-		// PVC has been successfully deleted
+		// PV has been successfully deleted
 		return true, nil
 	})
 }
