@@ -400,7 +400,7 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	// Set ClientAddress in the image metadata
-	err = ns.setClientAddress(ctx, cr, rv)
+	err = ns.setClientAddress(ctx, cr, rv, isStaticVol)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set client address for %s: %v", rv, err)
 	}
@@ -435,18 +435,20 @@ func (ns *NodeServer) NodeStageVolume(
 // setClientAddress extracts the client IP address and stores it in the RBD image metadata.
 // The connection.GetAddrs() method returns an address in the format "10.244.0.1:0/2686266785".
 // We parse this to extract just the IP address portion (e.g., "10.244.0.1") and store in metadata.
-// If '--enable-fencing' flag is set to false in CSI driver configuration, this function does nothing.
+// If the '--enable-fencing' flag is set to false in CSI driver configuration or if the volume is static
+// this function does nothing.
 func (ns *NodeServer) setClientAddress(
 	ctx context.Context,
 	cr *util.Credentials,
 	rv *rbdVolume,
+	isStaticVol bool,
 ) error {
-	if !ns.Driver.IsFencingEnabled() {
+	if !ns.Driver.IsFencingEnabled() || isStaticVol {
 		return nil
 	}
 
 	nodeId := ns.Driver.GetNodeID()
-	metadataKey := getClientAddressKey(nodeId)
+	metadataKey := getClientAddressKey(rv.VolID, nodeId)
 	monitors, _ /* clusterID*/, err := util.GetMonsAndClusterID(ctx, rv.ClusterID, false)
 	if err != nil {
 		return fmt.Errorf("failed to get monitors for cluster %s: %w", rv.ClusterID, err)

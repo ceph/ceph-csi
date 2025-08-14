@@ -1838,7 +1838,7 @@ func (cs *ControllerServer) fenceNode(
 		return errors.New("nodeId cannot be empty")
 	}
 
-	metadataKey := getClientAddressKey(nodeId)
+	metadataKey := getClientAddressKey(rv.VolID, nodeId)
 	isOutOfService, err := k8s.IsNodeOutOfService(nodeId)
 	if err != nil {
 		return fmt.Errorf("failed to check if node %s is out of service: %w", nodeId, err)
@@ -1910,7 +1910,7 @@ func (cs *ControllerServer) unfenceNode(
 		return nil
 	}
 
-	metadataKey := getClientAddressKey(nodeId)
+	metadataKey := getClientAddressKey(rv.VolID, nodeId)
 	clientAddress, err := rv.GetMetadata(metadataKey)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {

@@ -87,8 +87,6 @@ func NewNodeServer(
 //
 // This also configures and starts a new CSI-Addons service, by calling
 // setupCSIAddonsServer().
-//
-//nolint:gocyclo,cyclop // TODO: reduce complexity
 func (r *Driver) Run(conf *util.Config) {
 	var (
 		err                                    error
