@@ -89,7 +89,7 @@ const (
 
 	// clientAddressKey is the key used to store the client address.
 	// starts with `.` to avoid copying it to the mirrored image.
-	clientAddressKey = ".rbd.csi.ceph.com/clientAddress"
+	clientAddressKey = ".rbd.csi.ceph.com/clientaddress"
 
 	// Suffix added to the temp cloned image name.
 	// This will always be (rbd image name + "-temp").
@@ -287,8 +287,8 @@ var (
 )
 
 // getClientAddressKey returns the key for storing client address metadata for a specific node.
-func getClientAddressKey(nodeId string) string {
-	return fmt.Sprintf("%s/%s", clientAddressKey, nodeId)
+func getClientAddressKey(volumeId, nodeId string) string {
+	return fmt.Sprintf("%s/%s/%s", clientAddressKey, volumeId, nodeId)
 }
 
 // prepareKrbdFeatureAttrs prepare krbd fearure set based on kernel version.
