@@ -86,6 +86,24 @@ func (s *snapshotClient) removeSnapshotMetadata(key string) error {
 	return err
 }
 
+// listMetadata lists custom metadata set on the subvolume in a volume
+// and returns a map of key-value pairs.
+func (s *snapshotClient) listSnapshotMetadata() (map[string]string, error) {
+	if !s.supportsSubVolSnapMetadata() {
+		return nil, ErrSubVolSnapMetadataNotSupported
+	}
+	fsa, err := s.conn.GetFSAdmin()
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := fsa.ListMetadata(s.FsName, s.SubvolumeGroup, s.VolID)
+	if !s.isUnsupportedSubVolSnapMetadata(err) {
+		return nil, ErrSubVolSnapMetadataNotSupported
+	}
+
+	return metadata, err
+}
+
 // SetAllSnapshotMetadata set all the metadata from arg parameters on
 // subvolume snapshot.
 func (s *snapshotClient) SetAllSnapshotMetadata(parameters map[string]string) error {
@@ -134,4 +152,23 @@ func (s *snapshotClient) UnsetAllSnapshotMetadata(keys []string) error {
 	}
 
 	return nil
+}
+
+// ListSnapshotMetadata lists all the metadata on subvolume snapshot.
+func (s *snapshotClient) ListSnapshotMetadata() (map[string]string, error) {
+	if !s.enableMetadata {
+		return nil, nil
+	}
+
+	metadata, err := s.listSnapshotMetadata()
+	// If listSnapshotMetadata is not supported return nil
+	if errors.Is(err, ErrSubVolSnapMetadataNotSupported) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to list metadata on subvolume snapshot %s %s in fs %s: %w",
+			s.SnapshotID, s.VolID, s.FsName, err)
+	}
+
+	return metadata, nil
 }
