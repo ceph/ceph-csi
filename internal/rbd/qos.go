@@ -29,11 +29,17 @@ import (
 const (
 	// Qos parameters name of StorageClass.
 	baseIops         = "baseIops"
+	maxIops          = "maxIops"
 	baseReadIops     = "baseReadIops"
+	maxReadIops      = "maxReadIops"
 	baseWriteIops    = "baseWriteIops"
+	maxWriteIops     = "maxWriteIops"
 	baseBps          = "baseBps"
+	maxBps           = "maxBps"
 	baseReadBps      = "baseReadBps"
+	maxReadBps       = "maxReadBps"
 	baseWriteBps     = "baseWriteBps"
+	maxWriteBps      = "maxWriteBps"
 	iopsPerGiB       = "iopsPerGiB"
 	readIopsPerGiB   = "readIopsPerGiB"
 	writeIopsPerGiB  = "writeIopsPerGiB"
@@ -53,11 +59,17 @@ const (
 
 	// The params use to calc qos based on capacity.
 	baseQosIopsLimit      = "rbd_base_qos_iops_limit"
+	maxQosIopsLimit       = "rbd_max_qos_iops_limit"
 	baseQosReadIopsLimit  = "rbd_base_qos_read_iops_limit"
+	maxQosReadIopsLimit   = "rbd_max_qos_read_iops_limit"
 	baseQosWriteIopsLimit = "rbd_base_qos_write_iops_limit"
+	maxQosWriteIopsLimit  = "rbd_max_qos_write_iops_limit"
 	baseQosBpsLimit       = "rbd_base_qos_bps_limit"
+	maxQosBpsLimit        = "rbd_max_qos_bps_limit"
 	baseQosReadBpsLimit   = "rbd_base_qos_read_bps_limit"
+	maxQosReadBpsLimit    = "rbd_max_qos_read_bps_limit"
 	baseQosWriteBpsLimit  = "rbd_base_qos_write_bps_limit"
+	maxQosWriteBpsLimit   = "rbd_max_qos_write_bps_limit"
 	iopsPerGiBLimit       = "rbd_iops_per_gib_limit"
 	readIopsPerGiBLimit   = "rbd_read_iops_per_gib_limit"
 	writeIopsPerGiBLimit  = "rbd_write_iops_per_gib_limit"
@@ -72,6 +84,8 @@ type qosSpec struct {
 	baseLimit       string
 	perGiBLimitType string
 	perGiBLimit     string
+	maxLimitType    string
+	maxLimit        string
 	present         bool
 }
 
@@ -79,12 +93,12 @@ func parseQosParams(
 	scParams map[string]string,
 ) map[string]*qosSpec {
 	rbdQosParameters := map[string]*qosSpec{
-		baseIops:      {iopsLimit, "", iopsPerGiB, "", false},
-		baseReadIops:  {readIopsLimit, "", readIopsPerGiB, "", false},
-		baseWriteIops: {writeIopsLimit, "", writeIopsPerGiB, "", false},
-		baseBps:       {bpsLimit, "", bpsPerGiB, "", false},
-		baseReadBps:   {readBpsLimit, "", readBpsPerGiB, "", false},
-		baseWriteBps:  {writeBpsLimit, "", writeBpsPerGiB, "", false},
+		baseIops:      {iopsLimit, "", iopsPerGiB, "", maxIops, "", false},
+		baseReadIops:  {readIopsLimit, "", readIopsPerGiB, "", maxReadIops, "", false},
+		baseWriteIops: {writeIopsLimit, "", writeIopsPerGiB, "", maxWriteIops, "", false},
+		baseBps:       {bpsLimit, "", bpsPerGiB, "", maxBps, "", false},
+		baseReadBps:   {readBpsLimit, "", readBpsPerGiB, "", maxReadBps, "", false},
+		baseWriteBps:  {writeBpsLimit, "", writeBpsPerGiB, "", maxWriteBps, "", false},
 	}
 	for k, v := range scParams {
 		if qos, ok := rbdQosParameters[k]; ok && v != "" {
@@ -92,6 +106,9 @@ func parseQosParams(
 			qos.present = true
 			if perGiBLimit, ok := scParams[qos.perGiBLimitType]; ok && perGiBLimit != "" {
 				qos.perGiBLimit = perGiBLimit
+			}
+			if maxLimit, ok := scParams[qos.maxLimitType]; ok && maxLimit != "" {
+				qos.maxLimit = maxLimit
 			}
 		}
 	}
@@ -111,7 +128,7 @@ func (rv *rbdVolume) SetQOS(
 	rbdQosParameters := parseQosParams(scParams)
 	for _, qos := range rbdQosParameters {
 		if qos.present {
-			err := rv.calcQosBasedOnCapacity(ctx, *qos)
+			err := rv.calcQosBasedOnCapacity(ctx, qos)
 			if err != nil {
 				return err
 			}
@@ -138,7 +155,7 @@ func (rv *rbdVolume) ApplyQOS(
 
 func (rv *rbdVolume) calcQosBasedOnCapacity(
 	ctx context.Context,
-	qos qosSpec,
+	qos *qosSpec,
 ) error {
 	if rv.QosParameters == nil {
 		rv.QosParameters = make(map[string]string)
@@ -157,31 +174,46 @@ func (rv *rbdVolume) calcQosBasedOnCapacity(
 
 	// if present qosPerGB and baseVolSize, we will set qos based on capacity,
 	// otherwise, we only set base qos limit.
-	if qos.perGiBLimit != "" && rv.BaseVolSize != "" {
-		perGiBLimit, err := strconv.ParseInt(qos.perGiBLimit, 10, 64)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to parse %s: %s. %v", qos.perGiBLimitType, qos.perGiBLimit, err)
-
-			return err
-		}
-
-		baseVolSize, err := strconv.ParseInt(rv.BaseVolSize, 10, 64)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to parse %s: %s. %v", baseVolSizeBytes, rv.BaseVolSize, err)
-
-			return err
-		}
-
-		if rv.RequestedVolSize <= baseVolSize {
-			rv.QosParameters[qos.baseLimitType] = qos.baseLimit
-		} else {
-			capacityQos := (rv.RequestedVolSize - baseVolSize) / int64(oneGB) * perGiBLimit
-			finalQosLimit := baseLimit + capacityQos
-			rv.QosParameters[qos.baseLimitType] = strconv.FormatInt(finalQosLimit, 10)
-		}
-	} else {
+	if qos.perGiBLimit == "" || rv.BaseVolSize == "" {
 		rv.QosParameters[qos.baseLimitType] = qos.baseLimit
+
+		return nil
 	}
+
+	perGiBLimit, err := strconv.ParseInt(qos.perGiBLimit, 10, 64)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to parse %s: %s. %v", qos.perGiBLimitType, qos.perGiBLimit, err)
+
+		return err
+	}
+
+	baseVolSize, err := strconv.ParseInt(rv.BaseVolSize, 10, 64)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to parse %s: %s. %v", baseVolSizeBytes, rv.BaseVolSize, err)
+
+		return err
+	}
+
+	if rv.RequestedVolSize <= baseVolSize {
+		rv.QosParameters[qos.baseLimitType] = qos.baseLimit
+
+		return nil
+	}
+
+	capacityQos := (rv.RequestedVolSize - baseVolSize) / int64(oneGB) * perGiBLimit
+	finalQosLimit := baseLimit + capacityQos
+	if qos.maxLimit != "" {
+		maxLimit, err := strconv.ParseInt(qos.maxLimit, 10, 64)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to parse %s: %s. %v", qos.maxLimitType, qos.maxLimit, err)
+
+			return err
+		}
+		if finalQosLimit > maxLimit {
+			finalQosLimit = maxLimit
+		}
+	}
+	rv.QosParameters[qos.baseLimitType] = strconv.FormatInt(finalQosLimit, 10)
 
 	return nil
 }
@@ -192,11 +224,17 @@ func (rv *rbdVolume) SaveQOS(
 ) error {
 	needSaveQosParameters := map[string]string{
 		baseIops:         baseQosIopsLimit,
+		maxIops:          maxQosIopsLimit,
 		baseReadIops:     baseQosReadIopsLimit,
+		maxReadIops:      maxQosReadIopsLimit,
 		baseWriteIops:    baseQosWriteIopsLimit,
+		maxWriteIops:     maxQosWriteIopsLimit,
 		baseBps:          baseQosBpsLimit,
+		maxBps:           maxQosBpsLimit,
 		baseReadBps:      baseQosReadBpsLimit,
+		maxReadBps:       maxQosReadBpsLimit,
 		baseWriteBps:     baseQosWriteBpsLimit,
+		maxWriteBps:      maxQosWriteBpsLimit,
 		iopsPerGiB:       iopsPerGiBLimit,
 		readIopsPerGiB:   readIopsPerGiBLimit,
 		writeIopsPerGiB:  writeIopsPerGiBLimit,
@@ -225,13 +263,14 @@ func (rv *rbdVolume) getRbdImageQOS(
 	QosParams := map[string]struct {
 		rbdQosType       string
 		rbdQosPerGiBType string
+		rbdQosMaxType    string
 	}{
-		baseQosIopsLimit:      {iopsLimit, iopsPerGiBLimit},
-		baseQosReadIopsLimit:  {readIopsLimit, readIopsPerGiBLimit},
-		baseQosWriteIopsLimit: {writeIopsLimit, writeIopsPerGiBLimit},
-		baseQosBpsLimit:       {bpsLimit, bpsPerGiBLimit},
-		baseQosReadBpsLimit:   {readBpsLimit, readBpsPerGiBLimit},
-		baseQosWriteBpsLimit:  {writeBpsLimit, writeBpsPerGiBLimit},
+		baseQosIopsLimit:      {iopsLimit, iopsPerGiBLimit, maxQosIopsLimit},
+		baseQosReadIopsLimit:  {readIopsLimit, readIopsPerGiBLimit, maxQosReadIopsLimit},
+		baseQosWriteIopsLimit: {writeIopsLimit, writeIopsPerGiBLimit, maxQosWriteIopsLimit},
+		baseQosBpsLimit:       {bpsLimit, bpsPerGiBLimit, maxQosBpsLimit},
+		baseQosReadBpsLimit:   {readBpsLimit, readBpsPerGiBLimit, maxQosReadBpsLimit},
+		baseQosWriteBpsLimit:  {writeBpsLimit, writeBpsPerGiBLimit, maxQosWriteBpsLimit},
 	}
 	rbdQosParameters := make(map[string]qosSpec)
 	for k, param := range QosParams {
@@ -251,7 +290,20 @@ func (rv *rbdVolume) getRbdImageQOS(
 
 			return nil, err
 		}
-		rbdQosParameters[k] = qosSpec{param.rbdQosType, baseLimit, param.rbdQosPerGiBType, perGiBLimit, true}
+		maxLimit, err := rv.GetMetadata(param.rbdQosMaxType)
+		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+			log.ErrorLog(ctx, "failed to get metadata: %s. %v", param.rbdQosMaxType, err)
+
+			return nil, err
+		}
+		rbdQosParameters[k] = qosSpec{
+			param.rbdQosType,
+			baseLimit,
+			param.rbdQosPerGiBType,
+			perGiBLimit,
+			param.rbdQosMaxType,
+			maxLimit, true,
+		}
 	}
 
 	baseVolSize, err := rv.GetMetadata(baseQosVolSize)
@@ -273,7 +325,7 @@ func (rv *rbdVolume) AdjustQOS(
 		return err
 	}
 	for _, param := range rbdQosParameters {
-		err = rv.calcQosBasedOnCapacity(ctx, param)
+		err = rv.calcQosBasedOnCapacity(ctx, &param)
 		if err != nil {
 			return err
 		}
