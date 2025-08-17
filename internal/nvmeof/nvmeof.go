@@ -132,10 +132,12 @@ func (gw *GatewayRpcClient) CreateNamespace(ctx context.Context, subsystemNQN, p
 	}
 
 	resp, err := gw.client.NamespaceAdd(ctx, req)
-	if err != nil {
+	switch {
+	case err != nil:
 		return 0, fmt.Errorf("failed to create namespace for %s/%s: %w", poolName, imageName, err)
-	}
-	if resp.GetStatus() != 0 {
+	case resp.GetStatus() == int32(syscall.EEXIST):
+		return gw.findExistingNamespace(ctx, subsystemNQN, poolName, imageName)
+	case resp.GetStatus() != 0:
 		return 0, fmt.Errorf("gateway NamespaceAdd returned error: %s", resp.GetErrorMessage())
 	}
 	log.DebugLog(ctx, "Namespace created with NSID: %d", resp.GetNsid())
@@ -225,10 +227,13 @@ func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN st
 	}
 
 	status, err := gw.client.CreateSubsystem(ctx, req)
-	if err != nil {
+	switch {
+	case err != nil:
 		return fmt.Errorf("failed to create subsystem %s: %w", subsystemNQN, err)
-	}
-	if status.GetStatus() != 0 {
+	case status.GetStatus() == int32(syscall.EEXIST):
+		// subsystem was already created
+		return nil
+	case status.GetStatus() != 0:
 		return fmt.Errorf("gateway CreateSubsystem returned error: %s", status.GetErrorMessage())
 	}
 
@@ -306,12 +311,18 @@ func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN s
 	if err != nil {
 		return fmt.Errorf("failed to add host %s to subsystem %s: %w", hostNQN, subsystemNQN, err)
 	}
-	if resp.GetStatus() != 0 {
-		return fmt.Errorf("gateway AddHost returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
-	}
-	log.DebugLog(ctx, "Host added successfully: %s to subsystem %s", hostNQN, subsystemNQN)
+	if resp.GetStatus() == 0 {
+		log.DebugLog(ctx, "Host added successfully: %s to subsystem %s", hostNQN, subsystemNQN)
 
-	return nil
+		return nil
+	}
+	if resp.GetStatus() == int32(syscall.EEXIST) { // EEXIST
+		log.DebugLog(ctx, "Host %s already added to subsystem %s", hostNQN, subsystemNQN)
+
+		return nil // Host already added, no error
+	}
+
+	return fmt.Errorf("gateway AddHost returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
 }
 
 func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN string, listenerInfo ListenerDetails,
@@ -332,10 +343,14 @@ func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN str
 	if err != nil {
 		return fmt.Errorf("failed to add listener %s to subsystem %s: %w", listenerInfo.Address, subsystemNQN, err)
 	}
+	if resp.GetStatus() == int32(syscall.EEXIST) { // EEXIST
+		log.DebugLog(ctx, "Listener %s already created for subsystem %s", listenerInfo.Address, subsystemNQN)
+
+		return nil // Listener already created, no error
+	}
 	if resp.GetStatus() != 0 {
 		return fmt.Errorf("gateway AddListener returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
 	}
-
 	log.DebugLog(ctx, "Listener added successfully: %s to subsystem %s", listenerInfo.Address, subsystemNQN)
 
 	return nil
@@ -449,4 +464,36 @@ func (c *GatewayRpcClient) generateSerialNumber() (string, error) {
 	serial := n.Int64() + RandomNumberOffset
 
 	return fmt.Sprintf("Ceph%d", serial), nil
+}
+
+// findExistingNamespace searches for a namespace matching the given pool and image names
+// Returns the NSID if found, or an error if not found or on failure.
+func (gw *GatewayRpcClient) findExistingNamespace(
+	ctx context.Context,
+	subsystemNQN,
+	poolName,
+	imageName string,
+) (uint32, error) {
+	r, err := gw.client.ListNamespaces(ctx, &pb.ListNamespacesReq{Subsystem: subsystemNQN})
+	if err != nil {
+		return 0, fmt.Errorf("failed to get namespaces in subsystem %s: %w", subsystemNQN, err)
+	}
+
+	if r.GetStatus() != 0 {
+		return 0, fmt.Errorf("could not get namespaces in subsystem %s (status=%d): %s",
+			subsystemNQN, r.GetStatus(), r.GetErrorMessage())
+	}
+
+	if len(r.GetNamespaces()) == 0 {
+		return 0, fmt.Errorf("no existing namespaces in subsystem %s", subsystemNQN)
+	}
+
+	for _, ns := range r.GetNamespaces() {
+		if ns.GetRbdPoolName() == poolName && ns.GetRbdImageName() == imageName {
+			return ns.GetNsid(), nil
+		}
+	}
+
+	return 0, fmt.Errorf("could not find existing namespace for %s/%s in subsystem %s",
+		poolName, imageName, subsystemNQN)
 }
