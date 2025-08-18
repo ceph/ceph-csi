@@ -23,15 +23,14 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util/kernel"
 
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -211,19 +210,30 @@ func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, 
 }
 
 // Stat a path, if it doesn't exist, retry maxRetries times.
-func waitForPath(ctx context.Context, pool, namespace, image string, maxRetries int, useNbdDriver bool) (string, bool) {
-	for i := range maxRetries {
-		if i != 0 {
-			time.Sleep(time.Second)
-		}
+func waitForPath(
+	ctx context.Context,
+	pool, namespace, image string,
+	maxRetries uint,
+	useNbdDriver bool,
+) (string, bool) {
+	devicePath, err := retry.DoWithData(
+		func() (string, error) {
+			device, found := findDeviceMappingImage(ctx, pool, namespace, image, useNbdDriver)
+			if found {
+				return device, nil
+			}
 
-		device, found := findDeviceMappingImage(ctx, pool, namespace, image, useNbdDriver)
-		if found {
-			return device, found
-		}
+			return "", fmt.Errorf("failed to find device for %s/%s/%s", pool, namespace, image)
+		},
+		retry.Attempts(maxRetries),
+	)
+	if err != nil {
+		log.ErrorLog(ctx, err.Error())
+
+		return "", false
 	}
 
-	return "", false
+	return devicePath, true
 }
 
 // SetRbdNbdToolFeatures sets features available with rbd-nbd, and NBD module
@@ -349,13 +359,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, c
 
 	devicePath, found := waitForPath(ctx, volOptions.Pool, volOptions.RadosNamespace, image, 1, useNBD)
 	if !found {
-		backoff := wait.Backoff{
-			Duration: rbdImageWatcherInitDelay,
-			Factor:   rbdImageWatcherFactor,
-			Steps:    rbdImageWatcherSteps,
-		}
-
-		err = waitForrbdImage(ctx, backoff, volOptions)
+		err = waitForrbdImage(ctx, volOptions)
 		if err != nil {
 			return "", err
 		}
@@ -511,26 +515,28 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	return devicePath, nil
 }
 
-func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdVolume) error {
+func waitForrbdImage(ctx context.Context, volOptions *rbdVolume) error {
 	imagePath := volOptions.String()
 
-	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-		used, err := volOptions.isInUse()
-		if err != nil {
-			return false, fmt.Errorf("fail to check rbd image status: (%w)", err)
-		}
-		if (volOptions.DisableInUseChecks) && (used) {
-			log.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
+	err := retry.Do(
+		func() error {
+			used, err := volOptions.isInUse()
+			if err != nil {
+				return fmt.Errorf("fail to check rbd image status: (%w)", err)
+			}
+			if (volOptions.DisableInUseChecks) && (used) {
+				log.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
 
-			return used, nil
-		}
+				return nil
+			} else if used {
+				return fmt.Errorf("rbd image %s is still being used", imagePath)
+			}
 
-		return !used, nil
-	})
-	// return error if rbd image has not become available for the specified timeout
-	if wait.Interrupted(err) {
-		return fmt.Errorf("rbd image %s is still being used", imagePath)
-	}
+			return nil
+		},
+	// retry.BackOffDelay() is the default, initial delay 100ms, max 10 attempts
+	)
+
 	// return error if any other errors were encountered during waiting for the image to become available
 	return err
 }

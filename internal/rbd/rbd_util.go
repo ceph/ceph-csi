@@ -47,15 +47,10 @@ import (
 )
 
 const (
-	// The following three values are used for 30 seconds timeout
-	// while waiting for RBD Watcher to expire.
-	rbdImageWatcherInitDelay = 1 * time.Second
-	rbdImageWatcherFactor    = 1.4
-	rbdImageWatcherSteps     = 10
-	rbdDefaultMounter        = "rbd"
-	rbdNbdMounter            = "rbd-nbd"
-	defaultLogDir            = "/var/log/ceph"
-	defaultLogStrategy       = "remove" // supports remove, compress and preserve
+	rbdDefaultMounter  = "rbd"
+	rbdNbdMounter      = "rbd-nbd"
+	defaultLogDir      = "/var/log/ceph"
+	defaultLogStrategy = "remove" // supports remove, compress and preserve
 
 	// Output strings returned during invocation of "ceph rbd task add remove <imagespec>" when
 	// command is not supported by ceph manager. Used to check errors and recover when the command
