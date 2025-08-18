@@ -1,0 +1,42 @@
+# Dockerfile.nvmeof-test
+FROM golang:1.24-alpine
+
+# Install required packages
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    linux-headers \
+    netcat-openbsd
+
+# Set working directory
+WORKDIR /app
+
+# Copy all source code
+COPY . .
+
+COPY <<EOF /usr/local/bin/validate-env.sh
+#!/bin/sh
+if [ -z "\$NVMEOF_GATEWAY_ADDRESS" ]; then
+    echo "ERROR: NVMEOF_GATEWAY_ADDRESS environment variable is required"
+    exit 1
+fi
+if [ -z "\$NVMEOF_GATEWAY_PORT" ]; then
+    echo "ERROR: NVMEOF_GATEWAY_PORT environment variable is required"
+    exit 1
+fi
+if [ -z "\$NVMEOF_GATEWAY_HOSTNAME" ]; then
+    echo "ERROR: NVMEOF_GATEWAY_HOSTNAME environment variable is required"
+    exit 1
+fi
+if [ -z "\$NVMEOF_LISTENER_PORT" ]; then
+    echo "ERROR: NVMEOF_LISTENER_PORT environment variable is required"
+    exit 1
+fi
+echo "✓ All required environment variables are set"
+EOF
+
+RUN chmod +x /usr/local/bin/validate-env.sh
+
+CMD ["sh", "-c", "/usr/local/bin/validate-env.sh && go test -v -timeout ${GO_TEST_TIMEOUT:-60s} ./internal/nvmeof/tests/ -run TestRealGateway"]

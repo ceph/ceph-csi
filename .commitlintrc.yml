@@ -44,3 +44,4 @@ rules:
       - revert
       - util
       - nfs
+      - nvmeof

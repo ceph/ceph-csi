@@ -1,8 +1,6 @@
 module github.com/ceph/ceph-csi
 
-go 1.24.0
-
-toolchain go1.24.2
+go 1.24.4
 
 // our own API
 replace github.com/ceph/ceph-csi/api => ./api
@@ -14,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/aws/aws-sdk-go-v2/service/sts v1.37.0
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
+	github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20250812192600-037de4cfd423
 	github.com/ceph/go-ceph v0.34.0
 	github.com/container-storage-interface/spec v1.11.0
 	github.com/csi-addons/kubernetes-csi-addons v0.13.0
