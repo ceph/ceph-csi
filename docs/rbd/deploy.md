@@ -74,11 +74,17 @@ make image-cephcsi
 | `stripeCount`                                                                                       | no                   | objects to stripe over before looping                                                                                                                                                                                                                                                              |
 | `objectSize`                                                                                        | no                   | object size in bytes                                                                                                                                                                                                                                                                               |
 | `baseIops`                                                                                          | no                   | the base limit of operations per second |
+| `maxIops`                                                                                           | no                   | the max limit of operations per second  |
 | `baseReadIops`                                                                                      | no                   | the base limit of read operations per second |
+| `maxReadIops`                                                                                       | no                   | the max limit of read operations per second |
 | `baseWriteIops`                                                                                     | no                   | the base limit of write operations per second |
+| `maxWriteIops`                                                                                      | no                   | the max limit of write operations per second |
 | `baseBps`                                                                                           | no                   | the base limit of bytes per second |
+| `maxBps`                                                                                            | no                   | the max limit of bytes per second |
 | `baseReadBps`                                                                                       | no                   | the base limit of read bytes per second |
+| `maxReadBps`                                                                                        | no                   | the max limit of read bytes per second |
 | `baseWriteBps`                                                                                      | no                   | the base limit of write bytes per second |
+| `maxWriteBps`                                                                                       | no                   | the max limit of write bytes per second |
 | `iopsPerGiB`                                                                                        | no                   | the limit of operations per GiB |
 | `readIopsPerGiB`                                                                                    | no                   | the limit of read operations per GiB |
 | `writeIopsPerGiB`                                                                                   | no                   | the limit of write operations per GiB |

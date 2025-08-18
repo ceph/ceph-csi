@@ -4714,12 +4714,22 @@ var _ = Describe("RBD", func() {
 
 			By("validate rbd image qos", func() {
 				var (
+					baseIops         = "3000"
+					maxIops          = "15000"
 					baseReadIops     = "2000"
+					maxReadIops      = "10000"
 					baseWriteIops    = "1000"
+					maxWriteIops     = "5000"
+					baseBps          = "314572800"
+					maxBps           = "1572864000"
 					baseReadBps      = "209715200"
+					maxReadBps       = "1048576000"
 					baseWriteBps     = "104857600"
+					maxWriteBps      = "524288000"
+					iopsPerGiB       = "30"
 					readIopsPerGiB   = "20"
 					writeIopsPerGiB  = "10"
+					bpsPerGiB        = "3145728"
 					readBpsPerGiB    = "2097152"
 					writeBpsPerGiB   = "1048576"
 					baseVolSizeBytes = "21474836480"
@@ -4983,6 +4993,105 @@ var _ = Describe("RBD", func() {
 				err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
 				if err != nil {
 					logAndFail("failed to delete PVC: %v", err)
+				}
+
+				qosParameters = map[string]string{
+					"baseIops":         baseIops,
+					"maxIops":          maxIops,
+					"baseReadIops":     baseReadIops,
+					"maxReadIops":      maxReadIops,
+					"baseWriteIops":    baseWriteIops,
+					"maxWriteIops":     maxWriteIops,
+					"baseBps":          baseBps,
+					"maxBps":           maxBps,
+					"baseReadBps":      baseReadBps,
+					"maxReadBps":       maxReadBps,
+					"baseWriteBps":     baseWriteBps,
+					"maxWriteBps":      maxWriteBps,
+					"iopsPerGiB":       iopsPerGiB,
+					"readIopsPerGiB":   readIopsPerGiB,
+					"writeIopsPerGiB":  writeIopsPerGiB,
+					"bpsPerGiB":        bpsPerGiB,
+					"readBpsPerGiB":    readBpsPerGiB,
+					"writeBpsPerGiB":   writeBpsPerGiB,
+					"baseVolSizeBytes": baseVolSizeBytes,
+				}
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					qosParameters,
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+				pvc, err = loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC and application: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+				wants3 := map[string]string{
+					"rbd_qos_iops_limit":       "8400",
+					"rbd_qos_read_iops_limit":  "5600",
+					"rbd_qos_write_iops_limit": "2800",
+					"rbd_qos_bps_limit":        "880803840",
+					"rbd_qos_read_bps_limit":   "587202560",
+					"rbd_qos_write_bps_limit":  "293601280",
+				}
+				err = validateQOS(f, pvc, wants3)
+				if err != nil {
+					logAndFail("failed to validate qos: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+
+				pvc, err = loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("600Gi")
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC and application: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+				wants4 := map[string]string{
+					"rbd_qos_iops_limit":       "15000",
+					"rbd_qos_read_iops_limit":  "10000",
+					"rbd_qos_write_iops_limit": "5000",
+					"rbd_qos_bps_limit":        "1572864000",
+					"rbd_qos_read_bps_limit":   "1048576000",
+					"rbd_qos_write_bps_limit":  "524288000",
+				}
+				err = validateQOS(f, pvc, wants4)
+				if err != nil {
+					logAndFail("failed to validate qos: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
 				}
 
 				// END: validate created backend rbd images

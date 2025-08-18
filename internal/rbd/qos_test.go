@@ -130,4 +130,57 @@ func TestSetQOS(t *testing.T) {
 		t.Errorf("SetQOS failed: %v", err)
 	}
 	checkQOS(t, rv.QosParameters, wants)
+
+	tests = map[string]string{
+		baseIops:         "3000",
+		maxIops:          "15000",
+		baseReadIops:     "2000",
+		maxReadIops:      "10000",
+		baseWriteIops:    "1000",
+		maxWriteIops:     "5000",
+		baseBps:          "314572800",
+		maxBps:           "1572864000",
+		baseReadBps:      "209715200",
+		maxReadBps:       "1048576000",
+		baseWriteBps:     "104857600",
+		maxWriteBps:      "524288000",
+		iopsPerGiB:       "30",
+		readIopsPerGiB:   "20",
+		writeIopsPerGiB:  "10",
+		bpsPerGiB:        "3145728",
+		readBpsPerGiB:    "2097152",
+		writeBpsPerGiB:   "1048576",
+		baseVolSizeBytes: "21474836480",
+	}
+	wants = map[string]string{
+		iopsLimit:      "8400",
+		readIopsLimit:  "5600",
+		writeIopsLimit: "2800",
+		bpsLimit:       "880803840",
+		readBpsLimit:   "587202560",
+		writeBpsLimit:  "293601280",
+	}
+	rv = rbdVolume{}
+	rv.RequestedVolSize = int64(oneGB) * 200
+	err = rv.SetQOS(ctx, tests)
+	if err != nil {
+		t.Errorf("SetQOS failed: %v", err)
+	}
+	checkQOS(t, rv.QosParameters, wants)
+
+	wants = map[string]string{
+		iopsLimit:      "15000",
+		readIopsLimit:  "10000",
+		writeIopsLimit: "5000",
+		bpsLimit:       "1572864000",
+		readBpsLimit:   "1048576000",
+		writeBpsLimit:  "524288000",
+	}
+	rv = rbdVolume{}
+	rv.RequestedVolSize = int64(oneGB) * 600
+	err = rv.SetQOS(ctx, tests)
+	if err != nil {
+		t.Errorf("SetQOS failed: %v", err)
+	}
+	checkQOS(t, rv.QosParameters, wants)
 }
