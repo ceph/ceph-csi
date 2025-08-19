@@ -61,6 +61,7 @@ spec:
             - "--rbdsoftmaxclonedepth=4"
             - "--enableprofiling=false"
             - "--setmetadata=true"
+            # - "--enable-fencing=true"
           env:
             - name: POD_IP
               valueFrom:
