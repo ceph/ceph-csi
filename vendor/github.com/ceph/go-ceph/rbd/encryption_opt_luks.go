@@ -1,4 +1,4 @@
-//go:build !octopus && !pacific && !quincy && ceph_preview
+//go:build !octopus && !pacific && !quincy
 
 package rbd
 
