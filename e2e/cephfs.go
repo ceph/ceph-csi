@@ -99,9 +99,10 @@ func createORDeleteCephfsResources(action kubectlAction) {
 		},
 		// the provisioner itself
 		&yamlResourceNamespaced{
-			filename:   cephFSDirPath + cephFSProvisioner,
-			namespace:  cephCSINamespace,
-			oneReplica: true,
+			filename:      cephFSDirPath + cephFSProvisioner,
+			namespace:     cephCSINamespace,
+			oneReplica:    true,
+			enableFencing: true,
 		},
 		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
@@ -110,8 +111,9 @@ func createORDeleteCephfsResources(action kubectlAction) {
 		},
 		// the node-plugin itself
 		&yamlResourceNamespaced{
-			filename:  cephFSDirPath + cephFSNodePlugin,
-			namespace: cephCSINamespace,
+			filename:      cephFSDirPath + cephFSNodePlugin,
+			namespace:     cephCSINamespace,
+			enableFencing: true,
 		},
 	}
 
@@ -360,6 +362,26 @@ var _ = Describe(cephfsType, func() {
 					}
 				})
 			}
+
+			By("verify client address metadata exists", func() {
+				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+
+				err = verifyClientAddressMetadataExists(f, pvcPath, appPath, cephfsType)
+				if err != nil {
+					framework.Failf("failed to verify client address metadata exists: %v", err)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
 
 			By("verify PVC and App Binding with volumeBindingMode:WaitForFirstConsumer", func() {
 				err := createCephfsStorageClassWaitForFirstConsumer(f.ClientSet, f, true, nil)
@@ -1934,6 +1956,26 @@ var _ = Describe(cephfsType, func() {
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					logAndFail("failed to create PVC and app: %v", err)
+				}
+
+				// Verify client address metadata of snapshot-backed PVC.
+				appClone, err = getPod(f.ClientSet, appClone.Namespace, appClone.Name)
+				if err != nil {
+					logAndFail("failed to get app pod: %v", err)
+				}
+				backingSubvolumeNameData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+				if err != nil {
+					logAndFail("failed to get backing subvolume name from PVC: %v", err)
+				}
+				backingSnapshotName, err := getSnapName(snap.Namespace, snap.Name)
+				if err != nil {
+					logAndFail("failed to get backing snapshot name: %v", err)
+				}
+				err = verifyClientAddressMetadataSnapshotBacked(
+					f, pvcClone, appClone, backingSubvolumeNameData.imageName, backingSnapshotName,
+				)
+				if err != nil {
+					logAndFail("failed to verify client address metadata of snapshot-backed PVC: %v", err)
 				}
 
 				// Snapshot-backed volume shouldn't contribute to total subvolume count.
