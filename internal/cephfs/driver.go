@@ -134,22 +134,14 @@ func (fs *Driver) Run(conf *util.Config) {
 	}
 
 	if conf.IsControllerServer || !conf.IsNodeServer {
-		controllerServiceCapabilities := []csi.ControllerServiceCapability_RPC_Type{
+		fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 			csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
-		}
-		// if fencing is enabled, we can add the PUBLISH_UNPUBLISH_VOLUME capability.
-		if fs.cd.IsFencingEnabled() {
-			controllerServiceCapabilities = append(
-				controllerServiceCapabilities,
-				csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
-			)
-		}
-
-		fs.cd.AddControllerServiceCapabilities(controllerServiceCapabilities)
+			csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		})
 		fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
 			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 			csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,

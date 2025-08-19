@@ -274,7 +274,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = ns.setClientAddress(ctx, volOptions)
+	err = ns.setClientAddress(ctx, req.GetVolumeId(), req.GetSecrets(), volOptions)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -336,17 +336,18 @@ func (ns *NodeServer) NodeStageVolume(
 // setClientAddress extracts the client IP address and stores it in the subvolume metadata.
 // The connection.GetAddrs() method returns an address in the format "10.244.0.1:0/2686266785".
 // We parse this to extract just the IP address portion (e.g., "10.244.0.1") and store in metadata.
-// If '--enable-fencing' flag is set to false in CSI driver configuration, this function does nothing.
+// If the '--enable-fencing' flag is set to false in CSI driver configuration or if the volume is static
+// this function does nothing.
 func (ns *NodeServer) setClientAddress(
 	ctx context.Context,
+	volumeId string,
+	secrets map[string]string,
 	volOptions *store.VolumeOptions,
 ) error {
-	if !ns.Driver.IsFencingEnabled() {
+	if !ns.Driver.IsFencingEnabled() || !volOptions.ProvisionVolume {
 		return nil
 	}
 
-	nodeId := ns.Driver.GetNodeID()
-	metadataKey := core.GetClientAddressKey(nodeId)
 	conn := volOptions.GetConnection()
 	address, err := conn.GetAddrs()
 	if err != nil {
@@ -360,11 +361,37 @@ func (ns *NodeServer) setClientAddress(
 		return fmt.Errorf("failed to parse client address: %w", err)
 	}
 
-	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "", true)
+	nodeId := ns.Driver.GetNodeID()
+	metadataKey := core.GetClientAddressKey(volumeId, nodeId)
 	params := map[string]string{metadataKey: ipAddress}
+	if volOptions.BackingSnapshot {
+		cr, err := util.NewAdminCredentials(secrets)
+		if err != nil {
+			return fmt.Errorf("failed to create credentials from secrets: %w", err)
+		}
+		defer cr.DeleteCredentials()
+
+		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, cr, secrets, "", true)
+		if err != nil {
+			return err
+		}
+		defer volOpt.Destroy()
+		snapClient := core.NewSnapshot(conn, sid.FsSnapshotName, volOpt.ClusterID, "", true, &volOpt.SubVolume)
+		if err = snapClient.SetAllSnapshotMetadata(params); err != nil {
+			return fmt.Errorf("failed to set client address metadata %s for subvolume snapshot %s/%s: %w",
+				metadataKey, sid.FsSubvolName, sid.FsSnapshotName, err)
+		}
+
+		log.DebugLog(ctx, "client address %s set in metadata %s for subvolume snapshot %s/%s",
+			address, metadataKey, sid.FsSubvolName, sid.FsSnapshotName)
+
+		return nil
+	}
+
+	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "", true)
 	err = subvolumeClient.SetAllMetadata(params)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to set client address for subvolume %s: %v", volOptions.VolID, err)
+		log.ErrorLog(ctx, "failed to set client address for subvolume %s: %v", volOptions.SubVolume.VolID, err)
 	}
 
 	log.DebugLog(ctx, "client address %s set in metadata %s for subvolume %s",
