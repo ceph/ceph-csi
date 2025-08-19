@@ -935,6 +935,10 @@ func enableReadAffinityInTemplate(template string) string {
 	return strings.ReplaceAll(template, "# - \"--enable-read-affinity=true\"", "- \"--enable-read-affinity=true\"")
 }
 
+func enableFencingInTemplate(template string) string {
+	return strings.ReplaceAll(template, "# - \"--enable-fencing=true\"", "- \"--enable-fencing=true\"")
+}
+
 func addCrsuhLocationLabels(template, labels string) string {
 	return strings.ReplaceAll(template, "# - \"--crush-location-labels=topology.io/zone,topology.io/rack\"",
 		"- \"--crush-location-labels="+labels+"\"")

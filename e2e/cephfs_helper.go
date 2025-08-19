@@ -109,6 +109,9 @@ func updateStorageClassParameters(sc *scv1.StorageClass, params map[string]strin
 	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = cephFSProvisionerSecretName
 
+	sc.Parameters["csi.storage.k8s.io/controller-publish-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/controller-publish-secret-name"] = cephFSProvisionerSecretName
+
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = cephFSNodePluginSecretName
 
@@ -294,6 +297,27 @@ func listCephFSSubvolumeMetadata(
 	return metadata, nil
 }
 
+func getCephFSSubvolumeMetadata(
+	f *framework.Framework,
+	filesystem,
+	subvolume,
+	groupname,
+	key string,
+) (string, error) {
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume metadata get %s %s --group_name=%s %s", filesystem, subvolume, groupname, key),
+		rookNamespace)
+	if err != nil {
+		return "", err
+	}
+	if stdErr != "" {
+		return "", fmt.Errorf("%s", stdErr)
+	}
+
+	return strings.TrimSpace(stdout), nil
+}
+
 type cephfsSnapshotMetadata struct {
 	VolSnapNameKey        string `json:"csi.storage.k8s.io/volumesnapshot/name"`
 	VolSnapNamespaceKey   string `json:"csi.storage.k8s.io/volumesnapshot/namespace"`
@@ -327,6 +351,28 @@ func listCephFSSnapshotMetadata(
 	}
 
 	return metadata, nil
+}
+
+func getCephFSSnapshotMetadata(
+	f *framework.Framework,
+	filesystem,
+	subvolume,
+	snapshot,
+	groupname,
+	key string,
+) (string, error) {
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume snapshot metadata get %s %s %s %s --group_name=%s", filesystem, subvolume, snapshot, key, groupname),
+		rookNamespace)
+	if err != nil {
+		return "", err
+	}
+	if stdErr != "" {
+		return "", fmt.Errorf("%s", stdErr)
+	}
+
+	return strings.TrimSpace(stdout), nil
 }
 
 type cephfsSnapshot struct {
@@ -616,4 +662,31 @@ func validateFscryptClone(
 			framework.Logf("passphrase destroyed, but message returned: %s", msg)
 		}
 	}
+}
+
+func verifyClientAddressMetadataSnapshotBacked(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	pod *v1.Pod,
+	subVolumeName, snapshotName string,
+) error {
+	nodeId := pod.Spec.NodeName
+	_, pvObject, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PVC and PV: %w", err)
+	}
+	volumeHandle := pvObject.Spec.CSI.VolumeHandle
+
+	metadataKey := fmt.Sprintf(".cephfs.csi.ceph.com/clientaddress/%s/%s", volumeHandle, nodeId)
+	metadataValue, err := getCephFSSnapshotMetadata(
+		f, fileSystemName, subVolumeName, snapshotName, subvolumegroup, metadataKey)
+	if err != nil {
+		return fmt.Errorf("failed to get subvolume snapshot metadata %s: %w", metadataKey, err)
+	}
+
+	if metadataValue == "" {
+		return fmt.Errorf("client address metadata %s value is empty", metadataKey)
+	}
+
+	return nil
 }
