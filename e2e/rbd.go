@@ -185,9 +185,10 @@ func createORDeleteRbdResources(action kubectlAction) {
 		},
 		// the provisioner itself
 		&yamlResourceNamespaced{
-			filename:   rbdDirPath + rbdProvisioner,
-			namespace:  cephCSINamespace,
-			oneReplica: true,
+			filename:      rbdDirPath + rbdProvisioner,
+			namespace:     cephCSINamespace,
+			oneReplica:    true,
+			enableFencing: true,
 		},
 		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
@@ -201,6 +202,7 @@ func createORDeleteRbdResources(action kubectlAction) {
 			domainLabel:         nodeRegionLabel + "," + nodeZoneLabel,
 			enableReadAffinity:  true,
 			crushLocationLabels: crushLocationRegionLabel + "," + crushLocationZoneLabel,
+			enableFencing:       true,
 		},
 	}
 
@@ -529,6 +531,17 @@ var _ = Describe("RBD", func() {
 					}
 				})
 			}
+
+			By("verify client address metadata exists", func() {
+				err := verifyClientAddressMetadataExists(f, pvcPath, appPath, rbdType)
+				if err != nil {
+					framework.Failf("failed to verify client address metadata exists: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
 
 			By("verify readAffinity support", func() {
 				err := verifyReadAffinity(f, pvcPath, appPath,
