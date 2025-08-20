@@ -376,22 +376,28 @@ func cleanupNVMeoFResources(
 	return nil
 }
 
+// VolumeContext metadata keys.
 const (
 	// NVMe-oF resource info.
-	mdSubsystemNQN  = ".rbd.nvmeof.SubsystemNQN"
-	mdNamespaceID   = ".rbd.nvmeof.NamespaceID"
-	mdNamespaceUUID = ".rbd.nvmeof.NamespaceUUID"
-	mdHostNQN       = ".rbd.nvmeof.HostNQN"
+	vcSubsystemNQN  = "SubsystemNQN"
+	vcNamespaceID   = "NamespaceID"
+	vcNamespaceUUID = "NamespaceUUID"
+	vcHostNQN       = "HostNQN"
 
 	// Listener info.
-	mdListenerAddress  = ".rbd.nvmeof.ListenerAddress"
-	mdListenerPort     = ".rbd.nvmeof.ListenerPort"
-	mdListenerHostname = ".rbd.nvmeof.ListenerHostname"
+	vcListenerAddress  = "ListenerAddress"
+	vcListenerPort     = "ListenerPort"
+	vcListenerHostname = "ListenerHostname"
 
 	// Gateway management info.
-	mdGatewayAddress = ".rbd.nvmeof.GatewayAddress"
-	mdGatewayPort    = ".rbd.nvmeof.GatewayPort"
+	vcGatewayAddress = "GatewayAddress"
+	vcGatewayPort    = "GatewayPort"
 )
+
+// toRBDMetadataKey converts clean volume context key to prefixed RBD metadata key.
+func toRBDMetadataKey(vcKey string) string {
+	return ".rbd.nvmeof." + vcKey
+}
 
 // populateVolumeContext adds NVMe-oF information to volume context for NodeServer.
 func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) {
@@ -401,15 +407,15 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) {
 	listenerPortStr := strconv.FormatUint(uint64(data.ListenerInfo.Port), 10)
 	gatewayManagementInfoPortStr := strconv.FormatUint(uint64(data.GatewayManagementInfo.Port), 10)
 
-	volume.VolumeContext[mdSubsystemNQN] = data.SubsystemNQN
-	volume.VolumeContext[mdNamespaceID] = strconv.FormatUint(uint64(data.NamespaceID), 10)
-	volume.VolumeContext[mdNamespaceUUID] = data.NamespaceUUID
-	volume.VolumeContext[mdHostNQN] = data.HostNQN
-	volume.VolumeContext[mdListenerAddress] = data.ListenerInfo.Address
-	volume.VolumeContext[mdListenerPort] = listenerPortStr
-	volume.VolumeContext[mdListenerHostname] = data.ListenerInfo.Hostname
-	volume.VolumeContext[mdGatewayAddress] = data.GatewayManagementInfo.Address
-	volume.VolumeContext[mdGatewayPort] = gatewayManagementInfoPortStr
+	volume.VolumeContext[vcSubsystemNQN] = data.SubsystemNQN
+	volume.VolumeContext[vcNamespaceID] = strconv.FormatUint(uint64(data.NamespaceID), 10)
+	volume.VolumeContext[vcNamespaceUUID] = data.NamespaceUUID
+	volume.VolumeContext[vcHostNQN] = data.HostNQN
+	volume.VolumeContext[vcListenerAddress] = data.ListenerInfo.Address
+	volume.VolumeContext[vcListenerPort] = listenerPortStr
+	volume.VolumeContext[vcListenerHostname] = data.ListenerInfo.Hostname
+	volume.VolumeContext[vcGatewayAddress] = data.GatewayManagementInfo.Address
+	volume.VolumeContext[vcGatewayPort] = gatewayManagementInfoPortStr
 }
 
 // storeNVMeoFMetadata stores all NVMe-oF data in RBD volume metadata for cleanup operations.
@@ -436,19 +442,19 @@ func (cs *Server) storeNVMeoFMetadata(
 	// Prepare all metadata entries
 	metadata := map[string]string{
 		// NVMe-oF resource info
-		mdSubsystemNQN:  nvmeofData.SubsystemNQN,
-		mdNamespaceID:   strconv.FormatUint(uint64(nvmeofData.NamespaceID), 10),
-		mdNamespaceUUID: nvmeofData.NamespaceUUID,
-		mdHostNQN:       nvmeofData.HostNQN,
+		toRBDMetadataKey(vcSubsystemNQN):  nvmeofData.SubsystemNQN,
+		toRBDMetadataKey(vcNamespaceID):   strconv.FormatUint(uint64(nvmeofData.NamespaceID), 10),
+		toRBDMetadataKey(vcNamespaceUUID): nvmeofData.NamespaceUUID,
+		toRBDMetadataKey(vcHostNQN):       nvmeofData.HostNQN,
 
 		// Listener info
-		mdListenerAddress:  nvmeofData.ListenerInfo.Address,
-		mdListenerPort:     listenerInfoPortStr,
-		mdListenerHostname: nvmeofData.ListenerInfo.Hostname,
+		toRBDMetadataKey(vcListenerAddress):  nvmeofData.ListenerInfo.Address,
+		toRBDMetadataKey(vcListenerPort):     listenerInfoPortStr,
+		toRBDMetadataKey(vcListenerHostname): nvmeofData.ListenerInfo.Hostname,
 
 		// Gateway management info
-		mdGatewayAddress: nvmeofData.GatewayManagementInfo.Address,
-		mdGatewayPort:    gatewayManagementInfoPortStr,
+		toRBDMetadataKey(vcGatewayAddress): nvmeofData.GatewayManagementInfo.Address,
+		toRBDMetadataKey(vcGatewayPort):    gatewayManagementInfoPortStr,
 	}
 
 	// Store all metadata entries
@@ -493,15 +499,15 @@ func (cs *Server) getNVMeoFMetadata(
 
 	// Required metadata keys
 	requiredKeys := []string{
-		mdSubsystemNQN,
-		mdNamespaceID,
-		mdNamespaceUUID,
-		mdHostNQN,
-		mdListenerAddress,
-		mdListenerPort,
-		mdListenerHostname,
-		mdGatewayAddress,
-		mdGatewayPort,
+		toRBDMetadataKey(vcSubsystemNQN),
+		toRBDMetadataKey(vcNamespaceID),
+		toRBDMetadataKey(vcNamespaceUUID),
+		toRBDMetadataKey(vcHostNQN),
+		toRBDMetadataKey(vcListenerAddress),
+		toRBDMetadataKey(vcListenerPort),
+		toRBDMetadataKey(vcListenerHostname),
+		toRBDMetadataKey(vcGatewayAddress),
+		toRBDMetadataKey(vcGatewayPort),
 	}
 
 	// Retrieve all metadata values
@@ -517,35 +523,35 @@ func (cs *Server) getNVMeoFMetadata(
 	}
 
 	// Parse namespace ID
-	nsid, err := strconv.ParseUint(metadata[mdNamespaceID], 10, 32)
+	nsid, err := strconv.ParseUint(metadata[toRBDMetadataKey(vcNamespaceID)], 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("invalid namespace ID: %w", err)
 	}
 
-	listenerInfoPort, err := strconv.ParseUint(metadata[mdListenerPort], 10, 32)
+	listenerInfoPort, err := strconv.ParseUint(metadata[toRBDMetadataKey(vcListenerPort)], 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("invalid listener port: %w", err)
 	}
-	gatewayPort, err := strconv.ParseUint(metadata[mdGatewayPort], 10, 32)
+	gatewayPort, err := strconv.ParseUint(metadata[toRBDMetadataKey(vcGatewayPort)], 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("invalid gateway port: %w", err)
 	}
 	// Construct NVMe-oF volume data
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
-		SubsystemNQN:  metadata[mdSubsystemNQN],
+		SubsystemNQN:  metadata[toRBDMetadataKey(vcSubsystemNQN)],
 		NamespaceID:   uint32(nsid),
-		NamespaceUUID: metadata[mdNamespaceUUID],
-		HostNQN:       metadata[mdHostNQN],
+		NamespaceUUID: metadata[toRBDMetadataKey(vcNamespaceUUID)],
+		HostNQN:       metadata[toRBDMetadataKey(vcHostNQN)],
 		ListenerInfo: nvmeof.ListenerDetails{
 			GatewayAddress: nvmeof.GatewayAddress{
-				Address: metadata[mdListenerAddress],
+				Address: metadata[toRBDMetadataKey(vcListenerAddress)],
 				Port:    uint32(listenerInfoPort),
 			},
-			Hostname: metadata[mdListenerHostname],
+			Hostname: metadata[toRBDMetadataKey(vcListenerHostname)],
 		},
 		// Store gateway management info separately
 		GatewayManagementInfo: nvmeof.GatewayConfig{
-			Address: metadata[mdGatewayAddress],
+			Address: metadata[toRBDMetadataKey(vcGatewayAddress)],
 			Port:    uint32(gatewayPort),
 		},
 	}
