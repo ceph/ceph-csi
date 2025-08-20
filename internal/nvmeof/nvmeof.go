@@ -52,16 +52,6 @@ type ListenerDetails struct {
 // Config holds gateway client configuration.
 type GatewayConfig = GatewayAddress
 
-// NVMeoFVolumeData holds the data required for an NVMe-oF volume.
-type NVMeoFVolumeData struct {
-	SubsystemNQN          string
-	NamespaceID           uint32
-	NamespaceUUID         string
-	HostNQN               string
-	ListenerInfo          ListenerDetails
-	GatewayManagementInfo GatewayConfig
-}
-
 // GatewayClient wraps the gRPC client and connection details.
 type GatewayRpcClient struct {
 	config    *GatewayConfig
