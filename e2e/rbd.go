@@ -185,9 +185,10 @@ func createORDeleteRbdResources(action kubectlAction) {
 		},
 		// the provisioner itself
 		&yamlResourceNamespaced{
-			filename:   rbdDirPath + rbdProvisioner,
-			namespace:  cephCSINamespace,
-			oneReplica: true,
+			filename:      rbdDirPath + rbdProvisioner,
+			namespace:     cephCSINamespace,
+			oneReplica:    true,
+			enableFencing: true,
 		},
 		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
@@ -201,6 +202,7 @@ func createORDeleteRbdResources(action kubectlAction) {
 			domainLabel:         nodeRegionLabel + "," + nodeZoneLabel,
 			enableReadAffinity:  true,
 			crushLocationLabels: crushLocationRegionLabel + "," + crushLocationZoneLabel,
+			enableFencing:       true,
 		},
 	}
 
@@ -529,6 +531,17 @@ var _ = Describe("RBD", func() {
 					}
 				})
 			}
+
+			By("verify client address metadata exists", func() {
+				err := verifyClientAddressMetadataExists(f, pvcPath, appPath, rbdType)
+				if err != nil {
+					framework.Failf("failed to verify client address metadata exists: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
 
 			By("verify readAffinity support", func() {
 				err := verifyReadAffinity(f, pvcPath, appPath,
@@ -907,14 +920,18 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-				pvcName := app.Spec.Volumes[0].Name
+				pvcName := fmt.Sprintf("%s-%s", app.Name, app.Spec.Volumes[0].Name)
+				pvc, err := getPersistentVolumeClaim(c, app.Namespace, pvcName)
+				if err != nil {
+					framework.Failf("failed to get pvc: %v", err)
+				}
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					logAndFail("failed to delete application: %v", err)
 				}
 
 				// wait for the associated PVC to be deleted
-				err = waitForPVCToBeDeleted(f.ClientSet, app.Namespace, pvcName, deployTimeout)
+				err = waitForPVToBeDeleted(f.ClientSet, pvc.Spec.VolumeName, deployTimeout)
 				if err != nil {
 					logAndFail("failed to wait for PVC deletion: %v", err)
 				}

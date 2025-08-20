@@ -68,6 +68,13 @@ type ControllerServer struct {
 	SetMetadata bool
 }
 
+// subvolumeMetadataHandler holds the metadata handling functions.
+type subvolumeMetadataHandler struct {
+	logSubvolumeName     string
+	unsetAllMetadataFunc func([]string) error
+	listMetadataFunc     func() (map[string]string, error)
+}
+
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities.
 func (cs *ControllerServer) createBackingVolume(
 	ctx context.Context,
@@ -1143,12 +1150,36 @@ func (cs *ControllerServer) ControllerPublishVolume(
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
 	}
 
-	if acquired := cs.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
+	volumeId := req.GetVolumeId()
+	if acquired := cs.VolumeLocks.TryAcquire(volumeId); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeId)
 	}
-	defer cs.VolumeLocks.Release(req.GetVolumeId())
+	defer cs.VolumeLocks.Release(volumeId)
 
-	err := cs.unfenceNode(ctx, req.GetNodeId(), req.GetVolumeId(), req.GetSecrets())
+	secrets := req.GetSecrets()
+	if secrets == nil {
+		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeId, util.CephFsType)
+		if err != nil {
+			log.WarningLog(ctx, "controller publish secret not found: %v", err)
+
+			// If the secret is not found, return success to not break for older PVs
+			// without controller-publish secrets.
+			return &csi.ControllerPublishVolumeResponse{}, nil
+		}
+
+		secrets, err = k8s.GetSecret(secretName, secretNamespace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
+		}
+	}
+
+	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil, secrets, cs.ClusterName, cs.SetMetadata)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v", volumeId, err)
+	}
+	defer volOptions.Destroy()
+
+	err = cs.unfenceNode(ctx, volumeId, req.GetNodeId(), secrets, volOptions)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -1173,12 +1204,36 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
 	}
 
-	if acquired := cs.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
+	volumeId := req.GetVolumeId()
+	if acquired := cs.VolumeLocks.TryAcquire(volumeId); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeId)
 	}
-	defer cs.VolumeLocks.Release(req.GetVolumeId())
+	defer cs.VolumeLocks.Release(volumeId)
 
-	err := cs.fenceNode(ctx, req.GetNodeId(), req.GetVolumeId(), req.GetSecrets())
+	secrets := req.GetSecrets()
+	if secrets == nil {
+		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeId, util.CephFsType)
+		if err != nil {
+			log.WarningLog(ctx, "controller publish secret not found: %v", err)
+
+			// If the secret is not found, return success to not break for older PVs
+			// without controller-publish secrets.
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+
+		secrets, err = k8s.GetSecret(secretName, secretNamespace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
+		}
+	}
+
+	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil, secrets, cs.ClusterName, cs.SetMetadata)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v", volumeId, err)
+	}
+	defer volOptions.Destroy()
+
+	err = cs.fenceNode(ctx, volumeId, req.GetNodeId(), secrets, volOptions)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -1186,13 +1241,57 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
+// getSubvolumeMetadataHandler returns the appropriate metadata handler based on whether
+// the volume is a backing snapshot or a regular subvolume.
+func (cs *ControllerServer) getSubvolumeMetadataHandler(
+	ctx context.Context,
+	volOptions *store.VolumeOptions,
+	secrets map[string]string,
+) (*subvolumeMetadataHandler, error) {
+	conn := volOptions.GetConnection()
+	cr, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create credentials from secrets: %w", err)
+	}
+	defer cr.DeleteCredentials()
+
+	if volOptions.BackingSnapshot {
+		sVolOpts, _, sid, err := store.NewSnapshotOptionsFromID(
+			ctx, volOptions.BackingSnapshotID, cr, secrets, cs.ClusterName, cs.SetMetadata,
+		)
+		if err != nil {
+			return nil, err
+		}
+		defer sVolOpts.Destroy()
+		snapClient := core.NewSnapshot(
+			conn, sid.FsSnapshotName, sVolOpts.ClusterID, cs.ClusterName, cs.SetMetadata, &sVolOpts.SubVolume,
+		)
+
+		return &subvolumeMetadataHandler{
+			logSubvolumeName:     fmt.Sprintf("subvolume snapshot %s/%s", sid.FsSubvolName, sid.FsSnapshotName),
+			unsetAllMetadataFunc: snapClient.UnsetAllSnapshotMetadata,
+			listMetadataFunc:     snapClient.ListSnapshotMetadata,
+		}, nil
+	}
+
+	subvolumeClient := core.NewSubVolume(
+		conn, &volOptions.SubVolume, volOptions.ClusterID, cs.ClusterName, cs.SetMetadata,
+	)
+
+	return &subvolumeMetadataHandler{
+		logSubvolumeName:     "subvolume " + volOptions.SubVolume.VolID,
+		unsetAllMetadataFunc: subvolumeClient.UnsetAllMetadata,
+		listMetadataFunc:     subvolumeClient.ListMetadata,
+	}, nil
+}
+
 // fenceNode attempts to fence a client node from accessing the CephFS subvolume.
 //
 // Parameters:
+//   - volumeId: The ID of the volume that may be fenced.
 //   - nodeId: The ID of the node that may be fenced.
-//   - volumeId: The CSI volume ID corresponding to the CephFS subvolume.
-//   - secrets: A map of secrets. If nil, the function attempts to retrieve the
-//     controller publish secret from the ceph-csi-config ConfigMap.
+//   - secrets: The secrets to access the Ceph cluster.
+//   - volOptions: The volume options for the CephFS subvolume.
 //
 // Behavior:
 //   - If `IsFencingEnabled` is false, the function returns immediately without
@@ -1205,8 +1304,9 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 // Returns an error if any step in the fencing process fails.
 func (cs *ControllerServer) fenceNode(
 	ctx context.Context,
-	nodeId, volumeId string,
+	volumeId, nodeId string,
 	secrets map[string]string,
+	volOptions *store.VolumeOptions,
 ) error {
 	if nodeId == "" {
 		return errors.New("node ID cannot be empty")
@@ -1214,75 +1314,59 @@ func (cs *ControllerServer) fenceNode(
 	if !cs.Driver.IsFencingEnabled() {
 		return nil
 	}
-	if secrets == nil {
-		var vi util.CSIIdentifier
-		err := vi.DecomposeCSIID(volumeId)
-		if err != nil {
-			return fmt.Errorf("error decoding volume ID (%s): %w", volumeId, err)
-		}
 
-		secrets, err = util.GetControllerPublishSecret(vi.ClusterID, util.CephFsType)
-		if err != nil {
-			log.WarningLog(ctx, "controller publish secret not found: %v", err)
-
-			return nil
-		}
-	}
-	credentials, err := util.NewAdminCredentials(secrets)
+	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
 		return fmt.Errorf("failed to create credentials from secrets: %w", err)
 	}
-	defer credentials.DeleteCredentials()
-
-	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil, secrets, cs.ClusterName, cs.SetMetadata)
-	if err != nil {
-		return fmt.Errorf("failed to generate volume from volume ID %s: %w", volumeId, err)
-	}
-	defer volOptions.Destroy()
-
-	volClient := core.NewSubVolume(volOptions.GetConnection(), &volOptions.SubVolume, volOptions.ClusterID,
-		cs.ClusterName, cs.SetMetadata)
+	defer cr.DeleteCredentials()
 
 	isOutOfService, err := k8s.IsNodeOutOfService(nodeId)
 	if err != nil {
 		return fmt.Errorf("failed to check if node %s is out of service: %w", nodeId, err)
 	}
 
-	metadataKey := core.GetClientAddressKey(nodeId)
+	handler, err := cs.getSubvolumeMetadataHandler(ctx, volOptions, secrets)
+	if err != nil {
+		return err
+	}
+
+	metadataKey := core.GetClientAddressKey(volumeId, nodeId)
 	if !isOutOfService {
 		// If the node is not tainted with `out-of-service`,
 		// we remove the client address metadata from the volume metadata.
-		err = volClient.UnsetAllMetadata([]string{metadataKey})
+		err = handler.unsetAllMetadataFunc([]string{metadataKey})
 		if err != nil && !errors.Is(err, core.ErrSubVolMetadataNotSupported) {
 			return fmt.Errorf("failed to remove metadata %s from subvolume %s: %w",
 				metadataKey, volOptions.VolID, err)
 		}
-		log.DebugLog(ctx, "node %s is not out of service, removed metadata %s from subvolume %s if it existed",
-			nodeId, metadataKey, volOptions.VolID)
+		log.DebugLog(ctx, "node %s is not out of service, removed metadata %s from %s if it existed",
+			nodeId, metadataKey, handler.logSubvolumeName)
 
 		return nil
 	}
 
-	metadata, err := volClient.ListMetadata()
+	metadata, err := handler.listMetadataFunc()
 	if err != nil {
-		return fmt.Errorf("failed to list metadata %s for volumeId %s: %w", metadataKey, volumeId, err)
+		return fmt.Errorf("failed to list metadata %s for %s: %w",
+			metadataKey, handler.logSubvolumeName, err)
 	}
 
 	clientAddress, exists := metadata[metadataKey]
 	if !exists {
 		// If the metadata doesn't exist, we do not need to add it to the blocklist
 		// as it does not contain any client address to block.
-		log.DebugLog(ctx, "metadata %s for subvolume %s doesn't exists, skipping unfencing for nodeId %s",
-			metadataKey, volumeId, nodeId)
+		log.DebugLog(ctx, "metadata %s for %s doesn't exists, skipping unfencing for nodeId %s",
+			metadataKey, handler.logSubvolumeName, nodeId)
 
 		return nil
 	}
 
 	if clientAddress == "" {
-		return fmt.Errorf("client address metadata %s for volumeId %s is empty", metadataKey, volumeId)
+		return fmt.Errorf("client address metadata %s for %s is empty", metadataKey, handler.logSubvolumeName)
 	}
 
-	err = util.AddCephBlocklist(ctx, volOptions.Monitors, credentials, clientAddress, false)
+	err = util.AddCephBlocklist(ctx, volOptions.Monitors, cr, clientAddress, false)
 	if err != nil {
 		return fmt.Errorf("failed to add client address to blocklist: %w", err)
 	}
@@ -1294,10 +1378,10 @@ func (cs *ControllerServer) fenceNode(
 // allowing it to access the specified CephFS subvolume again.
 //
 // Parameters:
+//   - volumeId: The ID of the volume to be unfenced.
 //   - nodeId: The ID of the node to be unfenced.
-//   - volumeId: The CSI volume ID associated with the CephFS subvolume.
-//   - secrets: A map of secrets. If nil, the function attempts to retrieve the
-//     controller publish secret from the ceph-csi-config ConfigMap.
+//   - secrets: The secrets to access the Ceph cluster.
+//   - volOptions: The volume options for the CephFS subvolume.
 //
 // Behavior:
 //   - If `IsFencingEnabled` is false, the function returns immediately without
@@ -1310,68 +1394,53 @@ func (cs *ControllerServer) fenceNode(
 // Returns an error if any step in the unfencing process fails.
 func (cs *ControllerServer) unfenceNode(
 	ctx context.Context,
-	nodeId, volumeId string,
+	volumeId, nodeId string,
 	secrets map[string]string,
+	volOptions *store.VolumeOptions,
 ) error {
 	if !cs.Driver.IsFencingEnabled() {
 		return nil
 	}
-	if secrets == nil {
-		var vi util.CSIIdentifier
-		err := vi.DecomposeCSIID(volumeId)
-		if err != nil {
-			return fmt.Errorf("error decoding volume ID (%s): %w", volumeId, err)
-		}
 
-		secrets, err = util.GetControllerPublishSecret(vi.ClusterID, util.CephFsType)
-		if err != nil {
-			log.WarningLog(ctx, "controller publish secret not found: %v", err)
-
-			return nil
-		}
-	}
-	credentials, err := util.NewAdminCredentials(secrets)
+	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
 		return fmt.Errorf("failed to create credentials from secrets: %w", err)
 	}
-	defer credentials.DeleteCredentials()
+	defer cr.DeleteCredentials()
 
-	metadataKey := core.GetClientAddressKey(nodeId)
-	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil,
-		secrets, cs.ClusterName, cs.SetMetadata)
+	handler, err := cs.getSubvolumeMetadataHandler(ctx, volOptions, secrets)
 	if err != nil {
-		return fmt.Errorf("failed to generate volume from volume ID %s: %w", volumeId, err)
+		return err
 	}
-	defer volOptions.Destroy()
 
-	volClient := core.NewSubVolume(volOptions.GetConnection(),
-		&volOptions.SubVolume, volOptions.ClusterID, cs.ClusterName, cs.SetMetadata)
-
-	metadata, err := volClient.ListMetadata()
+	metadataKey := core.GetClientAddressKey(volumeId, nodeId)
+	metadata, err := handler.listMetadataFunc()
 	if err != nil {
-		return fmt.Errorf("failed to list metadata %s for volumeId %s: %w", metadataKey, volumeId, err)
+		return fmt.Errorf("failed to list metadata %s for %s: %w",
+			metadataKey, handler.logSubvolumeName, err)
 	}
 
 	clientAddress, exists := metadata[metadataKey]
 	if !exists {
 		// If the metadata doesn't exist, we do not need to add it to the blocklist
 		// as it does not contain any client address to block.
-		log.DebugLog(ctx, "metadata %s for subvolume %s doesn't exists, skipping unfencing for nodeId %s",
-			metadataKey, volumeId, nodeId)
+		log.DebugLog(ctx, "metadata %s for %s doesn't exists, skipping unfencing for nodeId %s",
+			metadataKey, handler.logSubvolumeName, nodeId)
 
 		return nil
 	}
 
 	if clientAddress == "" {
-		return fmt.Errorf("client address metadata %s for volumeId %s is empty", metadataKey, volumeId)
+		return fmt.Errorf("client address metadata %s for %s is empty",
+			metadataKey, handler.logSubvolumeName)
 	}
 
-	if err = util.RemoveCephBlocklist(ctx, volOptions.Monitors, credentials, clientAddress, "", false); err != nil {
+	if err = util.RemoveCephBlocklist(ctx, volOptions.Monitors, cr, clientAddress, "", false); err != nil {
 		return fmt.Errorf("failed to remove client address %s from blocklist: %w", clientAddress, err)
 	}
 
-	if err = volClient.UnsetAllMetadata([]string{metadataKey}); err != nil {
-		return fmt.Errorf("failed to remove metadata %s from subvolume %s: %w", metadataKey, volOptions.VolID, err)
+	if err = handler.unsetAllMetadataFunc([]string{metadataKey}); err != nil {
+		return fmt.Errorf("failed to remove metadata %s from %s: %w", metadataKey, handler.logSubvolumeName, err)
 	}
 
 	return nil
