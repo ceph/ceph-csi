@@ -47,6 +47,8 @@ type SnapshotClient interface {
 	// UnsetAllSnapshotMetadata unset all the metadata from arg keys on
 	// subvolume snapshot.
 	UnsetAllSnapshotMetadata(keys []string) error
+	// ListSnapshotMetadata lists all the metadata on subvolume snapshot.
+	ListSnapshotMetadata() (map[string]string, error)
 }
 
 // snapshotClient is the implementation of SnapshotClient interface.

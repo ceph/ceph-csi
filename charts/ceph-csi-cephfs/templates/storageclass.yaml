@@ -50,6 +50,12 @@ parameters:
 {{ else }}
   csi.storage.k8s.io/controller-expand-secret-namespace: {{ .Release.Namespace }}
 {{- end }}
+  csi.storage.k8s.io/controller-publish-secret-name: {{ .Values.storageClass.controllerPublishSecret }}
+{{- if .Values.storageClass.controllerPublishSecretNamespace }}
+  csi.storage.k8s.io/controller-publish-secret-namespace: {{ .Values.storageClass.controllerPublishSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/controller-publish-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
   csi.storage.k8s.io/node-stage-secret-name: {{ .Values.storageClass.nodeStageSecret }}
 {{- if .Values.storageClass.nodeStageSecretNamespace }}
   csi.storage.k8s.io/node-stage-secret-namespace: {{ .Values.storageClass.nodeStageSecretNamespace }}

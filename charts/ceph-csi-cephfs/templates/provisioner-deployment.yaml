@@ -100,6 +100,9 @@ spec:
 {{- if .Values.provisioner.clustername }}
             - "--clustername={{ .Values.provisioner.clustername }}"
 {{- end }}
+{{- if .Values.provisioner.fencing }}
+            - "--enable-fencing={{ .Values.provisioner.fencing }}"
+{{- end }}
             - "--setmetadata={{ .Values.provisioner.setmetadata }}"
             - "--logslowopinterval={{ .Values.logSlowOperationInterval }}"
           env:

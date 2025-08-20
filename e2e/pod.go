@@ -406,6 +406,15 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 	})
 }
 
+func getPod(c kubernetes.Interface, namespace, name string) (*v1.Pod, error) {
+	pod, err := c.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app: %w", err)
+	}
+
+	return pod, nil
+}
+
 func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	ctx := context.TODO()
@@ -734,6 +743,123 @@ func verifyReadAffinity(
 	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
 		return fmt.Errorf("failed to delete PVC and application: %w", err)
+	}
+
+	return nil
+}
+
+func verifyClientAddressMetadataExists(
+	f *framework.Framework,
+	pvcPath, appPath string,
+	driverType string,
+) error {
+	// create PVC
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load pvc: %w", err)
+	}
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC: %w", err)
+	}
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load application: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create application: %w", err)
+	}
+
+	pod, err := getPod(f.ClientSet, app.Namespace, app.Name)
+	if err != nil {
+		return fmt.Errorf("failed to get pod: %w", err)
+	}
+	nodeId := pod.Spec.NodeName
+
+	var (
+		metadataKey   string
+		metadataValue string
+		rbdImageSpec  string
+		subVolumeName string
+	)
+
+	_, pvObject, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		framework.Logf("error getting pvc %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+		return fmt.Errorf("failed to get PVC and PV: %w", err)
+	}
+	volumeHandle := pvObject.Spec.CSI.VolumeHandle
+
+	// First, get the metadata while the pod is running to verify it exists
+	switch driverType {
+	case rbdType:
+		metadataKey = fmt.Sprintf(".rbd.csi.ceph.com/clientaddress/%s/%s", volumeHandle, nodeId)
+
+		imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+		if err != nil {
+			return err
+		}
+
+		rbdImageSpec = imageSpec(defaultRBDPool, imageData.imageName)
+		metadataValue, err = getImageMeta(rbdImageSpec, metadataKey, f)
+		if err != nil {
+			return fmt.Errorf("failed to get image metadata %s: %w", metadataKey, err)
+		}
+	case cephfsType:
+		metadataKey = fmt.Sprintf(".cephfs.csi.ceph.com/clientaddress/%s/%s", volumeHandle, nodeId)
+		subVolumeName = pvObject.Spec.CSI.VolumeAttributes["subvolumeName"]
+		metadataValue, err = getCephFSSubvolumeMetadata(
+			f, fileSystemName, subVolumeName, subvolumegroup, metadataKey)
+		if err != nil {
+			return fmt.Errorf("failed to get subvolume metadata %s: %w", metadataKey, err)
+		}
+	}
+
+	if metadataValue == "" {
+		return fmt.Errorf("client address metadata %s value is empty", metadataKey)
+	}
+
+	err = deletePod(pod.Name, pod.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete pod: %w", err)
+	}
+
+	// verify clientaddress metadata is removed after pod deletion
+	// retry up to 3 times with 10-second intervals
+	maxRetries := 3
+	retryInterval := 10 * time.Second
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		switch driverType {
+		case rbdType:
+			metadataValue, err = getImageMeta(rbdImageSpec, metadataKey, f)
+		case cephfsType:
+			metadataValue, err = getCephFSSubvolumeMetadata(
+				f, fileSystemName, subVolumeName, subvolumegroup, metadataKey)
+		}
+
+		if err != nil && strings.Contains(err.Error(), "command terminated with exit code 2") {
+			framework.Logf("clientaddress metadata %s successfully removed", metadataKey)
+			break
+		}
+
+		framework.Logf("clientaddress metadata %s still exists with value %s, retrying (%d/%d)",
+			metadataKey, metadataValue, attempt, maxRetries)
+
+		if attempt == maxRetries {
+			return fmt.Errorf("clientaddress metadata %s still exists with value %s (after %d attempts)",
+				metadataKey, metadataValue, maxRetries)
+		}
+		time.Sleep(retryInterval)
+	}
+
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC: %w", err)
 	}
 
 	return nil

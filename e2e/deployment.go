@@ -242,6 +242,9 @@ type yamlResourceNamespaced struct {
 
 	// enable read affinity support (for RBD)
 	enableReadAffinity bool
+
+	// enable fencing
+	enableFencing bool
 }
 
 func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
@@ -265,6 +268,10 @@ func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
 
 	if yrn.enableReadAffinity {
 		data = enableReadAffinityInTemplate(data)
+	}
+
+	if yrn.enableFencing {
+		data = enableFencingInTemplate(data)
 	}
 
 	if yrn.crushLocationLabels != "" {

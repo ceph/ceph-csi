@@ -226,6 +226,11 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 		return fmt.Errorf("failed to delete pv: %w", err)
 	}
 
+	err = waitForPVToBeDeleted(f.ClientSet, pv.Name, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to validate PV %s is deleted: %w", pv.Name, err)
+	}
+
 	cmd = fmt.Sprintf("rbd rm %s %s", rbdImageName, rbdOptions(defaultRBDPool))
 	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
 
@@ -459,6 +464,11 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath, fsName stri
 	err = c.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete pv: %w", err)
+	}
+
+	err = waitForPVToBeDeleted(f.ClientSet, pv.Name, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to validate PV %s is deleted: %w", pv.Name, err)
 	}
 
 	err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})

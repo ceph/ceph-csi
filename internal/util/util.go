@@ -327,10 +327,19 @@ func ParseClientIP(addr string) (string, error) {
 	return "", fmt.Errorf("failed to extract IP address, incorrect format: %s", addr)
 }
 
-// GetControllerPublishSecret retrieves the controller publish secret from ceph-csi-config ConfigMap
+// GetControllerPublishSecretRef retrieves the controller publish secret from ceph-csi-config ConfigMap
 // for a given clusterID. Fetches the secret from Kubernetes, and returns it as a map of key-value pairs.
-func GetControllerPublishSecret(clusterID, driverType string) (map[string]string, error) {
-	var getSecretRefFunc func(string, string) (string, string, error)
+func GetControllerPublishSecretRef(volumeId, driverType string) (string, string, error) {
+	var (
+		vi               CSIIdentifier
+		secretName       string
+		secretNamespace  string
+		getSecretRefFunc func(string, string) (string, string, error)
+	)
+	err := vi.DecomposeCSIID(volumeId)
+	if err != nil {
+		return secretName, secretNamespace, fmt.Errorf("failed to decode volume ID (%s): %w", volumeId, err)
+	}
 
 	switch driverType {
 	case RBDType:
@@ -338,26 +347,19 @@ func GetControllerPublishSecret(clusterID, driverType string) (map[string]string
 	case CephFsType:
 		getSecretRefFunc = GetCephFSControllerPublishSecretRef
 	default:
-		return nil, fmt.Errorf("unsupported driver type: %s", driverType)
+		return secretName, secretNamespace, fmt.Errorf("unsupported driver type: %s", driverType)
 	}
 
-	secretName, secretNamespace, err := getSecretRefFunc(CsiConfigFile, clusterID)
+	secretName, secretNamespace, err = getSecretRefFunc(CsiConfigFile, vi.ClusterID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
+		return secretName, secretNamespace,
+			fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
 	}
 
 	if secretName == "" || secretNamespace == "" {
-		return nil, fmt.Errorf("controller publish secret name or namespace is empty"+
-			" in csi config file for cluster %s", clusterID)
+		return secretName, secretNamespace, fmt.Errorf("controller publish secret name or namespace is empty"+
+			" in csi config file for cluster %s", vi.ClusterID)
 	}
 
-	secrets, err := k8s.GetSecret(secretName, secretNamespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
-	}
-	if secrets == nil {
-		return nil, errors.New("controller publish secret is empty in k8s")
-	}
-
-	return secrets, nil
+	return secretName, secretNamespace, nil
 }
