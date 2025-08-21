@@ -83,7 +83,7 @@ func readClusterInfo(pathToConfig, clusterID string) (*kubernetes.ClusterInfo, e
 		}
 	}
 
-	return nil, fmt.Errorf("missing configuration for cluster ID %q", clusterID)
+	return nil, fmt.Errorf("%w: %q", ErrConfigNotFound, clusterID)
 }
 
 // Mons returns a comma separated MON list from the csi config for the given clusterID.
