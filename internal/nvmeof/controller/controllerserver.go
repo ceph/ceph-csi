@@ -80,7 +80,6 @@ func (cs *Server) CreateVolume(
 	req *csi.CreateVolumeRequest,
 ) (*csi.CreateVolumeResponse, error) {
 	// TODO - need to check and modify the request to ensure it has the required fields NvmeOF supports (like nfs does)
-	// TODO - in case of failure, we should clean up the created resources (RBD volume, subsystem, etc.)
 	// TODO - move all hardcoded strings to constants
 
 	// Step 0: Validate request
@@ -106,6 +105,25 @@ func (cs *Server) CreateVolume(
 
 	backend := res.GetVolume()
 	volumeID := backend.GetVolumeId()
+
+	defer func() {
+		// skip cleanup if there was no error
+		if err == nil {
+			return
+		}
+
+		_, cleanupErr := cs.backendServer.DeleteVolume(
+			ctx,
+			&csi.DeleteVolumeRequest{
+				VolumeId: volumeID,
+				Secrets:  req.GetSecrets(),
+			},
+		)
+		if cleanupErr != nil {
+			log.ErrorLog(ctx, "failed to cleanup volume %q: %v", volumeID, cleanupErr)
+		}
+	}()
+
 	rbdImageName := res.GetVolume().GetVolumeContext()["imageName"]
 	rbdPoolName := res.GetVolume().GetVolumeContext()["pool"]
 
@@ -113,10 +131,20 @@ func (cs *Server) CreateVolume(
 	nvmeofData, err := createNVMeoFResources(ctx, req, rbdPoolName, rbdImageName)
 	if err != nil {
 		log.ErrorLog(ctx, "NVMe-oF resource setup failed for volumeID %s: %v", volumeID, err)
-		// TODO: Implement cleanup of RBD volume on NVMe-oF failure
 
 		return nil, status.Errorf(codes.Internal, "NVMe-oF setup failed: %v", err)
 	}
+	defer func() {
+		// skip cleanup if there was no error
+		if err == nil {
+			return
+		}
+
+		cleanupErr := cleanupNVMeoFResources(ctx, nvmeofData)
+		if cleanupErr != nil {
+			log.ErrorLog(ctx, "failed to cleanup NVMe-oF resources for volume  %q: %v", volumeID, cleanupErr)
+		}
+	}()
 
 	// step 3: Populate volume context for NodeServer
 	populateVolumeContext(backend, nvmeofData)
@@ -153,7 +181,7 @@ func (cs *Server) DeleteVolume(
 		log.DebugLog(ctx, "No NVMe-oF metadata found, skipping NVMe-oF cleanup: %v", err)
 	} else {
 		// Clean up NVMe-oF resources
-		if err := cleanupNVMeoFResources(ctx, req, nvmeofData); err != nil {
+		if err := cleanupNVMeoFResources(ctx, nvmeofData); err != nil {
 			log.ErrorLog(ctx, "NVMe-oF cleanup failed (continuing with RBD deletion): %v", err)
 
 			return nil, status.Errorf(codes.Internal, "NVMe-oF cleanup failed: %v", err)
@@ -328,7 +356,6 @@ func cleanupEmptySubsystem(ctx context.Context, gateway *nvmeof.GatewayRpcClient
 
 // createNVMeoFResources sets up the NVMe-oF resources for the given RBD volume.
 // TODO - need to support multiple listeners.
-// TODO - need to fallback cleanup if any step fails.
 func createNVMeoFResources(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
@@ -413,7 +440,6 @@ func createNVMeoFResources(
 // This includes removing the host, listener, namespace, and potentially the subsystem.
 func cleanupNVMeoFResources(
 	ctx context.Context,
-	req *csi.DeleteVolumeRequest,
 	nvmeofData *nvmeof.NVMeoFVolumeData,
 ) error {
 	// Step 1: Connect to gateway using stored management address
@@ -453,7 +479,6 @@ func cleanupNVMeoFResources(
 	if err := cleanupEmptySubsystem(ctx, gateway, nvmeofData.SubsystemNQN); err != nil {
 		return fmt.Errorf("failed to cleanup empty subsystem %s: %w", nvmeofData.SubsystemNQN, err)
 	}
-	log.DebugLog(ctx, "NVMe-oF resources cleaned up for volume with ID %s", req.GetVolumeId())
 
 	return nil
 }
