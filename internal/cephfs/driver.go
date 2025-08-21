@@ -167,6 +167,7 @@ func (fs *Driver) Run(conf *util.Config) {
 			conf.KernelMountOptions, conf.FuseMountOptions,
 			nodeLabels, topology, crushLocationMap,
 		)
+		fs.ns.setMetadata = true
 	}
 
 	if conf.IsControllerServer {

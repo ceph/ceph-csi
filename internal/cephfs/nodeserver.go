@@ -53,6 +53,9 @@ type NodeServer struct {
 	kernelMountOptions string
 	fuseMountOptions   string
 	healthChecker      hc.Manager
+
+	// set metadata on volume
+	setMetadata bool
 }
 
 func getCredentialsForVolume(
@@ -274,6 +277,11 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	err = ns.setUserIdMapping(ctx, req.GetSecrets(), req.GetVolumeId(), volOptions)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	err = ns.setClientAddress(ctx, req.GetVolumeId(), req.GetSecrets(), volOptions)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -331,6 +339,58 @@ func (ns *NodeServer) NodeStageVolume(
 	ns.startSharedHealthChecker(ctx, req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+// setUserIdMapping sets the user ID mapping in the CephFS subvolume metadata.
+// The user ID is the ceph user used for mounting the subvolume.
+// If the volume is a snapshot-backed, the user ID mapping is set on the backing snapshot metadata.
+// If the '--setmetadata' flag is set to false in CSI driver configuration or if the volume is static it does nothing.
+func (ns *NodeServer) setUserIdMapping(
+	ctx context.Context, secrets map[string]string,
+	volumeId string, volOptions *store.VolumeOptions,
+) error {
+	if !ns.setMetadata || !volOptions.ProvisionVolume {
+		return nil
+	}
+
+	conn := volOptions.GetConnection()
+	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "", true)
+	metadataKey := core.GetUserIDMappingKey(volumeId, ns.Driver.GetNodeID())
+	params := map[string]string{metadataKey: conn.Creds.ID}
+
+	if volOptions.BackingSnapshot {
+		cr, err := util.NewAdminCredentials(secrets)
+		if err != nil {
+			return fmt.Errorf("failed to create credentials from secrets: %w", err)
+		}
+		defer cr.DeleteCredentials()
+
+		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, cr, secrets, "", true)
+		if err != nil {
+			return err
+		}
+		defer volOpt.Destroy()
+		snapClient := core.NewSnapshot(conn, sid.FsSnapshotName, volOpt.ClusterID, "", true, &volOpt.SubVolume)
+		if err = snapClient.SetAllSnapshotMetadata(params); err != nil {
+			return fmt.Errorf("failed to set user ID mapping metadata %s for subvolume snapshot %s: %w",
+				metadataKey, sid.FsSnapshotName, err)
+		}
+
+		log.DebugLog(ctx, "userID mapping metadata %s set for subvolume snapshot %s",
+			metadataKey, sid.FsSnapshotName)
+
+		return nil
+	}
+
+	err := subvolumeClient.SetAllMetadata(params)
+	if err != nil {
+		return fmt.Errorf("failed to set user ID mapping %s for subvolume %s: %w",
+			metadataKey, volOptions.SubVolume.VolID, err)
+	}
+
+	log.DebugLog(ctx, "userID mapping metadata %s set for subvolume %s", metadataKey, volOptions.SubVolume.VolID)
+
+	return nil
 }
 
 // setClientAddress extracts the client IP address and stores it in the subvolume metadata.

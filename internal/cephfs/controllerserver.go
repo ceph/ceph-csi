@@ -1233,6 +1233,11 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	}
 	defer volOptions.Destroy()
 
+	err = cs.removeUserIdMapping(ctx, volumeId, req.GetNodeId(), secrets, volOptions)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	err = cs.fenceNode(ctx, volumeId, req.GetNodeId(), secrets, volOptions)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -1283,6 +1288,51 @@ func (cs *ControllerServer) getSubvolumeMetadataHandler(
 		unsetAllMetadataFunc: subvolumeClient.UnsetAllMetadata,
 		listMetadataFunc:     subvolumeClient.ListMetadata,
 	}, nil
+}
+
+// removeUserIdMapping attempts to remove nodeId:userId mapping in metadata from the subvolume.
+//
+// Parameters:
+//   - volumeId: The ID of the volume for which we want to remove the user ID mapping.
+//   - nodeId: The ID of the node that we want to remove the user ID mapping for.
+//   - volOptions: The volume options for the CephFS subvolume.
+//
+// Behavior:
+//   - If the '--setmetadata' flag is set to false in CSI driver configuration, does nothing.
+//   - Removes the user ID mapping metadata for the specified nodeId from the subvolume.
+func (cs *ControllerServer) removeUserIdMapping(
+	ctx context.Context,
+	volumeId, nodeId string,
+	secrets map[string]string,
+	volOptions *store.VolumeOptions,
+) error {
+	if !cs.SetMetadata {
+		return nil
+	}
+	if nodeId == "" {
+		return errors.New("nodeId cannot be empty")
+	}
+
+	cr, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		return fmt.Errorf("failed to create credentials from secrets: %w", err)
+	}
+	defer cr.DeleteCredentials()
+
+	metadataKey := core.GetUserIDMappingKey(volumeId, nodeId)
+	handler, err := cs.getSubvolumeMetadataHandler(ctx, volOptions, secrets)
+	if err != nil {
+		return err
+	}
+
+	err = handler.unsetAllMetadataFunc([]string{metadataKey})
+	if err != nil {
+		return fmt.Errorf("failed to remove metadata %s from %s: %w", metadataKey, handler.logSubvolumeName, err)
+	}
+
+	log.DebugLog(ctx, "userID mapping metadata %s unset for %s", metadataKey, handler.logSubvolumeName)
+
+	return nil
 }
 
 // fenceNode attempts to fence a client node from accessing the CephFS subvolume.

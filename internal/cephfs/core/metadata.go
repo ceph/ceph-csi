@@ -31,6 +31,10 @@ const (
 	// clientAddressKey is the key used to store the client address.
 	// starts with `.` to avoid copying it to the mirrored subvolume.
 	clientAddressKey = ".cephfs.csi.ceph.com/clientaddress"
+
+	// userIdMappingKey is the key used to store the userID mapping.
+	// starts with `.` to avoid copying it to the mirrored subvolume.
+	userIdMappingKey = ".cephfs.csi.ceph.com/userid"
 )
 
 // ErrSubVolMetadataNotSupported is returned when set/get/list/remove subvolume metadata options are not supported.
@@ -40,6 +44,12 @@ var ErrSubVolMetadataNotSupported = errors.New("subvolume metadata operations ar
 // subvolume metadata.
 func GetClientAddressKey(volumeId, nodeId string) string {
 	return fmt.Sprintf("%s/%s/%s", clientAddressKey, volumeId, nodeId)
+}
+
+// GetUserIDMappingKey returns the key to store the user ID mapping in the
+// subvolume metadata.
+func GetUserIDMappingKey(volumeID, nodeID string) string {
+	return fmt.Sprintf("%s/%s/%s", userIdMappingKey, volumeID, nodeID)
 }
 
 func (s *subVolumeClient) supportsSubVolMetadata() bool {
