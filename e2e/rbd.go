@@ -532,6 +532,17 @@ var _ = Describe("RBD", func() {
 				})
 			}
 
+			By("verify userId mapping metadata exists", func() {
+				err := verifyUserIdMappingMetadata(f, pvcPath, appPath, rbdType)
+				if err != nil {
+					framework.Failf("failed to verify userId mapping metadata exists: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
 			By("verify client address metadata exists", func() {
 				err := verifyClientAddressMetadataExists(f, pvcPath, appPath, rbdType)
 				if err != nil {

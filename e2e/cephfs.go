@@ -363,6 +363,26 @@ var _ = Describe(cephfsType, func() {
 				})
 			}
 
+			By("verify userId mapping metadata exists", func() {
+				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+
+				err = verifyUserIdMappingMetadata(f, pvcPath, appPath, cephfsType)
+				if err != nil {
+					framework.Failf("failed to verify userId mapping metadata exists: %v", err)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
+
 			By("verify client address metadata exists", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
@@ -1976,6 +1996,12 @@ var _ = Describe(cephfsType, func() {
 				)
 				if err != nil {
 					logAndFail("failed to verify client address metadata of snapshot-backed PVC: %v", err)
+				}
+				err = verifyUserIdMappingMetadataSnapshotBacked(
+					f, pvcClone, appClone, backingSubvolumeNameData.imageName, backingSnapshotName,
+				)
+				if err != nil {
+					logAndFail("failed to verify user ID mapping metadata of snapshot-backed PVC: %v", err)
 				}
 
 				// Snapshot-backed volume shouldn't contribute to total subvolume count.

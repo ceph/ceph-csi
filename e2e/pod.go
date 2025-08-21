@@ -688,7 +688,7 @@ func verifyReadAffinity(
 		configInfos, stdErr, err = execCommandInContainer(f, command, ns, cn, &opt)
 		if strings.TrimSpace(configInfos) != "" {
 			framework.Logf("configInfos: %v, err=%v", configInfos, err)
-			//override error if the configInfo is found.
+			// override error if the configInfo is found.
 			err = nil
 			break
 		}
@@ -748,88 +748,16 @@ func verifyReadAffinity(
 	return nil
 }
 
-func verifyClientAddressMetadataExists(
+func verifyMetadataRemoved(
 	f *framework.Framework,
-	pvcPath, appPath string,
-	driverType string,
+	metadataKey, driverType, rbdImageSpec, subvolumeName string,
 ) error {
-	// create PVC
-	pvc, err := loadPVC(pvcPath)
-	if err != nil {
-		return fmt.Errorf("failed to load pvc: %w", err)
-	}
-	pvc.Namespace = f.UniqueName
-	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to create PVC: %w", err)
-	}
-
-	app, err := loadApp(appPath)
-	if err != nil {
-		return fmt.Errorf("failed to load application: %w", err)
-	}
-	app.Namespace = f.UniqueName
-	err = createApp(f.ClientSet, app, deployTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to create application: %w", err)
-	}
-
-	pod, err := getPod(f.ClientSet, app.Namespace, app.Name)
-	if err != nil {
-		return fmt.Errorf("failed to get pod: %w", err)
-	}
-	nodeId := pod.Spec.NodeName
-
-	var (
-		metadataKey   string
-		metadataValue string
-		rbdImageSpec  string
-		subVolumeName string
-	)
-
-	_, pvObject, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
-	if err != nil {
-		framework.Logf("error getting pvc %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
-		return fmt.Errorf("failed to get PVC and PV: %w", err)
-	}
-	volumeHandle := pvObject.Spec.CSI.VolumeHandle
-
-	// First, get the metadata while the pod is running to verify it exists
-	switch driverType {
-	case rbdType:
-		metadataKey = fmt.Sprintf(".rbd.csi.ceph.com/clientaddress/%s/%s", volumeHandle, nodeId)
-
-		imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
-		if err != nil {
-			return err
-		}
-
-		rbdImageSpec = imageSpec(defaultRBDPool, imageData.imageName)
-		metadataValue, err = getImageMeta(rbdImageSpec, metadataKey, f)
-		if err != nil {
-			return fmt.Errorf("failed to get image metadata %s: %w", metadataKey, err)
-		}
-	case cephfsType:
-		metadataKey = fmt.Sprintf(".cephfs.csi.ceph.com/clientaddress/%s/%s", volumeHandle, nodeId)
-		subVolumeName = pvObject.Spec.CSI.VolumeAttributes["subvolumeName"]
-		metadataValue, err = getCephFSSubvolumeMetadata(
-			f, fileSystemName, subVolumeName, subvolumegroup, metadataKey)
-		if err != nil {
-			return fmt.Errorf("failed to get subvolume metadata %s: %w", metadataKey, err)
-		}
-	}
-
-	if metadataValue == "" {
-		return fmt.Errorf("client address metadata %s value is empty", metadataKey)
-	}
-
-	err = deletePod(pod.Name, pod.Namespace, f.ClientSet, deployTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to delete pod: %w", err)
-	}
-
-	// verify clientaddress metadata is removed after pod deletion
+	// verify metadata is removed after pod deletion
 	// retry up to 3 times with 10-second intervals
+	var (
+		metadataValue string
+		err           error
+	)
 	maxRetries := 3
 	retryInterval := 10 * time.Second
 
@@ -839,28 +767,173 @@ func verifyClientAddressMetadataExists(
 			metadataValue, err = getImageMeta(rbdImageSpec, metadataKey, f)
 		case cephfsType:
 			metadataValue, err = getCephFSSubvolumeMetadata(
-				f, fileSystemName, subVolumeName, subvolumegroup, metadataKey)
+				f, fileSystemName, subvolumeName, subvolumegroup, metadataKey)
 		}
 
 		if err != nil && strings.Contains(err.Error(), "command terminated with exit code 2") {
-			framework.Logf("clientaddress metadata %s successfully removed", metadataKey)
+			framework.Logf("metadata %s successfully removed", metadataKey)
 			break
 		}
 
-		framework.Logf("clientaddress metadata %s still exists with value %s, retrying (%d/%d)",
+		framework.Logf("metadata %s still exists with value %s, retrying (%d/%d)",
 			metadataKey, metadataValue, attempt, maxRetries)
 
 		if attempt == maxRetries {
-			return fmt.Errorf("clientaddress metadata %s still exists with value %s (after %d attempts)",
+			return fmt.Errorf("metadata %s still exists with value %s (after %d attempts)",
 				metadataKey, metadataValue, maxRetries)
 		}
 		time.Sleep(retryInterval)
 	}
 
-	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	return nil
+}
+
+func getAppAndPVC(
+	f *framework.Framework,
+	pvcPath, appPath string,
+) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		return fmt.Errorf("failed to delete PVC: %w", err)
+		return nil, nil, fmt.Errorf("failed to load pvc: %w", err)
+	}
+	pvc.Namespace = f.UniqueName
+	if err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout); err != nil {
+		return nil, nil, fmt.Errorf("failed to create PVC: %w", err)
 	}
 
-	return nil
+	app, err := loadApp(appPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load application: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	if err := createApp(f.ClientSet, app, deployTimeout); err != nil {
+		return nil, nil, fmt.Errorf("failed to create application: %w", err)
+	}
+
+	pod, err := getPod(f.ClientSet, app.Namespace, app.Name)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get pod: %w", err)
+	}
+
+	pvc, _, err = getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get PVC and PV: %w", err)
+	}
+
+	return pod, pvc, nil
+}
+
+func verifyClientAddressMetadataExists(
+	f *framework.Framework,
+	pvcPath, appPath string,
+	driverType string,
+) error {
+	var (
+		metadataKey   string
+		metadataValue string
+		rbdImageSpec  string
+		subvolumeName string
+		err           error
+	)
+
+	pod, pvc, err := getAppAndPVC(f, pvcPath, appPath)
+	if err != nil {
+		return err
+	}
+	_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PVC and PV: %w", err)
+	}
+
+	nodeId := pod.Spec.NodeName
+	volumeHandle := pv.Spec.CSI.VolumeHandle
+	switch driverType {
+	case rbdType:
+		metadataKey = fmt.Sprintf(".rbd.csi.ceph.com/clientaddress/%s/%s", volumeHandle, nodeId)
+		imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+		if err != nil {
+			return err
+		}
+		rbdImageSpec = imageSpec(defaultRBDPool, imageData.imageName)
+		metadataValue, err = getImageMeta(rbdImageSpec, metadataKey, f)
+	case cephfsType:
+		metadataKey = fmt.Sprintf(".cephfs.csi.ceph.com/clientaddress/%s/%s", volumeHandle, nodeId)
+		subvolumeName = pv.Spec.CSI.VolumeAttributes["subvolumeName"]
+		metadataValue, err = getCephFSSubvolumeMetadata(f, fileSystemName, subvolumeName, subvolumegroup, metadataKey)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get metadata %s: %w", metadataKey, err)
+	}
+	if metadataValue == "" {
+		return fmt.Errorf("client address metadata %s value is empty", metadataKey)
+	}
+
+	if err := deletePod(pod.Name, pod.Namespace, f.ClientSet, deployTimeout); err != nil {
+		return fmt.Errorf("failed to delete pod: %w", err)
+	}
+
+	if err := verifyMetadataRemoved(f, metadataKey, driverType, rbdImageSpec, subvolumeName); err != nil {
+		return fmt.Errorf("failed to verify metadata removal: %w", err)
+	}
+
+	return deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+}
+
+func verifyUserIdMappingMetadata(
+	f *framework.Framework,
+	pvcPath, appPath string,
+	driverType string,
+) error {
+	var (
+		metadataKey   string
+		metadataValue string
+		expectedValue string
+		rbdImageSpec  string
+		subvolumeName string
+		err           error
+	)
+
+	pod, pvc, err := getAppAndPVC(f, pvcPath, appPath)
+	if err != nil {
+		return err
+	}
+	_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PVC and PV: %w", err)
+	}
+
+	nodeId := pod.Spec.NodeName
+	volumeHandle := pv.Spec.CSI.VolumeHandle
+	switch driverType {
+	case rbdType:
+		expectedValue = keyringRBDNodePluginUsername
+		metadataKey = fmt.Sprintf(".rbd.csi.ceph.com/userid/%s/%s", volumeHandle, nodeId)
+		imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+		if err != nil {
+			return err
+		}
+		rbdImageSpec = imageSpec(defaultRBDPool, imageData.imageName)
+		metadataValue, err = getImageMeta(rbdImageSpec, metadataKey, f)
+	case cephfsType:
+		expectedValue = keyringCephFSNodePluginUsername
+		metadataKey = fmt.Sprintf(".cephfs.csi.ceph.com/userid/%s/%s", volumeHandle, nodeId)
+		subvolumeName = pv.Spec.CSI.VolumeAttributes["subvolumeName"]
+		metadataValue, err = getCephFSSubvolumeMetadata(f, fileSystemName, subvolumeName, subvolumegroup, metadataKey)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get metadata %s: %w", metadataKey, err)
+	}
+	if metadataValue != expectedValue {
+		return fmt.Errorf("userId mapping metadata %s has unexpected value %s, expected %s", metadataKey, metadataValue, expectedValue)
+	}
+
+	if err := deletePod(pod.Name, pod.Namespace, f.ClientSet, deployTimeout); err != nil {
+		return fmt.Errorf("failed to delete pod: %w", err)
+	}
+
+	if err := verifyMetadataRemoved(f, metadataKey, driverType, rbdImageSpec, subvolumeName); err != nil {
+		return fmt.Errorf("failed to verify metadata removal: %w", err)
+	}
+
+	return deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 }

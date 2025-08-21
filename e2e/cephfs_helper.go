@@ -690,3 +690,32 @@ func verifyClientAddressMetadataSnapshotBacked(
 
 	return nil
 }
+
+func verifyUserIdMappingMetadataSnapshotBacked(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	pod *v1.Pod,
+	subVolumeName, snapshotName string,
+) error {
+	nodeId := pod.Spec.NodeName
+	_, pvObject, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PVC and PV: %w", err)
+	}
+	volumeHandle := pvObject.Spec.CSI.VolumeHandle
+
+	expectedValue := keyringCephFSNodePluginUsername
+	metadataKey := fmt.Sprintf(".cephfs.csi.ceph.com/userid/%s/%s", volumeHandle, nodeId)
+	metadataValue, err := getCephFSSnapshotMetadata(
+		f, fileSystemName, subVolumeName, snapshotName, subvolumegroup, metadataKey)
+	if err != nil {
+		return fmt.Errorf("failed to get subvolume snapshot metadata %s: %w", metadataKey, err)
+	}
+
+	if metadataValue != expectedValue {
+		return fmt.Errorf("userId mapping metadata %s has unexpected value %s, expected %s",
+			metadataKey, metadataValue, expectedValue)
+	}
+
+	return nil
+}
