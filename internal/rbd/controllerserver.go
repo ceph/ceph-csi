@@ -1801,12 +1801,49 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	}
 	defer rv.Destroy(ctx)
 
+	err = cs.removeUserIdMapping(ctx, req.GetNodeId(), rv)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to remove user ID mapping for node %s: %v", req.GetNodeId(), err)
+	}
+
 	err = cs.fenceNode(ctx, req.GetNodeId(), rv, credentials)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to fence node %s: %v", req.GetNodeId(), err)
 	}
 
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
+}
+
+// removeUserIdMapping attempts to remove nodeId:userId mapping in metadata the RBD volume.
+//
+// Parameters:
+//   - nodeId: The ID of the node that we want to remove the user ID mapping for.
+//   - rbdVolume: The rbdVolume object representing the RBD image.
+//
+// Behavior:
+//   - If the '--setmetadata' flag is set to false in CSI driver configuration, does nothing.
+//   - Removes the user ID mapping metadata for the specified nodeId from the RBD image.
+func (cs *ControllerServer) removeUserIdMapping(
+	ctx context.Context,
+	nodeId string,
+	rv *rbdVolume,
+) error {
+	if !cs.SetMetadata {
+		return nil
+	}
+	if nodeId == "" {
+		return errors.New("nodeId cannot be empty")
+	}
+
+	metadataKey := getUserIDMappingKey(rv.VolID, nodeId)
+	err := rv.RemoveMetadata(metadataKey)
+	if err != nil && !errors.Is(err, librbd.ErrNotExist) {
+		return fmt.Errorf("failed to remove user ID mapping for node %s on image %s: %w", nodeId, rv, err)
+	}
+
+	log.DebugLog(ctx, "successfully removed user ID mapping for nodeId %s", nodeId)
+
+	return nil
 }
 
 // fenceNode attempts to fence a client node from accessing the RBD volume.

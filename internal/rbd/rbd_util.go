@@ -91,6 +91,10 @@ const (
 	// starts with `.` to avoid copying it to the mirrored image.
 	clientAddressKey = ".rbd.csi.ceph.com/clientaddress"
 
+	// userIdMappingKey is the key used to store the userID mapping.
+	// starts with `.` to avoid copying it to the mirrored image.
+	userIdMappingKey = ".rbd.csi.ceph.com/userid"
+
 	// Suffix added to the temp cloned image name.
 	// This will always be (rbd image name + "-temp").
 	tempImageSuffix = "-temp"
@@ -289,6 +293,11 @@ var (
 // getClientAddressKey returns the key for storing client address metadata for a specific node.
 func getClientAddressKey(volumeId, nodeId string) string {
 	return fmt.Sprintf("%s/%s/%s", clientAddressKey, volumeId, nodeId)
+}
+
+// getUserIDMappingKey returns the key for storing user ID mapping metadata for a specific node.
+func getUserIDMappingKey(volumeID, nodeID string) string {
+	return fmt.Sprintf("%s/%s/%s", userIdMappingKey, volumeID, nodeID)
 }
 
 // prepareKrbdFeatureAttrs prepare krbd fearure set based on kernel version.
