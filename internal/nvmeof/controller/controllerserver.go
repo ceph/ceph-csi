@@ -31,11 +31,16 @@ import (
 	"github.com/ceph/ceph-csi/internal/rbd"
 	rbdutil "github.com/ceph/ceph-csi/internal/rbd"
 	rbddriver "github.com/ceph/ceph-csi/internal/rbd/driver"
+	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 type Server struct {
 	csi.UnimplementedControllerServer
+
+	// A map storing all volumes with ongoing operations so that additional operations
+	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
+	volumeLocks *util.VolumeLocks
 
 	// backendServer handles the RBD requests
 	backendServer *rbd.ControllerServer
@@ -44,6 +49,7 @@ type Server struct {
 // NewControllerServer initialize a controller server for nvmeof CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver) (*Server, error) {
 	return &Server{
+		volumeLocks:   util.NewVolumeLocks(),
 		backendServer: rbddriver.NewControllerServer(d),
 	}, nil
 }
@@ -79,6 +85,14 @@ func (cs *Server) CreateVolume(
 	if err := validateCreateVolumeRequest(req); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
 	}
+
+	// prevent concurrent requests for the same volume
+	if acquired := cs.volumeLocks.TryAcquire(req.GetName()); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, req.GetName())
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetName())
+	}
+	defer cs.volumeLocks.Release(req.GetName())
 
 	// Step 1: Create RBD volume through backend. if exists, it is ok.
 	res, err := cs.backendServer.CreateVolume(ctx, req)
@@ -122,6 +136,15 @@ func (cs *Server) DeleteVolume(
 	if volumeID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "empty volume ID in request")
 	}
+
+	// prevent concurrent requests for the same volume
+	if acquired := cs.volumeLocks.TryAcquire(volumeID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer cs.volumeLocks.Release(volumeID)
+
 	// Get NVMe-oF metadata for cleanup
 	nvmeofData, err := cs.getNVMeoFMetadata(ctx, req, volumeID)
 	if err != nil {
