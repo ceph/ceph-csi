@@ -56,6 +56,7 @@ type GatewayConfig = GatewayAddress
 type NVMeoFVolumeData struct {
 	SubsystemNQN          string
 	NamespaceID           uint32
+	NamespaceUUID         string
 	HostNQN               string
 	ListenerInfo          ListenerDetails
 	GatewayManagementInfo GatewayConfig
@@ -168,6 +169,39 @@ func (gw *GatewayRpcClient) DeleteNamespace(ctx context.Context, subsystemNQN st
 
 	return fmt.Errorf("gateway NamespaceDelete returned error (status=%d): %s",
 		status.GetStatus(), status.GetErrorMessage())
+}
+
+// GetUUIDBySubsystemAndNameSpaceID get the uuid of namespace by given subsystem and ns-id.
+func (gw *GatewayRpcClient) GetUUIDBySubsystemAndNameSpaceID(
+	ctx context.Context,
+	subsystemNQN string,
+	namespaceID uint32,
+) (string, error) {
+	req := &pb.ListNamespacesReq{
+		Subsystem: subsystemNQN,
+		Nsid:      &namespaceID,
+	}
+	resp, err := gw.client.ListNamespaces(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	// Check if response is valid
+	if resp == nil {
+		return "", fmt.Errorf("received nil response from subsystem %s nsid %d", subsystemNQN, namespaceID)
+	}
+
+	// Check if any namespaces found
+	if len(resp.GetNamespaces()) == 0 {
+		return "", fmt.Errorf("no namespaces found for subsystem %s nsid %d", subsystemNQN, namespaceID)
+	}
+	// extra validation
+	for _, ns := range resp.GetNamespaces() {
+		if ns.GetNsid() == namespaceID {
+			return ns.GetUuid(), nil
+		}
+	}
+
+	return "", fmt.Errorf("namespace with nsid %d not found", namespaceID)
 }
 
 // CreateSubsystem creates an NVMe-oF subsystem on the gateway.

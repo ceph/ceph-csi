@@ -252,9 +252,10 @@ func createNVMeoFResources(
 		return nil, fmt.Errorf("invalid nvmeofGatewayPort %s: %w", nvmeofGatewayPortStr, err)
 	}
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
-		SubsystemNQN: params["subsystemNQN"],
-		NamespaceID:  0, // will be set after namespace creation
-		HostNQN:      params["hostNQN"],
+		SubsystemNQN:  params["subsystemNQN"],
+		NamespaceID:   0,  // will be set after namespace creation,
+		NamespaceUUID: "", // will be set after namespace creation
+		HostNQN:       params["hostNQN"],
 		ListenerInfo: nvmeof.ListenerDetails{
 			GatewayAddress: nvmeof.GatewayAddress{
 				Address: params["listenerIpAddress"],
@@ -303,6 +304,12 @@ func createNVMeoFResources(
 	}
 	log.DebugLog(ctx, "Namespace created: %s/%s with NSID: %d", rbdPoolName, rbdImageName, nsid)
 	nvmeofData.NamespaceID = nsid
+
+	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get namespace uuid failed: %w", err)
+	}
+	nvmeofData.NamespaceUUID = uuid
 
 	// Step 6: Add host to subsystem
 	if err := gateway.AddHost(ctx, nvmeofData.SubsystemNQN, nvmeofData.HostNQN); err != nil {
@@ -371,9 +378,10 @@ func cleanupNVMeoFResources(
 
 const (
 	// NVMe-oF resource info.
-	mdSubsystemNQN = ".rbd.nvmeof.SubsystemNQN"
-	mdNamespaceID  = ".rbd.nvmeof.NamespaceID"
-	mdHostNQN      = ".rbd.nvmeof.HostNQN"
+	mdSubsystemNQN  = ".rbd.nvmeof.SubsystemNQN"
+	mdNamespaceID   = ".rbd.nvmeof.NamespaceID"
+	mdNamespaceUUID = ".rbd.nvmeof.NamespaceUUID"
+	mdHostNQN       = ".rbd.nvmeof.HostNQN"
 
 	// Listener info.
 	mdListenerAddress  = ".rbd.nvmeof.ListenerAddress"
@@ -395,6 +403,7 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) {
 
 	volume.VolumeContext[mdSubsystemNQN] = data.SubsystemNQN
 	volume.VolumeContext[mdNamespaceID] = strconv.FormatUint(uint64(data.NamespaceID), 10)
+	volume.VolumeContext[mdNamespaceUUID] = data.NamespaceUUID
 	volume.VolumeContext[mdHostNQN] = data.HostNQN
 	volume.VolumeContext[mdListenerAddress] = data.ListenerInfo.Address
 	volume.VolumeContext[mdListenerPort] = listenerPortStr
@@ -427,9 +436,10 @@ func (cs *Server) storeNVMeoFMetadata(
 	// Prepare all metadata entries
 	metadata := map[string]string{
 		// NVMe-oF resource info
-		mdSubsystemNQN: nvmeofData.SubsystemNQN,
-		mdNamespaceID:  strconv.FormatUint(uint64(nvmeofData.NamespaceID), 10),
-		mdHostNQN:      nvmeofData.HostNQN,
+		mdSubsystemNQN:  nvmeofData.SubsystemNQN,
+		mdNamespaceID:   strconv.FormatUint(uint64(nvmeofData.NamespaceID), 10),
+		mdNamespaceUUID: nvmeofData.NamespaceUUID,
+		mdHostNQN:       nvmeofData.HostNQN,
 
 		// Listener info
 		mdListenerAddress:  nvmeofData.ListenerInfo.Address,
@@ -485,6 +495,7 @@ func (cs *Server) getNVMeoFMetadata(
 	requiredKeys := []string{
 		mdSubsystemNQN,
 		mdNamespaceID,
+		mdNamespaceUUID,
 		mdHostNQN,
 		mdListenerAddress,
 		mdListenerPort,
@@ -521,9 +532,10 @@ func (cs *Server) getNVMeoFMetadata(
 	}
 	// Construct NVMe-oF volume data
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
-		SubsystemNQN: metadata[mdSubsystemNQN],
-		NamespaceID:  uint32(nsid),
-		HostNQN:      metadata[mdHostNQN],
+		SubsystemNQN:  metadata[mdSubsystemNQN],
+		NamespaceID:   uint32(nsid),
+		NamespaceUUID: metadata[mdNamespaceUUID],
+		HostNQN:       metadata[mdHostNQN],
 		ListenerInfo: nvmeof.ListenerDetails{
 			GatewayAddress: nvmeof.GatewayAddress{
 				Address: metadata[mdListenerAddress],
