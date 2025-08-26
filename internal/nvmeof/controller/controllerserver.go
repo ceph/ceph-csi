@@ -288,21 +288,21 @@ func createNVMeoFResources(
 		return nil, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 
-	// Step 4: Create namespace
-	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdImageName)
-	if err != nil {
-		return nil, fmt.Errorf("namespace creation failed: %w", err)
-	}
-	log.DebugLog(ctx, "Namespace created: %s/%s with NSID: %d", rbdPoolName, rbdImageName, nsid)
-	nvmeofData.NamespaceID = nsid
-
-	// Step 5: Create listeners
+	// Step 4: Create listeners
 	err = gateway.CreateListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo)
 	if err != nil {
 		return nil, fmt.Errorf("listener creation failed: %w", err)
 	}
 	log.DebugLog(ctx, "Listener created for subsystem %s at %s", nvmeofData.SubsystemNQN,
 		nvmeofData.ListenerInfo)
+
+	// Step 5: Create namespace and set its uuid
+	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdImageName)
+	if err != nil {
+		return nil, fmt.Errorf("namespace creation failed: %w", err)
+	}
+	log.DebugLog(ctx, "Namespace created: %s/%s with NSID: %d", rbdPoolName, rbdImageName, nsid)
+	nvmeofData.NamespaceID = nsid
 
 	// Step 6: Add host to subsystem
 	if err := gateway.AddHost(ctx, nvmeofData.SubsystemNQN, nvmeofData.HostNQN); err != nil {
@@ -345,20 +345,20 @@ func cleanupNVMeoFResources(
 	}
 	log.DebugLog(ctx, "Host %s removed from subsystem %s", nvmeofData.HostNQN, nvmeofData.SubsystemNQN)
 
-	// Step 3: Delete listener
+	// Step 3: Delete namespace
+	if err := gateway.DeleteNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID); err != nil {
+		return fmt.Errorf("failed to delete namespace %d for subsystem %s: %w",
+			nvmeofData.NamespaceID, nvmeofData.SubsystemNQN, err)
+	}
+	log.DebugLog(ctx, "Namespace %d deleted for subsystem %s", nvmeofData.NamespaceID, nvmeofData.SubsystemNQN)
+
+	// Step 4: Delete listener
 	err = gateway.DeleteListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo)
 	if err != nil {
 		return fmt.Errorf("failed to delete listener for subsystem %s: %w", nvmeofData.SubsystemNQN, err)
 	}
 	log.DebugLog(ctx, "Listener deleted for subsystem %s at %s", nvmeofData.SubsystemNQN,
 		nvmeofData.ListenerInfo)
-
-	// Step 4: Delete namespace
-	if err := gateway.DeleteNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID); err != nil {
-		return fmt.Errorf("failed to delete namespace %d for subsystem %s: %w",
-			nvmeofData.NamespaceID, nvmeofData.SubsystemNQN, err)
-	}
-	log.DebugLog(ctx, "Namespace %d deleted for subsystem %s", nvmeofData.NamespaceID, nvmeofData.SubsystemNQN)
 
 	// Step 5: Cleanup empty subsystem
 	if err := cleanupEmptySubsystem(ctx, gateway, nvmeofData.SubsystemNQN); err != nil {
