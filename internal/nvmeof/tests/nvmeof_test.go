@@ -78,7 +78,6 @@ func TestRealGateway(t *testing.T) {
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
 		SubsystemNQN: testNQN,
 		NamespaceID:  0, // will be set after namespace creation
-		HostNQN:      hostNQN,
 		ListenerInfo: nvmeof.ListenerDetails{
 			GatewayAddress: nvmeof.GatewayAddress{
 				Address: config.Address,
@@ -119,9 +118,9 @@ func TestRealGateway(t *testing.T) {
 	t.Logf("✓ Subsystem created: %s", nvmeofData.SubsystemNQN)
 
 	// Test add host
-	err = client.AddHost(ctx, nvmeofData.SubsystemNQN, nvmeofData.HostNQN)
+	err = client.AddHost(ctx, nvmeofData.SubsystemNQN, hostNQN)
 	require.NoError(t, err)
-	t.Logf("✓ Host added: %s to subsystem %s", nvmeofData.HostNQN, nvmeofData.SubsystemNQN)
+	t.Logf("✓ Host added: %s to subsystem %s", hostNQN, nvmeofData.SubsystemNQN)
 
 	// Test check subsystem exists
 	exists, err := client.SubsystemExists(ctx, nvmeofData.SubsystemNQN)
@@ -140,9 +139,9 @@ func TestRealGateway(t *testing.T) {
 	t.Logf("✓ Listener deleted for subsystem %s at %s", testNQN, config)
 
 	// Test remove host
-	err = client.RemoveHost(ctx, testNQN, nvmeofData.HostNQN)
+	err = client.RemoveHost(ctx, testNQN, hostNQN)
 	require.NoError(t, err)
-	t.Logf("✓ Host removed: %s from subsystem %s", nvmeofData.HostNQN, testNQN)
+	t.Logf("✓ Host removed: %s from subsystem %s", hostNQN, testNQN)
 
 	// Test create namespace
 	// poolName := "mypool"

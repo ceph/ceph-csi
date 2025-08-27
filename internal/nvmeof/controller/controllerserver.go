@@ -168,7 +168,7 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	// Validate required parameters
 	params := req.GetParameters()
 	requiredParams := []string{
-		"subsystemNQN", "hostNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
+		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
 		"listenerIpAddress", "listenerPort", "listenerHostname",
 	}
 	for _, param := range requiredParams {
@@ -255,7 +255,6 @@ func createNVMeoFResources(
 		SubsystemNQN:  params["subsystemNQN"],
 		NamespaceID:   0,  // will be set after namespace creation,
 		NamespaceUUID: "", // will be set after namespace creation
-		HostNQN:       params["hostNQN"],
 		ListenerInfo: nvmeof.ListenerDetails{
 			GatewayAddress: nvmeof.GatewayAddress{
 				Address: params["listenerIpAddress"],
@@ -311,12 +310,6 @@ func createNVMeoFResources(
 	}
 	nvmeofData.NamespaceUUID = uuid
 
-	// Step 6: Add host to subsystem
-	if err := gateway.AddHost(ctx, nvmeofData.SubsystemNQN, nvmeofData.HostNQN); err != nil {
-		return nil, fmt.Errorf("host addition failed: %w", err)
-	}
-	log.DebugLog(ctx, "Host added: %s to subsystem %s", nvmeofData.HostNQN, nvmeofData.SubsystemNQN)
-
 	return nvmeofData, nil
 }
 
@@ -345,21 +338,14 @@ func cleanupNVMeoFResources(
 	// there is no relevant to continue , will make it simple ?
 	// instead of check in the std error if "not found"..
 
-	// Step 2: Remove host from subsystem
-	if err := gateway.RemoveHost(ctx, nvmeofData.SubsystemNQN, nvmeofData.HostNQN); err != nil {
-		return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
-			nvmeofData.HostNQN, nvmeofData.SubsystemNQN, err)
-	}
-	log.DebugLog(ctx, "Host %s removed from subsystem %s", nvmeofData.HostNQN, nvmeofData.SubsystemNQN)
-
-	// Step 3: Delete namespace
+	// Step 2: Delete namespace
 	if err := gateway.DeleteNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID); err != nil {
 		return fmt.Errorf("failed to delete namespace %d for subsystem %s: %w",
 			nvmeofData.NamespaceID, nvmeofData.SubsystemNQN, err)
 	}
 	log.DebugLog(ctx, "Namespace %d deleted for subsystem %s", nvmeofData.NamespaceID, nvmeofData.SubsystemNQN)
 
-	// Step 4: Delete listener
+	// Step 3: Delete listener
 	err = gateway.DeleteListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo)
 	if err != nil {
 		return fmt.Errorf("failed to delete listener for subsystem %s: %w", nvmeofData.SubsystemNQN, err)
@@ -367,7 +353,7 @@ func cleanupNVMeoFResources(
 	log.DebugLog(ctx, "Listener deleted for subsystem %s at %s", nvmeofData.SubsystemNQN,
 		nvmeofData.ListenerInfo)
 
-	// Step 5: Cleanup empty subsystem
+	// Step 4: Cleanup empty subsystem
 	if err := cleanupEmptySubsystem(ctx, gateway, nvmeofData.SubsystemNQN); err != nil {
 		return fmt.Errorf("failed to cleanup empty subsystem %s: %w", nvmeofData.SubsystemNQN, err)
 	}
@@ -410,7 +396,6 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) {
 	volume.VolumeContext[vcSubsystemNQN] = data.SubsystemNQN
 	volume.VolumeContext[vcNamespaceID] = strconv.FormatUint(uint64(data.NamespaceID), 10)
 	volume.VolumeContext[vcNamespaceUUID] = data.NamespaceUUID
-	volume.VolumeContext[vcHostNQN] = data.HostNQN
 	volume.VolumeContext[vcListenerAddress] = data.ListenerInfo.Address
 	volume.VolumeContext[vcListenerPort] = listenerPortStr
 	volume.VolumeContext[vcListenerHostname] = data.ListenerInfo.Hostname
@@ -445,7 +430,6 @@ func (cs *Server) storeNVMeoFMetadata(
 		toRBDMetadataKey(vcSubsystemNQN):  nvmeofData.SubsystemNQN,
 		toRBDMetadataKey(vcNamespaceID):   strconv.FormatUint(uint64(nvmeofData.NamespaceID), 10),
 		toRBDMetadataKey(vcNamespaceUUID): nvmeofData.NamespaceUUID,
-		toRBDMetadataKey(vcHostNQN):       nvmeofData.HostNQN,
 
 		// Listener info
 		toRBDMetadataKey(vcListenerAddress):  nvmeofData.ListenerInfo.Address,
@@ -502,7 +486,6 @@ func (cs *Server) getNVMeoFMetadata(
 		toRBDMetadataKey(vcSubsystemNQN),
 		toRBDMetadataKey(vcNamespaceID),
 		toRBDMetadataKey(vcNamespaceUUID),
-		toRBDMetadataKey(vcHostNQN),
 		toRBDMetadataKey(vcListenerAddress),
 		toRBDMetadataKey(vcListenerPort),
 		toRBDMetadataKey(vcListenerHostname),
@@ -541,7 +524,6 @@ func (cs *Server) getNVMeoFMetadata(
 		SubsystemNQN:  metadata[toRBDMetadataKey(vcSubsystemNQN)],
 		NamespaceID:   uint32(nsid),
 		NamespaceUUID: metadata[toRBDMetadataKey(vcNamespaceUUID)],
-		HostNQN:       metadata[toRBDMetadataKey(vcHostNQN)],
 		ListenerInfo: nvmeof.ListenerDetails{
 			GatewayAddress: nvmeof.GatewayAddress{
 				Address: metadata[toRBDMetadataKey(vcListenerAddress)],
