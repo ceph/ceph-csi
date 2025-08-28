@@ -146,7 +146,7 @@ func (cs *Server) DeleteVolume(
 	defer cs.volumeLocks.Release(volumeID)
 
 	// Get NVMe-oF metadata for cleanup
-	nvmeofData, err := cs.getNVMeoFMetadata(ctx, req, volumeID)
+	nvmeofData, err := cs.getNVMeoFMetadata(ctx, req.GetSecrets(), volumeID)
 	if err != nil {
 		log.DebugLog(ctx, "No NVMe-oF metadata found, skipping NVMe-oF cleanup: %v", err)
 	} else {
@@ -464,11 +464,11 @@ func (cs *Server) storeNVMeoFMetadata(
 // getNVMeoFMetadata retrieves all NVMe-oF data from RBD volume metadata.
 func (cs *Server) getNVMeoFMetadata(
 	ctx context.Context,
-	req *csi.DeleteVolumeRequest,
+	secrets map[string]string,
 	volumeID string,
 ) (*nvmeof.NVMeoFVolumeData, error) {
 	// Create RBD manager
-	mgr := rbdutil.NewManager(cs.backendServer.Driver.GetInstanceID(), nil, req.GetSecrets())
+	mgr := rbdutil.NewManager(cs.backendServer.Driver.GetInstanceID(), nil, secrets)
 	defer mgr.Destroy(ctx)
 
 	// Get RBD volume
