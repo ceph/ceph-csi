@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -32,6 +33,7 @@ import (
 	rbdutil "github.com/ceph/ceph-csi/internal/rbd"
 	rbddriver "github.com/ceph/ceph-csi/internal/rbd/driver"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -162,6 +164,84 @@ func (cs *Server) DeleteVolume(
 	return cs.backendServer.DeleteVolume(ctx, req)
 }
 
+// ControllerPublishVolume handles the publishing of a volume (run Add host GRPC).
+func (cs *Server) ControllerPublishVolume(
+	ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+) (*csi.ControllerPublishVolumeResponse, error) {
+	// Validate request
+	if err := validatePublishVolumeRequest(req); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
+	}
+
+	volumeID := req.GetVolumeId()
+	if acquired := cs.volumeLocks.TryAcquire(volumeID); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer cs.volumeLocks.Release(volumeID)
+
+	// Publish NVMe-oF resources
+	hostNqn, err := publishResources(ctx, req)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to publish resources: %v", err)
+	}
+
+	// populate publish context
+	publishContext := populatePublishContext(req, hostNqn)
+
+	return &csi.ControllerPublishVolumeResponse{
+		PublishContext: publishContext,
+	}, nil
+}
+
+func (cs *Server) ControllerUnpublishVolume(
+	ctx context.Context,
+	req *csi.ControllerUnpublishVolumeRequest,
+) (*csi.ControllerUnpublishVolumeResponse, error) {
+	// Validate request
+	if err := util.ValidateControllerUnpublishVolumeRequest(req); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
+	}
+
+	volumeID := req.GetVolumeId()
+	nodeID := req.GetNodeId()
+	if acquired := cs.volumeLocks.TryAcquire(volumeID); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer cs.volumeLocks.Release(volumeID)
+
+	// Since ControllerUnpublishVolume doesn't receive volume context,
+	// we need to retrieve it from the volume metadata stored during CreateVolume
+	secrets := req.GetSecrets()
+	if secrets == nil {
+		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(req.GetVolumeId(), util.RBDType)
+		if err != nil {
+			log.WarningLog(ctx, "controller publish secret not found: %v", err)
+
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+
+		secrets, err = k8s.GetSecret(secretName, secretNamespace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
+		}
+	}
+
+	nvmeofData, err := cs.getNVMeoFMetadata(ctx, secrets, volumeID)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get NVMe-oF metadata for volumeID %s: %v", volumeID, err)
+
+		return nil, status.Errorf(codes.Internal, "failed to get NVMe-oF metadata: %v", err)
+	}
+
+	// Unpublish NVMe-oF resources
+	if err := unpublishResources(ctx, nvmeofData, nodeID); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unpublish resources: %v", err)
+	}
+
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
+}
+
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
 // the rest of the parameters are validated by RBD.
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
@@ -178,6 +258,22 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	}
 
 	return nil
+}
+
+// validatePublishVolumeRequest validates the incoming request for publishing a volume.
+func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
+	volumeContext := req.GetVolumeContext()
+	requiredParams := []string{
+		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
+		"listenerIpAddress", "listenerPort", "listenerHostname",
+	}
+	for _, param := range requiredParams {
+		if volumeContext[param] == "" {
+			return fmt.Errorf("missing required parameter: %s", param)
+		}
+	}
+
+	return util.ValidateControllerPublishVolumeRequest(req)
 }
 
 // ensureSubsystem checks if the subsystem exists, and creates it if not.
@@ -362,6 +458,99 @@ func cleanupNVMeoFResources(
 	return nil
 }
 
+// publishResources publishes the HostNQN to be allowed to see the Volume.
+func publishResources(ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+) (string, error) {
+	nodeID := req.GetNodeId()
+	hostNQN, err := extractHostNQNFromNodeID(nodeID)
+	if err != nil {
+		return "", status.Errorf(codes.InvalidArgument, "invalid nodeID format: %v", err)
+	}
+	// Get volume context from the volume (contains subsystem info from CreateVolume)
+	volumeContext := req.GetVolumeContext()
+	subsystemNQN := volumeContext[vcSubsystemNQN]
+	gatewayAddr := volumeContext[vcGatewayAddress]
+	gatewayPortStr := volumeContext[vcGatewayPort]
+
+	// Convert gateway port from string to uint32
+	gatewayPort, err := strconv.ParseUint(gatewayPortStr, 10, 32)
+	if err != nil {
+		return "", fmt.Errorf("invalid gateway port %s: %w", gatewayPortStr, err)
+	}
+	// Connect to gateway and add host
+	config := &nvmeof.GatewayConfig{
+		Address: gatewayAddr,
+		Port:    uint32(gatewayPort),
+	}
+	gateway, err := connectGateway(ctx, config)
+	if err != nil {
+		return "", fmt.Errorf("gateway connection failed: %w", err)
+	}
+	defer func() {
+		if closeErr := gateway.Destroy(); closeErr != nil {
+			log.ErrorLog(ctx, "Warning: failed to close gateway connection: %v", closeErr)
+		}
+	}()
+
+	// Add host to subsystem
+	if err := gateway.AddHost(ctx, subsystemNQN, hostNQN); err != nil {
+		return "", fmt.Errorf("failed to add host %s: %w", hostNQN, err)
+	}
+
+	log.DebugLog(ctx, "Host %s successfully added to subsystem %s", hostNQN, subsystemNQN)
+
+	return hostNQN, nil
+}
+
+// unpublishResources removes the host from the NVMe-oF subsystem.
+func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, nodeID string) error {
+	// Extract host NQN from nodeID
+	hostNQN, err := extractHostNQNFromNodeID(nodeID)
+	if err != nil {
+		return fmt.Errorf("invalid nodeID format: %w", err)
+	}
+	subsystemNQN := data.SubsystemNQN
+	gatewayAddr := data.GatewayManagementInfo.Address
+	gatewayPort := data.GatewayManagementInfo.Port
+
+	// Connect to gateway and add host
+	config := &nvmeof.GatewayConfig{
+		Address: gatewayAddr,
+		Port:    gatewayPort,
+	}
+	gateway, err := connectGateway(ctx, config)
+	if err != nil {
+		return fmt.Errorf("gateway connection failed: %w", err)
+	}
+	defer func() {
+		if closeErr := gateway.Destroy(); closeErr != nil {
+			log.ErrorLog(ctx, "Warning: failed to close gateway connection: %v", closeErr)
+		}
+	}()
+
+	// Remove host from subsystem
+	if err := gateway.RemoveHost(ctx, subsystemNQN, hostNQN); err != nil {
+		return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
+			hostNQN, subsystemNQN, err)
+	}
+	log.DebugLog(ctx, "Host %s removed from subsystem %s", hostNQN, subsystemNQN)
+
+	return nil
+}
+
+// extractHostNQNFromNodeID extracts the host NQN from the node ID.
+func extractHostNQNFromNodeID(nodeID string) (string, error) {
+	// the nodeID has the pattern: <hostname>::<nqn>
+	// TODO: maybe change this separator to rare one.
+	parts := strings.Split(nodeID, "::")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid nodeID format: %s", nodeID)
+	}
+
+	return parts[1], nil
+}
+
 // VolumeContext metadata keys.
 const (
 	// NVMe-oF resource info.
@@ -401,6 +590,17 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) {
 	volume.VolumeContext[vcListenerHostname] = data.ListenerInfo.Hostname
 	volume.VolumeContext[vcGatewayAddress] = data.GatewayManagementInfo.Address
 	volume.VolumeContext[vcGatewayPort] = gatewayManagementInfoPortStr
+}
+
+// populatePublishContext creates a publish context for the volume.
+func populatePublishContext(req *csi.ControllerPublishVolumeRequest, hostNqn string) map[string]string {
+	publishContext := make(map[string]string)
+	for key, value := range req.GetVolumeContext() {
+		publishContext[key] = value
+	}
+	publishContext[vcHostNQN] = hostNqn
+
+	return publishContext
 }
 
 // storeNVMeoFMetadata stores all NVMe-oF data in RBD volume metadata for cleanup operations.
