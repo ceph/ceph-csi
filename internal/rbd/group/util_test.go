@@ -47,6 +47,11 @@ func Test_shouldRetryVolumeGroupGeneration(t *testing.T) {
 			want: true, // Known error, continue searching
 		},
 		{
+			name: "ErrConfigNotFound (continue searching)",
+			args: args{err: util.ErrConfigNotFound},
+			want: true, // Known error, continue searching
+		},
+		{
 			name: "ErrRBDGroupNotFound (continue searching)",
 			args: args{err: rbderrors.ErrGroupNotFound},
 			want: true, // Known error, continue searching

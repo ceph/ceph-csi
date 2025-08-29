@@ -415,6 +415,11 @@ func Test_shouldRetryVolumeGeneration(t *testing.T) {
 			want: true, // Known error, continue searching
 		},
 		{
+			name: "ErrConfigNotFound (continue searching)",
+			args: args{err: util.ErrConfigNotFound},
+			want: true, // Known error, continue searching
+		},
+		{
 			name: "ErrImageNotFound (continue searching)",
 			args: args{err: rbderrors.ErrImageNotFound},
 			want: true, // Known error, continue searching

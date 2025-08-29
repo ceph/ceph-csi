@@ -434,8 +434,9 @@ func (cvg *commonVolumeGroup) GetCreationTime(ctx context.Context) (*time.Time, 
 // volumegroups should continue based on the type of error encountered.
 //
 // It checks if the given error matches any of the following known errors:
-//   - ErrPoolNotFound: The rbd pool where the volumegroup/omap is expected doesn't exist.
-//   - ErrGroupNotFound: The volumegroup doesn't exist in the rbd pool.
+//   - util.ErrPoolNotFound: The rbd pool where the volumegroup/omap is expected doesn't exist.
+//   - util.ErrConfigNotFound: No configuration exists for the cluster ID associated with the volumegroup.
+//   - rbderrors.ErrGroupNotFound: The volumegroup doesn't exist in the rbd pool.
 //   - rados.ErrPermissionDenied: Permissions to access the pool is denied.
 //
 // If any of these errors are encountered, the function returns `true`, indicating
@@ -451,6 +452,7 @@ func ShouldRetryVolumeGroupGeneration(err error) bool {
 	}
 	// Continue searching for specific known errors
 	return (errors.Is(err, util.ErrPoolNotFound) ||
+		errors.Is(err, util.ErrConfigNotFound) ||
 		errors.Is(err, rbderrors.ErrGroupNotFound) ||
 		errors.Is(err, rados.ErrPermissionDenied))
 }

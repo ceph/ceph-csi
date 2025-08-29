@@ -1251,6 +1251,7 @@ func generateVolumeFromVolumeID(
 // It checks if the given error matches any of the following known errors:
 //   - util.ErrKeyNotFound: The key required to locate the volume is missing in Rados omap.
 //   - util.ErrPoolNotFound: The rbd pool where the volume/omap is expected doesn't exist.
+//   - util.ErrConfigNotFound: No configuration exists for the cluster ID associated with the volume.
 //   - ErrImageNotFound: The image doesn't exist in the rbd pool.
 //   - rados.ErrPermissionDenied: Permissions to access the pool is denied.
 //
@@ -1268,6 +1269,7 @@ func ShouldRetryVolumeGeneration(err error) bool {
 	// Continue searching for specific known errors
 	return (errors.Is(err, util.ErrKeyNotFound) ||
 		errors.Is(err, util.ErrPoolNotFound) ||
+		errors.Is(err, util.ErrConfigNotFound) ||
 		errors.Is(err, rbderrors.ErrImageNotFound) ||
 		errors.Is(err, rados.ErrPermissionDenied))
 }
