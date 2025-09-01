@@ -62,11 +62,7 @@ func GetReadAffinityMapOptions(
 		return "", err
 	}
 
-	if !configReadAffinityEnabled {
-		return "", nil
-	}
-
-	if configCrushLocationLabels == "" {
+	if !configReadAffinityEnabled || configCrushLocationLabels == "" {
 		return cliReadAffinityMapOptions, nil
 	}
 
