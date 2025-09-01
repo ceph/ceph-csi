@@ -300,8 +300,14 @@ func TestParseClientIP(t *testing.T) {
 		},
 		{
 			name:    "IPv6 address",
-			addr:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334:0/2686266785",
+			addr:    "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:0/2686266785",
 			want:    "2001:db8:85a3::8a2e:370:7334",
+			wantErr: false,
+		},
+		{
+			name:    "Compressed IPv6 address",
+			addr:    "[fd98::4]:0/2686266785",
+			want:    "fd98::4",
 			wantErr: false,
 		},
 		{
