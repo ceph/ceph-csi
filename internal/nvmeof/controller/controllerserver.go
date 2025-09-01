@@ -305,7 +305,13 @@ func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error
 }
 
 // ensureSubsystem checks if the subsystem exists, and creates it if not.
-func ensureSubsystem(ctx context.Context, gateway *nvmeof.GatewayRpcClient, subsystemNQN string) error {
+// then creates the listener.
+func ensureSubsystem(
+	ctx context.Context,
+	gateway *nvmeof.GatewayRpcClient,
+	subsystemNQN string,
+	listenerInfo nvmeof.ListenerDetails,
+) error {
 	exists, err := gateway.SubsystemExists(ctx, subsystemNQN)
 	if err != nil {
 		return err
@@ -314,12 +320,23 @@ func ensureSubsystem(ctx context.Context, gateway *nvmeof.GatewayRpcClient, subs
 		return nil
 	}
 	// Create if doesn't exist (controller decision)
+	err = gateway.CreateSubsystem(ctx, subsystemNQN)
+	if err != nil {
+		return err
+	}
 
-	return gateway.CreateSubsystem(ctx, subsystemNQN)
+	// Create listeners
+
+	return gateway.CreateListener(ctx, subsystemNQN, listenerInfo)
 }
 
-// cleanupEmptySubsystem checks if the subsystem is empty (no namespaces), if so, deletes it.
-func cleanupEmptySubsystem(ctx context.Context, gateway *nvmeof.GatewayRpcClient, subsystemNQN string,
+// cleanupEmptySubsystem checks if the subsystem is empty (no namespaces), if so,
+// first deletes the listener and then deletes it.
+func cleanupEmptySubsystem(
+	ctx context.Context,
+	gateway *nvmeof.GatewayRpcClient,
+	subsystemNQN string,
+	listenerInfo nvmeof.ListenerDetails,
 ) error {
 	if subsystemNQN == "" {
 		return nil
@@ -344,6 +361,13 @@ func cleanupEmptySubsystem(ctx context.Context, gateway *nvmeof.GatewayRpcClient
 
 		return nil
 	}
+
+	// subsystem is empty delete listener first
+	err = gateway.DeleteListener(ctx, subsystemNQN, listenerInfo)
+	if err != nil {
+		return fmt.Errorf("failed to delete listener for subsystem %s: %w", subsystemNQN, err)
+	}
+
 	log.DebugLog(ctx, "Subsystem %s is empty, deleting", subsystemNQN)
 	err = gateway.DeleteSubsystem(ctx, subsystemNQN)
 	if err != nil {
@@ -406,20 +430,15 @@ func createNVMeoFResources(
 		}
 	}()
 
-	// Step 3: Ensure subsystem exists
-	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN); err != nil {
+	// Step 3: Ensure subsystem exists (and listener)
+	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
 		return nil, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 
-	// Step 4: Create listeners
-	err = gateway.CreateListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo)
-	if err != nil {
-		return nil, fmt.Errorf("listener creation failed: %w", err)
-	}
-	log.DebugLog(ctx, "Listener created for subsystem %s at %s", nvmeofData.SubsystemNQN,
+	log.DebugLog(ctx, "subsystem %s and Listener %s for the subsystem were created", nvmeofData.SubsystemNQN,
 		nvmeofData.ListenerInfo)
 
-	// Step 5: Create namespace and set its uuid
+	// Step 4: Create namespace and set its uuid
 	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdImageName)
 	if err != nil {
 		return nil, fmt.Errorf("namespace creation failed: %w", err)
@@ -467,16 +486,8 @@ func cleanupNVMeoFResources(
 	}
 	log.DebugLog(ctx, "Namespace %d deleted for subsystem %s", nvmeofData.NamespaceID, nvmeofData.SubsystemNQN)
 
-	// Step 3: Delete listener
-	err = gateway.DeleteListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo)
-	if err != nil {
-		return fmt.Errorf("failed to delete listener for subsystem %s: %w", nvmeofData.SubsystemNQN, err)
-	}
-	log.DebugLog(ctx, "Listener deleted for subsystem %s at %s", nvmeofData.SubsystemNQN,
-		nvmeofData.ListenerInfo)
-
-	// Step 4: Cleanup empty subsystem
-	if err := cleanupEmptySubsystem(ctx, gateway, nvmeofData.SubsystemNQN); err != nil {
+	// Step 3: Cleanup empty subsystem
+	if err := cleanupEmptySubsystem(ctx, gateway, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
 		return fmt.Errorf("failed to cleanup empty subsystem %s: %w", nvmeofData.SubsystemNQN, err)
 	}
 
