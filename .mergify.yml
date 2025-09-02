@@ -411,6 +411,13 @@ pull_request_rules:
       label:
         add:
           - component/rbd
+  - name: title contains NVME-oF or nvmeof
+    conditions:
+      - "title~=(NVMe-oF)|(nvmeof)"
+    actions:
+      label:
+        add:
+          - component/nvme-of
   - name: title contains CI, testing or e2e
     conditions:
       - "title~=(ci: )|(testing: )|(e2e)"
