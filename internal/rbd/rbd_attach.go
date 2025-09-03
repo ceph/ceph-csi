@@ -20,13 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 
 	"github.com/ceph/ceph-csi/pkg/util/kernel"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/kmod"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/avast/retry-go/v4"
@@ -239,19 +239,13 @@ func waitForPath(
 // SetRbdNbdToolFeatures sets features available with rbd-nbd, and NBD module
 // loaded status.
 func SetRbdNbdToolFeatures() {
-	var stderr string
-	// check if the module is loaded or compiled in
-	_, err := os.Stat("/sys/module/" + moduleNbd)
-	if os.IsNotExist(err) {
-		// try to load the module
-		_, stderr, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
-		if err != nil {
-			hasNBD = false
-			log.WarningLogMsg("nbd modprobe failed (%v): %q", err, stderr)
+	err := kmod.Modprobe(context.TODO(), moduleNbd)
+	if err != nil {
+		hasNBD = false
 
-			return
-		}
+		return
 	}
+
 	log.DefaultLog("nbd module loaded")
 
 	// fetch the current running kernel info

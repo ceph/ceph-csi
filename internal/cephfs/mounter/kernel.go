@@ -24,6 +24,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/kmod"
 )
 
 const (
@@ -80,7 +81,7 @@ func (m *kernelMounter) mountKernel(
 	volOptions *store.VolumeOptions,
 ) error {
 	if m.needsModprobe {
-		if err := execCommandErr(ctx, "modprobe", kernelModule); err != nil {
+		if err := kmod.Modprobe(ctx, kernelModule); err != nil {
 			return err
 		}
 

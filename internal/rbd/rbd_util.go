@@ -35,6 +35,7 @@ import (
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/kmod"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/rados"
@@ -322,7 +323,6 @@ func prepareKrbdFeatureAttrs() (uint64, error) {
 // GetKrbdSupportedFeatures load the module if needed and return supported
 // features attribute as a string.
 func GetKrbdSupportedFeatures() (string, error) {
-	var stderr string
 	// check if the module is loaded or compiled in
 	_, err := os.Stat(krbdSupportedFeaturesFile)
 	if err != nil {
@@ -332,10 +332,8 @@ func GetKrbdSupportedFeatures() (string, error) {
 			return "", err
 		}
 		// try to load the module
-		_, stderr, err = util.ExecCommand(context.TODO(), "modprobe", rbdDefaultMounter)
+		err = kmod.Modprobe(context.TODO(), rbdDefaultMounter)
 		if err != nil {
-			log.ErrorLogMsg("modprobe failed (%v): %q", err, stderr)
-
 			return "", err
 		}
 	}
