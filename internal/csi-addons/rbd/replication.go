@@ -548,6 +548,12 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 
 	// demote image to secondary
 	if info.IsPrimary() {
+		// If volume is demoted first, ControllerUnpublishVolume will fail to remove metadata
+		// since the image will be Read-only.
+		// Ensure volume is unpublished before demotion.
+		if err := checkVolumeUnpublished(ctx, rs.Driver.GetNodeID(), rbdVol); err != nil {
+			return nil, status.Errorf(codes.FailedPrecondition, "volume cannot be demoted: %v", err)
+		}
 		// store the image creation time for resync
 		_, err = rbdVol.GetMetadata(imageCreationTimeKey)
 		if err != nil && errors.Is(err, librbd.ErrNotFound) {
@@ -992,4 +998,30 @@ func getCurrentReplicationStatus(ctx context.Context, mirrorGlobalStatus types.G
 	}
 
 	return resp, desc
+}
+
+// checkVolumeUnpublished verifies that the volume has been properly unpublished
+// by checking that clientaddress and userId mapping metadata is not present.
+func checkVolumeUnpublished(ctx context.Context, nodeId string, rv types.Volume) error {
+	volumeId, err := rv.GetID(ctx)
+	if err != nil {
+		return err
+	}
+
+	clientMetadataKeys := []string{
+		corerbd.GetClientAddressKey(volumeId, nodeId),
+		corerbd.GetUserIDMappingKey(volumeId, nodeId),
+	}
+
+	for _, key := range clientMetadataKeys {
+		_, err := rv.GetMetadata(key)
+		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+			return err
+		}
+		if !errors.Is(err, librbd.ErrNotFound) {
+			return fmt.Errorf("metadata %q is still present on the image %q", key, rv)
+		}
+	}
+
+	return nil
 }
