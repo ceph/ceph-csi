@@ -190,6 +190,7 @@ func GetIDFromReplication(req interface{}) string {
 	}
 }
 
+//nolint:gocyclo,cyclop // TODO: reduce complexity
 func getReqID(req interface{}) string {
 	// if req is nil empty string will be returned
 	reqID := ""
@@ -206,6 +207,11 @@ func getReqID(req interface{}) string {
 		reqID = r.GetSnapshotId()
 
 	case *csi.ControllerExpandVolumeRequest:
+		reqID = r.GetVolumeId()
+
+	case *csi.ControllerPublishVolumeRequest:
+		reqID = r.GetVolumeId()
+	case *csi.ControllerUnpublishVolumeRequest:
 		reqID = r.GetVolumeId()
 
 	case *csi.NodeStageVolumeRequest:

@@ -49,6 +49,12 @@ func TestGetReqID(t *testing.T) {
 		&csi.ControllerExpandVolumeRequest{
 			VolumeId: fakeID,
 		},
+		&csi.ControllerPublishVolumeRequest{
+			VolumeId: fakeID,
+		},
+		&csi.ControllerUnpublishVolumeRequest{
+			VolumeId: fakeID,
+		},
 		&csi.NodeStageVolumeRequest{
 			VolumeId: fakeID,
 		},
