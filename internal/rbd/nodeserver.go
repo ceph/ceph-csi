@@ -452,7 +452,7 @@ func (ns *NodeServer) setUserIdMapping(
 	}
 
 	nodeId := ns.Driver.GetNodeID()
-	metadataKey := getUserIDMappingKey(rv.VolID, nodeId)
+	metadataKey := GetUserIDMappingKey(rv.VolID, nodeId)
 	err := rv.SetMetadata(metadataKey, cr.ID)
 	if err != nil {
 		return fmt.Errorf("failed to set client address for %s: %w", rv, err)
@@ -479,7 +479,7 @@ func (ns *NodeServer) setClientAddress(
 	}
 
 	nodeId := ns.Driver.GetNodeID()
-	metadataKey := getClientAddressKey(rv.VolID, nodeId)
+	metadataKey := GetClientAddressKey(rv.VolID, nodeId)
 	monitors, _ /* clusterID*/, err := util.GetMonsAndClusterID(ctx, rv.ClusterID, false)
 	if err != nil {
 		return fmt.Errorf("failed to get monitors for cluster %s: %w", rv.ClusterID, err)

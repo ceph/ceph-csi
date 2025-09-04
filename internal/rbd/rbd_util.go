@@ -286,13 +286,13 @@ var (
 	}
 )
 
-// getClientAddressKey returns the key for storing client address metadata for a specific node.
-func getClientAddressKey(volumeId, nodeId string) string {
+// GetClientAddressKey returns the key for storing client address metadata for a specific node.
+func GetClientAddressKey(volumeId, nodeId string) string {
 	return fmt.Sprintf("%s/%s/%s", clientAddressKey, volumeId, nodeId)
 }
 
-// getUserIDMappingKey returns the key for storing user ID mapping metadata for a specific node.
-func getUserIDMappingKey(volumeID, nodeID string) string {
+// GetUserIDMappingKey returns the key for storing user ID mapping metadata for a specific node.
+func GetUserIDMappingKey(volumeID, nodeID string) string {
 	return fmt.Sprintf("%s/%s/%s", userIdMappingKey, volumeID, nodeID)
 }
 
