@@ -1407,9 +1407,13 @@ func genVolFromVolumeOptions(
 		return nil, err
 	}
 
-	rbdVol.RadosNamespace, err = util.GetRBDRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
-	if err != nil {
-		return nil, err
+	if namespace, ok := volOptions["radosNamespace"]; ok && namespace != "" {
+		rbdVol.RadosNamespace = namespace
+	} else {
+		rbdVol.RadosNamespace, err = util.GetRBDRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if rbdVol.Mounter, ok = volOptions["mounter"]; !ok {
 		rbdVol.Mounter = rbdDefaultMounter
