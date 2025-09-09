@@ -608,6 +608,10 @@ func matchesSourceVolumeIDs(sourceVolumeIDs, volumeIDsInOMap []string) bool {
 // volume group reservation. It also resets the quiesce of the subvolumes and
 // subvolume groups in the filesystems for the volumeID's present in the
 // CreateVolumeGroupSnapshotRequest.
+//
+// when fsMap is empty function will skip filesystem quiesce operations and
+// only perform snapshot deletion and reservation cleanup. This is the intended
+// behavior for DeleteVolumeGroupSnapshot operation where filesystem quiesce is not required.
 func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Context,
 	vgs *store.VolumeGroupSnapshotIdentifier,
 	cr *util.Credentials,
@@ -735,22 +739,10 @@ func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
 	}
 	vgo.Destroy()
 
-	volIds := vgsi.GetVolumeIDs()
-	fsMap, err := getFsNamesAndSubVolumeFromVolumeIDs(ctx, req.GetSecrets(), volIds, cr)
-	err = extractDeleteVolumeGroupError(err)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to get volume group options: %v", err)
-		err = extractDeleteVolumeGroupError(err)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		return &csi.DeleteVolumeGroupSnapshotResponse{}, nil
-	}
-
-	defer destroyFSConnections(fsMap)
-
-	err = cs.deleteSnapshotsAndUndoReservation(ctx, vgsi, cr, fsMap, req.GetSecrets())
+	// deleteSnapshotsAndUndoReservation will reset quiesce of the subvolumes.
+	// In case of DeleteVolumeGoupSnapshot, there is no need for quiesce at all.
+	// Passing empty fsMap, deleteSnapshotsAndUndoReservation will reset quiesce operation.
+	err = cs.deleteSnapshotsAndUndoReservation(ctx, vgsi, cr, core.EmptyFSQuiesceClientMap, req.GetSecrets())
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot and undo reservation: %v", err)
 		err = extractDeleteVolumeGroupError(err)
