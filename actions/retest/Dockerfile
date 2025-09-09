@@ -1,5 +1,5 @@
 ARG WORK_DIR="/home/src"
-ARG BASE_IMAGE="golang:1.23"
+ARG BASE_IMAGE="golang:1.24"
 
 FROM ${BASE_IMAGE} as builder
 
