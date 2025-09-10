@@ -80,6 +80,8 @@ type FSQuiesceClient interface {
 	) (*admin.QuiesceInfo, error)
 }
 
+type FSQuiesceClientMap map[string]FSQuiesceClient
+
 type Volume struct {
 	VolumeID  string
 	ClusterID string

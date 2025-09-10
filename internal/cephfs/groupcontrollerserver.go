@@ -190,7 +190,7 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 // CreateVolumeGroupSnapshotRequest.
 func (cs *ControllerServer) queisceFileSystems(ctx context.Context,
 	vgs *store.VolumeGroupSnapshotIdentifier,
-	fsMap map[string]core.FSQuiesceClient,
+	fsMap core.FSQuiesceClientMap,
 ) (bool, error) {
 	var inProgress bool
 	for _, fm := range fsMap {
@@ -219,7 +219,7 @@ func (cs *ControllerServer) releaseQuiesceAndGetVolumeGroupSnapshotResponse(
 	ctx context.Context,
 	req *csi.CreateVolumeGroupSnapshotRequest,
 	vgs *store.VolumeGroupSnapshotIdentifier,
-	fsMap map[string]core.FSQuiesceClient,
+	fsMap core.FSQuiesceClientMap,
 	vg *store.VolumeGroupOptions,
 	cr *util.Credentials,
 ) (*csi.CreateVolumeGroupSnapshotResponse, error) {
@@ -312,7 +312,7 @@ func (cs *ControllerServer) createSnapshotAddToVolumeGroupJournal(
 	vgo *store.VolumeGroupOptions,
 	vgs *store.VolumeGroupSnapshotIdentifier,
 	cr *util.Credentials,
-	fsMap map[string]core.FSQuiesceClient) (
+	fsMap core.FSQuiesceClientMap) (
 	[]*csi.CreateSnapshotResponse,
 	error,
 ) {
@@ -376,7 +376,7 @@ func formatCreateSnapshotRequest(volID, groupSnapshotName,
 // CreateVolumeGroupSnapshotRequest.
 func releaseFSQuiesce(ctx context.Context,
 	requestName string,
-	fsMap map[string]core.FSQuiesceClient,
+	fsMap core.FSQuiesceClientMap,
 ) error {
 	inProgress := false
 	var err error
@@ -407,7 +407,7 @@ func releaseFSQuiesce(ctx context.Context,
 // CreateVolumeGroupSnapshotRequest.
 func fsQuiesceWithExpireTimeout(ctx context.Context,
 	requestName string,
-	fsMap map[string]core.FSQuiesceClient,
+	fsMap core.FSQuiesceClientMap,
 ) error {
 	var err error
 
@@ -498,7 +498,7 @@ func checkIfFSNeedQuiesceRelease(vgs *store.VolumeGroupSnapshotIdentifier, volID
 }
 
 // getClusterIDForVolumeID gets the clusterID for the volumeID from the fms map.
-func getClusterIDForVolumeID(fms map[string]core.FSQuiesceClient, volumeID string) string {
+func getClusterIDForVolumeID(fms core.FSQuiesceClientMap, volumeID string) string {
 	for _, fm := range fms {
 		for _, vol := range fm.GetVolumes() {
 			if vol.VolumeID == volumeID {
@@ -518,7 +518,7 @@ func getFsNamesAndSubVolumeFromVolumeIDs(ctx context.Context,
 	secret map[string]string,
 	volIDs []string,
 	cr *util.Credentials) (
-	map[string]core.FSQuiesceClient,
+	core.FSQuiesceClientMap,
 	error,
 ) {
 	type fs struct {
@@ -561,7 +561,7 @@ func getFsNamesAndSubVolumeFromVolumeIDs(ctx context.Context,
 			volOptions.SubVolume.VolID)
 		fm[uniqueName] = val
 	}
-	fsk := map[string]core.FSQuiesceClient{}
+	fsk := core.FSQuiesceClientMap{}
 	var err error
 	defer func() {
 		if err != nil {
@@ -586,7 +586,7 @@ func getFsNamesAndSubVolumeFromVolumeIDs(ctx context.Context,
 }
 
 // destroyFSConnections destroys connections of all FSQuiesceClient.
-func destroyFSConnections(fsMap map[string]core.FSQuiesceClient) {
+func destroyFSConnections(fsMap core.FSQuiesceClientMap) {
 	for _, fm := range fsMap {
 		if fm != nil {
 			fm.Destroy()
@@ -611,7 +611,7 @@ func matchesSourceVolumeIDs(sourceVolumeIDs, volumeIDsInOMap []string) bool {
 func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Context,
 	vgs *store.VolumeGroupSnapshotIdentifier,
 	cr *util.Credentials,
-	fsMap map[string]core.FSQuiesceClient,
+	fsMap core.FSQuiesceClientMap,
 	secrets map[string]string,
 ) error {
 	// get the omap from the snapshot and volume mapping
