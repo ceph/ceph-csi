@@ -1,4 +1,13 @@
 ---
+defaults:
+  actions:
+    update:
+      bot_account: ceph-csi-bot
+    rebase:
+      bot_account: ceph-csi-bot
+    merge:
+      merge_bot_account: ceph-csi-bot
+
 queue_rules:
   - name: default
     merge_conditions:
