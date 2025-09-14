@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -147,7 +148,9 @@ func (cs *Server) CreateVolume(
 	}()
 
 	// step 3: Populate volume context for NodeServer
-	populateVolumeContext(backend, nvmeofData)
+	if err := populateVolumeContext(backend, nvmeofData); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to populate volume context: %v", err)
+	}
 
 	// Step 4: Store NVMe-oF metadata in the volume context
 	if err := cs.storeNVMeoFMetadata(ctx, req, volumeID, nvmeofData); err != nil {
@@ -277,12 +280,17 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	params := req.GetParameters()
 	requiredParams := []string{
 		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
-		"listenerIpAddress", "listenerPort", "listenerHostname",
+		"listeners",
 	}
 	for _, param := range requiredParams {
 		if params[param] == "" {
 			return fmt.Errorf("missing required parameter: %s", param)
 		}
+	}
+	// Validate listeners JSON
+	_, err := parseListeners(params["listeners"])
+	if err != nil {
+		return fmt.Errorf("invalid listeners parameter: %w", err)
 	}
 
 	return nil
@@ -292,8 +300,7 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
 	volumeContext := req.GetVolumeContext()
 	requiredParams := []string{
-		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
-		"listenerIpAddress", "listenerPort", "listenerHostname",
+		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort", "listeners",
 	}
 	for _, param := range requiredParams {
 		if volumeContext[param] == "" {
@@ -304,13 +311,33 @@ func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error
 	return util.ValidateControllerPublishVolumeRequest(req)
 }
 
+func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
+	var listeners []nvmeof.ListenerDetails
+	if err := json.Unmarshal([]byte(listenersJSON), &listeners); err != nil {
+		return nil, fmt.Errorf("failed to parse listeners JSON: %w", err)
+	}
+
+	if len(listeners) == 0 { // TODO: when auto listener will be implemented , make listeners optional
+		return nil, errors.New("at least one listener must be specified")
+	}
+
+	// Validate each listener
+	for i, listener := range listeners {
+		if listener.Address == "" || listener.Port == 0 || listener.Hostname == "" {
+			return nil, fmt.Errorf("listener %d: missing required fields (address, port, hostname)", i)
+		}
+	}
+
+	return listeners, nil
+}
+
 // ensureSubsystem checks if the subsystem exists, and creates it if not.
 // then creates the listener.
 func ensureSubsystem(
 	ctx context.Context,
 	gateway *nvmeof.GatewayRpcClient,
 	subsystemNQN string,
-	listenerInfo nvmeof.ListenerDetails,
+	listeners []nvmeof.ListenerDetails,
 ) error {
 	exists, err := gateway.SubsystemExists(ctx, subsystemNQN)
 	if err != nil {
@@ -325,9 +352,15 @@ func ensureSubsystem(
 		return err
 	}
 
-	// Create listeners
+	// Create all listeners
+	for i, listener := range listeners {
+		log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
+		if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
+			return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
+		}
+	}
 
-	return gateway.CreateListener(ctx, subsystemNQN, listenerInfo)
+	return nil
 }
 
 // cleanupEmptySubsystem checks if the subsystem is empty (no namespaces), if so,
@@ -336,7 +369,7 @@ func cleanupEmptySubsystem(
 	ctx context.Context,
 	gateway *nvmeof.GatewayRpcClient,
 	subsystemNQN string,
-	listenerInfo nvmeof.ListenerDetails,
+	listeners []nvmeof.ListenerDetails,
 ) error {
 	if subsystemNQN == "" {
 		return nil
@@ -363,9 +396,11 @@ func cleanupEmptySubsystem(
 	}
 
 	// subsystem is empty delete listener first
-	err = gateway.DeleteListener(ctx, subsystemNQN, listenerInfo)
-	if err != nil {
-		return fmt.Errorf("failed to delete listener for subsystem %s: %w", subsystemNQN, err)
+	for i, listener := range listeners {
+		if err := gateway.DeleteListener(ctx, subsystemNQN, listener); err != nil {
+			return fmt.Errorf("failed to delete listener %d (%s) for subsystem %s: %w",
+				i, listener.String(), subsystemNQN, err)
+		}
 	}
 
 	log.DebugLog(ctx, "Subsystem %s is empty, deleting", subsystemNQN)
@@ -388,11 +423,13 @@ func createNVMeoFResources(
 ) (*nvmeof.NVMeoFVolumeData, error) {
 	// Step 1: Extract parameters (already validated)
 	params := req.GetParameters()
-	listenerPortStr := params["listenerPort"]
-	listenerPort, err := strconv.ParseUint(listenerPortStr, 10, 32)
+
+	// Parse listeners from JSON
+	listeners, err := parseListeners(params["listeners"])
 	if err != nil {
-		return nil, fmt.Errorf("invalid listenerPort %s: %w", listenerPortStr, err)
+		return nil, fmt.Errorf("failed to parse listeners: %w", err)
 	}
+
 	nvmeofGatewayPortStr := params["nvmeofGatewayPort"]
 	nvmeofGatewayPort, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
 	if err != nil {
@@ -402,13 +439,7 @@ func createNVMeoFResources(
 		SubsystemNQN:  params["subsystemNQN"],
 		NamespaceID:   0,  // will be set after namespace creation,
 		NamespaceUUID: "", // will be set after namespace creation
-		ListenerInfo: nvmeof.ListenerDetails{
-			GatewayAddress: nvmeof.GatewayAddress{
-				Address: params["listenerIpAddress"],
-				Port:    uint32(listenerPort),
-			},
-			Hostname: params["listenerHostname"],
-		},
+		ListenerInfo:  listeners,
 		GatewayManagementInfo: nvmeof.GatewayConfig{
 			Address: params["nvmeofGatewayAddress"],
 			Port:    uint32(nvmeofGatewayPort),
@@ -609,10 +640,8 @@ const (
 	vcNamespaceUUID = "NamespaceUUID"
 	vcHostNQN       = "HostNQN"
 
-	// Listener info.
-	vcListenerAddress  = "ListenerAddress"
-	vcListenerPort     = "ListenerPort"
-	vcListenerHostname = "ListenerHostname"
+	// Multiple listeners stored as JSON.
+	vcListeners = "listeners"
 
 	// Gateway management info.
 	vcGatewayAddress = "GatewayAddress"
@@ -625,21 +654,26 @@ func toRBDMetadataKey(vcKey string) string {
 }
 
 // populateVolumeContext adds NVMe-oF information to volume context for NodeServer.
-func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) {
+func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) error {
 	if volume.VolumeContext == nil {
 		volume.VolumeContext = make(map[string]string)
 	}
-	listenerPortStr := strconv.FormatUint(uint64(data.ListenerInfo.Port), 10)
 	gatewayManagementInfoPortStr := strconv.FormatUint(uint64(data.GatewayManagementInfo.Port), 10)
 
 	volume.VolumeContext[vcSubsystemNQN] = data.SubsystemNQN
 	volume.VolumeContext[vcNamespaceID] = strconv.FormatUint(uint64(data.NamespaceID), 10)
 	volume.VolumeContext[vcNamespaceUUID] = data.NamespaceUUID
-	volume.VolumeContext[vcListenerAddress] = data.ListenerInfo.Address
-	volume.VolumeContext[vcListenerPort] = listenerPortStr
-	volume.VolumeContext[vcListenerHostname] = data.ListenerInfo.Hostname
 	volume.VolumeContext[vcGatewayAddress] = data.GatewayManagementInfo.Address
 	volume.VolumeContext[vcGatewayPort] = gatewayManagementInfoPortStr
+
+	// Store listeners as JSON
+	listenersJSON, err := json.Marshal(data.ListenerInfo)
+	if err != nil {
+		return fmt.Errorf("failed to marshal listener info: %w", err)
+	}
+	volume.VolumeContext[vcListeners] = string(listenersJSON)
+
+	return nil
 }
 
 // populatePublishContext creates a publish context for the volume.
@@ -672,7 +706,12 @@ func (cs *Server) storeNVMeoFMetadata(
 	defer rbdVol.Destroy(ctx)
 
 	gatewayManagementInfoPortStr := strconv.FormatUint(uint64(nvmeofData.GatewayManagementInfo.Port), 10)
-	listenerInfoPortStr := strconv.FormatUint(uint64(nvmeofData.ListenerInfo.Port), 10)
+
+	// Serialize listeners to JSON
+	listenersJSON, err := json.Marshal(nvmeofData.ListenerInfo)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to serialize listeners: %v", err)
+	}
 
 	// Prepare all metadata entries
 	metadata := map[string]string{
@@ -681,10 +720,8 @@ func (cs *Server) storeNVMeoFMetadata(
 		toRBDMetadataKey(vcNamespaceID):   strconv.FormatUint(uint64(nvmeofData.NamespaceID), 10),
 		toRBDMetadataKey(vcNamespaceUUID): nvmeofData.NamespaceUUID,
 
-		// Listener info
-		toRBDMetadataKey(vcListenerAddress):  nvmeofData.ListenerInfo.Address,
-		toRBDMetadataKey(vcListenerPort):     listenerInfoPortStr,
-		toRBDMetadataKey(vcListenerHostname): nvmeofData.ListenerInfo.Hostname,
+		// Listeners as JSON
+		toRBDMetadataKey(vcListeners): string(listenersJSON),
 
 		// Gateway management info
 		toRBDMetadataKey(vcGatewayAddress): nvmeofData.GatewayManagementInfo.Address,
@@ -736,9 +773,7 @@ func (cs *Server) getNVMeoFMetadata(
 		toRBDMetadataKey(vcSubsystemNQN),
 		toRBDMetadataKey(vcNamespaceID),
 		toRBDMetadataKey(vcNamespaceUUID),
-		toRBDMetadataKey(vcListenerAddress),
-		toRBDMetadataKey(vcListenerPort),
-		toRBDMetadataKey(vcListenerHostname),
+		toRBDMetadataKey(vcListeners),
 		toRBDMetadataKey(vcGatewayAddress),
 		toRBDMetadataKey(vcGatewayPort),
 	}
@@ -761,26 +796,23 @@ func (cs *Server) getNVMeoFMetadata(
 		return nil, fmt.Errorf("invalid namespace ID: %w", err)
 	}
 
-	listenerInfoPort, err := strconv.ParseUint(metadata[toRBDMetadataKey(vcListenerPort)], 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid listener port: %w", err)
-	}
 	gatewayPort, err := strconv.ParseUint(metadata[toRBDMetadataKey(vcGatewayPort)], 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("invalid gateway port: %w", err)
 	}
+
+	// Parse listeners from JSON
+	var listeners []nvmeof.ListenerDetails
+	if err := json.Unmarshal([]byte(metadata[toRBDMetadataKey(vcListeners)]), &listeners); err != nil {
+		return nil, fmt.Errorf("failed to parse listeners JSON: %w", err)
+	}
+
 	// Construct NVMe-oF volume data
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
 		SubsystemNQN:  metadata[toRBDMetadataKey(vcSubsystemNQN)],
 		NamespaceID:   uint32(nsid),
 		NamespaceUUID: metadata[toRBDMetadataKey(vcNamespaceUUID)],
-		ListenerInfo: nvmeof.ListenerDetails{
-			GatewayAddress: nvmeof.GatewayAddress{
-				Address: metadata[toRBDMetadataKey(vcListenerAddress)],
-				Port:    uint32(listenerInfoPort),
-			},
-			Hostname: metadata[toRBDMetadataKey(vcListenerHostname)],
-		},
+		ListenerInfo:  listeners,
 		// Store gateway management info separately
 		GatewayManagementInfo: nvmeof.GatewayConfig{
 			Address: metadata[toRBDMetadataKey(vcGatewayAddress)],

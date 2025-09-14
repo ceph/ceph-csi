@@ -49,6 +49,10 @@ type ListenerDetails struct {
 	Hostname string `json:"hostname"`
 }
 
+func (ga ListenerDetails) String() string {
+	return fmt.Sprintf("%s:%d (%s)", ga.Address, ga.Port, ga.Hostname)
+}
+
 // Config holds gateway client configuration.
 type GatewayConfig = GatewayAddress
 

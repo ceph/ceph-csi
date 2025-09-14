@@ -21,6 +21,6 @@ type NVMeoFVolumeData struct {
 	SubsystemNQN          string
 	NamespaceID           uint32
 	NamespaceUUID         string
-	ListenerInfo          ListenerDetails
+	ListenerInfo          []ListenerDetails
 	GatewayManagementInfo GatewayConfig
 }
