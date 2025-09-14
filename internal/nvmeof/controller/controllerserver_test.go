@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
 	"strconv"
 	"testing"
 
@@ -76,12 +77,14 @@ func TestPolulateVolumeContext(t *testing.T) {
 		SubsystemNQN:  "nqn.2014-08.org.nvmexpress:uuid:e61ecd13-2727-42a3-947e-2127d63abacc",
 		NamespaceID:   42,
 		NamespaceUUID: "c1a0223f-a9ba-4f10-89c2-7496ad50e026",
-		ListenerInfo: nvmeof.ListenerDetails{
-			GatewayAddress: nvmeof.GatewayAddress{
-				Address: "127.0.0.1",
-				Port:    4420,
+		ListenerInfo: []nvmeof.ListenerDetails{
+			{
+				GatewayAddress: nvmeof.GatewayAddress{
+					Address: "127.0.0.1",
+					Port:    4420,
+				},
+				Hostname: "localhost",
 			},
-			Hostname: "localhost",
 		},
 		GatewayManagementInfo: nvmeof.GatewayConfig{
 			Address: "127.0.0.2",
@@ -89,14 +92,24 @@ func TestPolulateVolumeContext(t *testing.T) {
 		},
 	}
 
-	populateVolumeContext(volume, config)
+	err := populateVolumeContext(volume, config)
+	require.NoError(t, err)
 
 	require.Equal(t, config.SubsystemNQN, volume.GetVolumeContext()["SubsystemNQN"])
 	require.Equal(t, strconv.FormatUint(uint64(config.NamespaceID), 10), volume.GetVolumeContext()["NamespaceID"])
 	require.Equal(t, config.NamespaceUUID, volume.GetVolumeContext()["NamespaceUUID"])
-	require.Equal(t, config.ListenerInfo.Address, volume.GetVolumeContext()["ListenerAddress"])
-	require.Equal(t, strconv.FormatUint(uint64(config.ListenerInfo.Port), 10), volume.GetVolumeContext()["ListenerPort"])
-	require.Equal(t, config.ListenerInfo.Hostname, volume.GetVolumeContext()["ListenerHostname"])
+	listenersJSON := volume.GetVolumeContext()["listeners"]
+	require.NotEmpty(t, listenersJSON)
+
+	// Parse and validate the JSON
+	var storedListeners []nvmeof.ListenerDetails
+	err = json.Unmarshal([]byte(listenersJSON), &storedListeners)
+	require.NoError(t, err)
+	require.Len(t, storedListeners, 1)
+	require.Equal(t, config.ListenerInfo[0].Address, storedListeners[0].Address)
+	require.Equal(t, config.ListenerInfo[0].Port, storedListeners[0].Port)
+	require.Equal(t, config.ListenerInfo[0].Hostname, storedListeners[0].Hostname)
+
 	require.Equal(t, config.GatewayManagementInfo.Address, volume.GetVolumeContext()["GatewayAddress"])
 	require.Equal(t,
 		strconv.FormatUint(uint64(config.GatewayManagementInfo.Port), 10),

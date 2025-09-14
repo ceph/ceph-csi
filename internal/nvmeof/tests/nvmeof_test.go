@@ -78,12 +78,14 @@ func TestRealGateway(t *testing.T) {
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
 		SubsystemNQN: testNQN,
 		NamespaceID:  0, // will be set after namespace creation
-		ListenerInfo: nvmeof.ListenerDetails{
-			GatewayAddress: nvmeof.GatewayAddress{
-				Address: config.Address,
-				Port:    uint32(nvmeofListenerPort),
+		ListenerInfo: []nvmeof.ListenerDetails{
+			{
+				GatewayAddress: nvmeof.GatewayAddress{
+					Address: config.Address,
+					Port:    uint32(nvmeofListenerPort),
+				},
+				Hostname: hostname,
 			},
-			Hostname: hostname,
 		},
 		GatewayManagementInfo: *config,
 	}
@@ -97,7 +99,7 @@ func TestRealGateway(t *testing.T) {
 		}
 
 		// 2. Delete listener (if it exists)
-		if err := client.DeleteListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
+		if err := client.DeleteListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo[0]); err != nil {
 			t.Logf("Cleanup warning: failed to delete listener: %v", err)
 		}
 
@@ -129,12 +131,12 @@ func TestRealGateway(t *testing.T) {
 	t.Logf("✓ Subsystem exists: %s", nvmeofData.SubsystemNQN)
 
 	// Test create listener
-	err = client.CreateListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo)
+	err = client.CreateListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo[0])
 	require.NoError(t, err)
 	t.Logf("✓ Listener created for subsystem %s at %s", testNQN, config)
 
 	// Test delete listener
-	err = client.DeleteListener(ctx, testNQN, nvmeofData.ListenerInfo)
+	err = client.DeleteListener(ctx, testNQN, nvmeofData.ListenerInfo[0])
 	require.NoError(t, err)
 	t.Logf("✓ Listener deleted for subsystem %s at %s", testNQN, config)
 
