@@ -35,8 +35,8 @@ import (
 // This is used to connect to the gateway server.
 // It is also used to specify the address and port of listeners.
 type GatewayAddress struct {
-	Address string
-	Port    uint32
+	Address string `json:"address"`
+	Port    uint32 `json:"port"`
 }
 
 func (ga GatewayAddress) String() string {
@@ -46,7 +46,7 @@ func (ga GatewayAddress) String() string {
 // ListenerDetails holds the listener information for a subsystem.
 type ListenerDetails struct {
 	GatewayAddress
-	Hostname string
+	Hostname string `json:"hostname"`
 }
 
 // Config holds gateway client configuration.
