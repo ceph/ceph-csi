@@ -565,6 +565,20 @@ func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, node
 		}
 	}()
 
+	// check if there are more namespaces in this subsystem with this host, if so, do not remove the host.
+	namespaces, err := gateway.ListNamespaces(ctx, subsystemNQN)
+	if err != nil {
+		return fmt.Errorf("failed to list namespaces for subsystem %s: %w", subsystemNQN, err)
+	}
+	for _, ns := range namespaces.GetNamespaces() {
+		for _, host := range ns.GetHosts() {
+			if host == hostNQN {
+				log.DebugLog(ctx, "Host %s is still using namespace %s, not removing", hostNQN, ns.GetNsid())
+
+				return nil
+			}
+		}
+	}
 	// Remove host from subsystem
 	if err := gateway.RemoveHost(ctx, subsystemNQN, hostNQN); err != nil {
 		return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
