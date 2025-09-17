@@ -337,12 +337,19 @@ func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN str
 	if err != nil {
 		return fmt.Errorf("failed to add listener %s to subsystem %s: %w", listenerInfo.Address, subsystemNQN, err)
 	}
-	if resp.GetStatus() == int32(syscall.EEXIST) { // EEXIST
+	switch resp.GetStatus() {
+	case int32(syscall.EEXIST):
 		log.DebugLog(ctx, "Listener %s already created for subsystem %s", listenerInfo.Address, subsystemNQN)
 
 		return nil // Listener already created, no error
-	}
-	if resp.GetStatus() != 0 {
+	case int32(syscall.EREMOTE): // Handle the stashed listener case
+		log.DebugLog(ctx, "Listener %s stashed for subsystem %s (will be active when %s gateway comes up)",
+			listenerInfo.Address, subsystemNQN, listenerInfo.Hostname)
+
+		return nil // Treat as success
+	case 0:
+		// break
+	default: // resp.GetStatus() != 0
 		return fmt.Errorf("gateway AddListener returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
 	}
 	log.DebugLog(ctx, "Listener added successfully: %s to subsystem %s", listenerInfo.Address, subsystemNQN)
