@@ -1,4 +1,4 @@
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.2
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.19.1
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/internal/resource
@@ -20,7 +20,7 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime
 github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming
 github.com/Azure/azure-sdk-for-go/sdk/azcore/to
 github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
-# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.11.0
+# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.12.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/azidentity
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/internal
@@ -39,7 +39,7 @@ github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets
 # github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal
-# github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2
+# github.com/AzureAD/microsoft-authentication-library-for-go v1.5.0
 ## explicit; go 1.18
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/cache
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential

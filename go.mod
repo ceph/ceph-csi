@@ -6,7 +6,7 @@ go 1.24.4
 replace github.com/ceph/ceph-csi/api => ./api
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.11.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.12.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.4.0
 	github.com/IBM/keyprotect-go-client v0.15.1
 	github.com/avast/retry-go/v4 v4.6.1
@@ -64,10 +64,10 @@ exclude (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.19.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.5.0 // indirect
 	github.com/ansel1/merry v1.6.2 // indirect
 	github.com/ansel1/merry/v2 v2.0.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.39.0 // indirect
