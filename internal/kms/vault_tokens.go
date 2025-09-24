@@ -510,41 +510,31 @@ func (vtc *vaultTenantConnection) getK8sClient() (*kubernetes.Clientset, error) 
 }
 
 func (kms *vaultTokensKMS) getToken() (string, error) {
-	c, err := kms.getK8sClient()
+	secretData, err := k8s.GetSecret(kms.TokenName, kms.Tenant)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get Secret %s/%s: %w", kms.Tenant, kms.TokenName, err)
 	}
 
-	secret, err := c.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), kms.TokenName, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	token, ok := secret.Data[vaultTokenSecretKey]
+	token, ok := secretData[vaultTokenSecretKey]
 	if !ok {
 		return "", errors.New("failed to parse token")
 	}
 
-	return string(token), nil
+	return token, nil
 }
 
 func (vtc *vaultTenantConnection) getCertificate(tenant, secretName, key string) (string, error) {
-	c, err := vtc.getK8sClient()
+	secretData, err := k8s.GetSecret(secretName, tenant)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get Secret %s/%s: %w", tenant, secretName, err)
 	}
 
-	secret, err := c.CoreV1().Secrets(tenant).Get(context.TODO(), secretName, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	cert, ok := secret.Data[key]
+	cert, ok := secretData[key]
 	if !ok {
 		return "", errors.New("failed to parse certificates")
 	}
 
-	return string(cert), nil
+	return cert, nil
 }
 
 // isTenantConfigOption return true if a tenant may (re)configure the option in

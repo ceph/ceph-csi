@@ -34,7 +34,6 @@ import (
 	"github.com/gemalto/kmip-go/kmip14"
 	"github.com/gemalto/kmip-go/ttlv"
 	"github.com/google/uuid"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -299,24 +298,16 @@ func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, err
 
 // getSecrets returns required options from the Kubernetes Secret.
 func (kms *kmipKMS) getSecrets() (map[string]string, error) {
-	c, err := k8s.NewK8sClient()
+	secretData, err := k8s.GetSecret(kms.secretName, kms.namespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
-			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
-		kms.secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
-			kms.namespace, kms.secretName, err)
+		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
 	}
 
 	config := make(map[string]string)
-	for k, v := range secret.Data {
+	for k, v := range secretData {
 		switch k {
 		case kmipClientKey, kmipCLientCert, kmipCACert, kmipUniqueIdentifier:
-			config[k] = string(v)
+			config[k] = v
 		default:
 			return nil, fmt.Errorf("unsupported option for KMS "+
 				"provider %q: %s", kmsTypeKMIP, k)

@@ -57,18 +57,16 @@ func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability
 }
 
 // getSecret get the secret details by name.
-func getSecret(c *k8s.Clientset, ns, name string) (map[string]string, error) {
+func getSecret(ns, name string) (map[string]string, error) {
 	deviceSecret := make(map[string]string)
 
-	secret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	secretData, err := kubeclient.GetSecret(name, ns)
 	if err != nil {
-		log.ErrorLogMsg("get secret failed, err: %v", err)
-
-		return nil, err
+		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", ns, name, err)
 	}
 
-	for k, v := range secret.Data {
-		deviceSecret[k] = string(v)
+	for k, v := range secretData {
+		deviceSecret[k] = v
 	}
 
 	return deviceSecret, nil
@@ -111,7 +109,7 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 	log.DefaultLog("sending nodeStageVolume for volID: %s, stagingPath: %s",
 		volID, stagingParentPath)
 
-	deviceSecret, err := getSecret(c,
+	deviceSecret, err := getSecret(
 		pv.Spec.PersistentVolumeSource.CSI.NodeStageSecretRef.Namespace,
 		pv.Spec.PersistentVolumeSource.CSI.NodeStageSecretRef.Name)
 	if err != nil {

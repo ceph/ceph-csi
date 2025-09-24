@@ -25,7 +25,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -184,23 +183,16 @@ func (kms *azureKMS) getService() (*azsecrets.Client, error) {
 }
 
 func (kms *azureKMS) getSecrets() (map[string]interface{}, error) {
-	c, err := k8s.NewK8sClient()
+	secretData, err := k8s.GetSecret(kms.secretName, kms.namespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to kubernetes to "+
-			"get secret %s/%s: %w", kms.namespace, kms.secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
-		kms.secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get secret %s/%s: %w", kms.namespace, kms.secretName, err)
+		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
 	}
 
 	config := make(map[string]interface{})
-	for k, v := range secret.Data {
+	for k, v := range secretData {
 		switch k {
 		case azureClientCertificate:
-			config[k] = string(v)
+			config[k] = v
 		default:
 			return nil, fmt.Errorf("unsupported option for KMS provider %q: %s", kmsTypeAzure, k)
 		}

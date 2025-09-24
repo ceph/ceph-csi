@@ -29,7 +29,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 
 	"golang.org/x/crypto/scrypt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -265,26 +264,18 @@ func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
 		secretNamespace = defaultNamespace
 	}
 
-	c, err := k8s.NewK8sClient()
+	secretData, err := k8s.GetSecret(secretName, secretNamespace)
 	if err != nil {
-		return "", fmt.Errorf("can not get Secret %s/%s, failed to "+
-			"connect to Kubernetes: %w", secretNamespace, secretName, err)
+		return "", fmt.Errorf("failed to get Secret %s/%s: %w", secretNamespace, secretName, err)
 	}
 
-	secret, err := c.CoreV1().Secrets(secretNamespace).Get(context.TODO(),
-		secretName, metav1.GetOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to get Secret %s/%s: %w",
-			secretNamespace, secretName, err)
-	}
-
-	passphraseValue, ok := secret.Data[encryptionPassphraseKey]
+	passphraseValue, ok := secretData[encryptionPassphraseKey]
 	if !ok {
 		return "", fmt.Errorf("missing %q in Secret %s/%s",
 			encryptionPassphraseKey, secretNamespace, secretName)
 	}
 
-	return string(passphraseValue), nil
+	return passphraseValue, nil
 }
 
 // generateCipher returns a AEAD cipher based on a passphrase and salt

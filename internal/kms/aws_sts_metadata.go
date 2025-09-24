@@ -30,7 +30,6 @@ import (
 	awsCreds "github.com/aws/aws-sdk-go/aws/credentials"
 	awsSession "github.com/aws/aws-sdk-go/aws/session"
 	awsKMS "github.com/aws/aws-sdk-go/service/kms"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -160,24 +159,16 @@ func (as *awsSTSMetadataKMS) DecryptDEK(ctx context.Context, _, encryptedDEK str
 
 // getSecrets returns required STS configuration options from the Kubernetes Secret.
 func (as *awsSTSMetadataKMS) getSecrets() (map[string]string, error) {
-	c, err := k8s.NewK8sClient()
+	secretData, err := k8s.GetSecret(as.secretName, as.namespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
-			"get Secret %s/%s: %w", as.namespace, as.secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(as.namespace).Get(context.TODO(),
-		as.secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
-			as.namespace, as.secretName, err)
+		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", as.namespace, as.secretName, err)
 	}
 
 	config := make(map[string]string)
-	for k, v := range secret.Data {
+	for k, v := range secretData {
 		switch k {
 		case awsSTSRoleARNKey, awsSTSRegionKey, awsSTSCMKARNKey:
-			config[k] = string(v)
+			config[k] = v
 		default:
 			return nil, fmt.Errorf("unsupported option for KMS "+
 				"provider %q: %s", kmsTypeAWSMetadata, k)

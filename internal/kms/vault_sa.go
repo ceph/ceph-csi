@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+
 	"github.com/libopenstorage/secrets/vault"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -304,14 +306,14 @@ func (kms *vaultTenantSA) getToken() (string, error) {
 	}
 
 	for _, secretRef := range sa.Secrets {
-		secret, sErr := c.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), secretRef.Name, metav1.GetOptions{})
-		if sErr != nil {
-			return "", fmt.Errorf("failed to get Secret %s/%s: %w", kms.Tenant, secretRef.Name, sErr)
+		secretData, err := k8s.GetSecret(secretRef.Name, kms.Tenant)
+		if err != nil {
+			return "", fmt.Errorf("failed to get Secret %s/%s: %w", kms.Tenant, secretRef.Name, err)
 		}
 
-		token, ok := secret.Data["token"]
+		token, ok := secretData["token"]
 		if ok {
-			return string(token), nil
+			return token, nil
 		}
 	}
 

@@ -25,7 +25,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 
 	kp "github.com/IBM/keyprotect-go-client"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -200,25 +199,17 @@ func (kms *keyProtectKMS) GetSecret(ctx context.Context, volumeID string) (strin
 }
 
 func (kms *keyProtectKMS) getSecrets() (map[string]interface{}, error) {
-	c, err := k8s.NewK8sClient()
+	secretData, err := k8s.GetSecret(kms.secretName, kms.namespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
-			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
-	}
-
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
-		kms.secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
-			kms.namespace, kms.secretName, err)
+		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
 	}
 
 	config := make(map[string]interface{})
 
-	for k, v := range secret.Data {
+	for k, v := range secretData {
 		switch k {
 		case keyProtectServiceAPIKey, KeyProtectCustomerRootKey, keyProtectSessionToken, keyProtectCRK:
-			config[k] = string(v)
+			config[k] = v
 		default:
 			return nil, fmt.Errorf("unsupported option for KMS "+
 				"provider %q: %s", kmsTypeKeyProtectMetadata, k)
