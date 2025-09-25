@@ -26,11 +26,9 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/ceph/ceph-csi/internal/util"
-	kubeclient "github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -59,7 +57,7 @@ func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability
 func getSecret(ns, name string) (map[string]string, error) {
 	deviceSecret := make(map[string]string)
 
-	secretData, err := kubeclient.GetSecret(name, ns)
+	secretData, err := k8s.GetSecret(name, ns)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", ns, name, err)
 	}
@@ -141,14 +139,7 @@ func callNodeStageVolume(ns *NodeServer, pv *v1.PersistentVolume, stagingPath st
 
 // RunVolumeHealer heal the volumes attached on a node.
 func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
-	c, err := kubeclient.NewK8sClient()
-	if err != nil {
-		log.ErrorLogMsg("failed to connect to Kubernetes: %v", err)
-
-		return err
-	}
-
-	val, err := c.StorageV1().VolumeAttachments().List(context.TODO(), metav1.ListOptions{})
+	val, err := k8s.GetVolumeAttachmentList()
 	if err != nil {
 		log.ErrorLogMsg("list volumeAttachments failed, err: %v", err)
 
@@ -163,17 +154,15 @@ func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
 			continue
 		}
 		pvName := *val.Items[i].Spec.Source.PersistentVolumeName
-		pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{})
-		if err != nil {
-			// skip if volume doesn't exist
-			if !apierrors.IsNotFound(err) {
-				log.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
-			}
+		pv, err := k8s.GetPersistentVolume(pvName)
+		if k8s.IgnoreNotFound(err) != nil {
+			log.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
 
 			continue
 		}
+
 		// skip this volumeattachment if its pv is not bound or marked for deletion
-		if pv.Status.Phase != v1.VolumeBound || pv.DeletionTimestamp != nil {
+		if pv == nil || pv.Status.Phase != v1.VolumeBound || pv.DeletionTimestamp != nil {
 			continue
 		}
 
@@ -186,17 +175,15 @@ func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
 		}
 
 		// ensure that the volume is still in attached state
-		va, err := c.StorageV1().VolumeAttachments().Get(context.TODO(), val.Items[i].Name, metav1.GetOptions{})
-		if err != nil {
-			// skip if volume attachment doesn't exist
-			if !apierrors.IsNotFound(err) {
-				log.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
-					val.Items[i].Name, pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
-			}
+		va, err := k8s.GetVolumeAttachment(val.Items[i].Name)
+		if k8s.IgnoreNotFound(err) != nil {
+			log.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
+				val.Items[i].Name, pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
 
 			continue
 		}
-		if !va.Status.Attached {
+
+		if va == nil || !va.Status.Attached {
 			continue
 		}
 
