@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/vault/api"
 	loss "github.com/libopenstorage/secrets"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
@@ -189,8 +188,6 @@ Example JSON structure in the KMS config is,
 type vaultTenantConnection struct {
 	vaultConnection
 	integratedDEK
-
-	client *kubernetes.Clientset
 
 	// Tenant is the name of the owner of the volume
 	Tenant string
@@ -494,18 +491,6 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 	}
 
 	return nil
-}
-
-func (vtc *vaultTenantConnection) getK8sClient() (*kubernetes.Clientset, error) {
-	if vtc.client == nil {
-		client, err := k8s.NewK8sClient()
-		if err != nil {
-			return nil, err
-		}
-		vtc.client = client
-	}
-
-	return vtc.client, nil
 }
 
 func (kms *vaultTokensKMS) getToken() (string, error) {
