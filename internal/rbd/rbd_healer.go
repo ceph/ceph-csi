@@ -80,7 +80,7 @@ func formatStagingTargetPath(pv *v1.PersistentVolume, stagingPath string) string
 	return targetPath
 }
 
-func callNodeStageVolume(ns *NodeServer, pv *v1.PersistentVolume, stagingPath string) error {
+func (ns *NodeServer) callNodeStageVolume(pv *v1.PersistentVolume, stagingPath string) error {
 	publishContext := make(map[string]string)
 
 	volID := pv.Spec.PersistentVolumeSource.CSI.VolumeHandle
@@ -138,7 +138,7 @@ func callNodeStageVolume(ns *NodeServer, pv *v1.PersistentVolume, stagingPath st
 }
 
 // RunVolumeHealer heal the volumes attached on a node.
-func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
+func (ns *NodeServer) RunVolumeHealer(conf *util.Config) error {
 	val, err := k8s.GetVolumeAttachmentList()
 	if err != nil {
 		log.ErrorLogMsg("list volumeAttachments failed, err: %v", err)
@@ -191,7 +191,7 @@ func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
 		// run multiple NodeStageVolume calls concurrently
 		go func(wg *sync.WaitGroup, ns *NodeServer, pv *v1.PersistentVolume, stagingPath string) {
 			defer wg.Done()
-			channel <- callNodeStageVolume(ns, pv, stagingPath)
+			channel <- ns.callNodeStageVolume(pv, stagingPath)
 		}(&wg, ns, pv, conf.StagingPath)
 	}
 
