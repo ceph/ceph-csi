@@ -28,7 +28,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
 
 	"github.com/ceph/ceph-csi/internal/util"
 	kubeclient "github.com/ceph/ceph-csi/internal/util/k8s"
@@ -75,36 +74,19 @@ func getSecret(ns, name string) (map[string]string, error) {
 // formatStagingTargetPath returns the path where the volume is expected to be
 // mounted (or the block-device is attached/mapped). Different Kubernetes
 // version use different paths.
-func formatStagingTargetPath(c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) (string, error) {
+func formatStagingTargetPath(pv *v1.PersistentVolume, stagingPath string) string {
 	// Kubernetes 1.24+ uses a hash of the volume-id in the path name
 	unique := sha256.Sum256([]byte(pv.Spec.CSI.VolumeHandle))
 	targetPath := filepath.Join(stagingPath, pv.Spec.CSI.Driver, hex.EncodeToString(unique[:]), "globalmount")
 
-	major, minor, err := kubeclient.GetServerVersion(c)
-	if err != nil {
-		return "", fmt.Errorf("failed to get server version: %w", err)
-	}
-
-	// 'encode' major/minor in a single integer
-	legacyVersion := 1024 // Kubernetes 1.24 => 1 * 1000 + 24
-	if ((major * 1000) + minor) < (legacyVersion) {
-		// path in Kubernetes < 1.24
-		targetPath = filepath.Join(stagingPath, "pv", pv.Name, "globalmount")
-	}
-
-	return targetPath, nil
+	return targetPath
 }
 
-func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) error {
+func callNodeStageVolume(ns *NodeServer, pv *v1.PersistentVolume, stagingPath string) error {
 	publishContext := make(map[string]string)
 
 	volID := pv.Spec.PersistentVolumeSource.CSI.VolumeHandle
-	stagingParentPath, err := formatStagingTargetPath(c, pv, stagingPath)
-	if err != nil {
-		log.ErrorLogMsg("formatStagingTargetPath failed volID: %s, err: %v", volID, err)
-
-		return err
-	}
+	stagingParentPath := formatStagingTargetPath(pv, stagingPath)
 
 	log.DefaultLog("sending nodeStageVolume for volID: %s, stagingPath: %s",
 		volID, stagingParentPath)
@@ -220,10 +202,10 @@ func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
 
 		wg.Add(1)
 		// run multiple NodeStageVolume calls concurrently
-		go func(wg *sync.WaitGroup, ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) {
+		go func(wg *sync.WaitGroup, ns *NodeServer, pv *v1.PersistentVolume, stagingPath string) {
 			defer wg.Done()
-			channel <- callNodeStageVolume(ns, c, pv, stagingPath)
-		}(&wg, ns, c, pv, conf.StagingPath)
+			channel <- callNodeStageVolume(ns, pv, stagingPath)
+		}(&wg, ns, pv, conf.StagingPath)
 	}
 
 	go func() {
