@@ -44,6 +44,10 @@ type Server struct {
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
 	volumeLocks *util.VolumeLocks
 
+	// hostLocks protects against concurrently adding hosts to, and removing hosts from
+	// the gateway during ControllerPublishVolume and ControllerUnpublishVolume.
+	hostLocks *util.VolumeLocks
+
 	// backendServer handles the RBD requests
 	backendServer *rbd.ControllerServer
 }
@@ -52,6 +56,7 @@ type Server struct {
 func NewControllerServer(d *csicommon.CSIDriver) (*Server, error) {
 	return &Server{
 		volumeLocks:   util.NewVolumeLocks(),
+		hostLocks:     util.NewVolumeLocks(),
 		backendServer: rbddriver.NewControllerServer(d),
 	}, nil
 }
@@ -210,6 +215,12 @@ func (cs *Server) ControllerPublishVolume(
 	}
 	defer cs.volumeLocks.Release(volumeID)
 
+	nodeID := req.GetNodeId()
+	if acquired := cs.hostLocks.TryAcquire(nodeID); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer cs.hostLocks.Release(nodeID)
+
 	// Publish NVMe-oF resources
 	hostNqn, err := publishResources(ctx, req)
 	if err != nil {
@@ -234,11 +245,16 @@ func (cs *Server) ControllerUnpublishVolume(
 	}
 
 	volumeID := req.GetVolumeId()
-	nodeID := req.GetNodeId()
 	if acquired := cs.volumeLocks.TryAcquire(volumeID); !acquired {
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer cs.volumeLocks.Release(volumeID)
+
+	nodeID := req.GetNodeId()
+	if acquired := cs.hostLocks.TryAcquire(nodeID); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer cs.hostLocks.Release(nodeID)
 
 	// Since ControllerUnpublishVolume doesn't receive volume context,
 	// we need to retrieve it from the volume metadata stored during CreateVolume

@@ -31,6 +31,10 @@ const (
 
 	// TargetPathOperationAlreadyExistsFmt string format to return for concurrent operation on target path.
 	TargetPathOperationAlreadyExistsFmt = "an operation with the given target path %s already exists"
+
+	// HostOperationAlreadyExistsFmt is used for reporting an in-progress operaton that modifies the
+	// NVMe-oF gateway configuration for a prticular host.
+	HostOperationAlreadyExistsFmt = "an operation that modifies the gateway for Host ID %s already exists"
 )
 
 // VolumeLocks implements a map with atomic operations. It stores a set of all volume IDs
