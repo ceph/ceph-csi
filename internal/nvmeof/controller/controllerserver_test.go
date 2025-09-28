@@ -27,31 +27,30 @@ import (
 	"github.com/ceph/ceph-csi/internal/nvmeof"
 )
 
-func TestExtractHostNQNFromNodeID(t *testing.T) {
+func TestGetHostNQNFromNodeID(t *testing.T) {
 	t.Parallel()
 
-	//nolint:lll // these tests just contain long strings
 	tests := []struct {
 		nodeID     string
 		hostNQN    string
 		shouldFail bool
 	}{
 		{
-			nodeID:  "ip-10-0-79-198.us-east-2.compute.internal::nqn.2025-08.io.ceph:ip-10-0-79-198.us-east-2.compute.internal",
-			hostNQN: "nqn.2025-08.io.ceph:ip-10-0-79-198.us-east-2.compute.internal",
+			nodeID:  "ip-10-0-79-198.us-east-2.compute.internal",
+			hostNQN: "nqn.2014-08.org.nvmexpress:ip-10-0-79-198.us-east-2.compute.internal",
 		},
 		{
-			nodeID:  "ip-10-0-79-198.us-east-2.compute.internal::nqn.2014-08.org.nvmexpress:uuid:8d018d47-1a5b-40cc-b26c-4ec9351d6723",
-			hostNQN: "nqn.2014-08.org.nvmexpress:uuid:8d018d47-1a5b-40cc-b26c-4ec9351d6723",
+			nodeID:  "ip-10-0-79-198.us-east-2.compute.internal",
+			hostNQN: "nqn.2014-08.org.nvmexpress:ip-10-0-79-198.us-east-2.compute.internal",
 		},
 		{
-			nodeID:     "ip-10-0-79-198.us-east-2.compute.internal",
+			nodeID:     "",
 			shouldFail: true,
 		},
 	}
 
 	for _, test := range tests {
-		hostNQN, err := extractHostNQNFromNodeID(test.nodeID)
+		hostNQN, err := getHostNQNFromNodeID(test.nodeID)
 		if test.shouldFail {
 			require.Error(t, err)
 
