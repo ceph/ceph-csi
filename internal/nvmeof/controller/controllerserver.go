@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -530,7 +529,7 @@ func publishResources(ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (string, error) {
 	nodeID := req.GetNodeId()
-	hostNQN, err := extractHostNQNFromNodeID(nodeID)
+	hostNQN, err := getHostNQNFromNodeID(nodeID)
 	if err != nil {
 		return "", status.Errorf(codes.InvalidArgument, "invalid nodeID format: %v", err)
 	}
@@ -573,7 +572,7 @@ func publishResources(ctx context.Context,
 // unpublishResources removes the host from the NVMe-oF subsystem.
 func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, nodeID string) error {
 	// Extract host NQN from nodeID
-	hostNQN, err := extractHostNQNFromNodeID(nodeID)
+	hostNQN, err := getHostNQNFromNodeID(nodeID)
 	if err != nil {
 		return fmt.Errorf("invalid nodeID format: %w", err)
 	}
@@ -620,16 +619,18 @@ func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, node
 	return nil
 }
 
-// extractHostNQNFromNodeID extracts the host NQN from the node ID.
-func extractHostNQNFromNodeID(nodeID string) (string, error) {
-	// the nodeID has the pattern: <hostname>::<nqn>
-	// TODO: maybe change this separator to rare one.
-	parts := strings.Split(nodeID, "::")
-	if len(parts) != 2 {
+// getHostNQNFromNodeID constructs the host NQN from the nodeID. just concatenate the prefix
+// with the nodeID. the hostnqn format is nqn.<YOUR-DATE>.<YOUR-REVERSE-DOMAIN>:<user-part>,
+// we use the default prefix (nqn.2014-08.org.nvmexpress:)
+// and append the nodeID as user-part. Also there is no need to add an UUID as user-part,
+// as the nodeID is already unique.
+func getHostNQNFromNodeID(nodeID string) (string, error) {
+	const prefix = "nqn.2014-08.org.nvmexpress:"
+	if nodeID == "" {
 		return "", fmt.Errorf("invalid nodeID format: %s", nodeID)
 	}
 
-	return parts[1], nil
+	return prefix + nodeID, nil
 }
 
 // VolumeContext metadata keys.
