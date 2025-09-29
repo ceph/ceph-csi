@@ -48,6 +48,10 @@ type Server struct {
 	// the gateway during ControllerPublishVolume and ControllerUnpublishVolume.
 	hostLocks *util.VolumeLocks
 
+	// subsystemLocks prevents concurrent calls from deleting an "empty but not empty
+	// anymore" subsystem (and listeners).
+	subsystemLocks *util.VolumeLocks
+
 	// backendServer handles the RBD requests
 	backendServer *rbd.ControllerServer
 }
@@ -55,9 +59,10 @@ type Server struct {
 // NewControllerServer initialize a controller server for nvmeof CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver) (*Server, error) {
 	return &Server{
-		volumeLocks:   util.NewVolumeLocks(),
-		hostLocks:     util.NewVolumeLocks(),
-		backendServer: rbddriver.NewControllerServer(d),
+		volumeLocks:    util.NewVolumeLocks(),
+		hostLocks:      util.NewVolumeLocks(),
+		subsystemLocks: util.NewVolumeLocks(),
+		backendServer:  rbddriver.NewControllerServer(d),
 	}, nil
 }
 
@@ -133,7 +138,7 @@ func (cs *Server) CreateVolume(
 	rbdPoolName := res.GetVolume().GetVolumeContext()["pool"]
 
 	// Step 2: Setup NVMe-oF resources
-	nvmeofData, err := createNVMeoFResources(ctx, req, rbdPoolName, rbdImageName)
+	nvmeofData, err := cs.createNVMeoFResources(ctx, req, rbdPoolName, rbdImageName)
 	if err != nil {
 		log.ErrorLog(ctx, "NVMe-oF resource setup failed for volumeID %s: %v", volumeID, err)
 
@@ -145,7 +150,7 @@ func (cs *Server) CreateVolume(
 			return
 		}
 
-		cleanupErr := cleanupNVMeoFResources(ctx, nvmeofData)
+		cleanupErr := cs.cleanupNVMeoFResources(ctx, nvmeofData)
 		if cleanupErr != nil {
 			log.ErrorLog(ctx, "failed to cleanup NVMe-oF resources for volume  %q: %v", volumeID, cleanupErr)
 		}
@@ -188,7 +193,7 @@ func (cs *Server) DeleteVolume(
 		log.DebugLog(ctx, "No NVMe-oF metadata found, skipping NVMe-oF cleanup: %v", err)
 	} else {
 		// Clean up NVMe-oF resources
-		if err := cleanupNVMeoFResources(ctx, nvmeofData); err != nil {
+		if err := cs.cleanupNVMeoFResources(ctx, nvmeofData); err != nil {
 			log.ErrorLog(ctx, "NVMe-oF cleanup failed (continuing with RBD deletion): %v", err)
 
 			return nil, status.Errorf(codes.Internal, "NVMe-oF cleanup failed: %v", err)
@@ -430,7 +435,7 @@ func cleanupEmptySubsystem(
 
 // createNVMeoFResources sets up the NVMe-oF resources for the given RBD volume.
 // TODO - need to support multiple listeners.
-func createNVMeoFResources(
+func (cs *Server) createNVMeoFResources(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 	rbdPoolName,
@@ -476,6 +481,14 @@ func createNVMeoFResources(
 		}
 	}()
 
+	// TODO: replace util.VolumeOperationAlreadyExistsFmt
+	if acquired := cs.subsystemLocks.TryAcquire(nvmeofData.SubsystemNQN); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+
+		return nil, fmt.Errorf(util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+	}
+	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
+
 	// Step 3: Ensure subsystem exists (and listener)
 	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
 		return nil, fmt.Errorf("subsystem setup failed: %w", err)
@@ -503,7 +516,7 @@ func createNVMeoFResources(
 
 // cleanupNVMeoFResources cleans up NVMe-oF resources associated with the volume.
 // This includes removing the host, listener, namespace, and potentially the subsystem.
-func cleanupNVMeoFResources(
+func (cs *Server) cleanupNVMeoFResources(
 	ctx context.Context,
 	nvmeofData *nvmeof.NVMeoFVolumeData,
 ) error {
@@ -524,6 +537,14 @@ func cleanupNVMeoFResources(
 	// TODO: maybe just check before if the subsystem exists, if not ,
 	// there is no relevant to continue , will make it simple ?
 	// instead of check in the std error if "not found"..
+
+	// TODO: replace util.VolumeOperationAlreadyExistsFmt
+	if acquired := cs.subsystemLocks.TryAcquire(nvmeofData.SubsystemNQN); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+
+		return fmt.Errorf(util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+	}
+	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 
 	// Step 2: Delete namespace
 	if err := gateway.DeleteNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID); err != nil {
