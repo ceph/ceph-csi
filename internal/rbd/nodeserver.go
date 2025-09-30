@@ -49,7 +49,7 @@ type NodeServer struct {
 	*csicommon.DefaultNodeServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
-	VolumeLocks *util.VolumeLocks
+	VolumeLocks *util.IDLocker
 
 	// ext4HasPrezeroedSupport indicates whether the ext4 filesystem has support for pre-zeroed blocks.
 	ext4HasPrezeroedSupport featureFlag

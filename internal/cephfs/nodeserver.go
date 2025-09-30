@@ -49,7 +49,7 @@ type NodeServer struct {
 	*csicommon.DefaultNodeServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
-	VolumeLocks        *util.VolumeLocks
+	VolumeLocks        *util.IDLocker
 	kernelMountOptions string
 	fuseMountOptions   string
 	healthChecker      hc.Manager

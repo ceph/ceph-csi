@@ -34,10 +34,10 @@ import (
 type EncryptionKeyRotationServer struct {
 	*ekr.UnimplementedEncryptionKeyRotationControllerServer
 	driverInstance string
-	volLock        *util.VolumeLocks
+	volLock        *util.IDLocker
 }
 
-func NewEncryptionKeyRotationServer(driverInstance string, volLock *util.VolumeLocks) *EncryptionKeyRotationServer {
+func NewEncryptionKeyRotationServer(driverInstance string, volLock *util.IDLocker) *EncryptionKeyRotationServer {
 	return &EncryptionKeyRotationServer{
 		driverInstance: driverInstance,
 		volLock:        volLock,

@@ -48,18 +48,18 @@ type ControllerServer struct {
 	*csicommon.DefaultControllerServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
-	VolumeLocks *util.VolumeLocks
+	VolumeLocks *util.IDLocker
 
 	// A map storing all snapshots with ongoing operations so that additional operations
 	// for that same snapshot (as defined by SnapshotID/snapshot name) return an Aborted error
-	SnapshotLocks *util.VolumeLocks
+	SnapshotLocks *util.IDLocker
 
 	// A map storing all volumes/snapshots with ongoing operations.
 	OperationLocks *util.OperationLock
 
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by volumegroup ID/volumegroup name) return an Aborted error
-	VolumeGroupLocks *util.VolumeLocks
+	VolumeGroupLocks *util.IDLocker
 
 	// Cluster name
 	ClusterName string

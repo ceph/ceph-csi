@@ -24,7 +24,7 @@ import (
 func TestIDLocker(t *testing.T) {
 	t.Parallel()
 	fakeID := "fake-id"
-	locks := NewVolumeLocks()
+	locks := NewIDLocker()
 	// acquire lock for fake-id
 	ok := locks.TryAcquire(fakeID)
 
