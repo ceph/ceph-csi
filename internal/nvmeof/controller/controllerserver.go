@@ -42,15 +42,15 @@ type Server struct {
 
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
-	volumeLocks *util.VolumeLocks
+	volumeLocks *util.IDLocker
 
 	// hostLocks protects against concurrently adding hosts to, and removing hosts from
 	// the gateway during ControllerPublishVolume and ControllerUnpublishVolume.
-	hostLocks *util.VolumeLocks
+	hostLocks *util.IDLocker
 
 	// subsystemLocks prevents concurrent calls from deleting an "empty but not empty
 	// anymore" subsystem (and listeners).
-	subsystemLocks *util.VolumeLocks
+	subsystemLocks *util.IDLocker
 
 	// backendServer handles the RBD requests
 	backendServer *rbd.ControllerServer
@@ -59,9 +59,9 @@ type Server struct {
 // NewControllerServer initialize a controller server for nvmeof CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver) (*Server, error) {
 	return &Server{
-		volumeLocks:    util.NewVolumeLocks(),
-		hostLocks:      util.NewVolumeLocks(),
-		subsystemLocks: util.NewVolumeLocks(),
+		volumeLocks:    util.NewIDLocker(),
+		hostLocks:      util.NewIDLocker(),
+		subsystemLocks: util.NewIDLocker(),
 		backendServer:  rbddriver.NewControllerServer(d),
 	}, nil
 }

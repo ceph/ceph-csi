@@ -43,7 +43,7 @@ import (
 type ReconcilePersistentVolume struct {
 	client client.Client
 	config ctrl.Config
-	Locks  *util.VolumeLocks
+	Locks  *util.IDLocker
 }
 
 var (
@@ -164,7 +164,7 @@ func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconcil
 	r := &ReconcilePersistentVolume{
 		client: mgr.GetClient(),
 		config: config,
-		Locks:  util.NewVolumeLocks(),
+		Locks:  util.NewIDLocker(),
 	}
 
 	return r

@@ -32,43 +32,43 @@ const (
 	// TargetPathOperationAlreadyExistsFmt string format to return for concurrent operation on target path.
 	TargetPathOperationAlreadyExistsFmt = "an operation with the given target path %s already exists"
 
-	// HostOperationAlreadyExistsFmt is used for reporting an in-progress operaton that modifies the
+	// HostOperationAlreadyExistsFmt is used for reporting an in-progress operation that modifies the
 	// NVMe-oF gateway configuration for a prticular host.
 	HostOperationAlreadyExistsFmt = "an operation that modifies the gateway for Host ID %s already exists"
 )
 
-// VolumeLocks implements a map with atomic operations. It stores a set of all volume IDs
-// with an ongoing operation.
-type VolumeLocks struct {
+// IDLocker implements a map with atomic operations. It stores an ID/key in a set while the lock is held
+// during an operation that needs exclusive access to resources.
+type IDLocker struct {
 	locks sets.Set[string]
 	mux   sync.Mutex
 }
 
-// NewVolumeLocks returns new VolumeLocks.
-func NewVolumeLocks() *VolumeLocks {
-	return &VolumeLocks{
+// NewIDLocker creates a new IDLocker.
+func NewIDLocker() *IDLocker {
+	return &IDLocker{
 		locks: sets.New[string](),
 	}
 }
 
-// TryAcquire tries to acquire the lock for operating on volumeID and returns true if successful.
-// If another operation is already using volumeID, returns false.
-func (vl *VolumeLocks) TryAcquire(volumeID string) bool {
+// TryAcquire tries to acquire the lock on the ID and returns true if successful.
+// If another operation is already using the ID, returns false.
+func (vl *IDLocker) TryAcquire(id string) bool {
 	vl.mux.Lock()
 	defer vl.mux.Unlock()
-	if vl.locks.Has(volumeID) {
+	if vl.locks.Has(id) {
 		return false
 	}
-	vl.locks.Insert(volumeID)
+	vl.locks.Insert(id)
 
 	return true
 }
 
-// Release deletes the lock on volumeID.
-func (vl *VolumeLocks) Release(volumeID string) {
+// Release deletes the lock on an ID.
+func (vl *IDLocker) Release(id string) {
 	vl.mux.Lock()
 	defer vl.mux.Unlock()
-	vl.locks.Delete(volumeID)
+	vl.locks.Delete(id)
 }
 
 type operation string

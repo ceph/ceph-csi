@@ -40,14 +40,14 @@ type ReclaimSpaceControllerServer struct {
 	*rs.UnimplementedReclaimSpaceControllerServer
 
 	driverInstance string
-	volumeLocks    *util.VolumeLocks
+	volumeLocks    *util.IDLocker
 }
 
 // NewReclaimSpaceControllerServer creates a new ReclaimSpaceControllerServer which handles
 // the ReclaimSpace Service requests from the CSI-Addons specification.
 func NewReclaimSpaceControllerServer(
 	driverInstance string,
-	volumeLocks *util.VolumeLocks,
+	volumeLocks *util.IDLocker,
 ) *ReclaimSpaceControllerServer {
 	return &ReclaimSpaceControllerServer{
 		driverInstance: driverInstance,
@@ -104,12 +104,12 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 // of CSI-addons reclaimspace controller service spec.
 type ReclaimSpaceNodeServer struct {
 	*rs.UnimplementedReclaimSpaceNodeServer
-	volumeLocks *util.VolumeLocks
+	volumeLocks *util.IDLocker
 }
 
 // NewReclaimSpaceNodeServer creates a new IdentityServer which handles the
 // Identity Service requests from the CSI-Addons specification.
-func NewReclaimSpaceNodeServer(volumeLocks *util.VolumeLocks) *ReclaimSpaceNodeServer {
+func NewReclaimSpaceNodeServer(volumeLocks *util.IDLocker) *ReclaimSpaceNodeServer {
 	return &ReclaimSpaceNodeServer{volumeLocks: volumeLocks}
 }
 

@@ -31,7 +31,7 @@ import (
 func TestControllerReclaimSpace(t *testing.T) {
 	t.Parallel()
 
-	controller := NewReclaimSpaceControllerServer("test.driver", util.NewVolumeLocks())
+	controller := NewReclaimSpaceControllerServer("test.driver", util.NewIDLocker())
 
 	req := &rs.ControllerReclaimSpaceRequest{
 		VolumeId: "",
@@ -48,7 +48,7 @@ func TestControllerReclaimSpace(t *testing.T) {
 func TestNodeReclaimSpace(t *testing.T) {
 	t.Parallel()
 
-	node := NewReclaimSpaceNodeServer(&util.VolumeLocks{})
+	node := NewReclaimSpaceNodeServer(&util.IDLocker{})
 
 	req := &rs.NodeReclaimSpaceRequest{
 		VolumeId:         "",

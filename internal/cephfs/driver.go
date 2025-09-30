@@ -61,9 +61,9 @@ func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
-		VolumeLocks:             util.NewVolumeLocks(),
-		SnapshotLocks:           util.NewVolumeLocks(),
-		VolumeGroupLocks:        util.NewVolumeLocks(),
+		VolumeLocks:             util.NewIDLocker(),
+		SnapshotLocks:           util.NewIDLocker(),
+		VolumeGroupLocks:        util.NewIDLocker(),
 		OperationLocks:          util.NewOperationLock(),
 	}
 }
@@ -79,7 +79,7 @@ func NewNodeServer(
 	cliReadAffinityMapOptions := util.ConstructReadAffinityMapOption(crushLocationMap)
 	ns := &NodeServer{
 		DefaultNodeServer:  csicommon.NewDefaultNodeServer(d, t, cliReadAffinityMapOptions, topology, nodeLabels),
-		VolumeLocks:        util.NewVolumeLocks(),
+		VolumeLocks:        util.NewIDLocker(),
 		kernelMountOptions: kernelMountOptions,
 		fuseMountOptions:   fuseMountOptions,
 		healthChecker:      hc.NewHealthCheckManager(),
