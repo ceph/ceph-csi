@@ -1,0 +1,34 @@
+---
+# ssc based on the Ceph-CSI ssc
+# the "users:" contains a reference to the "default" namespace
+#
+kind: SecurityContextConstraints
+apiVersion: security.openshift.io/v1
+metadata:
+  name: "ceph-nvmeof-nodeplugin"
+# To allow running privilegedContainers
+allowPrivilegedContainer: true
+# SYS_ADMIN is needed for loading the nvme kernel modules and mounting
+allowedCapabilities:
+  - "SYS_ADMIN"
+allowHostDirVolumePlugin: true
+allowHostIPC: true
+allowHostNetwork: true
+allowHostPID: true
+# Set to false as we write to RootFilesystem inside container
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+# The type of volumes which are mounted to csi pods
+volumes:
+  - configMap
+  - emptyDir
+  - hostPath
+  - projected
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+users:
+  # A user needs to be added for each service account.
+  - "system:serviceaccount:default:ceph-nvmeof-nodeplugin"
