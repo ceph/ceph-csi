@@ -17,8 +17,11 @@ limitations under the License.
 package e2e
 
 import (
+	"context"
+
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -95,4 +98,17 @@ func deleteGateway(f *framework.Framework) {
 
 	err := deletePool(nvmeofPool, false, f)
 	Expect(err).ShouldNot(HaveOccurred())
+}
+
+// getNVMeofGateway returns the name and IP-address of the gateway Pod.
+func getNVMeofGateway(c kubernetes.Interface) (string, string) {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=ceph-nvmeof-gateway",
+	}
+
+	pods, err := c.CoreV1().Pods(rookNamespace).List(context.TODO(), opt)
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(pods.Items).Should(HaveLen(1))
+
+	return pods.Items[0].Name, pods.Items[0].Status.PodIP
 }

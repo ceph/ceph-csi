@@ -18,6 +18,7 @@ package e2e
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/pod-security-admission/api"
 )
@@ -34,6 +35,9 @@ var _ = Describe("nvmeof", func() {
 		if !testNVMeoF {
 			Skip("Skipping NVMe-oF E2E")
 		}
+
+		// Ceph credentials referenced in the StorageClass
+		createNVMeoFCredentials(f)
 
 		if deployNVMeoF {
 			deployGateway(f, deployTimeout)
@@ -58,6 +62,12 @@ var _ = Describe("nvmeof", func() {
 		}
 
 		It("Test NVMe-oF CSI", func() {
+			options := map[string]string{}
+			params := map[string]string{}
+			policy := v1.PersistentVolumeReclaimDelete
+
+			createNVMeoFStorageClass(f, "e2e-nvmeof", options, params, policy)
+
 			Skip("no NVMe-oF test cases yet")
 		})
 	})
