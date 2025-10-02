@@ -169,3 +169,33 @@ func isNotFoundCLIError(err error) bool {
 
 	return true
 }
+
+// isNoSuchResourceCLIError checks for "the server doesn't have a resource type" error from kubectl CLI.
+func isNoSuchResourceCLIError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// if multiple resources already exists. each error is separated by newline
+	stdErr := getStdErr(err.Error())
+	if stdErr == "" {
+		return false
+	}
+
+	stdErrs := strings.Split(stdErr, "\n")
+	for _, s := range stdErrs {
+		// If the string is just a new line continue
+		if strings.TrimSuffix(s, "\n") == "" {
+			continue
+		}
+		// Ignore warnings
+		if strings.Contains(s, "Warning") {
+			continue
+		}
+		// Resource not found error message
+		if !strings.Contains(s, "the server doesn't have a resource type") {
+			return false
+		}
+	}
+
+	return true
+}
