@@ -37,6 +37,7 @@ var _ = Describe("nvmeof", func() {
 
 		if deployNVMeoF {
 			deployGateway(f, deployTimeout)
+			deployNVMeoFPlugin(f, deployTimeout)
 		}
 	})
 
@@ -46,6 +47,7 @@ var _ = Describe("nvmeof", func() {
 		}
 
 		if deployNVMeoF {
+			deleteNVMeoFPlugin()
 			deleteGateway(f)
 		}
 	})
