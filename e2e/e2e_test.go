@@ -18,7 +18,6 @@ package e2e
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -58,7 +57,7 @@ func init() {
 	handleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
-	fmt.Println("timeout for deploytimeout ", deployTimeout)
+	framework.Logf("timeout for deploying: %d minutes", deployTimeout)
 }
 
 func setDefaultKubeconfig() {

@@ -742,7 +742,7 @@ var _ = Describe(cephfsType, func() {
 					logAndFail("failed to list subvolumes: %v", err)
 				}
 				for _, subVol := range subvolumes {
-					fmt.Printf("Checking prefix on %s\n", subVol)
+					framework.Logf("Checking prefix on %s", subVol)
 					if strings.HasPrefix(subVol.Name, volumeNamePrefix) {
 						foundIt = true
 
