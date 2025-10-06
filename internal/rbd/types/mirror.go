@@ -22,8 +22,6 @@ import (
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
-
-	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // FlattenMode is used to indicate the flatten mode for an RBD image.
@@ -44,8 +42,6 @@ type Mirror interface {
 	DisableMirroring(ctx context.Context, force bool) error
 	// Promote promotes the resource to primary status with the option to force the operation
 	Promote(ctx context.Context, force bool) error
-	// ForcePromote promotes the resource to primary status with a timeout
-	ForcePromote(ctx context.Context, cr *util.Credentials) error
 	// Demote demotes the resource to secondary status
 	Demote(ctx context.Context) error
 	// Resync resynchronizes the resource

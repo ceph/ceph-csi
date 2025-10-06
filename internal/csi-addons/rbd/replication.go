@@ -447,13 +447,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 
 	// promote secondary to primary
 	if !info.IsPrimary() {
-		if req.GetForce() {
-			// workaround for https://github.com/ceph/ceph-csi/issues/2736
-			// TODO: remove this workaround when the issue is fixed
-			err = mirror.ForcePromote(ctx, cr)
-		} else {
-			err = mirror.Promote(ctx, req.GetForce())
-		}
+		err = mirror.Promote(ctx, req.GetForce())
 		if err != nil {
 			log.ErrorLog(ctx, err.Error())
 			// In case of the DR the image on the primary site cannot be
