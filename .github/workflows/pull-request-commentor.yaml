@@ -51,7 +51,7 @@ jobs:
           ${{ matrix.k8s }}
         if: ${{ github.base_ref == matrix.branch }}
         # yamllint disable-line rule:line-length
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -63,7 +63,7 @@ jobs:
           ${{ matrix.k8s }}
         if: ${{ github.base_ref == matrix.branch }}
         # yamllint disable-line rule:line-length
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -72,7 +72,7 @@ jobs:
 
       - name: Add comment to trigger E2E tests for Kubernetes ${{ matrix.k8s }}
         # yamllint disable-line rule:line-length
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
         if: ${{ github.base_ref == matrix.branch }}
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
@@ -90,7 +90,7 @@ jobs:
     steps:
       - name: Add comment to trigger cephfs upgrade tests
         # yamllint disable-line rule:line-length
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -99,7 +99,7 @@ jobs:
 
       - name: Add comment to trigger rbd upgrade tests
         # yamllint disable-line rule:line-length
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
         with:
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
