@@ -23,7 +23,7 @@ require (
 	github.com/google/fscrypt v0.3.6-0.20240502174735-068b9f8f5dec
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/hashicorp/vault/api v1.21.0
+	github.com/hashicorp/vault/api v1.22.0
 	github.com/kubernetes-csi/csi-lib-utils v0.22.0
 	github.com/libopenstorage/secrets v0.0.0-20231011182615-5f4b25ceede1
 	github.com/pkg/xattr v0.4.12
