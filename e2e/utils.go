@@ -82,12 +82,14 @@ var (
 	deployCephFS       bool
 	deployRBD          bool
 	deployNFS          bool
+	deployNVMeoF       bool
 	testCephFS         bool
 	testCephFSFscrypt  bool
 	testRBD            bool
 	testRBDFSCrypt     bool
 	testNBD            bool
 	testNFS            bool
+	testNVMeoF         bool
 	helmTest           bool
 	upgradeTesting     bool
 	upgradeVersion     string
