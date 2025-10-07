@@ -68,9 +68,6 @@ const (
 	appLabel      = "write-data-in-pod"
 	appCloneLabel = "app-clone"
 
-	noError    = ""
-	exitOneErr = "command terminated with exit code 1"
-
 	// cluster Name, set by user.
 	clusterNameKey     = "csi.ceph.com/cluster/name"
 	defaultClusterName = "k8s-cluster-1"

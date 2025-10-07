@@ -195,7 +195,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	app.Namespace = namespace
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
 	if checkImgFeat {
-		err = createAppErr(f.ClientSet, app, deployTimeout, "missing required parameter imageFeatures")
+		err = createAppErr(f.ClientSet, app, deployTimeout, []string{"missing required parameter imageFeatures"})
 	} else {
 		err = createApp(f.ClientSet, app, deployTimeout)
 	}
