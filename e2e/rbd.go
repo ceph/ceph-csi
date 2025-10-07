@@ -2988,7 +2988,7 @@ var _ = Describe("RBD", func() {
 					logAndFail("failed to list rbd images: %v", err)
 				}
 				for _, imgName := range images {
-					fmt.Printf("Checking prefix on %s\n", imgName)
+					framework.Logf("Checking prefix on %s", imgName)
 					if strings.HasPrefix(imgName, volumeNamePrefix) {
 						foundIt = true
 

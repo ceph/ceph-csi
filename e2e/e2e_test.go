@@ -18,7 +18,6 @@ package e2e
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -48,7 +47,6 @@ func init() {
 	flag.StringVar(&upgradeVersion, "upgrade-version", "v3.5.1", "target version for upgrade testing")
 	flag.StringVar(&cephCSINamespace, "cephcsi-namespace", defaultNs, "namespace in which cephcsi deployed")
 	flag.StringVar(&rookNamespace, "rook-namespace", "rook-ceph", "namespace in which rook is deployed")
-	flag.BoolVar(&isOpenShift, "is-openshift", false, "disables certain checks on OpenShift")
 	flag.StringVar(&fileSystemName, "filesystem", "myfs", "CephFS filesystem to use")
 	flag.StringVar(&clusterID, "clusterid", "", "Ceph cluster ID to use (defaults to `ceph fsid` detection)")
 	flag.StringVar(&nfsDriverName, "nfs-driver", "nfs.csi.ceph.com", "name of the driver for NFS-volumes")
@@ -59,7 +57,7 @@ func init() {
 	handleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
-	fmt.Println("timeout for deploytimeout ", deployTimeout)
+	framework.Logf("timeout for deploying: %d minutes", deployTimeout)
 }
 
 func setDefaultKubeconfig() {
@@ -73,6 +71,13 @@ func setDefaultKubeconfig() {
 func TestE2E(t *testing.T) {
 	t.Parallel()
 	RegisterFailHandler(Fail)
+
+	ocpDetected, err := detectOpenShift()
+	if err != nil {
+		t.Errorf("failed to run OpenShift detection: %v", err)
+	}
+	isOpenShift = ocpDetected
+
 	RunSpecs(t, "E2e Suite")
 }
 
