@@ -25,6 +25,7 @@ import (
 	casceph "github.com/ceph/ceph-csi/internal/csi-addons/cephfs"
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/driver"
 	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -34,8 +35,8 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
-// Driver contains the default identity,node and controller struct.
-type Driver struct {
+// cephfsDriver contains the default identity,node and controller struct.
+type cephfsDriver struct {
 	cd *csicommon.CSIDriver
 
 	is *IdentityServer
@@ -45,9 +46,12 @@ type Driver struct {
 	cas *csiaddons.CSIAddonsServer
 }
 
+// assert that cephfsDriver implements the Driver interface.
+var _ driver.Driver = &cephfsDriver{}
+
 // NewDriver returns new ceph driver.
-func NewDriver() *Driver {
-	return &Driver{}
+func NewDriver() driver.Driver {
+	return &cephfsDriver{}
 }
 
 // NewIdentityServer initialize a identity server for ceph CSI driver.
@@ -90,7 +94,7 @@ func NewNodeServer(
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests.
-func (fs *Driver) Run(conf *util.Config) {
+func (fs *cephfsDriver) Run(conf *util.Config) {
 	var (
 		err                                    error
 		nodeLabels, topology, crushLocationMap map[string]string
@@ -216,7 +220,7 @@ func (fs *Driver) Run(conf *util.Config) {
 // setupCSIAddonsServer creates a new CSI-Addons Server on the given (URL)
 // endpoint. The supported CSI-Addons operations get registered as their own
 // services.
-func (fs *Driver) setupCSIAddonsServer(conf *util.Config) error {
+func (fs *cephfsDriver) setupCSIAddonsServer(conf *util.Config) error {
 	var err error
 
 	fs.cas, err = csiaddons.NewCSIAddonsServer(conf.CSIAddonsEndpoint)
