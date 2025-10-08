@@ -18,6 +18,7 @@ package driver
 
 import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/driver"
 	"github.com/ceph/ceph-csi/internal/nfs/controller"
 	"github.com/ceph/ceph-csi/internal/nfs/identity"
 	"github.com/ceph/ceph-csi/internal/nfs/nodeserver"
@@ -27,17 +28,20 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
-// Driver contains the default identity and controller struct.
-type Driver struct{}
+// nfsDriver contains the default identity and controller struct.
+type nfsDriver struct{}
 
 // NewDriver returns new ceph driver.
-func NewDriver() *Driver {
-	return &Driver{}
+func NewDriver() driver.Driver {
+	return &nfsDriver{}
 }
+
+// assert that nfsDriver implements the Driver interface.
+var _ driver.Driver = &nfsDriver{}
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests.
-func (fs *Driver) Run(conf *util.Config) {
+func (fs *nfsDriver) Run(conf *util.Config) {
 	// Initialize default library driver
 	cd := csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID,
 		conf.EnableFencing)
