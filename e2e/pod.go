@@ -36,7 +36,17 @@ import (
 	frameworkPod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
-const errRWOPConflict = "node has pod using PersistentVolumeClaim with the same name and ReadWriteOncePod access mode."
+const (
+	exitOneErr = "command terminated with exit code 1"
+
+	// errRWOPConflictOld is returned by Kuberneres < 1.34
+	errRWOPConflictOld = "node has pod using PersistentVolumeClaim with the same name and ReadWriteOncePod access mode."
+	errRWOPConflict    = "unavailable due to PersistentVolumeClaim with ReadWriteOncePod access mode already in-use by another pod"
+)
+
+var (
+	noError []string = nil
+)
 
 // getDaemonSetLabelSelector returns labels of daemonset given name and namespace dynamically,
 // needed since labels are not same for helm and non-helm deployments.
@@ -61,7 +71,7 @@ func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string)
 func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
+	framework.Logf("Waiting up to %s for all daemonsets in namespace '%s' to start", timeout, ns)
 
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
 		ds, err := c.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
@@ -352,19 +362,19 @@ func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, noError)
 }
 
-func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errString string) error {
+func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errStrings []string) error {
 	_, err := c.CoreV1().Pods(app.Namespace).Create(context.TODO(), app, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
 
-	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, errString)
+	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, errStrings)
 }
 
-func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, expectedError string) error {
+func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, expectedErrors []string) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Running state", name)
+	framework.Logf("Waiting up to %s for %v to be in Running state", timeout, name)
 
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
@@ -381,18 +391,22 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 		case v1.PodFailed, v1.PodSucceeded:
 			return false, conditions.ErrPodCompleted
 		case v1.PodPending:
-			if expectedError != "" {
+			if expectedErrors != nil {
 				events, err := c.CoreV1().Events(ns).List(ctx, metav1.ListOptions{
 					FieldSelector: "involvedObject.name=" + name,
 				})
 				if err != nil {
 					return false, err
 				}
-				if strings.Contains(events.String(), expectedError) {
-					framework.Logf("Expected Error %q found successfully", expectedError)
+				for _, expectedError := range expectedErrors {
+					if strings.Contains(events.String(), expectedError) {
+						framework.Logf("Expected Error %q found successfully", expectedError)
 
-					return true, err
+						return true, nil
+					}
 				}
+
+				framework.Logf("No failures found, events do not match expected error: %v", events)
 			}
 		case v1.PodUnknown:
 			framework.Logf(
@@ -545,7 +559,7 @@ func validateRWOPPodCreation(
 	name := fmt.Sprintf("%s-%d", uuid.NewString(), deployTimeout)
 	app.Name = name
 
-	err = createAppErr(f.ClientSet, app, deployTimeout, errRWOPConflict)
+	err = createAppErr(f.ClientSet, app, deployTimeout, []string{errRWOPConflict, errRWOPConflictOld})
 	if err != nil {
 		return fmt.Errorf("application should not go to running state due to RWOP access mode: %w", err)
 	}
