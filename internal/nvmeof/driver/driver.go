@@ -81,7 +81,10 @@ func (d *nvmeofDriver) Run(conf *util.Config) {
 
 	switch {
 	case conf.IsNodeServer:
-		ns := nodeserver.NewNodeServer(cd, conf.NodeID, conf.Vtype)
+		ns, err := nodeserver.NewNodeServer(cd, conf.NodeID, conf.Vtype)
+		if err != nil {
+			log.FatalLogMsg("failed to initialize node server: %v", err)
+		}
 		srv.NS = ns
 	case conf.IsControllerServer:
 		cs, err := controller.NewControllerServer(cd)
@@ -90,7 +93,10 @@ func (d *nvmeofDriver) Run(conf *util.Config) {
 		}
 		srv.CS = cs
 	default:
-		ns := nodeserver.NewNodeServer(cd, conf.NodeID, conf.Vtype)
+		ns, err := nodeserver.NewNodeServer(cd, conf.NodeID, conf.Vtype)
+		if err != nil {
+			log.FatalLogMsg("failed to initialize node server: %v", err)
+		}
 		srv.NS = ns
 		cs, err := controller.NewControllerServer(cd)
 		if err != nil {

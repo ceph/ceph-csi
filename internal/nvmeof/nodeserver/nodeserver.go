@@ -83,7 +83,7 @@ func NewNodeServer(
 	d *csicommon.CSIDriver,
 	nodeID,
 	t string,
-) *NodeServer {
+) (*NodeServer, error) {
 	// Create NVMe initiator
 	nvmeInitiator := nvmeof.NewNVMeInitiator()
 	ns := &NodeServer{
@@ -92,7 +92,12 @@ func NewNodeServer(
 		volumeLocks:       util.NewIDLocker(),
 	}
 
-	return ns
+	// Load nvme kernel modules
+	if err := nvmeInitiator.LoadKernelModules(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to load NVMe kernel modules: %w", err)
+	}
+
+	return ns, nil
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server.
@@ -160,12 +165,6 @@ func (ns *NodeServer) NodeStageVolume(
 	connectionInfo, err := ns.getNvmeConnection(volumeContext, req.GetPublishContext())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid volume context: %v", err)
-	}
-
-	// TODO: MOVE THE LOADING KERNEL MODULE TO DRIVE.GO!!!
-	// Load kernel modules first
-	if err := ns.initiator.LoadKernelModules(ctx); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to load kernel modules: %v", err)
 	}
 
 	// perform the actual staging and if this fails, have undoStagingTransaction
