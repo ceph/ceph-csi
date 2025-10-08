@@ -1,0 +1,150 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ceph-nvmeof-gateway
+  name: ceph-nvmeof-gateway
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: ceph-nvmeof-gateway
+  template:
+    metadata:
+      labels:
+        app: ceph-nvmeof-gateway
+      name: ceph-nvmeof-gateway
+    spec:
+      containers:
+        - args:
+            - -c
+            - /etc/ceph/nvmeof.conf
+          env:
+            - name: CEPH_MON_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: mon_host
+                  name: rook-ceph-config
+            - name: CEPH_ARGS
+              value: --mon-host $(CEPH_MON_HOST) --keyring /etc/ceph/keyring
+          image: quay.io/ceph/nvmeof:1.5
+          imagePullPolicy: IfNotPresent
+          name: nvmeof-gateway
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - SYS_ADMIN
+              drop:
+                - ALL
+          ports:
+            - containerPort: 4420
+              name: io
+              protocol: TCP
+            - containerPort: 5500
+              name: gateway
+              protocol: TCP
+            - containerPort: 5499
+              name: monitor
+              protocol: TCP
+            - containerPort: 8009
+              name: discovery
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/ceph
+              name: etc-ceph
+      initContainers:
+        - command:
+            - /bin/bash
+            - -c
+            - |2
+
+              set -xEeuo pipefail
+
+              cat << EOF > /etc/ceph/ceph.conf
+              [global]
+              mon_host = $(CEPH_MON_HOST)
+              #debug_rados = 20/5
+              log_to_stderr = true
+
+              keyring = /etc/ceph/keyring
+              EOF
+
+              cp /tmp/ceph/keyring /etc/ceph
+
+              chmod 444 /etc/ceph/ceph.conf
+              chmod 440 /etc/ceph/keyring
+
+              cat /etc/ceph/ceph.conf
+
+              # funky "sed -e .. -e" to prevent long line
+              sed -e "s/@@POD_NAME@@/${POD_NAME}/g" \
+                  -e "s/@@ANA_GROUP@@/${ANA_GROUP}/g" \
+                  -e "s/@@POD_IP@@/${POD_IP}/g" \
+                  < /config/ceph-nvmeof.conf > /etc/ceph/nvmeof.conf
+
+              # add the gateway to the Ceph configuration
+              ceph nvme-gw create ${POD_NAME} nvmeofpool ${ANA_GROUP}
+              ceph nvme-gw show nvmeofpool ${ANA_GROUP}
+          env:
+            - name: CEPH_MON_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: mon_host
+                  name: rook-ceph-config
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ANA_GROUP
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          image: quay.io/ceph/ceph:v19
+          imagePullPolicy: IfNotPresent
+          name: generate-minimal-ceph-conf
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            privileged: true
+          volumeMounts:
+            - mountPath: /tmp/ceph/
+              name: ceph-admin-keyring
+              readOnly: true
+            - mountPath: /config
+              name: gateway-config
+              readOnly: true
+            - mountPath: /etc/ceph
+              name: etc-ceph
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      serviceAccount: ceph-nvmeof-gateway
+      serviceAccountName: ceph-nvmeof-gateway
+      volumes:
+        - name: ceph-admin-keyring
+          secret:
+            items:
+              - key: keyring
+                path: keyring
+                mode: 292
+            secretName: rook-ceph-admin-keyring
+        - name: etc-ceph
+          emptyDir: {}
+        - name: gateway-config
+          projected:
+            defaultMode: 420
+            sources:
+              - configMap:
+                  items:
+                    - key: config
+                      mode: 292
+                      path: ceph-nvmeof.conf
+                  name: ceph-nvmeof-config

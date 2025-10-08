@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -203,10 +204,13 @@ type yamlResource struct {
 
 	// allowMissing prevents a failure in case the file is missing.
 	allowMissing bool
+
+	// generic replacing of key with value
+	replace map[string]string
 }
 
 func (yr *yamlResource) Do(action kubectlAction) error {
-	data, err := os.ReadFile(yr.filename)
+	rawData, err := os.ReadFile(yr.filename)
 	if err != nil {
 		if os.IsNotExist(err) && yr.allowMissing {
 			return nil
@@ -215,12 +219,17 @@ func (yr *yamlResource) Do(action kubectlAction) error {
 		return fmt.Errorf("failed to read content from %q: %w", yr.filename, err)
 	}
 
+	data := string(rawData)
+	for key, value := range yr.replace {
+		data = strings.ReplaceAll(data, key, value)
+	}
+
 	ns := cephCSINamespace
 	if yr.namespace != "" {
 		ns = yr.namespace
 	}
 
-	err = retryKubectlInput(ns, action, string(data), deployTimeout)
+	err = retryKubectlInput(ns, action, data, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to %s resource %q: %w", action, yr.filename, err)
 	}

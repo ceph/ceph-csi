@@ -1,0 +1,118 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: ceph-nvmeof-gateway
+  name: ceph-nvmeof-config
+data:
+  config: |-
+    # heavily based on tests/ceph-nvmeof.no-huge.conf
+    # Changes are annotated with "TODO:".
+    #
+    #  Copyright (c) 2021 International Business Machines
+    #  All rights reserved.
+    #
+    #  SPDX-License-Identifier: LGPL-3.0-or-later
+    #
+    #  Authors: anita.shekar@ibm.com, sandy.kaur@ibm.com
+    #
+
+    [gateway]
+    # TODO: name, group and addr could be more dynamic
+    name = @@POD_NAME@@
+    #name = ceph-nvmeof-gateway.rook-ceph.svc.cluster.local
+    group = @@ANA_GROUP@@
+    addr = @@POD_IP@@
+    #addr = 0.0.0.0
+    port = 5500
+    enable_auth = False
+    state_update_notify = True
+    state_update_timeout_in_msec = 2000
+    state_update_interval_sec = 5
+    enable_spdk_discovery_controller = False
+    encryption_key = /etc/ceph/encryption.key
+    rebalance_period_sec = 7
+    max_gws_in_grp = 16
+    max_ns_to_change_lb_grp = 8
+    #omap_file_lock_duration = 20
+    #omap_file_lock_retries = 30
+    #omap_file_lock_retry_sleep_interval = 1.0
+    #omap_file_update_reloads = 10
+    #enable_prometheus_exporter = True
+    #prometheus_exporter_ssl = True
+    #prometheus_port = 10008
+    #prometheus_bdev_pools = rbd
+    #prometheus_stats_interval = 10
+    #verify_nqns = True
+    #verify_keys = True
+    #verify_listener_ip = True
+    # TODO: does this make it work with a Kubernetes Service?
+    verify_listener_ip = False
+    #allowed_consecutive_spdk_ping_failures = 1
+    #spdk_ping_interval_in_seconds = 2.0
+    #max_hosts_per_namespace = 8
+    #max_namespaces_with_netmask = 1000
+    #max_subsystems = 128
+    #max_hosts = 2048
+    #max_namespaces = 2048
+    #max_namespaces_per_subsystem = 256
+    #max_hosts_per_subsystem = 128
+
+    [gateway-logs]
+    log_level=debug
+    #log_files_enabled = True
+    #log_files_rotation_enabled = True
+    #verbose_log_messages = True
+    #max_log_file_size_in_mb=10
+    #max_log_files_count=20
+    #max_log_directory_backups=10
+    #
+    # Notice that if you change the log directory the log files will only be
+    # visible inside the container
+    #
+    #log_directory = /var/log/ceph/
+
+    [discovery]
+    #addr = @@POD_IP@@
+    addr = 0.0.0.0
+    port = 8009
+
+    [ceph]
+    # TODO: create a dedicated user, make pool dynamic/replaceable.
+    id = admin
+    pool = nvmeofpool
+    config_file = /etc/ceph/ceph.conf
+
+    [mtls]
+    server_key = ./server.key
+    client_key = ./client.key
+    server_cert = ./server.crt
+    client_cert = ./client.crt
+
+    [spdk]
+    bdevs_per_cluster = 32
+    mem_size=4096
+    tgt_path = /usr/local/bin/nvmf_tgt
+    #rpc_socket_dir = /var/tmp/
+    #rpc_socket_name = spdk.sock
+    #tgt_cmd_extra_args = --env-context="--no-huge -m1024" --iova-mode=va
+    timeout = 60.0
+    #log_level =
+    #protocol_log_level = WARNING
+    #log_file_dir =
+
+    # Example value: -m 0x3 -L all
+    # tgt_cmd_extra_args =
+
+    # transports = tcp
+
+    # Example value: {"small_pool_count" : 8192, "large_pool_count" : 1024,
+    # "small_bufsize" : 8192, "large_bufsize" : 135168}
+    # iobuf_options =
+
+    # qos_timeslice_in_usecs = 0
+
+    [monitor]
+    #timeout = 1.0
+    #log_file_dir =
