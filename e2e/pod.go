@@ -71,7 +71,7 @@ func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string)
 func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
+	framework.Logf("Waiting up to %s for all daemonsets in namespace '%s' to start", timeout, ns)
 
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
 		ds, err := c.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
@@ -374,7 +374,7 @@ func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errStrings [
 func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, expectedErrors []string) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Running state", name)
+	framework.Logf("Waiting up to %s for %v to be in Running state", timeout, name)
 
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
