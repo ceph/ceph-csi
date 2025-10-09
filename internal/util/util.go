@@ -41,6 +41,7 @@ const (
 	RBDType        = "rbd"
 	CephFsType     = "cephfs"
 	NFSType        = "nfs"
+	NVMeoFType     = "nvmeof"
 	LivenessType   = "liveness"
 	ControllerType = "controller"
 )
