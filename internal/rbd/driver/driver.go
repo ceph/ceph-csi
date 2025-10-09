@@ -24,6 +24,7 @@ import (
 	casrbd "github.com/ceph/ceph-csi/internal/csi-addons/rbd"
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/driver"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/rbd/features"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -33,8 +34,8 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
-// Driver contains the default identity,node and controller struct.
-type Driver struct {
+// driver contains the default identity,node and controller struct.
+type rbdDriver struct {
 	cd  *csicommon.CSIDriver
 	ids *rbd.IdentityServer
 	ns  *rbd.NodeServer
@@ -44,9 +45,12 @@ type Driver struct {
 	cas *csiaddons.CSIAddonsServer
 }
 
+// assert that rbdDriver implements the Driver interface.
+var _ driver.Driver = &rbdDriver{}
+
 // NewDriver returns new rbd driver.
-func NewDriver() *Driver {
-	return &Driver{}
+func NewDriver() driver.Driver {
+	return &rbdDriver{}
 }
 
 // NewIdentityServer initialize a identity server for rbd CSI driver.
@@ -87,7 +91,7 @@ func NewNodeServer(
 //
 // This also configures and starts a new CSI-Addons service, by calling
 // setupCSIAddonsServer().
-func (r *Driver) Run(conf *util.Config) {
+func (r *rbdDriver) Run(conf *util.Config) {
 	var (
 		err                                    error
 		nodeLabels, topology, crushLocationMap map[string]string
@@ -220,7 +224,7 @@ func (r *Driver) Run(conf *util.Config) {
 // setupCSIAddonsServer creates a new CSI-Addons Server on the given (URL)
 // endpoint. The supported CSI-Addons operations get registered as their own
 // services.
-func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
+func (r *rbdDriver) setupCSIAddonsServer(conf *util.Config) error {
 	var err error
 
 	r.cas, err = csiaddons.NewCSIAddonsServer(conf.CSIAddonsEndpoint)
@@ -268,7 +272,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 
 // startProfiling checks which profiling options are enabled in the config and
 // starts the required profiling services.
-func (r *Driver) startProfiling(conf *util.Config) {
+func (r *rbdDriver) startProfiling(conf *util.Config) {
 	if conf.EnableProfiling {
 		go util.StartMetricsServer(conf)
 		log.DebugLogMsg("Registering profiling handler")

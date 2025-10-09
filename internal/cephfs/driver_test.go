@@ -36,7 +36,7 @@ func TestSetupCSIAddonsServer(t *testing.T) {
 		CSIAddonsEndpoint: endpoint,
 	}
 
-	drv := &Driver{}
+	drv := &cephfsDriver{}
 	err := drv.setupCSIAddonsServer(config)
 	require.NoError(t, err)
 	require.NotNil(t, drv.cas)
