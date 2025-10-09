@@ -35,6 +35,13 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		return
 	}
 
+	// only support deployment through YAML files (for now)
+	if helmTest || operatorDeployment {
+		framework.Logf("Skipping NVMe-oF E2E (simple deployment only)")
+
+		return
+	}
+
 	f := framework.NewDefaultFramework("nvmeof")
 	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
 
