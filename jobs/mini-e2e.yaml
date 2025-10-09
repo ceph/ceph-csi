@@ -16,8 +16,9 @@
           only_run_on_request: true
     test_type:
       - 'cephfs'
-      - 'rbd'
       - 'nfs'
+      - 'nvmeof'
+      - 'rbd'
     jobs:
       - 'mini-e2e_k8s-{k8s_version}'
       - 'mini-e2e-helm_k8s-{k8s_version}'
@@ -44,7 +45,7 @@
       - string:
           name: test_type
           default: ''
-          description: Mentions whether tests run for rbd/cephfs/nfs.
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
     pipeline-scm:
       scm:
         - git:
@@ -89,7 +90,7 @@
       - string:
           name: test_type
           default: ''
-          description: Mentions whether tests run for rbd/cephfs/nfs.
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
 
     pipeline-scm:
       scm:
@@ -136,7 +137,7 @@
       - string:
           name: test_type
           default: ''
-          description: Mentions whether tests run for rbd/cephfs/nfs.
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
 
     pipeline-scm:
       scm:
