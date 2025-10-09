@@ -376,7 +376,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 	start := time.Now()
 	framework.Logf("Waiting up to %s for %v to be in Running state", timeout, name)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+	finalErr := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
@@ -418,6 +418,16 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 
 		return false, nil
 	})
+
+	if finalErr != nil {
+		events, _ := c.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+			FieldSelector: "involvedObject.name=" + name,
+		})
+
+		framework.Logf("Pod %q did not reach Running state, events: %v", name, events)
+	}
+
+	return finalErr
 }
 
 func getPod(c kubernetes.Interface, namespace, name string) (*v1.Pod, error) {
