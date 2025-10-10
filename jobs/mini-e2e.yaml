@@ -21,8 +21,11 @@
       - 'rbd'
     jobs:
       - 'mini-e2e_k8s-{k8s_version}'
+      - 'mini-e2e_k8s-{k8s_version}-{test_type}'
       - 'mini-e2e-helm_k8s-{k8s_version}'
+      - 'mini-e2e-helm_k8s-{k8s_version}-{test_type}'
       - 'mini-e2e-operator_k8s-{k8s_version}'
+      - 'mini-e2e-operator_k8s-{k8s_version}-{test_type}'
 
 - job-template:
     name: 'mini-e2e_k8s-{k8s_version}'
@@ -70,6 +73,51 @@
             - ceph
 
 - job-template:
+    name: 'mini-e2e_k8s-{k8s_version}-{test_type}'
+    project-type: pipeline
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    # default variables
+    k8s_version: '<unset>'
+    # generated parameters for the job (used in the groovy script)
+    parameters:
+      - string:
+          name: k8s_version
+          default: '{k8s_version}'
+          description: Kubernetes version to deploy in the test cluster.
+      - string:
+          name: test_type
+          default: '{test_type}'
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
+    pipeline-scm:
+      scm:
+        - git:
+            name: origin
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: mini-e2e.groovy
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          status-url: $RUN_DISPLAY_URL
+          status-context: 'ci/centos/mini-e2e/k8s-{k8s_version}/{test_type}'
+          # yamllint disable-line rule:line-length
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e/k8s-{k8s_version}/{test_type}'
+          only-trigger-phrase: '{only_run_on_request}'
+          permit-all: true
+          github-hooks: true
+          black-list-target-branches:
+            - ci/centos
+          org-list:
+            - ceph
+
+- job-template:
     name: 'mini-e2e-helm_k8s-{k8s_version}'
     project-type: pipeline
     concurrent: true
@@ -106,7 +154,54 @@
           status-url: $RUN_DISPLAY_URL
           status-context: 'ci/centos/mini-e2e-helm/k8s-{k8s_version}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ci/centos/mini-e2e-helm(/k8s-{k8s_version}(/(cephfs|nfs|nvmeof|rbd))?)?'
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e-helm(/k8s-{k8s_version})?'
+          only-trigger-phrase: '{only_run_on_request}'
+          permit-all: true
+          github-hooks: true
+          black-list-target-branches:
+            - ci/centos
+          org-list:
+            - ceph
+          allow-whitelist-orgs-as-admins: true
+
+- job-template:
+    name: 'mini-e2e-helm_k8s-{k8s_version}-{test_type}'
+    project-type: pipeline
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    # default variables
+    k8s_version: '<unset>'
+    # generated parameters for the job (used in the groovy script)
+    parameters:
+      - string:
+          name: k8s_version
+          default: '{k8s_version}'
+          description: Kubernetes version to deploy in the test cluster.
+      - string:
+          name: test_type
+          default: '{test_type}'
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
+
+    pipeline-scm:
+      scm:
+        - git:
+            name: origin
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: mini-e2e-helm.groovy
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          status-url: $RUN_DISPLAY_URL
+          status-context: 'ci/centos/mini-e2e-helm/k8s-{k8s_version}/{test_type}'
+          # yamllint disable-line rule:line-length
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e-helm/k8s-{k8s_version}/{test_type}'
           only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
@@ -153,7 +248,53 @@
           status-url: $RUN_DISPLAY_URL
           status-context: 'ci/centos/mini-e2e-operator/k8s-{k8s_version}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ci/centos/mini-e2e-operator(/k8s-{k8s_version}(/(cephfs|nfs|nvmeof|rbd))?)?'
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e-operator(/k8s-{k8s_version})?'
+          only-trigger-phrase: '{only_run_on_request}'
+          permit-all: true
+          github-hooks: true
+          black-list-target-branches:
+            - ci/centos
+          org-list:
+            - ceph
+
+- job-template:
+    name: 'mini-e2e-operator_k8s-{k8s_version}-{test_type}'
+    project-type: pipeline
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    # default variables
+    k8s_version: '<unset>'
+    # generated parameters for the job (used in the groovy script)
+    parameters:
+      - string:
+          name: k8s_version
+          default: '{k8s_version}'
+          description: Kubernetes version to deploy in the test cluster.
+      - string:
+          name: test_type
+          default: '{test_type}'
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
+
+    pipeline-scm:
+      scm:
+        - git:
+            name: origin
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: mini-e2e-operator.groovy
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          status-url: $RUN_DISPLAY_URL
+          status-context: 'ci/centos/mini-e2e-operator/k8s-{k8s_version}/{test_type}'
+          # yamllint disable-line rule:line-length
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e-operator/k8s-{k8s_version}/{test_type}'
           only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
