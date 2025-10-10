@@ -63,7 +63,7 @@
           status-url: $RUN_DISPLAY_URL
           status-context: 'ci/centos/mini-e2e/k8s-{k8s_version}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ci/centos/mini-e2e(/k8s-{k8s_version}(/(cephfs|nfs|nvmeof|rbd))?)?'
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e(/k8s-{k8s_version})?'
           only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
