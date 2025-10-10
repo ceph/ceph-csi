@@ -16,8 +16,9 @@
           only_run_on_request: true
     test_type:
       - 'cephfs'
-      - 'rbd'
       - 'nfs'
+      - 'nvmeof'
+      - 'rbd'
     jobs:
       - 'mini-e2e_k8s-{k8s_version}'
       - 'mini-e2e-helm_k8s-{k8s_version}'
@@ -44,7 +45,7 @@
       - string:
           name: test_type
           default: ''
-          description: Mentions whether tests run for rbd/cephfs/nfs.
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
     pipeline-scm:
       scm:
         - git:
@@ -59,7 +60,7 @@
           status-url: $RUN_DISPLAY_URL
           status-context: 'ci/centos/mini-e2e/k8s-{k8s_version}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ci/centos/mini-e2e(/k8s-{k8s_version}(/test_type-{test_type})?)?'
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e(/k8s-{k8s_version}(/{test_type})?)?'
           only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
@@ -89,7 +90,7 @@
       - string:
           name: test_type
           default: ''
-          description: Mentions whether tests run for rbd/cephfs/nfs.
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
 
     pipeline-scm:
       scm:
@@ -105,7 +106,7 @@
           status-url: $RUN_DISPLAY_URL
           status-context: 'ci/centos/mini-e2e-helm/k8s-{k8s_version}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ci/centos/mini-e2e-helm(/k8s-{k8s_version}(/test_type-{test_type})?)?'
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e-helm(/k8s-{k8s_version}(/{test_type})?)?'
           only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
@@ -136,7 +137,7 @@
       - string:
           name: test_type
           default: ''
-          description: Mentions whether tests run for rbd/cephfs/nfs.
+          description: Mentions whether tests run for rbd/cephfs/nfs/nvmeof.
 
     pipeline-scm:
       scm:
@@ -152,7 +153,7 @@
           status-url: $RUN_DISPLAY_URL
           status-context: 'ci/centos/mini-e2e-operator/k8s-{k8s_version}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ci/centos/mini-e2e-operator(/k8s-{k8s_version}(/test_type-{test_type})?)?'
+          trigger-phrase: '/(re)?test ci/centos/mini-e2e-operator(/k8s-{k8s_version}(/{test_type})?)?'
           only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
