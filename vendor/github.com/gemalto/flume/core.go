@@ -2,12 +2,13 @@ package flume
 
 import (
 	"fmt"
-	"go.uber.org/multierr"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"runtime"
 	"sync/atomic"
 	"time"
+
+	"go.uber.org/multierr"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var _ Logger = (*Core)(nil)
@@ -238,8 +239,7 @@ func (l *Core) IsInfo() bool {
 //
 // args should be alternative keys and values.  keys should be strings.
 //
-//     reqLogger := l.With("requestID", reqID)
-//
+//	reqLogger := l.With("requestID", reqID)
 func (l *Core) With(args ...interface{}) Logger {
 	return l.WithArgs(args...)
 }
@@ -263,4 +263,51 @@ func (l *Core) clone() *Core {
 		l2.context = append(l2.context, l.context...)
 	}
 	return &l2
+}
+
+// ZapCore returns a zapcore.Core that can be used to write logs to a zap logger, or to
+// integrate with other logging systems.
+func (l *Core) ZapCore() zapcore.Core {
+	return &zapCore{c: l}
+}
+
+type zapCore struct {
+	c *Core
+}
+
+var _ zapcore.Core = (*zapCore)(nil)
+
+func (l *zapCore) Enabled(lvl zapcore.Level) bool {
+	return l.c.get().Enabled(lvl)
+}
+
+func (l *zapCore) Check(entry zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	// DO NOT pass this on to the inner core, because the inner core will
+	// add itself to the CheckedEntry, so when CheckEntry is called, it will
+	// it will only invoke Write on the inner core, not the outer core.  Our outer
+	// core will not have the chance to add the context fields to the CheckedEntry.
+	c := l.c.get()
+	if c.Enabled(entry.Level) {
+		ce = ce.AddCore(entry, l)
+		ce.ErrorOutput = c.errorOutput
+		return ce
+	}
+	return nil
+}
+
+func (l *zapCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
+	return l.c.get().Write(entry, append(l.c.context, fields...))
+}
+
+func (l *zapCore) Sync() error {
+	return l.c.get().Sync()
+}
+
+func (l *zapCore) With(fields []zapcore.Field) zapcore.Core {
+	if len(fields) == 0 {
+		return l
+	}
+	l2 := l.c.clone()
+	l2.context = append(l2.context, fields...)
+	return &zapCore{c: l2}
 }

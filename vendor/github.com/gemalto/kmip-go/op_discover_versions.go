@@ -18,7 +18,7 @@ type DiscoverVersionsHandler struct {
 	SupportedVersions []ProtocolVersion
 }
 
-func (h *DiscoverVersionsHandler) HandleItem(ctx context.Context, req *Request) (item *ResponseBatchItem, err error) {
+func (h *DiscoverVersionsHandler) HandleItem(_ context.Context, req *Request) (item *ResponseBatchItem, err error) {
 	var payload DiscoverVersionsRequestPayload
 
 	err = req.DecodePayload(&payload)

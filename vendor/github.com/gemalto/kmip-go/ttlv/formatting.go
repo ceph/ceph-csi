@@ -100,7 +100,7 @@ func FormatInt(i int32, enumMap EnumMap) string {
 		return fmt.Sprintf("%#08x", i)
 	}
 
-	v := uint32(i)
+	v := uint32(i) //nolint:gosec //nolint:gosec
 
 	// bitmask
 	// decompose mask into the names of set flags, concatenated by pipe
@@ -192,7 +192,7 @@ func ParseInt(s string, enumMap EnumMap) (int32, error) {
 			return 0, merry.Here(err)
 		}
 
-		return int32(v), nil
+		return int32(v), nil //nolint:gosec
 	}
 
 	// split values, look up each, and recombine
@@ -213,11 +213,11 @@ func ParseInt(s string, enumMap EnumMap) (int32, error) {
 		v |= i
 	}
 
-	return int32(v), nil
+	return int32(v), nil //nolint:gosec
 }
 
-func parseHexOrName(s string, max int, enumMap EnumMap) (uint32, error) {
-	b, err := kmiputil.ParseHexValue(s, max)
+func parseHexOrName(s string, maxLen int, enumMap EnumMap) (uint32, error) {
+	b, err := kmiputil.ParseHexValue(s, maxLen)
 	if err != nil {
 		return 0, err
 	}

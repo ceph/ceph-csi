@@ -23,19 +23,19 @@ func Errorf(format string, args ...interface{}) error {
 // to create sentinel errors, which will be wrapped with a stack later from where the
 // error is returned.  At that time, a stack will be captured and hooks will be run.
 //
-//     var ErrNotFound = merry.Sentinel("not found", merry.WithHTTPCode(404))
+//	var ErrNotFound = merry.Sentinel("not found", merry.WithHTTPCode(404))
 //
-//     func FindUser(name string) (*User, error) {
-//       // some db code which fails to find a user
-//       return nil, merry.Wrap(ErrNotFound)
-//     }
+//	func FindUser(name string) (*User, error) {
+//	  // some db code which fails to find a user
+//	  return nil, merry.Wrap(ErrNotFound)
+//	}
 //
-//     func main() {
-//       _, err := FindUser("bob")
-//       fmt.Println(errors.Is(err, ErrNotFound) // "true"
-//       fmt.Println(merry.Details(err))         // stacktrace will start at the return statement
-//                                               // in FindUser()
-//     }
+//	func main() {
+//	  _, err := FindUser("bob")
+//	  fmt.Println(errors.Is(err, ErrNotFound) // "true"
+//	  fmt.Println(merry.Details(err))         // stacktrace will start at the return statement
+//	                                          // in FindUser()
+//	}
 func Sentinel(msg string, wrappers ...Wrapper) error {
 	return ApplySkipping(errors.New(msg), 1, wrappers...)
 }
@@ -93,7 +93,15 @@ func WrapSkipping(err error, skip int, wrappers ...Wrapper) error {
 	}
 	err = ApplySkipping(err, skip+1, hooks...)
 	err = ApplySkipping(err, skip+1, wrappers...)
-	return captureStack(err, skip+1, false)
+	err = captureStack(err, skip+1, false)
+
+	// ensure the resulting error implements Formatter
+	// https://github.com/ansel1/merry/issues/26
+	if _, ok := err.(fmt.Formatter); !ok {
+		err = &formatError{err}
+	}
+
+	return err
 }
 
 // Apply is like Wrap, but does not execute hooks or do automatic stack capture.  It just
@@ -113,6 +121,7 @@ func ApplySkipping(err error, skip int, wrappers ...Wrapper) error {
 	for _, w := range wrappers {
 		err = w.Wrap(err, skip+1)
 	}
+
 	return err
 }
 

@@ -37,10 +37,10 @@ func pad(b []byte, l int) []byte {
 // is not a hex representation, and nil, nil is returned.
 //
 // An ErrInvalidHexString is returned if the hex parsing fails.
-// If the max argument is >0, ErrInvalidHexString is returned if the number of bytes parsed
-// is greater than max, ignoring leading zeros.  All bytes parsed are returned (including
+// If the maxLen argument is >0, ErrInvalidHexString is returned if the number of bytes parsed
+// is greater than maxLen, ignoring leading zeros.  All bytes parsed are returned (including
 // leading zeros).
-func ParseHexValue(s string, max int) ([]byte, error) {
+func ParseHexValue(s string, maxLen int) ([]byte, error) {
 	if !strings.HasPrefix(s, "0x") {
 		return nil, nil
 	}
@@ -50,15 +50,15 @@ func ParseHexValue(s string, max int) ([]byte, error) {
 		return nil, merry.WithCause(ErrInvalidHexString, err).Append(err.Error())
 	}
 
-	if max > 0 {
+	if maxLen > 0 {
 		l := len(b)
 		// minus leading zeros
 		for i := 0; i < len(b) && b[i] == 0; i++ {
 			l--
 		}
 
-		if l > max {
-			return nil, merry.Appendf(ErrInvalidHexString, "must be %v bytes", max)
+		if l > maxLen {
+			return nil, merry.Appendf(ErrInvalidHexString, "must be %v bytes", maxLen)
 		}
 	}
 

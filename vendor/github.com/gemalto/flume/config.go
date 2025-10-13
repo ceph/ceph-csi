@@ -16,10 +16,10 @@ var DefaultConfigEnvVars = []string{"FLUME"}
 // ConfigFromEnv configures flume from environment variables.
 // It should be called from main():
 //
-//     func main() {
-//         flume.ConfigFromEnv()
-//         ...
-//      }
+//	func main() {
+//	    flume.ConfigFromEnv()
+//	    ...
+//	 }
 //
 // It searches envvars for the first environment
 // variable that is set, and attempts to parse the value.
@@ -30,7 +30,6 @@ var DefaultConfigEnvVars = []string{"FLUME"}
 // fails, an error is printed to stdout, and the error is returned.
 //
 // If envvars is empty, it defaults to DefaultConfigEnvVars.
-//
 func ConfigFromEnv(envvars ...string) error {
 	if len(envvars) == 0 {
 		envvars = DefaultConfigEnvVars
@@ -58,11 +57,11 @@ func ConfigFromEnv(envvars ...string) error {
 // Configs can be unmarshaled from JSON, making it a convenient
 // way to configure most logging options from env vars or files, i.e.:
 //
-//     err := flume.ConfigString(os.Getenv("flume"))
+//	err := flume.ConfigString(os.Getenv("flume"))
 //
 // Configs can be created and applied programmatically:
 //
-//     err := flume.Configure(flume.Config{})
+//	err := flume.Configure(flume.Config{})
 //
 // Defaults are appropriate for a JSON encoded production logger:
 //
@@ -74,13 +73,13 @@ func ConfigFromEnv(envvars ...string) error {
 // An alternate set of defaults, more appropriate for development environments,
 // can be configured with `Config{Development:true}`:
 //
-//     err := flume.Configure(flume.Config{Development:true})
+//	err := flume.Configure(flume.Config{Development:true})
 //
 // - colorized terminal encoder
 // - short timestamps
 // - call sites are logged
 //
-//     err := flume.Configure(flume.Config{Development:true})
+//	err := flume.Configure(flume.Config{Development:true})
 //
 // Any of the other configuration options can be specified to override
 // the defaults.
@@ -185,9 +184,8 @@ func NewDevelopmentEncoderConfig() *EncoderConfig {
 // as a simple time of day, without a date.  Intended for development and testing.
 // Not good in a production system, where you probably need to know the date.
 //
-//     encConfig := flume.EncoderConfig{}
-//     encConfig.EncodeTime = flume.JustTimeEncoder
-//
+//	encConfig := flume.EncoderConfig{}
+//	encConfig.EncodeTime = flume.JustTimeEncoder
 func JustTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.Format("15:04:05.000"))
 }
@@ -195,9 +193,8 @@ func JustTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 // AbbrLevelEncoder encodes logging levels to the strings in the log entries.
 // Encodes levels as 3-char abbreviations in upper case.
 //
-//     encConfig := flume.EncoderConfig{}
-//     encConfig.EncodeTime = flume.AbbrLevelEncoder
-//
+//	encConfig := flume.EncoderConfig{}
+//	encConfig.EncodeTime = flume.AbbrLevelEncoder
 func AbbrLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
 	switch l {
 	case zapcore.DebugLevel:

@@ -69,9 +69,9 @@ var ErrServerClosed = errors.New("http: Server closed")
 // Serve always returns a non-nil error and closes l.
 // After Shutdown or Close, the returned error is ErrServerClosed.
 func (srv *Server) Serve(l net.Listener) error {
-	//if fn := testHookServerServe; fn != nil {
-	//	fn(srv, l) // call hook with unwrapped listener
-	//}
+	// if fn := testHookServerServe; fn != nil {
+	// 	fn(srv, l) // call hook with unwrapped listener
+	// }
 
 	l = &onceCloseListener{Listener: l}
 	defer l.Close()
@@ -91,14 +91,16 @@ func (srv *Server) Serve(l net.Listener) error {
 			if srv.shuttingDown() {
 				return ErrServerClosed
 			}
-			if ne, ok := e.(net.Error); ok && ne.Temporary() {
+			var ne net.Error
+			if errors.As(e, &ne) && ne.Timeout() {
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
 				} else {
 					tempDelay *= 2
 				}
-				if max := 1 * time.Second; tempDelay > max {
-					tempDelay = max
+
+				if maxDelay := 1 * time.Second; tempDelay > maxDelay {
+					tempDelay = maxDelay
 				}
 				// srv.logf("http: Accept error: %v; retrying in %v", e, tempDelay)
 				time.Sleep(tempDelay)
@@ -128,10 +130,10 @@ func (srv *Server) Close() error {
 	defer srv.mu.Unlock()
 	// srv.closeDoneChanLocked()
 	err := srv.closeListenersLocked()
-	//for c := range srv.activeConn {
-	//	c.rwc.Close()
-	//	delete(srv.activeConn, c)
-	//}
+	// for c := range srv.activeConn {
+	// 	c.rwc.Close()
+	// 	delete(srv.activeConn, c)
+	// }
 	return err
 }
 
@@ -164,30 +166,30 @@ var shutdownPollInterval = 500 * time.Millisecond
 //
 // Once Shutdown has been called on a server, it may not be reused;
 // future calls to methods such as Serve will return ErrServerClosed.
-func (srv *Server) Shutdown(ctx context.Context) error {
+func (srv *Server) Shutdown(_ context.Context) error {
 	atomic.StoreInt32(&srv.inShutdown, 1)
 
 	srv.mu.Lock()
 	lnerr := srv.closeListenersLocked()
-	//srv.closeDoneChanLocked()
-	//for _, f := range srv.onShutdown {
-	//	go f()
-	//}
+	// srv.closeDoneChanLocked()
+	// for _, f := range srv.onShutdown {
+	// 	go f()
+	// }
 	srv.mu.Unlock()
 
 	ticker := time.NewTicker(shutdownPollInterval)
 	defer ticker.Stop()
 	return lnerr
-	//for {
-	//	if srv.closeIdleConns() {
-	//		return lnerr
-	//	}
-	//	select {
-	//	case <-ctx.Done():
-	//		return ctx.Err()
-	//	case <-ticker.C:
-	//	}
-	//}
+	// for {
+	// 	if srv.closeIdleConns() {
+	// 		return lnerr
+	// 	}
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		return ctx.Err()
+	// 	case <-ticker.C:
+	// 	}
+	// }
 }
 
 func (srv *Server) closeListenersLocked() error {
@@ -262,18 +264,11 @@ func (c *conn) serve(ctx context.Context) {
 	// ctx = context.WithValue(ctx, LocalAddrContextKey, c.rwc.LocalAddr())
 	defer func() {
 		if err := recover(); err != nil {
-			// TODO: logging support
 			// if err := recover(); err != nil && err != ErrAbortHandler {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			if e, ok := err.(error); ok {
-				fmt.Printf("kmip: panic serving %v: %v\n%s", c.remoteAddr, Details(e), buf)
-			} else {
-				fmt.Printf("kmip: panic serving %v: %v\n%s", c.remoteAddr, err, buf)
-			}
-
-			// c.server.logf("http: panic serving %v: %v\n%s", c.remoteAddr, err, buf)
+			serverLog.Error("kmip: panic in serve", "remoteAddr", c.remoteAddr, "error", err, "stack", buf)
 		}
 		cancelCtx()
 		// if !c.hijacked() {
@@ -283,27 +278,25 @@ func (c *conn) serve(ctx context.Context) {
 	}()
 
 	if tlsConn, ok := c.rwc.(*tls.Conn); ok {
-		//if d := c.server.ReadTimeout; d != 0 {
-		//	c.rwc.SetReadDeadline(time.Now().Add(d))
-		//}
-		//if d := c.server.WriteTimeout; d != 0 {
-		//	c.rwc.SetWriteDeadline(time.Now().Add(d))
-		//}
-		if err := tlsConn.Handshake(); err != nil {
-			// TODO: logging support
-			fmt.Printf("kmip: TLS handshake error from %s: %v", c.rwc.RemoteAddr(), err)
-			// c.server.logf("http: TLS handshake error from %s: %v", c.rwc.RemoteAddr(), err)
+		// if d := c.server.ReadTimeout; d != 0 {
+		// 	c.rwc.SetReadDeadline(time.Now().Add(d))
+		// }
+		// if d := c.server.WriteTimeout; d != 0 {
+		// 	c.rwc.SetWriteDeadline(time.Now().Add(d))
+		// }
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			serverLog.Error("kmip: TLS handshake error", "remoteAddr", c.rwc.RemoteAddr(), "error", err)
 			return
 		}
 		c.tlsState = new(tls.ConnectionState)
 		*c.tlsState = tlsConn.ConnectionState()
-		//if proto := c.tlsState.NegotiatedProtocol; validNPN(proto) {
-		//	if fn := c.server.TLSNextProto[proto]; fn != nil {
-		//		h := initNPNRequest{tlsConn, serverHandler{c.server}}
-		//		fn(c.server, tlsConn, h)
-		//	}
-		//	return
-		//}
+		// if proto := c.tlsState.NegotiatedProtocol; validNPN(proto) {
+		// 	if fn := c.server.TLSNextProto[proto]; fn != nil {
+		// 		h := initNPNRequest{tlsConn, serverHandler{c.server}}
+		// 		fn(c.server, tlsConn, h)
+		// 	}
+		// 	return
+		// }
 	}
 
 	// TODO: do we really need instance pooling here?  We expect KMIP connections to be long lasting
@@ -313,63 +306,63 @@ func (c *conn) serve(ctx context.Context) {
 
 	for {
 		w, err := c.readRequest(ctx)
-		//if c.r.remain != c.server.initialReadLimitSize() {
-		// If we read any bytes off the wire, we're active.
-		//c.setState(c.rwc, StateActive)
-		//}
+		// if c.r.remain != c.server.initialReadLimitSize() {
+		//  If we read any bytes off the wire, we're active.
+		// c.setState(c.rwc, StateActive)
+		// }
 		if err != nil {
 			if merry.Is(err, io.EOF) {
-				fmt.Println("client closed connection")
+				serverLog.Info("kmip: client closed connection", "remoteAddr", c.remoteAddr)
 				return
 			}
 
 			// TODO: do something with this error
 			panic(err)
-			//const errorHeaders= "\r\nContent-Type: text/plain; charset=utf-8\r\nConnection: close\r\n\r\n"
+			// const errorHeaders= "\r\nContent-Type: text/plain; charset=utf-8\r\nConnection: close\r\n\r\n"
 			//
-			//if err == errTooLarge {
-			//	// Their HTTP client may or may not be
-			//	// able to read this if we're
-			//	// responding to them and hanging up
-			//	// while they're still writing their
-			//	// request. Undefined behavior.
-			//	const publicErr= "431 Request Header Fields Too Large"
-			//	fmt.Fprintf(c.rwc, "HTTP/1.1 "+publicErr+errorHeaders+publicErr)
-			//	c.closeWriteAndWait()
-			//	return
-			//}
-			//if isCommonNetReadError(err) {
-			//	return // don't reply
-			//}
+			// if err == errTooLarge {
+			// 	// Their HTTP client may or may not be
+			// 	// able to read this if we're
+			// 	// responding to them and hanging up
+			// 	// while they're still writing their
+			// 	// request. Undefined behavior.
+			// 	const publicErr= "431 Request Header Fields Too Large"
+			// 	fmt.Fprintf(c.rwc, "HTTP/1.1 "+publicErr+errorHeaders+publicErr)
+			// 	c.closeWriteAndWait()
+			// 	return
+			// }
+			// if isCommonNetReadError(err) {
+			// 	return // don't reply
+			// }
 			//
-			//publicErr := "400 Bad Request"
-			//if v, ok := err.(badRequestError); ok {
-			//	publicErr = publicErr + ": " + string(v)
-			//}
+			// publicErr := "400 Bad Request"
+			// if v, ok := err.(badRequestError); ok {
+			// 	publicErr = publicErr + ": " + string(v)
+			// }
 			//
-			//fmt.Fprintf(c.rwc, "HTTP/1.1 "+publicErr+errorHeaders+publicErr)
-			//return
+			// fmt.Fprintf(c.rwc, "HTTP/1.1 "+publicErr+errorHeaders+publicErr)
+			// return
 		}
 
 		// Expect 100 Continue support
-		//req := w.req
-		//if req.expectsContinue() {
-		//	if req.ProtoAtLeast(1, 1) && req.ContentLength != 0 {
-		//		// Wrap the Body reader with one that replies on the connection
-		//		req.Body = &expectContinueReader{readCloser: req.Body, resp: w}
-		//	}
-		//} else if req.Header.get("Expect") != "" {
-		//	w.sendExpectationFailed()
-		//	return
-		//}
+		// req := w.req
+		// if req.expectsContinue() {
+		// 	if req.ProtoAtLeast(1, 1) && req.ContentLength != 0 {
+		// 		// Wrap the Body reader with one that replies on the connection
+		// 		req.Body = &expectContinueReader{readCloser: req.Body, resp: w}
+		// 	}
+		// } else if req.Header.get("Expect") != "" {
+		// 	w.sendExpectationFailed()
+		// 	return
+		// }
 
 		// c.curReq.Store(w)
 
-		//if requestBodyRemains(req.Body) {
-		//	registerOnHitEOF(req.Body, w.conn.r.startBackgroundRead)
-		//} else {
-		//	w.conn.r.startBackgroundRead()
-		//}
+		// if requestBodyRemains(req.Body) {
+		// 	registerOnHitEOF(req.Body, w.conn.r.startBackgroundRead)
+		// } else {
+		// 	w.conn.r.startBackgroundRead()
+		// }
 
 		// HTTP cannot have multiple simultaneous active requests.[*]
 		// Until the server replies to this request, it can't read another,
@@ -399,78 +392,78 @@ func (c *conn) serve(ctx context.Context) {
 			panic(err)
 		}
 
-		//serverHandler{c.server}.ServeHTTP(w, w.req)
-		//w.cancelCtx()
-		//if c.hijacked() {
-		//	return
-		//}
-		//w.finishRequest()
-		//if !w.shouldReuseConnection() {
-		//	if w.requestBodyLimitHit || w.closedRequestBodyEarly() {
-		//		c.closeWriteAndWait()
-		//	}
-		//	return
-		//}
-		//c.setState(c.rwc, StateIdle)
-		//c.curReq.Store((*response)(nil))
+		// serverHandler{c.server}.ServeHTTP(w, w.req)
+		// w.cancelCtx()
+		// if c.hijacked() {
+		// 	return
+		// }
+		// w.finishRequest()
+		// if !w.shouldReuseConnection() {
+		// 	if w.requestBodyLimitHit || w.closedRequestBodyEarly() {
+		// 		c.closeWriteAndWait()
+		// 	}
+		// 	return
+		// }
+		// c.setState(c.rwc, StateIdle)
+		// c.curReq.Store((*response)(nil))
 
-		//if !w.conn.server.doKeepAlives() {
-		//	// We're in shutdown mode. We might've replied
-		//	// to the user without "Connection: close" and
-		//	// they might think they can send another
-		//	// request, but such is life with HTTP/1.1.
-		//	return
-		//}
+		// if !w.conn.server.doKeepAlives() {
+		// 	// We're in shutdown mode. We might've replied
+		// 	// to the user without "Connection: close" and
+		// 	// they might think they can send another
+		// 	// request, but such is life with HTTP/1.1.
+		// 	return
+		// }
 		//
-		//if d := c.server.idleTimeout(); d != 0 {
-		//	c.rwc.SetReadDeadline(time.Now().Add(d))
-		//	if _, err := c.bufr.Peek(4); err != nil {
-		//		return
-		//	}
-		//}
-		//c.rwc.SetReadDeadline(time.Time{})
+		// if d := c.server.idleTimeout(); d != 0 {
+		// 	c.rwc.SetReadDeadline(time.Now().Add(d))
+		// 	if _, err := c.bufr.Peek(4); err != nil {
+		// 		return
+		// 	}
+		// }
+		// c.rwc.SetReadDeadline(time.Time{})
 	}
 }
 
 // Read next request from connection.
-func (c *conn) readRequest(ctx context.Context) (w *Request, err error) {
-	//if c.hijacked() {
-	//	return nil, ErrHijacked
-	//}
+func (c *conn) readRequest(_ context.Context) (w *Request, err error) {
+	// if c.hijacked() {
+	// 	return nil, ErrHijacked
+	// }
 
-	//var (
-	//	wholeReqDeadline time.Time // or zero if none
-	//	hdrDeadline      time.Time // or zero if none
-	//)
-	//t0 := time.Now()
-	//if d := c.server.readHeaderTimeout(); d != 0 {
-	//	hdrDeadline = t0.Add(d)
-	//}
-	//if d := c.server.ReadTimeout; d != 0 {
-	//	wholeReqDeadline = t0.Add(d)
-	//}
-	//c.rwc.SetReadDeadline(hdrDeadline)
-	//if d := c.server.WriteTimeout; d != 0 {
-	//	defer func() {
-	//		c.rwc.SetWriteDeadline(time.Now().Add(d))
-	//	}()
-	//}
+	// var (
+	// 	wholeReqDeadline time.Time // or zero if none
+	// 	hdrDeadline      time.Time // or zero if none
+	// )
+	// t0 := time.Now()
+	// if d := c.server.readHeaderTimeout(); d != 0 {
+	// 	hdrDeadline = t0.Add(d)
+	// }
+	// if d := c.server.ReadTimeout; d != 0 {
+	// 	wholeReqDeadline = t0.Add(d)
+	// }
+	// c.rwc.SetReadDeadline(hdrDeadline)
+	// if d := c.server.WriteTimeout; d != 0 {
+	// 	defer func() {
+	// 		c.rwc.SetWriteDeadline(time.Now().Add(d))
+	// 	}()
+	// }
 
-	//c.r.setReadLimit(c.server.initialReadLimitSize())
-	//if c.lastMethod == "POST" {
-	// RFC 7230 section 3 tolerance for old buggy clients.
-	//peek, _ := c.bufr.Peek(4) // ReadRequest will get err below
-	//c.bufr.Discard(numLeadingCRorLF(peek))
-	//}
+	// c.r.setReadLimit(c.server.initialReadLimitSize())
+	// if c.lastMethod == "POST" {
+	//  RFC 7230 section 3 tolerance for old buggy clients.
+	// peek, _ := c.bufr.Peek(4) // ReadRequest will get err below
+	// c.bufr.Discard(numLeadingCRorLF(peek))
+	// }
 	ttlvVal, err := c.dec.NextTTLV()
 	if err != nil {
 		return nil, err
 	}
-	//if err != nil {
-	//if c.r.hitReadLimit() {
-	//	return nil, errTooLarge
-	//}
-	//}
+	// if err != nil {
+	// if c.r.hitReadLimit() {
+	// 	return nil, errTooLarge
+	// }
+	// }
 
 	// TODO: use pooling to recycle requests?
 	req := &Request{
@@ -483,9 +476,9 @@ func (c *conn) readRequest(ctx context.Context) (w *Request, err error) {
 	// c.r.setInfiniteReadLimit()
 
 	// Adjust the read deadline if necessary.
-	//if !hdrDeadline.Equal(wholeReqDeadline) {
-	//	c.rwc.SetReadDeadline(wholeReqDeadline)
-	//}
+	// if !hdrDeadline.Equal(wholeReqDeadline) {
+	// 	c.rwc.SetReadDeadline(wholeReqDeadline)
+	// }
 
 	return req, nil
 }
@@ -633,7 +626,7 @@ type StandardProtocolHandler struct {
 	LogTraffic bool
 }
 
-func (h *StandardProtocolHandler) parseMessage(ctx context.Context, req *Request) error {
+func (h *StandardProtocolHandler) parseMessage(_ context.Context, req *Request) error {
 	ttlvV := req.TTLV
 	if err := ttlvV.Valid(); err != nil {
 		return merry.Prepend(err, "invalid ttlv")
@@ -665,7 +658,7 @@ type Response struct {
 func newResponse() *Response {
 	v := responsePool.Get()
 	if v != nil {
-		r := v.(*Response)
+		r, _ := v.(*Response)
 		r.reset()
 		return r
 	}
@@ -679,6 +672,9 @@ func releaseResponse(r *Response) {
 }
 
 func (r *Response) reset() {
+	if r == nil {
+		return
+	}
 	r.BatchItem = nil
 	r.ResponseMessage = ResponseMessage{}
 	r.buf.Reset()
@@ -722,7 +718,7 @@ func (h *StandardProtocolHandler) handleRequest(ctx context.Context, req *Reques
 
 	if err := h.parseMessage(ctx, req); err != nil {
 		resp.errorResponse(kmip14.ResultReasonInvalidMessage, err.Error())
-		return
+		return logger
 	}
 
 	ccv := req.Message.RequestHeader.ClientCorrelationValue
@@ -736,7 +732,7 @@ func (h *StandardProtocolHandler) handleRequest(ctx context.Context, req *Reques
 	if clientMajorVersion != h.ProtocolVersion.ProtocolVersionMajor {
 		resp.errorResponse(kmip14.ResultReasonInvalidMessage,
 			fmt.Sprintf("mismatched protocol versions, client: %d, server: %d", clientMajorVersion, h.ProtocolVersion.ProtocolVersionMajor))
-		return
+		return logger
 	}
 
 	// set a flag hinting to handlers that extra fields should not be tolerated when
@@ -756,10 +752,9 @@ func (h *StandardProtocolHandler) handleRequest(ctx context.Context, req *Reques
 	if req.Message.RequestHeader.MaximumResponseSize > 0 && len(respTTLV) > req.Message.RequestHeader.MaximumResponseSize {
 		// new error resp
 		resp.errorResponse(kmip14.ResultReasonResponseTooLarge, "")
-		respTTLV = resp.Bytes()
 	}
 
-	return
+	return logger
 }
 
 func (h *StandardProtocolHandler) ServeKMIP(ctx context.Context, req *Request, writer ResponseWriter) {
@@ -786,16 +781,16 @@ func (h *StandardProtocolHandler) ServeKMIP(ctx context.Context, req *Request, w
 	releaseResponse(resp)
 }
 
-func (r *ResponseMessage) addFailure(reason kmip14.ResultReason, msg string) {
-	if msg == "" {
-		msg = reason.String()
-	}
-	r.BatchItem = append(r.BatchItem, ResponseBatchItem{
-		ResultStatus:  kmip14.ResultStatusOperationFailed,
-		ResultReason:  reason,
-		ResultMessage: msg,
-	})
-}
+// func (r *ResponseMessage) addFailure(reason kmip14.ResultReason, msg string) {
+// 	if msg == "" {
+// 		msg = reason.String()
+// 	}
+// 	r.BatchItem = append(r.BatchItem, ResponseBatchItem{
+// 		ResultStatus:  kmip14.ResultStatusOperationFailed,
+// 		ResultReason:  reason,
+// 		ResultMessage: msg,
+// 	})
+// }
 
 // OperationMux is an implementation of MessageHandler which handles each batch item in the request
 // by routing the operation to an ItemHandler.  The ItemHandler performs the operation, and returns
@@ -896,7 +891,7 @@ func (m *OperationMux) handlerForOp(op kmip14.Operation) ItemHandler {
 	return m.handlers[op]
 }
 
-func (m *OperationMux) missingHandler(ctx context.Context, req *Request, resp *ResponseMessage) error {
-	resp.addFailure(kmip14.ResultReasonOperationNotSupported, "")
-	return nil
-}
+// func (m *OperationMux) missingHandler(_ context.Context, _ *Request, resp *ResponseMessage) error {
+// 	resp.addFailure(kmip14.ResultReasonOperationNotSupported, "")
+// 	return nil
+// }

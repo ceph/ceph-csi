@@ -17,7 +17,6 @@ import (
 	"github.com/gemalto/kmip-go/internal/kmiputil"
 )
 
-//nolint:deadcode,varcheck
 const (
 	lenTag         = 3
 	lenLen         = 4
@@ -169,11 +168,11 @@ func (t TTLV) Value() interface{} {
 // not check the type of the TTLV.  If the value in the TTLV isn't actually
 // encoded as expected, the result is undetermined, and it may panic.
 func (t TTLV) ValueInteger() int32 {
-	return int32(binary.BigEndian.Uint32(t.ValueRaw()))
+	return int32(binary.BigEndian.Uint32(t.ValueRaw())) //nolint:gosec
 }
 
 func (t TTLV) ValueLongInteger() int64 {
-	return int64(binary.BigEndian.Uint64(t.ValueRaw()))
+	return int64(binary.BigEndian.Uint64(t.ValueRaw())) //nolint:gosec
 }
 
 func (t TTLV) ValueBigInteger() *big.Int {
@@ -250,11 +249,7 @@ func (t TTLV) Valid() error {
 	if t.Type() == TypeStructure {
 		inner := t.ValueStructure()
 
-		for {
-			if len(inner) == 0 {
-				break
-			}
-
+		for len(inner) != 0 {
 			if err := inner.Valid(); err != nil {
 				return merry.Prepend(err, t.Tag().String())
 			}
@@ -440,7 +435,7 @@ func (t TTLV) MarshalXML(e *xml.Encoder, _ xml.StartElement) error {
 	case TypeDateTime, TypeDateTimeExtended:
 		out.Value = t.ValueDateTime().Format(time.RFC3339Nano)
 	case TypeInterval:
-		out.Value = strconv.FormatUint(uint64(t.ValueInterval()/time.Second), 10)
+		out.Value = strconv.FormatUint(uint64(t.ValueInterval()/time.Second), 10) //nolint:gosec
 	}
 
 	return e.Encode(&out)
@@ -511,7 +506,7 @@ func unmarshalXMLTval(buf *encBuf, tval *xmltval, attrTag Tag) error {
 			return syntaxError(merry.Prepend(err, "must be a number"))
 		}
 
-		buf.encodeInterval(tag, time.Duration(u)*time.Second)
+		buf.encodeInterval(tag, time.Duration(u)*time.Second) //nolint:gosec
 	case TypeDateTime, TypeDateTimeExtended:
 		d, err := time.Parse(time.RFC3339Nano, tval.Value)
 		if err != nil {
@@ -757,9 +752,9 @@ func (t *TTLV) unmarshalJSON(b []byte, attrTag Tag) error {
 			if b != nil {
 				u := kmiputil.DecodeUint64(b)
 				if tp == TypeDateTime {
-					tm = time.Unix(int64(u), 0)
+					tm = time.Unix(int64(u), 0) //nolint:gosec
 				} else {
-					tm = tm.Add(time.Duration(u) * time.Microsecond)
+					tm = tm.Add(time.Duration(u) * time.Microsecond) //nolint:gosec
 				}
 			} else {
 				var err error
@@ -808,7 +803,7 @@ func (t *TTLV) unmarshalJSON(b []byte, attrTag Tag) error {
 				return syntaxError(errors.New("hex value must start with 0x"))
 			}
 
-			enc.encodeLongInt(tag, int64(kmiputil.DecodeUint64(b)))
+			enc.encodeLongInt(tag, int64(kmiputil.DecodeUint64(b))) //nolint:gosec
 		case float64:
 			enc.encodeLongInt(tag, int64(tv))
 		}

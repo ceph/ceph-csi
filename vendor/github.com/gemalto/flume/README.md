@@ -1,6 +1,9 @@
 flume [![GoDoc](https://godoc.org/github.com/gemalto/flume?status.png)](https://godoc.org/github.com/gemalto/flume) [![Go Report Card](https://goreportcard.com/badge/github.com/gemalto/flume)](https://goreportcard.com/report/gemalto/flume) [![Build](https://github.com/gemalto/flume/workflows/Build/badge.svg)](https://github.com/gemalto/flume/actions?query=branch%3Amaster+workflow%3ABuild+)
 =====
 
+> ### [Flume v2](https://github.com/ThalesGroup/flume/tree/master/v2) is near release.  This is a ground up rewrite of flume as a slog.Handler.
+> v1 will continue to be supported, but new applications should consider slog and v2.
+
 flume is a logging package, build on top of [zap](https://github.com/uber-go/zap).  It's structured and leveled logs, like zap/logrus/etc.
 It adds a global registry of all loggers, allowing global re-configuration at runtime.   Instantiating
 new loggers automatically registers them: even loggers created in init() functions, package variable
