@@ -9,9 +9,8 @@ import (
 // like that of testing.T.Log() and fmt/log.Println().
 // It can be used to redirect flumes *output* to some other logger.
 //
-//     SetOut(LogFuncWriter(fmt.Println, true))
-//     SetOut(LogFuncWriter(t.Log, true))
-//
+//	SetOut(LogFuncWriter(fmt.Println, true))
+//	SetOut(LogFuncWriter(t.Log, true))
 func LogFuncWriter(l func(args ...interface{}), trimSpace bool) io.Writer {
 	return &logWriter{lf: l, trimSpace: trimSpace}
 }
@@ -19,10 +18,9 @@ func LogFuncWriter(l func(args ...interface{}), trimSpace bool) io.Writer {
 // LoggerFuncWriter is a writer which writes lines to a logging function with
 // a signature like that of flume.Logger's functions, like Info(), Debug(), and Error().
 //
-//     http.Server{
-//         ErrorLog: log.New(LoggerFuncWriter(flume.New("http").Error), "", 0),
-//     }
-//
+//	http.Server{
+//	    ErrorLog: log.New(LoggerFuncWriter(flume.New("http").Error), "", 0),
+//	}
 func LoggerFuncWriter(l func(msg string, kvpairs ...interface{})) io.Writer {
 	return &loggerWriter{lf: l}
 }

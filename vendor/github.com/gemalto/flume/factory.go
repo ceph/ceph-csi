@@ -2,13 +2,14 @@ package flume
 
 import (
 	"fmt"
-	"github.com/ansel1/merry"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/ansel1/merry"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type loggerInfo struct {
@@ -33,6 +34,8 @@ type Factory struct {
 	addCaller bool
 
 	hooks []HookFunc
+
+	newCoreFn func(name string, encoder zapcore.Encoder, out zapcore.WriteSyncer, levelEnabler zapcore.LevelEnabler) zapcore.Core
 }
 
 // Encoder serializes log entries.  Re-exported from zap for now to avoid exporting zap.
@@ -85,6 +88,22 @@ func (r *Factory) SetAddCaller(b bool) {
 	r.refreshLoggers()
 }
 
+func (r *Factory) AddCaller() bool {
+	r.Lock()
+	defer r.Unlock()
+	return r.addCaller
+}
+
+// SetNewCoreFn sets the function that creates the inner zapcore.Cores to which flume forwards logs.
+// If not set, flume will use zapcore.NewCore.  This is mainly useful for integration with other logging
+// systems.
+func (r *Factory) SetNewCoreFn(f func(name string, encoder zapcore.Encoder, out zapcore.WriteSyncer, levelEnabler zapcore.LevelEnabler) zapcore.Core) {
+	r.Lock()
+	defer r.Unlock()
+	r.newCoreFn = f
+	r.refreshLoggers()
+}
+
 func (r *Factory) getOut() io.Writer {
 	if r.out == nil {
 		return os.Stdout
@@ -116,15 +135,17 @@ func (r *Factory) newInnerCore(name string, info *loggerInfo) *innerCore {
 	default:
 		l = r.defaultLevel
 	}
-	zc := zapcore.NewCore(
-		r.getEncoder(),
-		zapcore.AddSync(r.getOut()),
-		l,
-	)
+
+	var zcore zapcore.Core
+	if r.newCoreFn != nil {
+		zcore = r.newCoreFn(name, r.getEncoder(), zapcore.AddSync(r.getOut()), l)
+	} else {
+		zcore = zapcore.NewCore(r.getEncoder(), zapcore.AddSync(r.getOut()), l)
+	}
 
 	return &innerCore{
 		name:        name,
-		Core:        zc,
+		Core:        zcore,
 		addCaller:   r.addCaller,
 		errorOutput: zapcore.AddSync(os.Stderr),
 		hooks:       r.hooks,
@@ -236,28 +257,28 @@ func parseConfigString(s string) map[string]interface{} {
 // can set the default log level, and can explicitly set the log level for individual
 // loggers.
 //
-// Directives
+// # Directives
 //
 // - Default level: Use the `*` directive to set the default log level.  Examples:
 //
-//       * 	// set the default log level to debug
-//       -* // set the default log level to off
+//   - // set the default log level to debug
+//     -* // set the default log level to off
 //
-//   If the `*` directive is omitted, the default log level will be set to info.
-// - Logger level: Use the name of the logger to set the log level for a specific
-//   logger.  Examples:
+//     If the `*` directive is omitted, the default log level will be set to info.
 //
-//       http		// set the http logger to debug
-//       -http		// set the http logger to off
-//       http=INF	// set the http logger to info
+//   - Logger level: Use the name of the logger to set the log level for a specific
+//     logger.  Examples:
+//
+//     http		// set the http logger to debug
+//     -http		// set the http logger to off
+//     http=INF	// set the http logger to info
 //
 // Multiple directives can be included, separated by commas. Examples:
 //
-//     http         	// set http logger to debug
-//     http,sql     	// set http and sql logger to debug
-//     *,-http,sql=INF	// set the default level to debug, disable the http logger,
-//                      // and set the sql logger to info
-//
+//	http         	// set http logger to debug
+//	http,sql     	// set http and sql logger to debug
+//	*,-http,sql=INF	// set the default level to debug, disable the http logger,
+//	                 // and set the sql logger to info
 func (r *Factory) LevelsString(s string) error {
 	m := parseConfigString(s)
 	levelMap := map[string]Level{}

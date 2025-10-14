@@ -111,10 +111,9 @@ func Details(e error) string {
 // Format adapts errors to fmt.Formatter interface.  It's intended to be used
 // help error impls implement fmt.Formatter, e.g.:
 //
-//     func (e *myErr) Format(f fmt.State, verb rune) {
-//	     Format(f, verb, e)
-//     }
-//
+//	    func (e *myErr) Format(f fmt.State, verb rune) {
+//		     Format(f, verb, e)
+//	    }
 func Format(s fmt.State, verb rune, err error) {
 	switch verb {
 	case 'v':

@@ -87,8 +87,7 @@ func NewConsoleEncoder(cfg *EncoderConfig) Encoder {
 //
 // `github.com/mgutz/ansi` is a convenient package for getting color codes, e.g.:
 //
-//     ansi.ColorCode("red")
-//
+//	ansi.ColorCode("red")
 func NewColorizedConsoleEncoder(cfg *EncoderConfig, colorizer Colorizer) Encoder {
 	e := NewConsoleEncoder(cfg).(*consoleEncoder)
 	e.colorizer = colorizer

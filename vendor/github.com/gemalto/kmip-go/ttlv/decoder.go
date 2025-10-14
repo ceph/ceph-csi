@@ -350,10 +350,9 @@ func (dec *Decoder) unmarshal(val reflect.Value, ttlv TTLV) error {
 			if val.OverflowInt(i) {
 				return dec.newUnmarshalerError(ttlv, val.Type(), ErrIntOverflow)
 			}
-
 			val.SetInt(i)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
-			i := uint64(ttlv.ValueInteger())
+			i := uint64(ttlv.ValueInteger()) //nolint:gosec // already prevented by the check above
 			if val.OverflowUint(i) {
 				return dec.newUnmarshalerError(ttlv, val.Type(), ErrIntOverflow)
 			}
@@ -365,9 +364,17 @@ func (dec *Decoder) unmarshal(val reflect.Value, ttlv TTLV) error {
 	case TypeLongInteger:
 		switch val.Kind() {
 		case reflect.Int64:
-			val.SetInt(ttlv.ValueLongInteger())
+			i := ttlv.ValueLongInteger()
+			if val.OverflowInt(i) {
+				return dec.newUnmarshalerError(ttlv, val.Type(), ErrIntOverflow)
+			}
+			val.SetInt(i)
 		case reflect.Uint64:
-			val.SetUint(uint64(ttlv.ValueLongInteger()))
+			i := uint64(ttlv.ValueLongInteger()) //nolint:gosec // already prevented by the check above
+			if val.OverflowUint(i) {
+				return dec.newUnmarshalerError(ttlv, val.Type(), ErrUintOverflow)
+			}
+			val.SetUint(i)
 		default:
 			return typeMismatchErr()
 		}

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/ansel1/merry"
-	"go.uber.org/zap/zapcore"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/ansel1/merry"
+	"go.uber.org/zap/zapcore"
 )
 
 type (
@@ -118,6 +119,10 @@ func Hooks(hooks ...HookFunc) {
 // ClearHooks clears all hooks from the package-level Factory.
 func ClearHooks() {
 	pkgFactory.ClearHooks()
+}
+
+func DefaultFactory() *Factory {
+	return pkgFactory
 }
 
 // SetDevelopmentDefaults sets useful default settings on the package-level Factory

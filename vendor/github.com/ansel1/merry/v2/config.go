@@ -51,28 +51,28 @@ func RegisterDetail(label string, key interface{}) {
 // on the error, and any non-nil values will be added to the text.
 // For example:
 //
-//     err := New("boom")
-//     err = err.WithValue(colorKey, "red")
-//     fmt.Println(Details(err))
+//	err := New("boom")
+//	err = err.WithValue(colorKey, "red")
+//	fmt.Println(Details(err))
 //
-//     // Output:
-//     // boom
-//     //
-//     // <stacktrace>
+//	// Output:
+//	// boom
+//	//
+//	// <stacktrace>
 //
-//     func Color(err) string {
-//       s, _ := Value(err, colorKey)
-//       return s
-//     }
+//	func Color(err) string {
+//	  s, _ := Value(err, colorKey)
+//	  return s
+//	}
 //
-//     RegisterDetailFunc("color", Color)
-//     fmt.Println(Details(err))
+//	RegisterDetailFunc("color", Color)
+//	fmt.Println(Details(err))
 //
-//     // Output:
-//     // boom
-//     // color: red
-//     //
-//     // <stacktrace>
+//	// Output:
+//	// boom
+//	// color: red
+//	//
+//	// <stacktrace>
 //
 // Error property keys are typically not exported by the packages which define them.
 // Packages instead export functions which let callers access that property.

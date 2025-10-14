@@ -3,7 +3,6 @@ package merry
 import (
 	"fmt"
 	v2 "github.com/ansel1/merry/v2"
-	"io"
 )
 
 // Error extends the standard golang `error` interface with functions
@@ -122,18 +121,7 @@ func (e *errImpl) Format(s fmt.State, verb rune) {
 	}
 
 	// should never happen, but fall back on something
-	switch verb {
-	case 'v':
-		if s.Flag('+') {
-			_, _ = io.WriteString(s, Details(e))
-			return
-		}
-		fallthrough
-	case 's':
-		_, _ = io.WriteString(s, e.Error())
-	case 'q':
-		_, _ = fmt.Fprintf(s, "%q", e.Error())
-	}
+	v2.Format(s, verb, e)
 }
 
 // Error implements the error interface.

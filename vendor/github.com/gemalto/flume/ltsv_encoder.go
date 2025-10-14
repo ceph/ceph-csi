@@ -243,7 +243,6 @@ func (enc *ltsvEncoder) AppendUint64(val uint64) {
 	enc.buf.AppendUint(val)
 }
 
-//
 // AddComplex64 implements zapcore.ObjectEncoder
 func (enc *ltsvEncoder) AddComplex64(k string, v complex64) { enc.AddComplex128(k, complex128(v)) }
 
@@ -424,6 +423,7 @@ func (enc *ltsvEncoder) appendFloat(val float64, bitSize int) {
 // safeAddString appends a string to the internal buffer.
 // If `key`, colons are replaced with underscores, and newlines and tabs are escaped
 // If not `key`, only newlines and tabs are escaped, unless configured otherwise
+//
 //nolint:dupl
 func (enc *ltsvEncoder) safeAddString(s string, key bool) {
 	for i := 0; i < len(s); {
@@ -465,6 +465,7 @@ func (enc *ltsvEncoder) safeAddString(s string, key bool) {
 }
 
 // safeAddByteString is no-alloc equivalent of safeAddString(string(s)) for s []byte.
+//
 //nolint:dupl
 func (enc *ltsvEncoder) safeAddByteString(s []byte, key bool) {
 	for i := 0; i < len(s); {

@@ -19,6 +19,7 @@ const structFieldTag = "ttlv"
 
 var (
 	ErrIntOverflow              = fmt.Errorf("value exceeds max int value %d", math.MaxInt32)
+	ErrUintOverflow             = fmt.Errorf("value exceeds max uint value %d", math.MaxUint32)
 	ErrUnsupportedEnumTypeError = errors.New("unsupported type for enums, must be string, or int types")
 	ErrUnsupportedTypeError     = errors.New("marshaling/unmarshaling is not supported for this type")
 	ErrNoTag                    = errors.New("unable to determine tag for field")
@@ -441,9 +442,9 @@ func (e *Encoder) encode(tag Tag, v reflect.Value, fi *fieldInfo) error {
 			i := v.Int()
 
 			if flags.bitmask() || (enumMap != nil && enumMap.Bitmask()) {
-				e.encBuf.encodeInt(tag, int32(i))
+				e.encBuf.encodeInt(tag, int32(i)) //nolint:gosec // already prevented by the check above
 			} else {
-				e.encBuf.encodeEnum(tag, uint32(i))
+				e.encBuf.encodeEnum(tag, uint32(i)) //nolint:gosec // already prevented by the check above
 			}
 
 			return nil
@@ -451,9 +452,9 @@ func (e *Encoder) encode(tag Tag, v reflect.Value, fi *fieldInfo) error {
 			i := v.Uint()
 
 			if flags.bitmask() || (enumMap != nil && enumMap.Bitmask()) {
-				e.encBuf.encodeInt(tag, int32(i))
+				e.encBuf.encodeInt(tag, int32(i)) //nolint:gosec // already prevented by the check above
 			} else {
-				e.encBuf.encodeEnum(tag, uint32(i))
+				e.encBuf.encodeEnum(tag, uint32(i)) //nolint:gosec // already prevented by the check above
 			}
 
 			return nil
@@ -561,7 +562,7 @@ func (e *Encoder) encode(tag Tag, v reflect.Value, fi *fieldInfo) error {
 				// push the currField
 				currField := e.currField
 				e.currField = field.name
-				err := e.encode(TagNone, fv, &field) //nolint:gosec,scopelint
+				err := e.encode(TagNone, fv, &field)
 				// pop the currField
 				e.currField = currField
 				if err != nil {
@@ -588,7 +589,7 @@ func (e *Encoder) encode(tag Tag, v reflect.Value, fi *fieldInfo) error {
 			return e.marshalingError(tag, typ, ErrIntOverflow)
 		}
 
-		e.encBuf.encodeInt(tag, int32(i))
+		e.encBuf.encodeInt(tag, int32(i)) //nolint:gosec // already prevented by the check above
 
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
@@ -602,7 +603,7 @@ func (e *Encoder) encode(tag Tag, v reflect.Value, fi *fieldInfo) error {
 		return nil
 	case reflect.Uint64:
 		u := v.Uint()
-		e.encBuf.encodeLongInt(tag, int64(u))
+		e.encBuf.encodeLongInt(tag, int64(u)) //nolint:gosec // even though its cast to int, the value will be encoded the same as a uint
 
 		return nil
 	case reflect.Int64:
@@ -662,14 +663,14 @@ func (h *encBuf) end(i int) {
 		_, _ = h.Write(zeros[:8-m])
 	}
 
-	binary.BigEndian.PutUint32(h.Bytes()[i-4:], uint32(n))
+	binary.BigEndian.PutUint32(h.Bytes()[i-4:], uint32(n)) //nolint:gosec
 }
 
 func (h *encBuf) writeLongIntVal(tag Tag, typ Type, i int64) {
 	s := h.begin(tag, typ)
 	ll := h.Len()
 	_, _ = h.Write(zeros[:8])
-	binary.BigEndian.PutUint64(h.Bytes()[ll:], uint64(i))
+	binary.BigEndian.PutUint64(h.Bytes()[ll:], uint64(i)) //nolint:gosec
 	h.end(s)
 }
 
@@ -712,7 +713,7 @@ func (h *encBuf) encodeBigInt(tag Tag, i *big.Int) {
 
 		_, _ = h.Write(b)
 	case -1:
-		length := uint(i.BitLen()/8+1) * 8
+		length := uint(i.BitLen()/8+1) * 8 //nolint:gosec
 		j := new(big.Int).Lsh(one, length)
 		b := j.Add(i, j).Bytes()
 		// When the most significant bit is on a byte
@@ -735,7 +736,7 @@ func (h *encBuf) encodeBigInt(tag Tag, i *big.Int) {
 }
 
 func (h *encBuf) encodeInt(tag Tag, i int32) {
-	h.writeIntVal(tag, TypeInteger, uint32(i))
+	h.writeIntVal(tag, TypeInteger, uint32(i)) //nolint:gosec
 }
 
 func (h *encBuf) encodeBool(tag Tag, b bool) {
@@ -768,7 +769,7 @@ func (h *encBuf) encodeDateTimeExtended(tag Tag, t time.Time) {
 }
 
 func (h *encBuf) encodeInterval(tag Tag, d time.Duration) {
-	h.writeIntVal(tag, TypeInterval, uint32(d/time.Second))
+	h.writeIntVal(tag, TypeInterval, uint32(d/time.Second)) //nolint:gosec
 }
 
 func (h *encBuf) encodeEnum(tag Tag, i uint32) {

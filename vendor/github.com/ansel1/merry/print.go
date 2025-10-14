@@ -9,23 +9,23 @@ import (
 // be included in Details() output, if the value of that error property is not nil.
 // For example:
 //
-//     err := New("boom")
-//     err = err.WithValue(colorKey, "red")
-//     fmt.Println(Details(err))
+//	err := New("boom")
+//	err = err.WithValue(colorKey, "red")
+//	fmt.Println(Details(err))
 //
-//     // Output:
-//     // boom
-//     //
-//     // <stacktrace>
+//	// Output:
+//	// boom
+//	//
+//	// <stacktrace>
 //
-//     RegisterDetail("Color", colorKey)
-//     fmt.Println(Details(err))
+//	RegisterDetail("Color", colorKey)
+//	fmt.Println(Details(err))
 //
-//     // Output:
-//     // boom
-//     // Color: red
-//     //
-//     // <stacktrace>
+//	// Output:
+//	// boom
+//	// Color: red
+//	//
+//	// <stacktrace>
 //
 // Error property keys are typically not exported by the packages which define them.
 // Packages instead export functions which let callers access that property.

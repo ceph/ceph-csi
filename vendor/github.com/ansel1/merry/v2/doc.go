@@ -19,27 +19,27 @@
 // The stack capturing feature can be turned off for better performance, though it's pretty fast.  Benchmarks
 // on an 2017 MacBook Pro, with go 1.10:
 //
-//    BenchmarkNew_withStackCapture-8      	 2000000	       749 ns/op
-//    BenchmarkNew_withoutStackCapture-8   	20000000	        64.1 ns/op
+//	BenchmarkNew_withStackCapture-8      	 2000000	       749 ns/op
+//	BenchmarkNew_withoutStackCapture-8   	20000000	        64.1 ns/op
 //
-// Usage
+// # Usage
 //
 // This package contains functions for creating errors, or wrapping existing errors.  To create:
 //
-//    err := New("boom!")
-//    err := Errorf("error fetching %s", filename)
+//	err := New("boom!")
+//	err := Errorf("error fetching %s", filename)
 //
 // Additional context information can be attached to errors using functional options, called Wrappers:
 //
-//    err := New("record not found", WithHTTPCode(404))
+//	err := New("record not found", WithHTTPCode(404))
 //
 // Errorf() also accepts wrappers, mixed in with the format args:
 //
-//    err := Errorf("user %s not found", username, WithHTTPCode(404))
+//	err := Errorf("user %s not found", username, WithHTTPCode(404))
 //
 // Wrappers can be applied to existing errors with Wrap():
 //
-//    err = Wrap(err, WithHTTPCode(404))
+//	err = Wrap(err, WithHTTPCode(404))
 //
 // Wrap() will add a stacktrace to any error which doesn't already have one attached.  WrapSkipping()
 // can be used to control where the stacktrace starts.
@@ -51,16 +51,16 @@
 // Errors produced by this package implement fmt.Formatter, to print additional information about the
 // error:
 //
-//    fmt.Printf("%v", err)         // print error message and causes
-//    fmt.Printf("%s", err)         // same as %s
-//    fmt.Printf("%q", err)         // same as fmt.Printf("%q", err.Error())
-//    fmt.Printf("%v+", err)        // print Details(err)
+//	fmt.Printf("%v", err)         // print error message and causes
+//	fmt.Printf("%s", err)         // same as %s
+//	fmt.Printf("%q", err)         // same as fmt.Printf("%q", err.Error())
+//	fmt.Printf("%v+", err)        // print Details(err)
 //
 // Details() prints the error message, all causes, the stacktrace, and additional error
 // values configured with RegisterDetailFunc().  By default, it will show the HTTP status
 // code and user message.
 //
-// Stacktraces
+// # Stacktraces
 //
 // By default, any error created by or wrapped by this package will automatically have
 // a stacktrace captured and attached to the error.  This capture only happens if the
@@ -88,7 +88,7 @@
 // instances.  Functions with add context (e.g. `WithValue()`) work on any `error`, and will
 // automatically convert them to merry errors (with a stack) if necessary.
 //
-// Hooks
+// # Hooks
 //
 // AddHooks() can install wrappers which are applied to all errors processed by this package.  Hooks
 // are applied before any other wrappers or processing takes place.  They can be used to integrate

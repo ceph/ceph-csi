@@ -37,6 +37,26 @@ func (e errKey) String() string {
 	}
 }
 
+// formatError adds a Format implementation to an error.
+type formatError struct {
+	error
+}
+
+// Format implements fmt.Formatter
+func (e *formatError) Format(s fmt.State, verb rune) {
+	Format(s, verb, e)
+}
+
+// String implements fmt.Stringer
+func (e *formatError) String() string {
+	return e.Error()
+}
+
+// Unwrap returns the next wrapped error.
+func (e *formatError) Unwrap() error {
+	return e.error
+}
+
 type errWithValue struct {
 	err        error
 	key, value interface{}
@@ -120,7 +140,7 @@ func (e *errWithCause) Format(f fmt.State, verb rune) {
 	Format(f, verb, e)
 }
 
-// errWithCause needs to provide custome implementations of Is and As.
+// errWithCause needs to provide custom implementations of Is and As.
 // errors.Is() doesn't work on errWithCause because error.Is() uses errors.Unwrap() to traverse the error
 // chain.  But errWithCause.Unwrap() doesn't return the next error in the chain.  Instead,
 // it wraps the next error in a shim.  The standard Is/As tests would compare the shim to the target.

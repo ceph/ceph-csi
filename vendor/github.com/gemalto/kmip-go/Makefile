@@ -1,7 +1,6 @@
 SHELL = bash
 BUILD_FLAGS =
 TEST_FLAGS =
-COMPOSE ?= docker-compose
 
 all: tidy fmt build up test lint
 
@@ -30,7 +29,7 @@ clean:
 	rm -rf build/*
 
 fmt:
-	gofumpt -w -l .
+	go fmt ./...
 
 # generates go code structures representing all the enums, mask, and tags defined
 # in the KMIP spec.  The source specifications are stored in kmip14/kmip_1_4.json
@@ -54,30 +53,30 @@ cover: builddir
 
 # brings up the projects dependencies in a compose stack
 up:
-	$(COMPOSE) build --pull pykmip-server
-	$(COMPOSE) run --rm dependencies
+	docker compose build --pull pykmip-server
+	docker compose run --rm dependencies
 
 # brings down the projects dependencies
 down:
-	$(COMPOSE) down -v --remove-orphans
+	docker compose down -v --remove-orphans
 
 # runs the build inside a docker container.  useful for ci to completely encapsulate the
 # build environment.
-docker:
-	$(COMPOSE) build --pull builder
-	$(COMPOSE) run --rm builder make all cover
+docker: up
+	docker compose build --pull builder
+	docker compose run --rm builder make tidy fmt build cover lint
 
 # opens a shell into the build environment container.  Useful for troubleshooting the
 # containerized build.
 bash:
-	$(COMPOSE) build --pull builder
-	$(COMPOSE) run --rm builder bash
+	docker compose build --pull builder
+	docker compose run --rm builder bash
 
 # opens a shell into the build environment container.  Useful for troubleshooting the
 # containerized build.
 fish:
-	$(COMPOSE) build --pull builder
-	$(COMPOSE) run --rm builder fish
+	docker compose build --pull builder
+	docker compose run --rm builder fish
 
 tidy:
 	go mod tidy
@@ -90,12 +89,10 @@ update:
 # install tools used by the build.  typically only needs to be run once
 # to initialize a workspace.
 tools: kmipgen
-	go install mvdan.cc/gofumpt@latest
-	go install golang.org/x/tools/cmd/cover@latest
 	sh -c "$$(wget -O - -q https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh || echo exit 2)" -- -b $(shell go env GOPATH)/bin $(GOLANGCI_LINT_VERSION)
 
 pykmip-server: up
-	$(COMPOSE) exec pykmip-server tail -f server.log
+	docker compose exec pykmip-server tail -f server.log
 
 gen-certs:
 	openssl req -x509 -newkey rsa:4096 -keyout pykmip-server/server.key -out pykmip-server/server.cert -days 3650 -nodes -subj '/CN=localhost'
