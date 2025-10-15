@@ -41,6 +41,9 @@ function deploy_rook() {
 	sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
 	sed -i 's|ROOK_USE_CSI_OPERATOR: "true"|ROOK_USE_CSI_OPERATOR: "false"|g' "${TEMP_DIR}/operator.yaml"
 
+	# enable more verbose logging
+	sed -i 's|ROOK_LOG_LEVEL: "INFO"|ROOK_LOG_LEVEL: "DEBUG"|g' "${TEMP_DIR}/operator.yaml"
+
 	kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
 	# Override the ceph version which rook installs by default.
 	if [ -z "${ROOK_CEPH_CLUSTER_IMAGE}" ]; then
