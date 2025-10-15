@@ -7,8 +7,8 @@
 #
 
 # ceph-csi devel
-docker.io/rook/ceph:v1.14.9      rook/ceph:v1.14.9
-quay.io/ceph/ceph:v19            ceph/ceph:v19
+quay.io/rook/ceph:v1.18.4        rook/ceph:v1.18.4
+quay.io/ceph/ceph:v20            ceph/ceph:v20
 
 # ceph-csi-operator
 quay.io/cephcsi/ceph-csi-operator:v0.2.0    cephcsi/ceph-csi-operator:v0.2.0
