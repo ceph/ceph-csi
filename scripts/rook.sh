@@ -22,6 +22,7 @@ function log_errors() {
 	kubectl -n rook-ceph get events
 	kubectl -n rook-ceph describe pods
 	kubectl -n rook-ceph logs -l app=rook-ceph-operator --tail=-1
+	kubectl -n rook-ceph logs -l app=rook-ceph-osd-prepare
 	kubectl -n rook-ceph get CephClusters -oyaml
 	kubectl -n rook-ceph get CephFilesystems -oyaml
 	kubectl -n rook-ceph get CephBlockPools -oyaml
