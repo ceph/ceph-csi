@@ -21,11 +21,11 @@ import (
 	"os"
 	"sync"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces.

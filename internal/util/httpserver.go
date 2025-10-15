@@ -8,9 +8,9 @@ import (
 	runtime_pprof "runtime/pprof"
 	"strconv"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // ValidateURL validates the url.

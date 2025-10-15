@@ -24,14 +24,14 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/ceph/ceph-csi/internal/util/file"
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	"github.com/hashicorp/vault/api"
 	loss "github.com/libopenstorage/secrets"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/ceph/ceph-csi/internal/util/file"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 const (

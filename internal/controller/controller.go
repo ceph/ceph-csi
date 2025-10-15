@@ -18,8 +18,6 @@ package controller
 import (
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	replicationv1alpha1 "github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // Manager is the interface that will wrap Add function.

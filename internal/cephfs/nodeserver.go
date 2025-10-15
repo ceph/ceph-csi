@@ -26,6 +26,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
@@ -37,10 +41,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/fscrypt"
 	iolock "github.com/ceph/ceph-csi/internal/util/lock"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI

@@ -19,11 +19,11 @@ package rbd
 import (
 	"context"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/rbd/features"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 // IdentityServer struct of rbd CSI driver with supported methods of CSI

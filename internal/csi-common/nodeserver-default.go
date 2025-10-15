@@ -19,10 +19,10 @@ package csicommon
 import (
 	"context"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	mount "k8s.io/mount-utils"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // DefaultNodeServer stores driver object.

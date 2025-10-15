@@ -19,10 +19,10 @@ package core
 import (
 	"testing"
 
-	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
-
 	fsa "github.com/ceph/go-ceph/cephfs/admin"
 	"github.com/stretchr/testify/require"
+
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 )
 
 func TestCloneStateToError(t *testing.T) {

@@ -19,11 +19,11 @@ package cephfs
 import (
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // validateCreateVolumeRequest validates the Controller CreateVolume request.

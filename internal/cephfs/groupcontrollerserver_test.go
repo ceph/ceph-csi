@@ -20,11 +20,11 @@ import (
 	"context"
 	"testing"
 
-	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 )
 
 func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T) {

@@ -24,15 +24,15 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ceph/ceph-csi/internal/util"
-	kubeclient "github.com/ceph/ceph-csi/internal/util/k8s"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+
+	"github.com/ceph/ceph-csi/internal/util"
+	kubeclient "github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (

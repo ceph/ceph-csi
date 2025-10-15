@@ -19,10 +19,10 @@ package core
 import (
 	"context"
 
+	"github.com/ceph/go-ceph/cephfs/admin"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/ceph/go-ceph/cephfs/admin"
 )
 
 type QuiesceState string

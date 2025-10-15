@@ -21,13 +21,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
-
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+
+	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 )
 
 func deleteConfigMap(pluginPath string) error {

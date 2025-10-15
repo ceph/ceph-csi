@@ -19,10 +19,10 @@ package rbd
 import (
 	"testing"
 
-	"github.com/ceph/ceph-csi/internal/util"
-
 	rs "github.com/csi-addons/spec/lib/go/reclaimspace"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // TestControllerReclaimSpace is a minimal test for the

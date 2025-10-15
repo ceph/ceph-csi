@@ -21,16 +21,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
-
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (

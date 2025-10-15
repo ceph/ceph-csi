@@ -20,10 +20,10 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateNewEncryptionPassphrase(t *testing.T) {

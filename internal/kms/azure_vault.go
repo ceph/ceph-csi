@@ -21,10 +21,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
+
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 const (

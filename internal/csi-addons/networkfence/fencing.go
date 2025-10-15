@@ -26,10 +26,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/csi-addons/spec/lib/go/fence"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/csi-addons/spec/lib/go/fence"
 )
 
 const (

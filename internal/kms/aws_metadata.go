@@ -22,12 +22,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	"github.com/aws/aws-sdk-go/aws"
 	awsCreds "github.com/aws/aws-sdk-go/aws/credentials"
 	awsSession "github.com/aws/aws-sdk-go/aws/session"
 	awsKMS "github.com/aws/aws-sdk-go/service/kms"
+
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 const (

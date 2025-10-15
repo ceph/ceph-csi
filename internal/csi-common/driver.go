@@ -17,12 +17,12 @@ limitations under the License.
 package csicommon
 
 import (
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // CSIDriver stores driver information.

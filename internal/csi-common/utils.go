@@ -25,8 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/replication"
 	"github.com/csi-addons/spec/lib/go/volumegroup"
@@ -38,6 +36,8 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 func parseEndpoint(ep string) (string, string, error) {

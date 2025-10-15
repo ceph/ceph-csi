@@ -19,11 +19,11 @@ package csicommon
 import (
 	"context"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // DefaultControllerServer points to default driver.

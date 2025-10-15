@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 
+	librbd "github.com/ceph/go-ceph/rbd"
+
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
-
-	librbd "github.com/ceph/go-ceph/rbd"
 )
 
 // repairResyncedImageID updates the existing image ID with new one.

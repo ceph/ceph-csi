@@ -20,10 +20,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ceph/go-ceph/rados"
+
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
-
-	"github.com/ceph/go-ceph/rados"
 )
 
 func Test_shouldRetryVolumeGroupGeneration(t *testing.T) {

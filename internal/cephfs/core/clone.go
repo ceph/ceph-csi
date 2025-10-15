@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ceph/go-ceph/cephfs/admin"
+
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/ceph/go-ceph/cephfs/admin"
 )
 
 // cephFSCloneState describes the status of the clone.

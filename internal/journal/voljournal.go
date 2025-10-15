@@ -24,12 +24,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/util/crypto"
+	"github.com/google/uuid"
 
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/google/uuid"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
 
 // Length of string representation of uuid, xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is 36 bytes.

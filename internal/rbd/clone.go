@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"strings"
 
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	librbd "github.com/ceph/go-ceph/rbd"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // checkCloneImage check the cloned image exists, if the cloned image is not
