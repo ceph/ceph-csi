@@ -326,15 +326,65 @@ func ParseClientIP(addr string) (string, error) {
 // for a given clusterID. Fetches the secret from Kubernetes, and returns it as a map of key-value pairs.
 func GetControllerPublishSecretRef(volumeId, driverType string) (string, string, error) {
 	var (
-		vi               CSIIdentifier
-		secretName       string
-		secretNamespace  string
-		getSecretRefFunc func(string, string) (string, string, error)
+		vi              CSIIdentifier
+		secretName      string
+		secretNamespace string
 	)
 	err := vi.DecomposeCSIID(volumeId)
 	if err != nil {
 		return secretName, secretNamespace, fmt.Errorf("failed to decode volume ID (%s): %w", volumeId, err)
 	}
+
+	secretName, secretNamespace, err = getControllerPublishSecretRef(vi.ClusterID, driverType)
+	if !errors.Is(err, ErrConfigNotFound) {
+		return secretName, secretNamespace,
+			fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
+	}
+
+	if secretName != "" && secretNamespace != "" {
+		return secretName, secretNamespace, nil
+	}
+
+	// Check clusterID mapping exists
+	mapping, mErr := GetClusterMappingInfo(vi.ClusterID)
+	if mErr != nil {
+		return secretName, secretNamespace, mErr
+	}
+	if mapping != nil {
+		for _, cm := range *mapping {
+			for key, val := range cm.ClusterIDMapping {
+				mappedClusterID := GetMappedID(key, val, vi.ClusterID)
+				if mappedClusterID == "" {
+					continue
+				}
+
+				secretName, secretNamespace, err := getControllerPublishSecretRef(mappedClusterID, driverType)
+				if !errors.Is(err, ErrConfigNotFound) {
+					return secretName, secretNamespace,
+						fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
+				}
+				if secretName != "" && secretNamespace != "" {
+					return secretName, secretNamespace, nil
+				}
+			}
+		}
+	}
+
+	if secretName == "" || secretNamespace == "" {
+		return secretName, secretNamespace, fmt.Errorf("controller publish secret name or namespace is empty"+
+			" in csi config file for cluster %s", vi.ClusterID)
+	}
+
+	return secretName, secretNamespace, nil
+}
+
+func getControllerPublishSecretRef(clusterId, driverType string) (string, string, error) {
+	var (
+		err              error
+		secretName       string
+		secretNamespace  string
+		getSecretRefFunc func(string, string) (string, string, error)
+	)
 
 	switch driverType {
 	case RBDType:
@@ -345,16 +395,7 @@ func GetControllerPublishSecretRef(volumeId, driverType string) (string, string,
 		return secretName, secretNamespace, fmt.Errorf("unsupported driver type: %s", driverType)
 	}
 
-	secretName, secretNamespace, err = getSecretRefFunc(CsiConfigFile, vi.ClusterID)
-	if err != nil {
-		return secretName, secretNamespace,
-			fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
-	}
+	secretName, secretNamespace, err = getSecretRefFunc(CsiConfigFile, clusterId)
 
-	if secretName == "" || secretNamespace == "" {
-		return secretName, secretNamespace, fmt.Errorf("controller publish secret name or namespace is empty"+
-			" in csi config file for cluster %s", vi.ClusterID)
-	}
-
-	return secretName, secretNamespace, nil
+	return secretName, secretNamespace, err
 }
