@@ -157,7 +157,7 @@ then
     if (echo "${@}" | grep -q privileged)
     then
         shift
-        exec /usr/bin/podman.real run -v /sys:/sys:rw -v /dev:/dev:rw --systemd=true "${@}"
+        exec /usr/bin/podman.real run -v /sys:/sys:rw -v /dev:/dev:rw -v /run/udev/data:/run/udev/data:ro --systemd=true "${@}"
     fi
 fi
 
