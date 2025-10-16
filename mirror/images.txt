@@ -7,16 +7,20 @@
 #
 
 # ceph-csi devel
-docker.io/rook/ceph:v1.14.9      rook/ceph:v1.14.9
-quay.io/ceph/ceph:v19            ceph/ceph:v19
+quay.io/rook/ceph:v1.18.4        rook/ceph:v1.18.4
+quay.io/ceph/ceph:v20            ceph/ceph:v20
 
 # ceph-csi-operator
 quay.io/cephcsi/ceph-csi-operator:v0.2.0    cephcsi/ceph-csi-operator:v0.2.0
 quay.io/cephcsi/ceph-csi-operator:latest    cephcsi/ceph-csi-operator:latest
 
-# ceph-csi 3.10 and 3.11
-docker.io/rook/ceph:v1.12.1      rook/ceph:v1.12.1
-quay.io/ceph/ceph:v18            ceph/ceph:v18
+# release-v3.15
+quay.io/ceph/ceph:v19.2.2        ceph/ceph:v19.2.2
+quay.io/rook/ceph:v1.16.4        rook/ceph:v1.16.4
+
+# release-v3.14
+quay.io/ceph/ceph:v19.2.2        ceph/ceph:v19.2.2
+quay.io/rook/ceph:v1.16.4        rook/ceph:v1.16.4
 
 # e2e testing
 docker.io/library/busybox:1.29	library/busybox:1.29
