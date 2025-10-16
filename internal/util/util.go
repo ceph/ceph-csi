@@ -29,11 +29,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cloud-provider/volume/helpers"
 	mount "k8s.io/mount-utils"
+
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 // Driver types to identify type of driver running.

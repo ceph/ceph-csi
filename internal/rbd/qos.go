@@ -21,9 +21,9 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	librbd "github.com/ceph/go-ceph/rbd"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (

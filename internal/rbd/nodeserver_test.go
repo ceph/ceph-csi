@@ -21,12 +21,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/require"
+
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGetStagingPath(t *testing.T) {

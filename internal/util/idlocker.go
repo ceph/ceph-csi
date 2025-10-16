@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (

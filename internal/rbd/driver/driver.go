@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	casrbd "github.com/ceph/ceph-csi/internal/csi-addons/rbd"
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
@@ -30,8 +32,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 // driver contains the default identity,node and controller struct.

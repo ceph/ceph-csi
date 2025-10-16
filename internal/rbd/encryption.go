@@ -24,15 +24,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ceph/ceph-csi/pkg/util/crypto"
+	librbd "github.com/ceph/go-ceph/rbd"
 
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/ceph/ceph-csi/internal/util/lock"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	librbd "github.com/ceph/go-ceph/rbd"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
 
 // rbdEncryptionState describes the status of the process where the image is

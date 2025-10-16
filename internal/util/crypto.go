@@ -26,11 +26,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/util/crypto"
-
 	"github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
 
 const (

@@ -23,7 +23,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
+	"go.uber.org/automaxprocs/maxprocs"
+	"k8s.io/klog/v2"
+	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/ceph/ceph-csi/internal/cephfs"
 	"github.com/ceph/ceph-csi/internal/controller"
@@ -35,10 +37,7 @@ import (
 	rbddriver "github.com/ceph/ceph-csi/internal/rbd/driver"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"go.uber.org/automaxprocs/maxprocs"
-	"k8s.io/klog/v2"
-	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 const (

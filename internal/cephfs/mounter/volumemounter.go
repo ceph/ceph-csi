@@ -23,11 +23,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
-
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 var (

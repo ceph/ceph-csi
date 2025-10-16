@@ -20,11 +20,6 @@ import (
 	"errors"
 	"fmt"
 
-	ctrl "github.com/ceph/ceph-csi/internal/controller"
-	"github.com/ceph/ceph-csi/internal/rbd"
-	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,6 +32,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	ctrl "github.com/ceph/ceph-csi/internal/controller"
+	"github.com/ceph/ceph-csi/internal/rbd"
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // ReconcilePersistentVolume reconciles a PersistentVolume object.

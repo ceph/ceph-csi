@@ -22,12 +22,12 @@ import (
 	"strings"
 	"testing"
 
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/util"
-
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/stretchr/testify/require"
+
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 func TestHasSnapshotFeature(t *testing.T) {

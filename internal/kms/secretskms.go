@@ -26,9 +26,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	"golang.org/x/crypto/scrypt"
+
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 const (

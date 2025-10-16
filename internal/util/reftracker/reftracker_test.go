@@ -19,10 +19,10 @@ package reftracker
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
 	"github.com/ceph/ceph-csi/internal/util/reftracker/reftype"
-
-	"github.com/stretchr/testify/require"
 )
 
 const rtName = "hello-rt"

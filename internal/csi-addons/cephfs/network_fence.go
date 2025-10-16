@@ -20,13 +20,13 @@ import (
 	"context"
 	"errors"
 
-	nf "github.com/ceph/ceph-csi/internal/csi-addons/networkfence"
-	"github.com/ceph/ceph-csi/internal/util"
-
 	"github.com/csi-addons/spec/lib/go/fence"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	nf "github.com/ceph/ceph-csi/internal/csi-addons/networkfence"
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // FenceControllerServer struct of cephFS CSI driver with supported methods

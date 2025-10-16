@@ -408,7 +408,7 @@ func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolum
 }
 
 func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t int) error {
-	if (k8sBrokenMetrics(f.ClientSet)) {
+	if k8sBrokenMetrics(f.ClientSet) {
 		return nil
 	}
 

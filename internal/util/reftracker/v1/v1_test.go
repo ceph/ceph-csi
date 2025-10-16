@@ -19,11 +19,11 @@ package v1
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ceph/ceph-csi/internal/util/reftracker/errors"
 	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
 	"github.com/ceph/ceph-csi/internal/util/reftracker/reftype"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestV1Read(t *testing.T) {

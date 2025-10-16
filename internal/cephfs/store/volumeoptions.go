@@ -27,8 +27,6 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
-	"github.com/ceph/ceph-csi/pkg/util/crypto"
-
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
@@ -37,6 +35,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
 
 const (

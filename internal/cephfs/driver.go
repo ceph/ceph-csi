@@ -19,6 +19,8 @@ package cephfs
 import (
 	"fmt"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
@@ -31,8 +33,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 // cephfsDriver contains the default identity,node and controller struct.

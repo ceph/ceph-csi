@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 const (

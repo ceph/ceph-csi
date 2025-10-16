@@ -25,15 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
-
-	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/file"
-	"github.com/ceph/ceph-csi/internal/util/fscrypt"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -41,6 +32,14 @@ import (
 	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
+
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/file"
+	"github.com/ceph/ceph-csi/internal/util/fscrypt"
+	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 // NodeServer struct of ceph rbd driver with supported methods of CSI

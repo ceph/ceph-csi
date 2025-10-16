@@ -23,11 +23,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/avast/retry-go/v4"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/kmod"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/avast/retry-go/v4"
 )
 
 const (

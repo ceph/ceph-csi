@@ -141,12 +141,18 @@ formatters:
     - gofmt
     - gofumpt
     - goimports
+    - gci
   settings:
     gofmt:
       simplify: true
     goimports:
       local-prefixes:
         - github.com/ceph/ceph-csi
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
   exclusions:
     generated: lax
     paths:

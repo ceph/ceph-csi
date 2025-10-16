@@ -23,14 +23,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
+	"github.com/avast/retry-go/v4"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/kmod"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/avast/retry-go/v4"
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 const (

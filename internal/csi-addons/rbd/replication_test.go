@@ -23,17 +23,17 @@ import (
 	"testing"
 	"time"
 
-	corerbd "github.com/ceph/ceph-csi/internal/rbd"
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/rbd/types"
-	"github.com/ceph/ceph-csi/internal/util"
-
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
 	"github.com/csi-addons/spec/lib/go/replication"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	corerbd "github.com/ceph/ceph-csi/internal/rbd"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/rbd/types"
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 func TestValidateSchedulingInterval(t *testing.T) {

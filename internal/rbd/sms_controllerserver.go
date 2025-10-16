@@ -20,13 +20,13 @@ import (
 	"context"
 	"errors"
 
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/rbd/features"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/rbd/features"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (

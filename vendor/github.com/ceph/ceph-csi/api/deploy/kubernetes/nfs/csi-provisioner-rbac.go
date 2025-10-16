@@ -20,8 +20,8 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"text/template"
 	"strings"
+	"text/template"
 
 	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
@@ -123,7 +123,6 @@ func NewCSIProvisionerRBACYAML(values kubernetes.CSIProvisionerRBACValues) (stri
 
 	return strings.Join(docs, "\n"), nil
 }
-
 
 func newYAML(name, data string, values kubernetes.CSIProvisionerRBACValues) (string, error) {
 	var buf bytes.Buffer

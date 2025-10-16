@@ -19,9 +19,9 @@ package version
 import (
 	"testing"
 
-	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/ceph/ceph-csi/internal/util/reftracker/radoswrapper"
 )
 
 var (

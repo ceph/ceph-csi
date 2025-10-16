@@ -29,15 +29,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ceph/ceph-csi/pkg/util/crypto"
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
-
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/rbd/types"
-	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/kmod"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
@@ -45,6 +36,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
 	mount "k8s.io/mount-utils"
+
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/rbd/types"
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/kmod"
+	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 const (

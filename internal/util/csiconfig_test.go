@@ -22,10 +22,10 @@ import (
 	"os"
 	"testing"
 
-	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
-
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+
+	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 )
 
 var (

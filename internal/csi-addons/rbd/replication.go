@@ -25,14 +25,6 @@ import (
 	"strings"
 	"time"
 
-	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-	"github.com/ceph/ceph-csi/internal/rbd"
-	corerbd "github.com/ceph/ceph-csi/internal/rbd"
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/rbd/types"
-	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
 	"github.com/csi-addons/spec/lib/go/replication"
@@ -41,6 +33,14 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/rbd"
+	corerbd "github.com/ceph/ceph-csi/internal/rbd"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/rbd/types"
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // imageMirroringMode is used to indicate the mirroring mode for an RBD image.

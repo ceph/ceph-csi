@@ -19,9 +19,9 @@ package identity
 import (
 	"context"
 
-	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
+
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 )
 
 // Server struct of ceph CSI driver with supported methods of CSI identity

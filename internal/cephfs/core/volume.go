@@ -24,13 +24,13 @@ import (
 	"strings"
 	"sync"
 
+	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
+	"github.com/ceph/go-ceph/rados"
+
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
-	"github.com/ceph/go-ceph/rados"
 )
 
 var (

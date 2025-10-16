@@ -22,9 +22,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	kp "github.com/IBM/keyprotect-go-client"
+
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 const (

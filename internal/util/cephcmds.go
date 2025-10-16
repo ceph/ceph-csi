@@ -25,10 +25,10 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/ceph/go-ceph/rados"
+
 	"github.com/ceph/ceph-csi/internal/util/log"
 	"github.com/ceph/ceph-csi/internal/util/stripsecrets"
-
-	"github.com/ceph/go-ceph/rados"
 )
 
 const (

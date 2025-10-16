@@ -21,10 +21,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/go-ceph/rados"
+
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/ceph/go-ceph/rados"
 )
 
 // chunkSize is the number of key-value pairs that will be fetched in

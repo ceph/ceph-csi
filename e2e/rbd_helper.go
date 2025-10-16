@@ -26,9 +26,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
-
 	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
@@ -37,6 +34,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 //nolint:mnd // numbers specify Kernel versions.

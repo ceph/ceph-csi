@@ -20,6 +20,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/ceph/ceph-csi/internal/cephfs"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
@@ -27,10 +31,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // Server struct of CEPH CSI driver with supported methods of CSI controller

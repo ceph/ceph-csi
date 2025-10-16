@@ -17,6 +17,8 @@ limitations under the License.
 package driver
 
 import (
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/driver"
 	"github.com/ceph/ceph-csi/internal/nfs/controller"
@@ -24,8 +26,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/nfs/nodeserver"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 // nfsDriver contains the default identity and controller struct.

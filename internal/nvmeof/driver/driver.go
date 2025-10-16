@@ -17,6 +17,8 @@ limitations under the License.
 package driver
 
 import (
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/driver"
 	"github.com/ceph/ceph-csi/internal/nvmeof/controller"
@@ -25,8 +27,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 // nvmeofDriver provides the entry point for the NVMe-oF CSI driver.

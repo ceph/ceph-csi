@@ -23,12 +23,12 @@ import (
 	"strings"
 	"time"
 
+	librbd "github.com/ceph/go-ceph/rbd"
+
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	librbd "github.com/ceph/go-ceph/rbd"
 )
 
 // HandleParentImageExistence checks the image's parent.

@@ -22,9 +22,10 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/ceph/ceph-csi/api/deploy/kubernetes"
 )
 
 //go:embed csi-config-map.yaml

@@ -23,10 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ceph/ceph-csi/pkg/util/crypto"
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
 	"github.com/google/uuid"
-
 	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -38,6 +35,9 @@ import (
 	e2edebug "k8s.io/kubernetes/test/e2e/framework/debug"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	"k8s.io/pod-security-admission/api"
+
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 var (

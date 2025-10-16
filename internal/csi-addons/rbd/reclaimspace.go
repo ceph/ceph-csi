@@ -21,17 +21,17 @@ import (
 	"errors"
 	"fmt"
 
-	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-	rbdutil "github.com/ceph/ceph-csi/internal/rbd"
-	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
-	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	rs "github.com/csi-addons/spec/lib/go/reclaimspace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	rbdutil "github.com/ceph/ceph-csi/internal/rbd"
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // ReclaimSpaceControllerServer struct of rbd CSI driver with supported methods

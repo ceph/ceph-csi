@@ -17,9 +17,9 @@ import (
 	"errors"
 	"testing"
 
-	kmsapi "github.com/ceph/ceph-csi/internal/kms"
-
 	"github.com/stretchr/testify/require"
+
+	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 )
 
 func TestGetPassphraseFromKMS(t *testing.T) {

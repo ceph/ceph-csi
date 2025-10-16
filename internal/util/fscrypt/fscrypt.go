@@ -35,11 +35,10 @@ import (
 	"github.com/pkg/xattr"
 	"golang.org/x/sys/unix"
 
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
-
 	"github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 const (

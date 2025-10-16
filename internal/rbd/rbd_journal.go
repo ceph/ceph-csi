@@ -21,13 +21,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/pkg/util/crypto"
-
 	"github.com/ceph/ceph-csi/internal/journal"
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
+	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
 
 func validateNonEmptyField(field, fieldName, structName string) error {

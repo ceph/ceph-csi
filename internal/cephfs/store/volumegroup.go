@@ -20,12 +20,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 type VolumeGroupOptions struct {

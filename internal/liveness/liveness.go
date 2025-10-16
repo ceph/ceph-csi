@@ -20,14 +20,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/log"
-
 	connlib "github.com/kubernetes-csi/csi-lib-utils/connection"
 	"github.com/kubernetes-csi/csi-lib-utils/metrics"
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
+
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 var liveness = prometheus.NewGauge(prometheus.GaugeOpts{

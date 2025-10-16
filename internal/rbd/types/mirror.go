@@ -20,10 +20,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util"
-
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // FlattenMode is used to indicate the flatten mode for an RBD image.
