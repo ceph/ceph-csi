@@ -17,10 +17,13 @@ limitations under the License.
 package e2e
 
 import (
+	"context"
+
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2edebug "k8s.io/kubernetes/test/e2e/framework/debug"
 	"k8s.io/pod-security-admission/api"
 )
 
@@ -84,6 +87,18 @@ var _ = ginkgo.Describe("nvmeof", func() {
 	ginkgo.AfterEach(func() {
 		if !deployNVMeoF {
 			return
+		}
+
+		if ginkgo.CurrentSpecReport().Failed() {
+			// log pods created by helm chart
+			//logsCSIPods("app="+helmNFSPodsLabel, c)
+			// log provisioner
+			logsCSIPods("app="+nvmeofDeploymentName, f.ClientSet)
+			// log node plugin
+			logsCSIPods("app="+nvmeofDaemonsetName, f.ClientSet)
+
+			// log all details from the namespace where Ceph-CSI is deployed
+			e2edebug.DumpAllNamespaceInfo(context.TODO(), f.ClientSet, cephCSINamespace)
 		}
 
 		deleteNVMeoFPlugin()
