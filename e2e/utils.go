@@ -810,7 +810,10 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	// write data to PVC
 	filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 
-	_, stdErr, err := execCommandInPod(f, fmt.Sprintf("echo %s > %s", data, filePath), app.Namespace, &opt)
+	_, stdErr, err := execCommandInPod(f,
+		fmt.Sprintf("echo -n '%s' > %s ; sync %s", data, filePath, filePath),
+		app.Namespace,
+		&opt)
 	if err != nil {
 		return fmt.Errorf("failed to exec command in pod: %w", err)
 	}
@@ -834,8 +837,9 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	if stdErr != "" {
 		return fmt.Errorf("failed to get file content %v", stdErr)
 	}
-	if !strings.Contains(persistData, data) {
-		return fmt.Errorf("data not persistent expected data %s received data %s  ", data, persistData)
+	if persistData != data {
+		return fmt.Errorf("data not persistent (expected data: %v, received data: %v)",
+			[]byte(data), []byte(persistData))
 	}
 
 	err = deletePVCAndApp("", f, pvc, app)
