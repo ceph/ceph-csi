@@ -336,7 +336,7 @@ func GetControllerPublishSecretRef(volumeId, driverType string) (string, string,
 	}
 
 	secretName, secretNamespace, err = getControllerPublishSecretRef(vi.ClusterID, driverType)
-	if !errors.Is(err, ErrConfigNotFound) {
+	if err != nil && !errors.Is(err, ErrConfigNotFound) {
 		return secretName, secretNamespace,
 			fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
 	}
@@ -359,7 +359,7 @@ func GetControllerPublishSecretRef(volumeId, driverType string) (string, string,
 				}
 
 				secretName, secretNamespace, err := getControllerPublishSecretRef(mappedClusterID, driverType)
-				if !errors.Is(err, ErrConfigNotFound) {
+				if err != nil && !errors.Is(err, ErrConfigNotFound) {
 					return secretName, secretNamespace,
 						fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
 				}
