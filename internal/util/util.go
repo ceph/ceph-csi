@@ -335,6 +335,60 @@ func GetControllerPublishSecretRef(volumeId, driverType string) (string, string,
 		return secretName, secretNamespace, fmt.Errorf("failed to decode volume ID (%s): %w", volumeId, err)
 	}
 
+<<<<<<< HEAD
+=======
+	secretName, secretNamespace, err = getControllerPublishSecretRef(vi.ClusterID, driverType)
+	if err != nil && !errors.Is(err, ErrConfigNotFound) {
+		return secretName, secretNamespace,
+			fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
+	}
+
+	if secretName != "" && secretNamespace != "" {
+		return secretName, secretNamespace, nil
+	}
+
+	// Check clusterID mapping exists
+	mapping, mErr := GetClusterMappingInfo(vi.ClusterID)
+	if mErr != nil {
+		return secretName, secretNamespace, mErr
+	}
+	if mapping != nil {
+		for _, cm := range *mapping {
+			for key, val := range cm.ClusterIDMapping {
+				mappedClusterID := GetMappedID(key, val, vi.ClusterID)
+				if mappedClusterID == "" {
+					continue
+				}
+
+				secretName, secretNamespace, err := getControllerPublishSecretRef(mappedClusterID, driverType)
+				if err != nil && !errors.Is(err, ErrConfigNotFound) {
+					return secretName, secretNamespace,
+						fmt.Errorf("failed to get controller publish secret details from csi config file: %w", err)
+				}
+				if secretName != "" && secretNamespace != "" {
+					return secretName, secretNamespace, nil
+				}
+			}
+		}
+	}
+
+	if secretName == "" || secretNamespace == "" {
+		return secretName, secretNamespace, fmt.Errorf("controller publish secret name or namespace is empty"+
+			" in csi config file for cluster %s", vi.ClusterID)
+	}
+
+	return secretName, secretNamespace, nil
+}
+
+func getControllerPublishSecretRef(clusterId, driverType string) (string, string, error) {
+	var (
+		err              error
+		secretName       string
+		secretNamespace  string
+		getSecretRefFunc func(string, string) (string, string, error)
+	)
+
+>>>>>>> 0c8013cf (util: add explicit nil check before errors.Is(err) check)
 	switch driverType {
 	case RBDType:
 		getSecretRefFunc = GetRBDControllerPublishSecretRef
