@@ -122,6 +122,19 @@ parameters:
    # A string is expected here, i.e. "true", not true.
    # encrypted: "true"
 
+   # (optional) Instruct the plugin it has to encrypt the volume with this specific cipher.
+   # By default it is disabled. If encrypted is false then this flag will be ignored. 
+   # Specify cipher according to the cryptsetup specification.
+   # Only applicable for block encryption.
+   # encryptionCipher: "aes-cbc-essiv:sha256"
+
+   # (optional) Instruct the plugin to use a certain key size to encrypt data.
+   # Most ciphers support key sizes of 128 or 256 bit. 
+   # By default it is disabled. If encrypted is false and encryptionCipher is not set 
+   # then this flag will be ignored. 
+   # Only applicable for block encryption.
+   # A string is expected here, i.e. "128", not 128.
+   # encryptionKeySize: "128"
    # (optional) Select the encryption type when encrypted: "true" above.
    # Valid values are:
    #   "file": Enable file encryption on the mounted filesystem

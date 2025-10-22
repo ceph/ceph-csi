@@ -55,6 +55,7 @@ var (
 	luks = cryptsetup.NewLUKSWrapper(context.Background())
 )
 
+// VolumeEncryption is for file encryption and block encryption.
 type VolumeEncryption struct {
 	KMS kms.EncryptionKMS
 
@@ -62,7 +63,8 @@ type VolumeEncryption struct {
 	// different object implementing the DEKStore interface.
 	dekStore kms.DEKStore
 
-	id string
+	id            string
+	cipherOptions *cryptsetup.EncryptionOptions
 }
 
 // FetchEncryptionKMSID returns non-empty kmsID if 'encrypted' parameter is evaluated as true.
@@ -106,7 +108,11 @@ func FetchEncryptionType(volOptions map[string]string, fallback crypto.Encryptio
 // Callers that receive a ErrDEKStoreNeeded error, should use
 // VolumeEncryption.SetDEKStore() to configure an alternative storage for the
 // DEKs.
-func NewVolumeEncryption(id string, ekms kms.EncryptionKMS) (*VolumeEncryption, error) {
+func NewVolumeEncryption(
+	id string,
+	ekms kms.EncryptionKMS, 
+	cipher *cryptsetup.EncryptionOptions,
+	) (*VolumeEncryption, error) {
 	kmsID := id
 	if kmsID == "" {
 		// if kmsID is not set, encryption is enabled, and the type is
@@ -115,8 +121,9 @@ func NewVolumeEncryption(id string, ekms kms.EncryptionKMS) (*VolumeEncryption, 
 	}
 
 	ve := &VolumeEncryption{
-		id:  kmsID,
-		KMS: ekms,
+		id:            kmsID,
+		KMS:           ekms,
+		cipherOptions: cipher,
 	}
 
 	if ekms.RequiresDEKStore() == kms.DEKStoreIntegrated {
@@ -157,6 +164,10 @@ func (ve *VolumeEncryption) RemoveDEK(ctx context.Context, volumeID string) erro
 
 func (ve *VolumeEncryption) GetID() string {
 	return ve.id
+}
+
+func (ve *VolumeEncryption) CipherOptions() *cryptsetup.EncryptionOptions {
+	return ve.cipherOptions
 }
 
 // StoreCryptoPassphrase takes an unencrypted passphrase, encrypts it and saves
@@ -220,9 +231,9 @@ func VolumeMapper(volumeID string) (string, string) {
 }
 
 // EncryptVolume encrypts provided device with LUKS.
-func EncryptVolume(ctx context.Context, devicePath, passphrase string) error {
+func EncryptVolume(ctx context.Context, devicePath, passphrase string, cipher *cryptsetup.EncryptionOptions) error {
 	log.DebugLog(ctx, "Encrypting device %q	 with LUKS", devicePath)
-	_, stdErr, err := luks.Format(devicePath, passphrase)
+	_, stdErr, err := luks.Format(devicePath, passphrase, cipher)
 	if err != nil || stdErr != "" {
 		log.ErrorLog(ctx, "failed to encrypt device %q with LUKS (%v): %s", devicePath, err, stdErr)
 	}

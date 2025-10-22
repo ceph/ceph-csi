@@ -54,9 +54,37 @@ const (
 	DefaultLuks2HeaderSize = 16 * helpers.MiB
 )
 
+type EncryptionOptions struct {
+	cipher  string
+	keysize *uint
+}
+
+func (e *EncryptionOptions) Keysize() *uint {
+	return e.keysize
+}
+
+func (e *EncryptionOptions) SetKeySize(keysize string) error {
+	parsedVal, err := strconv.ParseUint(keysize, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid keySize value '%s': %w", keysize, err)
+	}
+	e.keysize = new(uint)
+	*e.keysize = uint(parsedVal)
+
+	return nil
+}
+
+func (e *EncryptionOptions) Cipher() string {
+	return e.cipher
+}
+
+func (e *EncryptionOptions) SetCipher(cipher string) {
+	e.cipher = cipher
+}
+
 // LuksWrapper is a struct that provides a context-aware wrapper around cryptsetup commands.
 type LUKSWrapper interface {
-	Format(devicePath, passphrase string) (string, string, error)
+	Format(devicePath, passphrase string, cipher *EncryptionOptions) (string, string, error)
 	Open(devicePath, mapperFile, passphrase string) (string, string, error)
 	Close(mapperFile string) (string, string, error)
 	AddKey(devicePath, passphrase, newPassphrase, slot string) error
@@ -79,15 +107,22 @@ func NewLUKSWrapper(ctx context.Context) LUKSWrapper {
 }
 
 // LuksFormat sets up volume as an encrypted LUKS partition.
-func (l *luksWrapper) Format(devicePath, passphrase string) (string, string, error) {
-	return l.execCryptsetupCommand(
-		&passphrase,
+func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *EncryptionOptions) (string, string, error) {
+	args := []string{
 		"-q",
 		"luksFormat",
 		"--type",
 		"luks2",
 		"--hash",
 		"sha256",
+	}
+	if cipherOptions != nil {
+		args = append(args, "--cipher", cipherOptions.Cipher())
+		if cipherOptions.keysize != nil {
+			args = append(args, "--key-size", strconv.FormatUint(uint64(*cipherOptions.Keysize()), 10))
+		}
+	}
+	args = append(args,
 		"--luks2-metadata-size",
 		strconv.Itoa(luks2MetadataSize)+"k",
 		"--luks2-keyslots-size",
@@ -97,6 +132,8 @@ func (l *luksWrapper) Format(devicePath, passphrase string) (string, string, err
 		devicePath,
 		"-d",
 		"-")
+
+	return l.execCryptsetupCommand(&passphrase, args...)
 }
 
 // LuksOpen opens LUKS encrypted partition and sets up a mapping.
