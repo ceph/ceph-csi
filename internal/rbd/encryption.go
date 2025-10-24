@@ -377,6 +377,7 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 func ParseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOptions, error) {
 	cipher, cipherOk := volOptions["encryptionCipher"]
 	keysize, keysizeOk := volOptions["encryptionKeySize"]
+	aead, aeadOk := volOptions["integrityMode"]
 	if !cipherOk && !keysizeOk {
 		return nil, nil
 	}
@@ -389,6 +390,9 @@ func ParseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOpt
 		if err := opts.SetKeySize(keysize); err != nil {
 			return nil, fmt.Errorf("failed to set key size: %w", err)
 		}
+	}
+	if cipherOk && aeadOk {
+		opts.SetAeadMode(aead)
 	}
 
 	return opts, nil

@@ -55,8 +55,18 @@ const (
 )
 
 type EncryptionOptions struct {
-	cipher  string
-	keysize *uint
+	cipher   string
+	keysize  *uint
+	aeadMode *string
+}
+
+func (e *EncryptionOptions) AeadMode() *string {
+	return e.aeadMode
+}
+
+func (e *EncryptionOptions) SetAeadMode(aead string) {
+	e.aeadMode = new(string)
+	*e.aeadMode = aead
 }
 
 func (e *EncryptionOptions) Keysize() *uint {
@@ -118,7 +128,10 @@ func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *Encry
 	}
 	if cipherOptions != nil {
 		args = append(args, "--cipher", cipherOptions.Cipher())
-		if cipherOptions.keysize != nil {
+		if cipherOptions.AeadMode() != nil {
+			args = append(args, "--integrity", *cipherOptions.AeadMode())
+		}
+		if cipherOptions.Keysize() != nil {
 			args = append(args, "--key-size", strconv.FormatUint(uint64(*cipherOptions.Keysize()), 10))
 		}
 	}

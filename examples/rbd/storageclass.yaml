@@ -135,6 +135,14 @@ parameters:
    # Only applicable for block encryption.
    # A string is expected here, i.e. "128", not 128.
    # encryptionKeySize: "128"
+
+   # (optional) Instruct the plugin verify the integrity when data is read.
+   # By default it is disabled. If encrypted is false then this flag will be ignored. 
+   # Specify the integrity verification mode via the dm-Integrity specification.
+   # Selecting this option prevents the image from being resized..
+   # Only applicable for block encryption.
+   # integrityMode: "hmac-sha256"
+
    # (optional) Select the encryption type when encrypted: "true" above.
    # Valid values are:
    #   "file": Enable file encryption on the mounted filesystem
