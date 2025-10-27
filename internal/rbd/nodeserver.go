@@ -70,8 +70,8 @@ type stageTransaction struct {
 	isMounted bool
 	// isBlockEncrypted represents if the volume was encrypted or not
 	isBlockEncrypted bool
-	// isAEADEncrypted represents if the volume was encrypted using an AEAD cipher
-	isAEADEncrypted bool
+	// isIntegrityProtected represents if the volume was establishes the cryptographic integrity of read data
+	isIntegrityProtected bool
 	// devicePath represents the path where rbd device is mapped
 	devicePath string
 }
@@ -561,9 +561,9 @@ func (ns *NodeServer) stageTransaction(
 			return transaction, err
 		}
 		transaction.isBlockEncrypted = true
-		// Dmcrypt does not support Resize when AEAD cipehrs are used
-		if cipherOpts := volOptions.blockEncryption.CipherOptions(); cipherOpts != nil && cipherOpts.AeadMode() != nil {
-			transaction.isAEADEncrypted = true
+		// Cryptsetup does not support Resize when Integrity protection is enabled
+		if cipherOpts := volOptions.blockEncryption.CipherOptions(); cipherOpts != nil && cipherOpts.IntegrityMode() != nil {
+			transaction.isIntegrityProtected = true
 		}
 	}
 
@@ -627,7 +627,7 @@ func resizeNodeStagePath(ctx context.Context,
 	var ok bool
 
 	// if its a non encrypted block device we dont need any expansion
-	if (isBlock && !transaction.isBlockEncrypted) || transaction.isAEADEncrypted {
+	if (isBlock && !transaction.isBlockEncrypted) || transaction.isIntegrityProtected {
 		return nil
 	}
 

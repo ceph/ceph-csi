@@ -54,19 +54,59 @@ const (
 	DefaultLuks2HeaderSize = 16 * helpers.MiB
 )
 
+type validator struct {
+	allowedValues map[string]struct{}
+	name          string
+}
+
+func (v *validator) validate(value string) error {
+	_, found := v.allowedValues[value]
+	if !found {
+		return fmt.Errorf("%s not allowed: %s", v.name, value)
+	}
+
+	return nil
+}
+
+var (
+	cipherValidator = &validator{
+		name: "cipher",
+		allowedValues: map[string]struct{}{
+			"aes-xts-plain64":     {},
+			"serpent-xts-plain64": {},
+			"twofish-xts-plain64": {},
+			"aegis128-random":     {},
+		},
+	}
+
+	integrityModeValidator = &validator{
+		name: "integrity mode",
+		allowedValues: map[string]struct{}{
+			"hmac-sha256": {},
+			"hmac-sha512": {},
+			"aead":        {},
+		},
+	}
+)
+
 type EncryptionOptions struct {
-	cipher   string
-	keysize  *uint
-	aeadMode *string
+	cipher        string
+	keysize       *uint
+	integrityMode *string
 }
 
-func (e *EncryptionOptions) AeadMode() *string {
-	return e.aeadMode
+func (e *EncryptionOptions) IntegrityMode() *string {
+	return e.integrityMode
 }
 
-func (e *EncryptionOptions) SetAeadMode(aead string) {
-	e.aeadMode = new(string)
-	*e.aeadMode = aead
+func (e *EncryptionOptions) SetintegrityMode(integrity string) error {
+	if err := integrityModeValidator.validate(integrity); err != nil {
+		return fmt.Errorf("cannot set integrity mode'%s': %w", integrity, err)
+	}
+	e.integrityMode = new(string)
+	*e.integrityMode = integrity
+
+	return nil
 }
 
 func (e *EncryptionOptions) Keysize() *uint {
@@ -88,8 +128,13 @@ func (e *EncryptionOptions) Cipher() string {
 	return e.cipher
 }
 
-func (e *EncryptionOptions) SetCipher(cipher string) {
+func (e *EncryptionOptions) SetCipher(cipher string) error {
+	if err := cipherValidator.validate(cipher); err != nil {
+		return fmt.Errorf("cannot set cipher'%s': %w", cipher, err)
+	}
 	e.cipher = cipher
+
+	return nil
 }
 
 // LuksWrapper is a struct that provides a context-aware wrapper around cryptsetup commands.
@@ -128,8 +173,8 @@ func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *Encry
 	}
 	if cipherOptions != nil {
 		args = append(args, "--cipher", cipherOptions.Cipher())
-		if cipherOptions.AeadMode() != nil {
-			args = append(args, "--integrity", *cipherOptions.AeadMode())
+		if cipherOptions.IntegrityMode() != nil {
+			args = append(args, "--integrity", *cipherOptions.IntegrityMode())
 		}
 		if cipherOptions.Keysize() != nil {
 			args = append(args, "--key-size", strconv.FormatUint(uint64(*cipherOptions.Keysize()), 10))

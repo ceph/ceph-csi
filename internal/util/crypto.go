@@ -110,9 +110,9 @@ func FetchEncryptionType(volOptions map[string]string, fallback crypto.Encryptio
 // DEKs.
 func NewVolumeEncryption(
 	id string,
-	ekms kms.EncryptionKMS, 
+	ekms kms.EncryptionKMS,
 	cipher *cryptsetup.EncryptionOptions,
-	) (*VolumeEncryption, error) {
+) (*VolumeEncryption, error) {
 	kmsID := id
 	if kmsID == "" {
 		// if kmsID is not set, encryption is enabled, and the type is

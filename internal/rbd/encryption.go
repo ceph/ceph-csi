@@ -377,13 +377,15 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 func ParseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOptions, error) {
 	cipher, cipherOk := volOptions["encryptionCipher"]
 	keysize, keysizeOk := volOptions["encryptionKeySize"]
-	aead, aeadOk := volOptions["integrityMode"]
-	if !cipherOk && !keysizeOk {
+	integrity, integrityOk := volOptions["integrityMode"]
+	if !cipherOk {
 		return nil, nil
 	}
 	opts := &cryptsetup.EncryptionOptions{}
 	if cipherOk {
-		opts.SetCipher(cipher)
+		if err := opts.SetCipher(cipher); err != nil {
+			return nil, fmt.Errorf("failed to set cipher: %w", err)
+		}
 	}
 	// when cipher is not set keysize is not used
 	if cipherOk && keysizeOk {
@@ -391,8 +393,10 @@ func ParseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOpt
 			return nil, fmt.Errorf("failed to set key size: %w", err)
 		}
 	}
-	if cipherOk && aeadOk {
-		opts.SetAeadMode(aead)
+	if cipherOk && integrityOk {
+		if err := opts.SetintegrityMode(integrity); err != nil {
+			return nil, fmt.Errorf("failed to set integrity mode: %w", err)
+		}
 	}
 
 	return opts, nil
@@ -435,7 +439,7 @@ func (ri *rbdImage) configureBlockEncryption(
 	kmsID string,
 	credentials map[string]string,
 	cipher *cryptsetup.EncryptionOptions,
-	) error {
+) error {
 	kms, err := kmsapi.GetKMS(ri.Owner, kmsID, credentials)
 	if err != nil {
 		return err
