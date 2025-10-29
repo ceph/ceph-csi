@@ -29,6 +29,7 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/nvmeof"
+	nvmeoferrors "github.com/ceph/ceph-csi/internal/nvmeof/errors"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	rbdutil "github.com/ceph/ceph-csi/internal/rbd"
 	rbddriver "github.com/ceph/ceph-csi/internal/rbd/driver"
@@ -293,6 +294,42 @@ func (cs *Server) ControllerUnpublishVolume(
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
+// ControllerModifyVolume modifies the volume's QoS parameters.
+func (cs *Server) ControllerModifyVolume(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+) (*csi.ControllerModifyVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+	params := req.GetMutableParameters()
+
+	// Step 1: Acquire volume lock
+	if acquired := cs.volumeLocks.TryAcquire(volumeID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer cs.volumeLocks.Release(volumeID)
+
+	// Step 2: Parse QoS parameters from mutable_parameters
+	hasRBDQoS := rbd.HasQoSParams(params)
+	if hasRBDQoS {
+		log.ErrorLog(ctx, "Cannot set RBD QoS parameters on NVMe-oF volumes")
+
+		return nil, status.Error(codes.InvalidArgument, "cannot set RBD QoS parameters on NVMe-oF volumes")
+	}
+	nvmeofQoS, err := parseQoSParameters(params)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to parse NVMe-oF QoS parameters: %v", err)
+
+		return nil, status.Errorf(codes.InvalidArgument, "failed to parse QoS parameters: %v", err)
+	}
+	if nvmeofQoS != nil {
+		return cs.modifyNVMeoFQoS(ctx, req, nvmeofQoS)
+	}
+
+	return &csi.ControllerModifyVolumeResponse{}, nil
+}
+
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
 // the rest of the parameters are validated by RBD.
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
@@ -403,6 +440,85 @@ func parseQoSParameters(params map[string]string) (*nvmeof.NVMeoFQosVolume, erro
 	}
 
 	return qos, nil
+}
+
+// modifyNVMeoFQoS handles NVMe-oF gateway QoS modification.
+func (cs *Server) modifyNVMeoFQoS(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+	qos *nvmeof.NVMeoFQosVolume,
+) (*csi.ControllerModifyVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+
+	// Step 1: Get secrets
+
+	// Since ControllerModifyVolume doesn't receive volume context and dont have option to take secrets
+	// because there is no "csi.storage.k8s.io/controller-modify-secret-name" field in the SC !,
+	// the full solution for it is to use GetControllerExpandSecretRef but there is no such function yet.
+	// TODO: change the call to GetControllerExpandSecretRef once it is implemented.
+	secrets := req.GetSecrets()
+	if secrets == nil {
+		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeID, util.RBDType)
+		if err != nil {
+			log.ErrorLog(ctx, "Failed to get secret reference: %v", err)
+
+			return nil, status.Errorf(codes.Internal, "failed to get secret reference: %v", err)
+		}
+
+		secrets, err = k8s.GetSecret(secretName, secretNamespace)
+		if err != nil {
+			log.ErrorLog(ctx, "Failed to get secret from k8s: %v", err)
+
+			return nil, status.Errorf(codes.Internal, "failed to get secret: %v", err)
+		}
+	}
+
+	// Step 2: Get NVMe-oF metadata
+	nvmeofData, err := cs.getNVMeoFMetadata(ctx, secrets, volumeID)
+	if err != nil {
+		log.ErrorLog(ctx, "Failed to get NVMe-oF metadata: %v", err)
+
+		return nil, nvmeoferrors.ToGRPCError(err)
+	}
+
+	// Step 3: Connect to gateway
+	config := &nvmeof.GatewayConfig{
+		Address: nvmeofData.GatewayManagementInfo.Address,
+		Port:    nvmeofData.GatewayManagementInfo.Port,
+	}
+	gateway, err := connectGateway(ctx, config)
+	if err != nil {
+		log.ErrorLog(ctx, "Gateway connection failed: %v", err)
+
+		return nil, status.Errorf(codes.Unavailable, "gateway connection failed: %v", err)
+	}
+	defer func() {
+		if closeErr := gateway.Destroy(); closeErr != nil {
+			log.ErrorLog(ctx, "Failed to close gateway connection: %v", closeErr)
+		}
+	}()
+
+	// Step 4: Apply NVMe-oF QoS via gateway
+	log.DebugLog(ctx, "Setting QoS for subsystem=%s, nsid=%d", nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
+
+	err = gateway.SetQoSLimitsForNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID, *qos)
+	if err != nil {
+		// Check if error is EEXIST (RBD QoS already set)
+		if errors.Is(err, nvmeoferrors.ErrRbdQoSExists) {
+			log.ErrorLog(ctx, "RBD QoS already configured on volume")
+
+			return nil, status.Error(codes.InvalidArgument,
+				"RBD QoS already configured on this volume, cannot set NVMe-oF gateway QoS")
+		}
+
+		log.ErrorLog(ctx, "Failed to set QoS limits: %v", err)
+
+		return nil, status.Errorf(codes.Internal, "failed to set QoS limits: %v", err)
+	}
+
+	log.DebugLog(ctx, "Successfully modified NVMe-oF QoS for volume %s", volumeID)
+
+	return &csi.ControllerModifyVolumeResponse{}, nil
 }
 
 // ensureSubsystem checks if the subsystem exists, and creates it if not.
