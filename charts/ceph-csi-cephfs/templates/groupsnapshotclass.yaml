@@ -1,5 +1,5 @@
 {{- if .Values.volumeGroupSnapshotClass.create -}}
-apiVersion: groupsnapshot.storage.k8s.io/v1beta1
+apiVersion: groupsnapshot.storage.k8s.io/v1beta2
 kind: VolumeGroupSnapshotClass
 metadata:
   name: {{ .Values.volumeGroupSnapshotClass.name }}
