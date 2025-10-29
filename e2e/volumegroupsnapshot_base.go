@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"time"
 
-	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta1"
+	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta2"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
-	groupsnapclient "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/typed/volumegroupsnapshot/v1beta1"
+	groupsnapclient "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/typed/volumegroupsnapshot/v1beta2"
 	snapclient "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/typed/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -77,7 +77,7 @@ type VolumeGroupSnapshotter interface {
 type volumeGroupSnapshotterBase struct {
 	timeout                   int
 	framework                 *framework.Framework
-	groupclient               *groupsnapclient.GroupsnapshotV1beta1Client
+	groupclient               *groupsnapclient.GroupsnapshotV1beta2Client
 	snapClient                *snapclient.SnapshotV1Client
 	storageClassName          string
 	blockPVC                  bool
@@ -180,11 +180,11 @@ func (v *volumeGroupSnapshotterBase) CreatePVCClones(
 	}
 	namespace := vgs.Namespace
 	ctx := context.TODO()
-	pvcs := make([]*v1.PersistentVolumeClaim, len(groupSnapshotContent.Status.VolumeSnapshotHandlePairList))
-	for i, snapshot := range groupSnapshotContent.Status.VolumeSnapshotHandlePairList {
+	pvcs := make([]*v1.PersistentVolumeClaim, len(groupSnapshotContent.Status.VolumeSnapshotInfoList))
+	for i, snapshot := range groupSnapshotContent.Status.VolumeSnapshotInfoList {
 		volumeHandle := snapshot.VolumeHandle
 		volumeSnapshotName := fmt.Sprintf("snapshot-%x", sha256.Sum256([]byte(
-			string(groupSnapshotContent.UID)+volumeHandle)))
+			string(vgs.UID)+volumeHandle)))
 		volumeSnapshot, err := v.snapClient.VolumeSnapshots(namespace).Get(ctx, volumeSnapshotName, metav1.GetOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get VolumeSnapshot: %w", err)
