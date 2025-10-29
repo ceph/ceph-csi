@@ -312,6 +312,22 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err != nil {
 		return fmt.Errorf("invalid listeners parameter: %w", err)
 	}
+	// Validate QoS parameters - cannot mix RBD and NVMe-oF QoS
+	mutableParams := req.GetMutableParameters()
+
+	// check for RBD QoS parameters in both params and mutableParams
+	if hasRBDQoS := rbd.HasQoSParams(params); hasRBDQoS {
+		return errors.New("setting RBD QoS parameters on NVMe-oF volumes is not supported")
+	}
+	if hasRBDQoS := rbd.HasQoSParams(mutableParams); hasRBDQoS {
+		return errors.New("setting RBD QoS parameters on NVMe-oF volumes is not supported")
+	}
+
+	// It take the mutableParams value from the volumeAttributesClassName in the PersistentVolumeClaim yaml.
+	_, err = parseQoSParameters(mutableParams)
+	if err != nil {
+		return fmt.Errorf("invalid NVMe-oF QoS parameters: %w", err)
+	}
 
 	return nil
 }
@@ -349,6 +365,44 @@ func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
 	}
 
 	return listeners, nil
+}
+
+// parseQoSParameters extracts and parses QoS parameters from the given map.
+func parseQoSParameters(params map[string]string) (*nvmeof.NVMeoFQosVolume, error) {
+	qos := &nvmeof.NVMeoFQosVolume{}
+	hasAnyQoS := false
+
+	parseParam := func(key, name string, dest **uint64) error {
+		if val, exists := params[key]; exists && val != "" {
+			parsed, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid %s: %w", name, err)
+			}
+			*dest = &parsed
+			hasAnyQoS = true
+		}
+
+		return nil
+	}
+
+	if err := parseParam(nvmeof.RwIosPerSecond, nvmeof.RwIosPerSecond, &qos.RwIosPerSecond); err != nil {
+		return nil, err
+	}
+	if err := parseParam(nvmeof.RwMbytesPerSecond, nvmeof.RwMbytesPerSecond, &qos.RwMbytesPerSecond); err != nil {
+		return nil, err
+	}
+	if err := parseParam(nvmeof.RMbytesPerSecond, nvmeof.RMbytesPerSecond, &qos.RMbytesPerSecond); err != nil {
+		return nil, err
+	}
+	if err := parseParam(nvmeof.WMbytesPerSecond, nvmeof.WMbytesPerSecond, &qos.WMbytesPerSecond); err != nil {
+		return nil, err
+	}
+
+	if !hasAnyQoS {
+		return nil, nil
+	}
+
+	return qos, nil
 }
 
 // ensureSubsystem checks if the subsystem exists, and creates it if not.
@@ -434,7 +488,6 @@ func cleanupEmptySubsystem(
 }
 
 // createNVMeoFResources sets up the NVMe-oF resources for the given RBD volume.
-// TODO - need to support multiple listeners.
 func (cs *Server) createNVMeoFResources(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
@@ -464,6 +517,16 @@ func (cs *Server) createNVMeoFResources(
 			Address: params["nvmeofGatewayAddress"],
 			Port:    uint32(nvmeofGatewayPort),
 		},
+	}
+	// extract Qos parameters if any
+	mutableParams := req.GetMutableParameters()
+	// It take the mutableParams value from the volumeAttributesClassName in the PersistentVolumeClaim yaml.
+	// We already verified in the validateCreateVolumeRequest that there is no RBD QoS
+	nvmeofQoS, err := parseQoSParameters(mutableParams)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to parse NVMe-oF QoS parameters: %v", err)
+
+		return nil, fmt.Errorf("failed to parse QoS parameters: %w", err)
 	}
 
 	// Step 2: Connect to gateway
@@ -504,6 +567,15 @@ func (cs *Server) createNVMeoFResources(
 	}
 	log.DebugLog(ctx, "Namespace created: %s/%s with NSID: %d", rbdPoolName, rbdImageName, nsid)
 	nvmeofData.NamespaceID = nsid
+
+	// Step 5: Set QoS limits if any
+	if nvmeofQoS != nil {
+		log.DebugLog(ctx, "Setting QoS limits: %s", nvmeofQoS)
+		if err := gateway.SetQoSLimitsForNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID,
+			*nvmeofQoS); err != nil {
+			return nil, fmt.Errorf("setting QoS limits failed: %w", err)
+		}
+	}
 
 	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
 	if err != nil {
