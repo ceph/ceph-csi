@@ -330,6 +330,18 @@ func (cs *Server) ControllerModifyVolume(
 	return &csi.ControllerModifyVolumeResponse{}, nil
 }
 
+// ControllerExpandVolume handles volume expansion requests.
+// For now it only updates the capacity in the response as NVMe-oF
+// this must be added because ControllerModifyVolume requires the sidecar csi-resizer. and
+// csi-resizer searches for the capacity ControllerServiceCapability_RPC_EXPAND_VOLUME.
+// In the future, if NVMe-oF gateway supports volume expansion, the logic must be added here.
+func (cs *Server) ControllerExpandVolume(
+	ctx context.Context,
+	req *csi.ControllerExpandVolumeRequest,
+) (*csi.ControllerExpandVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "ControllerExpandVolume is not implemented for NVMe-oF volumes")
+}
+
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
 // the rest of the parameters are validated by RBD.
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
