@@ -27,7 +27,6 @@ import (
 
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/rbd/types"
-	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -187,39 +186,7 @@ func (rm *rbdMirror) Promote(ctx context.Context, force bool) error {
 		return fmt.Errorf("failed to promote image %q with error: %w", rm, err)
 	}
 
-	log.DebugLog(ctx, "image %q has been promoted", rm)
-
-	return nil
-}
-
-// ForcePromote promotes image to primary with force option with 2 minutes
-// timeout. If there is no response within 2 minutes,the rbd CLI process will be
-// killed and an error is returned.
-func (rm *rbdMirror) ForcePromote(ctx context.Context, cr *util.Credentials) error {
-	promoteArgs := []string{
-		"mirror", "image", "promote",
-		rm.String(),
-		"--force",
-		"--id", cr.ID,
-		"-m", rm.Monitors,
-		"--keyfile=" + cr.KeyFile,
-	}
-	_, stderr, err := util.ExecCommandWithTimeout(
-		ctx,
-		// 2 minutes timeout as the Replication RPC timeout is 2.5 minutes.
-		2*time.Minute,
-		"rbd",
-		promoteArgs...,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to promote image %q with error: %w", rm, err)
-	}
-
-	if stderr != "" {
-		return fmt.Errorf("failed to promote image %q with stderror: %s", rm, stderr)
-	}
-
-	log.DebugLog(ctx, "image %q has been force promoted", rm)
+	log.DebugLog(ctx, "image has been promoted with force=%v", rm, force)
 
 	return nil
 }
