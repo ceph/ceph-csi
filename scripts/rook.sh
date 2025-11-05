@@ -186,6 +186,25 @@ function check_ceph_mgr() {
 
 function check_mds_stat() {
 	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
+		echo "Configuring MDS logging to 20/20... ${retry}s"
+
+		TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
+		TOOLBOX_POD_STATUS=$(kubectl_retry -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
+		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] &&
+			{
+				echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"
+				sleep 5
+				continue
+			}
+
+		if kubectl_retry exec -n rook-ceph "$TOOLBOX_POD" -it -- ceph config set mds debug_mds 20/20 &>/dev/null; then
+			echo "Ceph MDS loglevel successfully configured..."
+		else
+			echo "Failed to configure Ceph MDS loglevel..."
+			sleep 5
+			continue
+		fi
+
 		FS_NAME=$(kubectl_retry -n rook-ceph get cephfilesystems.ceph.rook.io -ojsonpath='{.items[0].metadata.name}')
 		echo "Checking MDS ($FS_NAME) stats... ${retry}s" && sleep 5
 
