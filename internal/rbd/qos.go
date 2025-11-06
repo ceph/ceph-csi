@@ -89,6 +89,18 @@ type qosSpec struct {
 	present         bool
 }
 
+// HasQoSParams checks if any RBD QoS parameters are present.
+func HasQoSParams(params map[string]string) bool {
+	rbdQosParams := parseQosParams(params)
+	for _, qos := range rbdQosParams {
+		if qos.present {
+			return true
+		}
+	}
+
+	return false
+}
+
 func parseQosParams(
 	scParams map[string]string,
 ) map[string]*qosSpec {
