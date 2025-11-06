@@ -153,6 +153,7 @@ spec:
             - "--v={{ .Values.logLevel }}"
             - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
             - "--kubelet-registration-path={{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}/{{ .Values.pluginSocketFile }}"
+            - "--automaxprocs=true"
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
