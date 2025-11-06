@@ -148,7 +148,7 @@ func TestRealGateway(t *testing.T) {
 	// Test create namespace
 	// poolName := "mypool"
 	// imageName := "test-image"
-	// nsID, err := client.CreateNamespace(ctx, testNQN, poolName, imageName)
+	// nsID, err := client.CreateNamespace(ctx, testNQN, poolName, radosNS, imageName)
 	// require.NoError(t, err)
 	// require.Greater(t, nsID, uint32(0), "Namespace ID should be greater than 0")
 
