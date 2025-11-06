@@ -38,6 +38,7 @@ const (
 	Gateway_NamespaceSetQosLimits_FullMethodName             = "/Gateway/namespace_set_qos_limits"
 	Gateway_NamespaceChangeLoadBalancingGroup_FullMethodName = "/Gateway/namespace_change_load_balancing_group"
 	Gateway_NamespaceChangeVisibility_FullMethodName         = "/Gateway/namespace_change_visibility"
+	Gateway_NamespaceChangeLocation_FullMethodName           = "/Gateway/namespace_change_location"
 	Gateway_NamespaceSetRbdTrashImage_FullMethodName         = "/Gateway/namespace_set_rbd_trash_image"
 	Gateway_NamespaceSetAutoResize_FullMethodName            = "/Gateway/namespace_set_auto_resize"
 	Gateway_NamespaceDelete_FullMethodName                   = "/Gateway/namespace_delete"
@@ -61,6 +62,7 @@ const (
 	Gateway_GetGatewayLogLevel_FullMethodName                = "/Gateway/get_gateway_log_level"
 	Gateway_SetGatewayLogLevel_FullMethodName                = "/Gateway/set_gateway_log_level"
 	Gateway_ShowGatewayListenersInfo_FullMethodName          = "/Gateway/show_gateway_listeners_info"
+	Gateway_GetGatewayStats_FullMethodName                   = "/Gateway/get_gateway_stats"
 )
 
 // GatewayClient is the client API for Gateway service.
@@ -87,6 +89,8 @@ type GatewayClient interface {
 	NamespaceChangeLoadBalancingGroup(ctx context.Context, in *NamespaceChangeLoadBalancingGroupReq, opts ...grpc.CallOption) (*ReqStatus, error)
 	// Changes namespace's visibility
 	NamespaceChangeVisibility(ctx context.Context, in *NamespaceChangeVisibilityReq, opts ...grpc.CallOption) (*ReqStatus, error)
+	// Changes namespace's location
+	NamespaceChangeLocation(ctx context.Context, in *NamespaceChangeLocationReq, opts ...grpc.CallOption) (*ReqStatus, error)
 	// Set namespace's RBD trash image flag
 	NamespaceSetRbdTrashImage(ctx context.Context, in *NamespaceSetRbdTrashImageReq, opts ...grpc.CallOption) (*ReqStatus, error)
 	// Set namespace's auto resize flag
@@ -133,6 +137,8 @@ type GatewayClient interface {
 	SetGatewayLogLevel(ctx context.Context, in *SetGatewayLogLevelReq, opts ...grpc.CallOption) (*ReqStatus, error)
 	// Show gateway listeners info
 	ShowGatewayListenersInfo(ctx context.Context, in *ShowGatewayListenersInfoReq, opts ...grpc.CallOption) (*GatewayListenersInfo, error)
+	// Gets gateway's stats
+	GetGatewayStats(ctx context.Context, in *GetGatewayStatsReq, opts ...grpc.CallOption) (*GatewayStatsInfo, error)
 }
 
 type gatewayClient struct {
@@ -237,6 +243,16 @@ func (c *gatewayClient) NamespaceChangeVisibility(ctx context.Context, in *Names
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReqStatus)
 	err := c.cc.Invoke(ctx, Gateway_NamespaceChangeVisibility_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gatewayClient) NamespaceChangeLocation(ctx context.Context, in *NamespaceChangeLocationReq, opts ...grpc.CallOption) (*ReqStatus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReqStatus)
+	err := c.cc.Invoke(ctx, Gateway_NamespaceChangeLocation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -473,6 +489,16 @@ func (c *gatewayClient) ShowGatewayListenersInfo(ctx context.Context, in *ShowGa
 	return out, nil
 }
 
+func (c *gatewayClient) GetGatewayStats(ctx context.Context, in *GetGatewayStatsReq, opts ...grpc.CallOption) (*GatewayStatsInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GatewayStatsInfo)
+	err := c.cc.Invoke(ctx, Gateway_GetGatewayStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GatewayServer is the server API for Gateway service.
 // All implementations must embed UnimplementedGatewayServer
 // for forward compatibility.
@@ -497,6 +523,8 @@ type GatewayServer interface {
 	NamespaceChangeLoadBalancingGroup(context.Context, *NamespaceChangeLoadBalancingGroupReq) (*ReqStatus, error)
 	// Changes namespace's visibility
 	NamespaceChangeVisibility(context.Context, *NamespaceChangeVisibilityReq) (*ReqStatus, error)
+	// Changes namespace's location
+	NamespaceChangeLocation(context.Context, *NamespaceChangeLocationReq) (*ReqStatus, error)
 	// Set namespace's RBD trash image flag
 	NamespaceSetRbdTrashImage(context.Context, *NamespaceSetRbdTrashImageReq) (*ReqStatus, error)
 	// Set namespace's auto resize flag
@@ -543,6 +571,8 @@ type GatewayServer interface {
 	SetGatewayLogLevel(context.Context, *SetGatewayLogLevelReq) (*ReqStatus, error)
 	// Show gateway listeners info
 	ShowGatewayListenersInfo(context.Context, *ShowGatewayListenersInfoReq) (*GatewayListenersInfo, error)
+	// Gets gateway's stats
+	GetGatewayStats(context.Context, *GetGatewayStatsReq) (*GatewayStatsInfo, error)
 	mustEmbedUnimplementedGatewayServer()
 }
 
@@ -582,6 +612,9 @@ func (UnimplementedGatewayServer) NamespaceChangeLoadBalancingGroup(context.Cont
 }
 func (UnimplementedGatewayServer) NamespaceChangeVisibility(context.Context, *NamespaceChangeVisibilityReq) (*ReqStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NamespaceChangeVisibility not implemented")
+}
+func (UnimplementedGatewayServer) NamespaceChangeLocation(context.Context, *NamespaceChangeLocationReq) (*ReqStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NamespaceChangeLocation not implemented")
 }
 func (UnimplementedGatewayServer) NamespaceSetRbdTrashImage(context.Context, *NamespaceSetRbdTrashImageReq) (*ReqStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NamespaceSetRbdTrashImage not implemented")
@@ -651,6 +684,9 @@ func (UnimplementedGatewayServer) SetGatewayLogLevel(context.Context, *SetGatewa
 }
 func (UnimplementedGatewayServer) ShowGatewayListenersInfo(context.Context, *ShowGatewayListenersInfoReq) (*GatewayListenersInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowGatewayListenersInfo not implemented")
+}
+func (UnimplementedGatewayServer) GetGatewayStats(context.Context, *GetGatewayStatsReq) (*GatewayStatsInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGatewayStats not implemented")
 }
 func (UnimplementedGatewayServer) mustEmbedUnimplementedGatewayServer() {}
 func (UnimplementedGatewayServer) testEmbeddedByValue()                 {}
@@ -849,6 +885,24 @@ func _Gateway_NamespaceChangeVisibility_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GatewayServer).NamespaceChangeVisibility(ctx, req.(*NamespaceChangeVisibilityReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gateway_NamespaceChangeLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NamespaceChangeLocationReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServer).NamespaceChangeLocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Gateway_NamespaceChangeLocation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServer).NamespaceChangeLocation(ctx, req.(*NamespaceChangeLocationReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1267,6 +1321,24 @@ func _Gateway_ShowGatewayListenersInfo_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gateway_GetGatewayStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGatewayStatsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServer).GetGatewayStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Gateway_GetGatewayStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServer).GetGatewayStats(ctx, req.(*GetGatewayStatsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Gateway_ServiceDesc is the grpc.ServiceDesc for Gateway service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1313,6 +1385,10 @@ var Gateway_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "namespace_change_visibility",
 			Handler:    _Gateway_NamespaceChangeVisibility_Handler,
+		},
+		{
+			MethodName: "namespace_change_location",
+			Handler:    _Gateway_NamespaceChangeLocation_Handler,
 		},
 		{
 			MethodName: "namespace_set_rbd_trash_image",
@@ -1405,6 +1481,10 @@ var Gateway_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "show_gateway_listeners_info",
 			Handler:    _Gateway_ShowGatewayListenersInfo_Handler,
+		},
+		{
+			MethodName: "get_gateway_stats",
+			Handler:    _Gateway_GetGatewayStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
