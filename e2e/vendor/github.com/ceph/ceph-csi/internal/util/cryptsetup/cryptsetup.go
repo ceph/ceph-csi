@@ -56,14 +56,14 @@ const (
 	// LuksStatusCipherIdentifier is the identifier of the cipher section in a luks status.
 	LuksStatusCipherIdentifier = "cipher"
 
-	// LuksStatusKeysizeIdentifier is the identifier of the key size section in a luks status.
-	LuksStatusKeysizeIdentifier = "keysize"
+	// LuksStatusKeySizeIdentifier is the identifier of the key size section in a luks status.
+	LuksStatusKeySizeIdentifier = "keysize"
 
 	// LuksStausInegrityIdentifier is the identifier of the integrity section in a luks status.
 	LuksStausInegrityIdentifier = "integrity"
 
-	// LuksStausInegrityKeysize is the identifier of the integrity key size section in a luks status.
-	LuksStausInegrityKeysize = "integrity keysize"
+	// LuksStausInegrityKeySize is the identifier of the integrity key size section in a luks status.
+	LuksStausInegrityKeySize = "integrity keysize"
 )
 
 // LuksStatus represents some of the information stored in a luks status output.
@@ -73,10 +73,10 @@ type LuksStatus struct {
 	integrityMode *string
 	// if this is set we have to subtract it from the
 	// keysize to get actual key size used for encryption
-	intgrityKeysize *uint
+	intgrityKeySize *uint
 }
 
-type luksKeysizeSetter func(size uint)
+type luksKeySizeSetter func(size uint)
 
 func (l *LuksStatus) SetCipher(input string) error {
 	l.cipher = input
@@ -84,15 +84,15 @@ func (l *LuksStatus) SetCipher(input string) error {
 	return nil
 }
 
-func (l *LuksStatus) SetKeysize(input string) error {
-	return l.parseLuksStatusKeysize(input, func(size uint) {
+func (l *LuksStatus) SetKeySize(input string) error {
+	return l.parseLuksStatusKeySize(input, func(size uint) {
 		l.keysize = size
 	})
 }
 
-func (l *LuksStatus) SetIntegrityKeysize(input string) error {
-	return l.parseLuksStatusKeysize(input, func(size uint) {
-		l.intgrityKeysize = &size
+func (l *LuksStatus) SetIntegrityKeySize(input string) error {
+	return l.parseLuksStatusKeySize(input, func(size uint) {
+		l.intgrityKeySize = &size
 	})
 }
 
@@ -108,7 +108,7 @@ func (l *LuksStatus) SetIntegrityModeFromLuks(input string) error {
 	return nil
 }
 
-func (l *LuksStatus) parseLuksStatusKeysize(input string, setter luksKeysizeSetter) error {
+func (l *LuksStatus) parseLuksStatusKeySize(input string, setter luksKeySizeSetter) error {
 	parts := strings.SplitN(input, " ", 2)
 	if len(parts) < 2 {
 		return fmt.Errorf("could not parse %s", input)
@@ -129,8 +129,7 @@ type validator struct {
 }
 
 func (v *validator) validate(value string) error {
-	_, found := v.allowedValues[value]
-	if !found {
+	if _, ok := v.allowedValues[value]; !ok {
 		return fmt.Errorf("%s not allowed: %s", v.name, value)
 	}
 
@@ -192,22 +191,21 @@ func (e *EncryptionOptions) IntegrityMode() *string {
 	return e.integrityMode
 }
 
-func (e *EncryptionOptions) SetintegrityMode(integrity string) error {
+func (e *EncryptionOptions) SetIntegrityMode(integrity string) error {
 	if err := integrityModeValidator.validate(integrity); err != nil {
-		return fmt.Errorf("cannot set integrity mode'%s': %w", integrity, err)
+		return fmt.Errorf("cannot set integrity mode '%s': %w", integrity, err)
 	}
-	e.integrityMode = new(string)
-	*e.integrityMode = integrity
+	e.integrityMode = &integrity
 
 	return nil
 }
 
-func (e *EncryptionOptions) Keysize() *uint {
+func (e *EncryptionOptions) KeySize() *uint {
 	return e.keysize
 }
 
 func (e *EncryptionOptions) SetKeySize(keysize string) error {
-	parsedVal, err := strconv.ParseUint(keysize, 10, 64)
+	parsedVal, err := strconv.ParseUint(keysize, 10, 32)
 	if err != nil {
 		return fmt.Errorf("invalid keySize value '%s': %w", keysize, err)
 	}
@@ -235,9 +233,9 @@ func (e *EncryptionOptions) SetCipher(cipher string) error {
 //
 // Key Translation Logic:
 //
-//	Keysize: `luksStatus.keysize` reports the total size of key material
+//	KeySize: `luksStatus.keysize` reports the total size of key material
 //	(e.g., data key + integrity key). `EncryptionOption.keysize` only contains the size of the data key.
-//	This function subtracts the `luksStatus.intgrityKeysize`
+//	This function subtracts the `luksStatus.intgrityKeySize`
 //	(if present) from the total `luksStatus.keysize` before comparing.
 //	To only compare the size of the data key of the EncryptionOption and luksStatus.
 func (e *EncryptionOptions) Equal(luksStatus LuksStatus) bool {
@@ -245,17 +243,17 @@ func (e *EncryptionOptions) Equal(luksStatus LuksStatus) bool {
 		return false
 	}
 	if e.keysize != nil {
-		var encryptionKeysize uint
-		if luksStatus.intgrityKeysize != nil {
-			// When integrityKeysize is set it means that a key for encryption and
+		var encryptionKeySize uint
+		if luksStatus.intgrityKeySize != nil {
+			// When integrityKeySize is set it means that a key for encryption and
 			// a separate key for integrity protection is set. A luks status sums them
 			// up in the 'keysize' field here we subtract them
 			// so we can compare the encryption key sizes.
-			encryptionKeysize = luksStatus.keysize - *luksStatus.intgrityKeysize
+			encryptionKeySize = luksStatus.keysize - *luksStatus.intgrityKeySize
 		} else {
-			encryptionKeysize = luksStatus.keysize
+			encryptionKeySize = luksStatus.keysize
 		}
-		if *e.keysize != encryptionKeysize {
+		if *e.keysize != encryptionKeySize {
 			return false
 		}
 	}
@@ -307,8 +305,8 @@ func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *Encry
 		if cipherOptions.IntegrityMode() != nil {
 			args = append(args, "--integrity", *cipherOptions.IntegrityMode())
 		}
-		if cipherOptions.Keysize() != nil {
-			args = append(args, "--key-size", strconv.FormatUint(uint64(*cipherOptions.Keysize()), 10))
+		if cipherOptions.KeySize() != nil {
+			args = append(args, "--key-size", fmt.Sprintf("%d", *cipherOptions.KeySize()))
 		}
 	}
 	args = append(args,

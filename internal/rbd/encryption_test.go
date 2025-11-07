@@ -104,7 +104,7 @@ func TestParseCipherOptions(t *testing.T) {
 		volOptions        map[string]string
 		expectedCipher    *string
 		expectedIntegrity *string
-		expectedKeysize   *uint
+		expectedKeySize   *uint
 		expectedErr       bool
 	}{
 		{
@@ -114,7 +114,7 @@ func TestParseCipherOptions(t *testing.T) {
 			},
 			expectedCipher:    nil,
 			expectedIntegrity: nil,
-			expectedKeysize:   nil,
+			expectedKeySize:   nil,
 			expectedErr:       false,
 		},
 		{
@@ -124,7 +124,7 @@ func TestParseCipherOptions(t *testing.T) {
 			},
 			expectedCipher:    stringp("aes-xts-plain64"),
 			expectedIntegrity: nil,
-			expectedKeysize:   nil,
+			expectedKeySize:   nil,
 			expectedErr:       false,
 		},
 		{
@@ -136,7 +136,7 @@ func TestParseCipherOptions(t *testing.T) {
 			},
 			expectedCipher:    stringp("aes-xts-plain64"),
 			expectedIntegrity: stringp("hmac-sha256"),
-			expectedKeysize:   uintp(512),
+			expectedKeySize:   uintp(512),
 			expectedErr:       false,
 		},
 		{
@@ -149,7 +149,7 @@ func TestParseCipherOptions(t *testing.T) {
 			},
 			expectedCipher:    nil,
 			expectedIntegrity: nil,
-			expectedKeysize:   nil,
+			expectedKeySize:   nil,
 			expectedErr:       true,
 		},
 	}
@@ -159,7 +159,7 @@ func TestParseCipherOptions(t *testing.T) {
 			tt.testName,
 			func(t *testing.T) {
 				t.Parallel()
-				actualEncOptions, actualErr := ParseCipherOptions(
+				actualEncOptions, actualErr := parseCipherOptions(
 					tt.volOptions,
 				)
 				if tt.expectedErr {
@@ -195,7 +195,7 @@ func TestParseCipherOptions(t *testing.T) {
 				actual := actualEncOptions.Cipher()
 				comparePtr(t, "Cipher", tt.expectedCipher, &actual)
 				comparePtr(t, "IntegrityMode", tt.expectedIntegrity, actualEncOptions.IntegrityMode())
-				comparePtr(t, "Key Size", tt.expectedKeysize, actualEncOptions.Keysize())
+				comparePtr(t, "Key Size", tt.expectedKeySize, actualEncOptions.KeySize())
 			},
 		)
 	}

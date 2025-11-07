@@ -130,12 +130,10 @@ parameters:
    # Only applicable for block encryption.
    # encryptionCipher: "aes-xts-plain64"
 
-   # (optional) Instruct the plugin to use a
-   # certain key size to encrypt data.
+   # (optional) Instruct the plugin to use a certain key size to encrypt data.
    # Most ciphers support key sizes of 128 or 256 bit.
-   # By default it is disabled.
-   # If encrypted is false and encryptionCipher is not set
-   # then this flag will be ignored.
+   # By default it is disabled. If encrypted is false or encryptionCipher is
+   # not set then this flag will be ignored.
    # Only applicable for block encryption.
    # A string is expected here, i.e. "128", not 128.
    # encryptionKeySize: "256"

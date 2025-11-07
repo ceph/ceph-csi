@@ -17,6 +17,7 @@ limitations under the License.
 package e2e
 
 import (
+	"bufio"
 	"context"
 	"crypto/md5" //nolint:gosec // hash generation
 	"encoding/base64"
@@ -30,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -904,6 +906,69 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 	err = deletePVCAndApp("", f, pvc, app)
 
 	return err
+}
+
+func getLuksStatus(selector, mountPath string, f *framework.Framework) (*cryptsetup.LuksStatus, error) {
+	opt := metav1.ListOptions{
+		LabelSelector: selector,
+	}
+	cmd := fmt.Sprintf("mappedDev=$(findmnt -n -o SOURCE --target %s);sudo cryptsetup status $mappedDev;",
+		mountPath)
+	stdOut, stdErr, err := execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
+	if err != nil {
+		return nil, fmt.Errorf("failed command to get cryptsetup status from %s %w", mountPath, err)
+	}
+	if stdErr != "" {
+		return nil, fmt.Errorf("failed command to get cryptsetup status from %s %s", mountPath, stdErr)
+	}
+
+	return parseLuksStatus(stdOut)
+}
+
+// PraseLuksStatus parses parts of the output of a "cryptsetup luksStatus <device>" command
+func parseLuksStatus(dump string) (luksStatus *cryptsetup.LuksStatus, err error) {
+	scanner := bufio.NewScanner(strings.NewReader(dump))
+	initLuksStatus := func() {
+		// Only init options when key present
+		if luksStatus == nil {
+			luksStatus = &cryptsetup.LuksStatus{}
+		}
+	}
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmedLine := strings.TrimSpace(line)
+		parts := strings.SplitN(trimmedLine, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		switch key {
+		case cryptsetup.LuksStatusCipherIdentifier:
+			initLuksStatus()
+			err = luksStatus.SetCipher(value)
+
+		case cryptsetup.LuksStatusKeySizeIdentifier:
+			initLuksStatus()
+			err = luksStatus.SetKeySize(value)
+
+		case cryptsetup.LuksStausInegrityIdentifier:
+			initLuksStatus()
+			err = luksStatus.SetIntegrityModeFromLuks(value)
+
+		case cryptsetup.LuksStausInegrityKeySize:
+			initLuksStatus()
+			err = luksStatus.SetIntegrityKeySize(value)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to set luks status attribute %q: %w, %s", key, err, dump)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading luks status: %w", err)
+	}
+
+	return luksStatus, nil
 }
 
 func disableVGSAlphaCLIArg(template string) string {

@@ -294,6 +294,69 @@ func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (
 	return imageData, nil
 }
 
+func getEncryptionOptionsFromPV(pvcNamespace, pvcName string, f *framework.Framework) (options *cryptsetup.EncryptionOptions, err error) {
+	c := f.ClientSet.CoreV1()
+	pvc, err := c.PersistentVolumeClaims(pvcNamespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	if err != nil {
+		return options, fmt.Errorf("failed to get pvc: %w", err)
+	}
+	pv, err := c.PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
+	if err != nil {
+		return options, fmt.Errorf("failed to get pv: %w", err)
+	}
+	if pv.Spec.CSI.VolumeAttributes == nil {
+		return nil, nil
+	}
+	initOptions := func() {
+		// Only init options when key present
+		if options == nil {
+			options = &cryptsetup.EncryptionOptions{}
+		}
+	}
+	for key, value := range pv.Spec.CSI.VolumeAttributes {
+		switch key {
+		case "encryptionCipher":
+			initOptions()
+			err = options.SetCipher(value)
+
+		case "encryptionKeySize":
+			initOptions()
+			err = options.SetKeySize(value)
+
+		case "integrityMode":
+			initOptions()
+			err = options.SetIntegrityMode(value)
+
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to set volume attribute %q: %w", key, err)
+		}
+	}
+
+	return options, nil
+}
+
+func getLuksStatusFromMount(pvName, appName string, f *framework.Framework) (luksStatus *cryptsetup.LuksStatus, err error) {
+	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod %q in namespace %q: %w", appName, f.UniqueName, err)
+	}
+	volumeMountPath := fmt.Sprintf(
+		"/var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount",
+		pod.UID,
+		pvName)
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDeployment.getDaemonsetName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get labels: %w", err)
+	}
+	luksStatus, err = getLuksStatus(selector, volumeMountPath, f)
+	if err != nil {
+		return nil, err
+	}
+
+	return luksStatus, nil
+}
+
 func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string, error) {
 	cmd := fmt.Sprintf("rbd image-meta get %s %s", rbdImageSpec, metaKey)
 	stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
@@ -519,7 +582,26 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 	if err != nil {
 		return err
 	}
-
+	options, err := getEncryptionOptionsFromPV(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return fmt.Errorf("failed to get encryption options for pv %q: %w",
+			imageData.pvName, err)
+	}
+	if options != nil {
+		luksStatus, err := getLuksStatusFromMount(imageData.pvName, app.Name, f)
+		if err != nil {
+			return fmt.Errorf("failed to get luks status for pv %q (app: %s): %w",
+				imageData.pvName, app.Name, err)
+		}
+		if luksStatus == nil {
+			return fmt.Errorf("state mismatch for pv %q: encryption options were set, but the volume is not encrypted (luks status is nil)",
+				imageData.pvName)
+		}
+		if !options.Equal(*luksStatus) {
+			return fmt.Errorf("encryption mismatch for pv %q: options do not match on-disk status. Desired: %+v, Actual: %+v",
+				imageData.pvName, *options, *luksStatus)
+		}
+	}
 	if kms != noKMS && kms.canGetPassphrase() {
 		// check new passphrase created
 		_, stdErr := kms.getPassphrase(f, imageData.csiVolumeHandle)

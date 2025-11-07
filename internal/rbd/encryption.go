@@ -355,7 +355,7 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 	case crypto.EncryptionTypeBlock:
 		var encryptOps *cryptsetup.EncryptionOptions
 		// encryptOps is nil if no relevant options in volOptions
-		if encryptOps, err = ParseCipherOptions(volOptions); err != nil {
+		if encryptOps, err = parseCipherOptions(volOptions); err != nil {
 			return fmt.Errorf("invalid encryption configuration: %w", err)
 		}
 		err = ri.configureBlockEncryption(kmsID, credentials, encryptOps)
@@ -374,27 +374,23 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 	return nil
 }
 
-func ParseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOptions, error) {
+func parseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOptions, error) {
 	cipher, cipherOk := volOptions["encryptionCipher"]
-	keysize, keysizeOk := volOptions["encryptionKeySize"]
-	integrity, integrityOk := volOptions["integrityMode"]
 	if !cipherOk {
 		return nil, nil
 	}
 	opts := &cryptsetup.EncryptionOptions{}
-	if cipherOk {
-		if err := opts.SetCipher(cipher); err != nil {
-			return nil, fmt.Errorf("failed to set cipher: %w", err)
-		}
+	if err := opts.SetCipher(cipher); err != nil {
+		return nil, fmt.Errorf("failed to set cipher: %w", err)
 	}
 	// when cipher is not set keysize is not used
-	if cipherOk && keysizeOk {
+	if keysize, ok := volOptions["encryptionKeySize"]; ok {
 		if err := opts.SetKeySize(keysize); err != nil {
 			return nil, fmt.Errorf("failed to set key size: %w", err)
 		}
 	}
-	if cipherOk && integrityOk {
-		if err := opts.SetintegrityMode(integrity); err != nil {
+	if integrity, ok := volOptions["integrityMode"]; ok {
+		if err := opts.SetIntegrityMode(integrity); err != nil {
 			return nil, fmt.Errorf("failed to set integrity mode: %w", err)
 		}
 	}
