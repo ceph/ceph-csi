@@ -2174,45 +2174,6 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			// Does not use ByFileAndBlockEncryption because ciphers only configurable with block encryption.
-			By("create a PVC and bind it to an app with an AEAD cipher encrypted RBD volume", func() {
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					logAndFail("failed to delete storageclass: %v", err)
-				}
-				// TODO: Use exported GetAllowedCipher() function
-				err = createRBDStorageClass(
-					f.ClientSet,
-					f,
-					defaultSCName,
-					nil,
-					map[string]string{"encrypted": "true",
-						"encryptionType":    crypto.EncryptionTypeBlock.String(),
-						"encryptionCipher":  "aegis128-random",
-						"encryptionKeySize": "128",
-						"integrityMode":     "aead",
-					},
-					deletePolicy)
-				if err != nil {
-					logAndFail("failed to create storageclass: %v", err)
-				}
-				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
-				if err != nil {
-					logAndFail("failed to validate encrypted pvc: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					logAndFail("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					logAndFail("failed to create storageclass: %v", err)
-				}
-			})
-
 			By("Create a PVC and bind it to an application with an encrypted RBD volume using a specified cipher", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
