@@ -52,10 +52,79 @@ const (
 	// `--luks2-metadata-size` and `--luks2-keyslots-size` options
 	// during luksFormat, So the header size will be default 16MiB.
 	DefaultLuks2HeaderSize = 16 * helpers.MiB
+
+	// LuksStatusCipherIdentifier is the identifier of the cipher section in a luks status.
+	LuksStatusCipherIdentifier = "cipher"
+
+	// LuksStatusKeysizeIdentifier is the identifier of the key size section in a luks status.
+	LuksStatusKeysizeIdentifier = "keysize"
+
+	// LuksStausInegrityIdentifier is the identifier of the integrity section in a luks status.
+	LuksStausInegrityIdentifier = "integrity"
+
+	// LuksStausInegrityKeysize is the identifier of the integrity key size section in a luks status.
+	LuksStausInegrityKeysize = "integrity keysize"
 )
 
+// LuksStatus represents some of the information stored in a luks status output.
+type LuksStatus struct {
+	cipher        string
+	keysize       uint
+	integrityMode *string
+	// if this is set we have to subtract it from the
+	// keysize to get actual key size used for encryption
+	intgrityKeysize *uint
+}
+
+type luksKeysizeSetter func(size uint)
+
+func (l *LuksStatus) SetCipher(input string) error {
+	l.cipher = input
+
+	return nil
+}
+
+func (l *LuksStatus) SetKeysize(input string) error {
+	return l.parseLuksStatusKeysize(input, func(size uint) {
+		l.keysize = size
+	})
+}
+
+func (l *LuksStatus) SetIntegrityKeysize(input string) error {
+	return l.parseLuksStatusKeysize(input, func(size uint) {
+		l.intgrityKeysize = &size
+	})
+}
+
+// SetIntegrityModeFromLuks translates the raw integrity mode string from a luksDump
+// (e.g., "hmac(sha256)") into its equivalent cryptsetup identifier (e.g., "hmac-sha256").
+func (l *LuksStatus) SetIntegrityModeFromLuks(input string) error {
+	result, err := integrityModeValidator.findCryptsetupMode(input)
+	if err != nil {
+		return fmt.Errorf("could not parse Integrity mode, %w", err)
+	}
+	l.integrityMode = &result
+
+	return nil
+}
+
+func (l *LuksStatus) parseLuksStatusKeysize(input string, setter luksKeysizeSetter) error {
+	parts := strings.SplitN(input, " ", 2)
+	if len(parts) < 2 {
+		return fmt.Errorf("could not parse %s", input)
+	}
+	sizeString := parts[0]
+	size, err := strconv.Atoi(sizeString)
+	if err != nil {
+		return fmt.Errorf("could not parse number from %q: %w", sizeString, err)
+	}
+	setter(uint(size))
+
+	return nil
+}
+
 type validator struct {
-	allowedValues map[string]struct{}
+	allowedValues map[string]string
 	name          string
 }
 
@@ -68,23 +137,47 @@ func (v *validator) validate(value string) error {
 	return nil
 }
 
+func (v *validator) findCryptsetupMode(value string) (string, error) {
+	for crypsetupMode, luksStatusMode := range v.allowedValues {
+		if value == luksStatusMode {
+			return crypsetupMode, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find luksStatus equivalent for %s", value)
+}
+
+// GetAllowedCiphers gives all the ciphers that can be set.
+func GetAllowedCiphers() []string {
+	c := make([]string, 0, len(cipherValidator.allowedValues))
+	for k := range cipherValidator.allowedValues {
+		c = append(c, k)
+	}
+
+	return c
+}
+
 var (
 	cipherValidator = &validator{
 		name: "cipher",
-		allowedValues: map[string]struct{}{
-			"aes-xts-plain64":     {},
-			"serpent-xts-plain64": {},
-			"twofish-xts-plain64": {},
-			"aegis128-random":     {},
+		allowedValues: map[string]string{
+			"aes-xts-plain64":     "",
+			"serpent-xts-plain64": "",
+			"twofish-xts-plain64": "",
+			"aegis128-random":     "",
 		},
 	}
 
 	integrityModeValidator = &validator{
 		name: "integrity mode",
-		allowedValues: map[string]struct{}{
-			"hmac-sha256": {},
-			"hmac-sha512": {},
-			"aead":        {},
+		// Problem: The strings that identify integrity modes are different
+		// in a luksStatus and the cryptsetup input.
+		// In this map Keys represent the cryptsetup input and values represent the
+		// LuksStatus equivalent.
+		allowedValues: map[string]string{
+			"hmac-sha256": "hmac(sha256)",
+			"hmac-sha512": "hmac(sha512)",
+			"aead":        "aead",
 		},
 	}
 )
@@ -135,6 +228,44 @@ func (e *EncryptionOptions) SetCipher(cipher string) error {
 	e.cipher = cipher
 
 	return nil
+}
+
+// Equal compares the desired EncryptionOptions with actual LuksStatus.
+// It translates between the logic used by crypsetup and luks status.
+//
+// Key Translation Logic:
+//
+//	Keysize: `luksStatus.keysize` reports the total size of key material
+//	(e.g., data key + integrity key). `EncryptionOption.keysize` only contains the size of the data key.
+//	This function subtracts the `luksStatus.intgrityKeysize`
+//	(if present) from the total `luksStatus.keysize` before comparing.
+//	To only compare the size of the data key of the EncryptionOption and luksStatus.
+func (e *EncryptionOptions) Equal(luksStatus LuksStatus) bool {
+	if e.cipher != luksStatus.cipher {
+		return false
+	}
+	if e.keysize != nil {
+		var encryptionKeysize uint
+		if luksStatus.intgrityKeysize != nil {
+			// When integrityKeysize is set it means that a key for encryption and
+			// a separate key for integrity protection is set. A luks status sums them
+			// up in the 'keysize' field here we subtract them
+			// so we can compare the encryption key sizes.
+			encryptionKeysize = luksStatus.keysize - *luksStatus.intgrityKeysize
+		} else {
+			encryptionKeysize = luksStatus.keysize
+		}
+		if *e.keysize != encryptionKeysize {
+			return false
+		}
+	}
+	if e.integrityMode != nil {
+		if (luksStatus.integrityMode == nil) || (*e.integrityMode != *luksStatus.integrityMode) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // LuksWrapper is a struct that provides a context-aware wrapper around cryptsetup commands.
