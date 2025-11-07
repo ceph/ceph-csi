@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -65,4 +66,14 @@ func RunsOnKubernetes() bool {
 	kubernetesServiceHost := os.Getenv("KUBERNETES_SERVICE_HOST")
 
 	return kubernetesServiceHost != ""
+}
+
+// IgnoreNotFound returns nil if the error indicates that the resource was not found.
+// Otherwise, it returns the original error.
+func IgnoreNotFound(err error) error {
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+
+	return err
 }

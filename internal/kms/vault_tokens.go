@@ -27,8 +27,6 @@ import (
 	"github.com/hashicorp/vault/api"
 	loss "github.com/libopenstorage/secrets"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
@@ -190,8 +188,6 @@ Example JSON structure in the KMS config is,
 type vaultTenantConnection struct {
 	vaultConnection
 	integratedDEK
-
-	client *kubernetes.Clientset
 
 	// Tenant is the name of the owner of the volume
 	Tenant string
@@ -497,18 +493,6 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 	return nil
 }
 
-func (vtc *vaultTenantConnection) getK8sClient() (*kubernetes.Clientset, error) {
-	if vtc.client == nil {
-		client, err := k8s.NewK8sClient()
-		if err != nil {
-			return nil, err
-		}
-		vtc.client = client
-	}
-
-	return vtc.client, nil
-}
-
 func (kms *vaultTokensKMS) getToken() (string, error) {
 	secretData, err := k8s.GetSecret(kms.TokenName, kms.Tenant)
 	if err != nil {
@@ -566,19 +550,13 @@ func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]interface{}, e
 	}
 
 	// fetch the ConfigMap from the tenants namespace
-	c, err := vtc.getK8sClient()
-	if err != nil {
+	cm, err := k8s.GetConfigMap(vtc.Tenant, vtc.ConfigName)
+	if k8s.IgnoreNotFound(err) != nil {
 		return nil, err
 	}
-
-	cm, err := c.CoreV1().ConfigMaps(vtc.Tenant).Get(context.TODO(),
-		vtc.ConfigName, metav1.GetOptions{})
-	if apierrs.IsNotFound(err) {
+	if cm == nil {
 		// the tenant did not (re)configure any options
 		return nil, nil
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to get config (%s) for tenant (%s): %w",
-			vtc.ConfigName, vtc.Tenant, err)
 	}
 
 	// create a new map with config options, but only include the options

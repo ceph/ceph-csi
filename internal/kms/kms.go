@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"os"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
@@ -159,14 +157,7 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 	}
 	cmName := getKMSConfigMapName()
 
-	c, err := k8s.NewK8sClient()
-	if err != nil {
-		return nil, fmt.Errorf("can not get ConfigMap %q, failed to "+
-			"connect to Kubernetes: %w", cmName, err)
-	}
-
-	cm, err := c.CoreV1().ConfigMaps(ns).Get(context.Background(),
-		cmName, metav1.GetOptions{})
+	cm, err := k8s.GetConfigMap(ns, cmName)
 	if err != nil {
 		return nil, err
 	}

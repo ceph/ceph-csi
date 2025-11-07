@@ -26,12 +26,9 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
 
 	"github.com/ceph/ceph-csi/internal/util"
-	kubeclient "github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -60,7 +57,7 @@ func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability
 func getSecret(ns, name string) (map[string]string, error) {
 	deviceSecret := make(map[string]string)
 
-	secretData, err := kubeclient.GetSecret(name, ns)
+	secretData, err := k8s.GetSecret(name, ns)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", ns, name, err)
 	}
@@ -75,36 +72,19 @@ func getSecret(ns, name string) (map[string]string, error) {
 // formatStagingTargetPath returns the path where the volume is expected to be
 // mounted (or the block-device is attached/mapped). Different Kubernetes
 // version use different paths.
-func formatStagingTargetPath(c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) (string, error) {
+func formatStagingTargetPath(pv *v1.PersistentVolume, stagingPath string) string {
 	// Kubernetes 1.24+ uses a hash of the volume-id in the path name
 	unique := sha256.Sum256([]byte(pv.Spec.CSI.VolumeHandle))
 	targetPath := filepath.Join(stagingPath, pv.Spec.CSI.Driver, hex.EncodeToString(unique[:]), "globalmount")
 
-	major, minor, err := kubeclient.GetServerVersion(c)
-	if err != nil {
-		return "", fmt.Errorf("failed to get server version: %w", err)
-	}
-
-	// 'encode' major/minor in a single integer
-	legacyVersion := 1024 // Kubernetes 1.24 => 1 * 1000 + 24
-	if ((major * 1000) + minor) < (legacyVersion) {
-		// path in Kubernetes < 1.24
-		targetPath = filepath.Join(stagingPath, "pv", pv.Name, "globalmount")
-	}
-
-	return targetPath, nil
+	return targetPath
 }
 
-func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) error {
+func (ns *NodeServer) callNodeStageVolume(pv *v1.PersistentVolume, stagingPath string) error {
 	publishContext := make(map[string]string)
 
 	volID := pv.Spec.PersistentVolumeSource.CSI.VolumeHandle
-	stagingParentPath, err := formatStagingTargetPath(c, pv, stagingPath)
-	if err != nil {
-		log.ErrorLogMsg("formatStagingTargetPath failed volID: %s, err: %v", volID, err)
-
-		return err
-	}
+	stagingParentPath := formatStagingTargetPath(pv, stagingPath)
 
 	log.DefaultLog("sending nodeStageVolume for volID: %s, stagingPath: %s",
 		volID, stagingParentPath)
@@ -158,15 +138,8 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 }
 
 // RunVolumeHealer heal the volumes attached on a node.
-func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
-	c, err := kubeclient.NewK8sClient()
-	if err != nil {
-		log.ErrorLogMsg("failed to connect to Kubernetes: %v", err)
-
-		return err
-	}
-
-	val, err := c.StorageV1().VolumeAttachments().List(context.TODO(), metav1.ListOptions{})
+func (ns *NodeServer) RunVolumeHealer(conf *util.Config) error {
+	val, err := k8s.GetVolumeAttachmentList()
 	if err != nil {
 		log.ErrorLogMsg("list volumeAttachments failed, err: %v", err)
 
@@ -181,17 +154,15 @@ func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
 			continue
 		}
 		pvName := *val.Items[i].Spec.Source.PersistentVolumeName
-		pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{})
-		if err != nil {
-			// skip if volume doesn't exist
-			if !apierrors.IsNotFound(err) {
-				log.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
-			}
+		pv, err := k8s.GetPersistentVolume(pvName)
+		if k8s.IgnoreNotFound(err) != nil {
+			log.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
 
 			continue
 		}
+
 		// skip this volumeattachment if its pv is not bound or marked for deletion
-		if pv.Status.Phase != v1.VolumeBound || pv.DeletionTimestamp != nil {
+		if pv == nil || pv.Status.Phase != v1.VolumeBound || pv.DeletionTimestamp != nil {
 			continue
 		}
 
@@ -204,26 +175,24 @@ func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
 		}
 
 		// ensure that the volume is still in attached state
-		va, err := c.StorageV1().VolumeAttachments().Get(context.TODO(), val.Items[i].Name, metav1.GetOptions{})
-		if err != nil {
-			// skip if volume attachment doesn't exist
-			if !apierrors.IsNotFound(err) {
-				log.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
-					val.Items[i].Name, pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
-			}
+		va, err := k8s.GetVolumeAttachment(val.Items[i].Name)
+		if k8s.IgnoreNotFound(err) != nil {
+			log.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
+				val.Items[i].Name, pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
 
 			continue
 		}
-		if !va.Status.Attached {
+
+		if va == nil || !va.Status.Attached {
 			continue
 		}
 
 		wg.Add(1)
 		// run multiple NodeStageVolume calls concurrently
-		go func(wg *sync.WaitGroup, ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) {
+		go func(wg *sync.WaitGroup, ns *NodeServer, pv *v1.PersistentVolume, stagingPath string) {
 			defer wg.Done()
-			channel <- callNodeStageVolume(ns, c, pv, stagingPath)
-		}(&wg, ns, c, pv, conf.StagingPath)
+			channel <- ns.callNodeStageVolume(pv, stagingPath)
+		}(&wg, ns, pv, conf.StagingPath)
 	}
 
 	go func() {

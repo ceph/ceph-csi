@@ -212,7 +212,7 @@ func (r *rbdDriver) Run(conf *util.Config) {
 	if conf.IsNodeServer && k8s.RunsOnKubernetes() {
 		go func() {
 			// TODO: move the healer to csi-addons
-			err := rbd.RunVolumeHealer(r.ns, conf)
+			err := r.ns.RunVolumeHealer(conf)
 			if err != nil {
 				log.ErrorLogMsg("healer had failures, err %v\n", err)
 			}

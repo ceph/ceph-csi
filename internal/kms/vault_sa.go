@@ -17,16 +17,12 @@ limitations under the License.
 package kms
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/libopenstorage/secrets/vault"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
@@ -262,45 +258,20 @@ func (kms *vaultTenantSA) setServiceAccountName(config map[string]interface{}) e
 	return nil
 }
 
-// getServiceAccount returns the Tenants ServiceAccount with the name
-// configured in the vaultTenantSA.
-func (kms *vaultTenantSA) getServiceAccount() (*corev1.ServiceAccount, error) {
-	c, err := kms.getK8sClient()
-	if err != nil {
-		return nil, fmt.Errorf("can not get ServiceAccount %s/%s, "+
-			"failed to connect to Kubernetes: %w", kms.Tenant, kms.tenantSAName, err)
-	}
-
-	sa, err := c.CoreV1().ServiceAccounts(kms.Tenant).Get(context.TODO(),
-		kms.tenantSAName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ServiceAccount %s/%s: %w", kms.Tenant, kms.tenantSAName, err)
-	}
-
-	return sa, nil
-}
-
 // getToken looks up the ServiceAccount and the Secrets linked from it. When it
 // finds the Secret that contains the `token` field, the contents is read and
 // returned.
 func (kms *vaultTenantSA) getToken() (string, error) {
-	sa, err := kms.getServiceAccount()
+	sa, err := k8s.GetServiceAccount(kms.Tenant, kms.tenantSAName)
 	if err != nil {
 		return "", err
-	}
-
-	c, err := kms.getK8sClient()
-	if err != nil {
-		return "", fmt.Errorf("can not get ServiceAccount %s/%s, failed "+
-			"to connect to Kubernetes: %w", kms.Tenant,
-			kms.tenantSAName, err)
 	}
 
 	// From Kubernetes v1.24+, secret for service account tokens are not
 	// automatically created. Trying to fetch tokens from service account secret references will fail
 	// refer: https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.24.md \
 	// #no-really-you-must-read-this-before-you-upgrade-1.
-	token, err := kms.createToken(sa, c)
+	token, err := kms.createToken(sa)
 	if err == nil {
 		return token, nil
 	}
@@ -343,16 +314,10 @@ func (kms *vaultTenantSA) getTokenPath() (string, error) {
 }
 
 // createToken creates required service account token using the TokenRequest API.
-func (kms *vaultTenantSA) createToken(sa *corev1.ServiceAccount, client *kubernetes.Clientset) (string, error) {
-	tokenRequest := &authenticationv1.TokenRequest{}
-	token, err := client.CoreV1().ServiceAccounts(kms.Tenant).CreateToken(
-		context.TODO(),
-		sa.Name,
-		tokenRequest,
-		metav1.CreateOptions{},
-	)
+func (kms *vaultTenantSA) createToken(sa *corev1.ServiceAccount) (string, error) {
+	token, err := k8s.CreateServiceAccountToken(kms.Tenant, sa.Name)
 	if err != nil {
-		return "", fmt.Errorf("failed to create token for service account %s/%s: %w", kms.Tenant, sa.Name, err)
+		return "", err
 	}
 
 	return token.Status.Token, nil
