@@ -91,14 +91,23 @@ func EscapeString(str string) string {
 	return sb.String()
 }
 
-// We get the device name via the device number rather than use the mount source
-// field directly.  This is necessary to handle a rootfs that was mounted via
-// the kernel command line, since mountinfo always shows /dev/root for that.
-// This assumes that the device nodes are in the standard location.
-func getDeviceName(num DeviceNumber) string {
+func getDeviceName(num DeviceNumber, mountSource string) string {
+	// When possible, get the device name via the device number rather than
+	// use the mount source field directly.  This is necessary to handle a
+	// rootfs that was mounted via the kernel command line, since mountinfo
+	// always shows /dev/root for that.
 	linkPath := fmt.Sprintf("/sys/dev/block/%v", num)
 	if target, err := os.Readlink(linkPath); err == nil {
-		return fmt.Sprintf("/dev/%s", filepath.Base(target))
+		derivedDeviceName := fmt.Sprintf("/dev/%s", filepath.Base(target))
+		if _, err := os.Stat(derivedDeviceName); err == nil {
+			return derivedDeviceName
+		}
+	}
+	// Sysfs is not mounted or is incomplete, or the device nodes are not in
+	// the standard location.  Fall back to using the mount source field if
+	// it looks like a path.
+	if strings.HasPrefix(mountSource, "/") {
+		return mountSource
 	}
 	return ""
 }
@@ -153,7 +162,7 @@ func parseMountInfoLine(line string) *Mount {
 		}
 	}
 	mnt.FilesystemType = unescapeString(fields[n+1])
-	mnt.Device = getDeviceName(mnt.DeviceNumber)
+	mnt.Device = getDeviceName(mnt.DeviceNumber, unescapeString(fields[n+2]))
 	return mnt
 }
 
@@ -339,7 +348,7 @@ func loadMountInfo() error {
 
 func filesystemLacksMainMountError(deviceNumber DeviceNumber) error {
 	return errors.Errorf("Device %q (%v) lacks a \"main\" mountpoint in the current mount namespace, so it's ambiguous where to store the fscrypt metadata.",
-		getDeviceName(deviceNumber), deviceNumber)
+		getDeviceName(deviceNumber, ""), deviceNumber)
 }
 
 // AllFilesystems lists all mounted filesystems ordered by path to their "main"
