@@ -282,7 +282,7 @@ func (cs *Server) ControllerUnpublishVolume(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get NVMe-oF metadata for volumeID %s: %v", volumeID, err)
 
-		return nil, status.Errorf(codes.Internal, "failed to get NVMe-oF metadata: %v", err)
+		return nil, nvmeoferrors.ToGRPCError(err)
 	}
 
 	// Unpublish NVMe-oF resources
@@ -799,7 +799,8 @@ func (cs *Server) getNVMeoFMetadata(
 	// Get RBD volume
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find volume with ID %q: %w", volumeID, err)
+		return nil, fmt.Errorf("%w: failed to find volume with ID %q: %w",
+			nvmeoferrors.ErrMetadataNotFound, volumeID, err)
 	}
 	defer rbdVol.Destroy(ctx)
 
@@ -820,10 +821,12 @@ func (cs *Server) getNVMeoFMetadata(
 	for _, key := range requiredKeys {
 		value, err := rbdVol.GetMetadata(key)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get %s: %w", key, err)
+			return nil, fmt.Errorf("%w: failed to get %s: %w",
+				nvmeoferrors.ErrMetadataNotFound, key, err)
 		}
 		if value == "" {
-			return nil, fmt.Errorf("metadata %s is empty", key)
+			return nil, fmt.Errorf("%w: metadata %s is empty",
+				nvmeoferrors.ErrMetadataNotFound, key)
 		}
 		metadata[key] = value
 	}
@@ -831,18 +834,21 @@ func (cs *Server) getNVMeoFMetadata(
 	// Parse namespace ID
 	nsid, err := strconv.ParseUint(metadata[toRBDMetadataKey(vcNamespaceID)], 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("invalid namespace ID: %w", err)
+		return nil, fmt.Errorf("%w: invalid namespace ID: %w",
+			nvmeoferrors.ErrMetadataCorrupted, err)
 	}
 
 	gatewayPort, err := strconv.ParseUint(metadata[toRBDMetadataKey(vcGatewayPort)], 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("invalid gateway port: %w", err)
+		return nil, fmt.Errorf("%w: invalid gateway port: %w",
+			nvmeoferrors.ErrMetadataCorrupted, err)
 	}
 
 	// Parse listeners from JSON
 	var listeners []nvmeof.ListenerDetails
 	if err := json.Unmarshal([]byte(metadata[toRBDMetadataKey(vcListeners)]), &listeners); err != nil {
-		return nil, fmt.Errorf("failed to parse listeners JSON: %w", err)
+		return nil, fmt.Errorf("%w: failed to parse listeners JSON: %w",
+			nvmeoferrors.ErrMetadataCorrupted, err)
 	}
 
 	// Construct NVMe-oF volume data
