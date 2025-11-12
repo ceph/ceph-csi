@@ -233,6 +233,10 @@ func VolumeMapper(volumeID string) (string, string) {
 // EncryptVolume encrypts provided device with LUKS.
 func EncryptVolume(ctx context.Context, devicePath, passphrase string, cipher *cryptsetup.EncryptionOptions) error {
 	log.DebugLog(ctx, "Encrypting device %q	 with LUKS", devicePath)
+	if cipher != nil {
+		recommendation := cryptsetup.GetRecommendation(*cipher)
+		log.UsefulLog(ctx, "current encryption configuration is: %v", recommendation)
+	}
 	_, stdErr, err := luks.Format(devicePath, passphrase, cipher)
 	if err != nil || stdErr != "" {
 		log.ErrorLog(ctx, "failed to encrypt device %q with LUKS (%v): %s", devicePath, err, stdErr)

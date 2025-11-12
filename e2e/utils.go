@@ -950,15 +950,23 @@ func parseLuksStatus(dump string) (luksStatus *cryptsetup.LuksStatus, err error)
 
 		case cryptsetup.LuksStatusKeySizeIdentifier:
 			initLuksStatus()
-			err = luksStatus.SetKeySize(value)
-
-		case cryptsetup.LuksStausInegrityIdentifier:
+			size, errs := parseLuksStatusKeySize(value)
+			if errs != nil {
+				return nil, fmt.Errorf("failed luks status key size %w", err)
+			}
+			err = luksStatus.SetKeySize(size)
+			// typo in luksStaus
+		case cryptsetup.LuksStatusIntegrityIdentifier:
 			initLuksStatus()
 			err = luksStatus.SetIntegrityModeFromLuks(value)
 
-		case cryptsetup.LuksStausInegrityKeySize:
+		case cryptsetup.LuksStatusIntegrityKeySize:
 			initLuksStatus()
-			err = luksStatus.SetIntegrityKeySize(value)
+			size, errs := parseLuksStatusKeySize(value)
+			if errs != nil {
+				return nil, fmt.Errorf("failed luks status integrity key size %w", err)
+			}
+			err = luksStatus.SetIntegrityKeySize(size)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to set luks status attribute %q: %w, %s", key, err, dump)
@@ -969,6 +977,15 @@ func parseLuksStatus(dump string) (luksStatus *cryptsetup.LuksStatus, err error)
 	}
 
 	return luksStatus, nil
+}
+
+func parseLuksStatusKeySize(input string) (string, error) {
+	parts := strings.SplitN(input, " ", 2)
+	if len(parts) < 2 {
+		return "", fmt.Errorf("could not parse %s", input)
+	}
+	sizeString := parts[0]
+	return sizeString, nil
 }
 
 func disableVGSAlphaCLIArg(template string) string {

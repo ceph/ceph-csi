@@ -597,7 +597,11 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 			return fmt.Errorf("state mismatch for pv %q: encryption options were set, but the volume is not encrypted (luks status is nil)",
 				imageData.pvName)
 		}
-		if !options.Equal(*luksStatus) {
+		isEqual, err := options.Equal(*luksStatus)
+		if err != nil {
+			return fmt.Errorf("comparison between EncryptionOptions %+v and luks status %+v failed", options, *luksStatus)
+		}
+		if !isEqual {
 			return fmt.Errorf("encryption mismatch for pv %q: options do not match on-disk status. Desired: %+v, Actual: %+v",
 				imageData.pvName, *options, *luksStatus)
 		}
