@@ -1,5 +1,8 @@
 ---
 ShortName: cephcsi-rbd-test
+Timeouts:
+  ClaimProvision: 10m
+
 StorageClass:
   FromExistingClassName: k8s-storage-e2e-rbd
   # FromFile: sc-rbd.yaml
