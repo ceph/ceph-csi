@@ -21,7 +21,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta1"
+	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
@@ -88,17 +88,17 @@ func (c *cephFSVolumeGroupSnapshot) ValidateResourcesForCreate(vgs *groupsnapapi
 		return fmt.Errorf("failed to get VolumeGroupSnapshotContent: %w", err)
 	}
 
-	sourcePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
+	sourcePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
 	// we are creating clones for each source PVC
-	clonePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
+	clonePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
 	totalPVCCount := sourcePVCCount + clonePVCCount
 	validateSubvolumeCount(c.framework, totalPVCCount, fileSystemName, subvolumegroup)
 
 	// we are creating 1 snapshot for each source PVC, validate the snapshot count
-	for _, snapshot := range vgsc.Status.VolumeSnapshotHandlePairList {
+	for _, snapshot := range vgsc.Status.VolumeSnapshotInfoList {
 		volumeHandle := snapshot.VolumeHandle
 		volumeSnapshotName := fmt.Sprintf("snapshot-%x", sha256.Sum256([]byte(
-			string(vgsc.UID)+volumeHandle)))
+			string(vgs.UID)+volumeHandle)))
 		volumeSnapshot, err := c.snapClient.VolumeSnapshots(vgs.Namespace).Get(ctx, volumeSnapshotName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get VolumeSnapshot: %w", err)
@@ -192,8 +192,8 @@ func (rvgs *rbdVolumeGroupSnapshot) ValidateResourcesForCreate(vgs *groupsnapapi
 		return fmt.Errorf("failed to get VolumeGroupSnapshotContent: %w", err)
 	}
 
-	sourcePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
-	clonePVCCount := len(vgsc.Status.VolumeSnapshotHandlePairList)
+	sourcePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
+	clonePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
 	totalPVCCount := sourcePVCCount + clonePVCCount
 
 	validateOmapCount(rvgs.framework, totalPVCCount, rbdType, defaultRBDPool, volumesType)

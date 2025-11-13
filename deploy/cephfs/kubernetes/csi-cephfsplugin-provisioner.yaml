@@ -93,7 +93,7 @@ spec:
             - name: ceph-csi-encryption-kms-config
               mountPath: /etc/ceph-csi-encryption-kms-config/
         - name: csi-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
+          image: registry.k8s.io/sig-storage/csi-provisioner:v6.0.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
@@ -120,7 +120,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-attacher
-          image: registry.k8s.io/sig-storage/csi-attacher:v4.8.0
+          image: registry.k8s.io/sig-storage/csi-attacher:v4.10.0
           args:
             - "--v=1"
             - "--csi-address=$(ADDRESS)"
@@ -143,7 +143,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-resizer
-          image: registry.k8s.io/sig-storage/csi-resizer:v1.13.1
+          image: registry.k8s.io/sig-storage/csi-resizer:v2.0.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
@@ -169,7 +169,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.2.0
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.4.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"

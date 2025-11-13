@@ -164,6 +164,7 @@ spec:
             - "--default-fstype={{ .Values.provisioner.defaultFSType }}"
             - "--extra-create-metadata=true"
             - "--feature-gates=HonorPVReclaimPolicy=true"
+            - "--automaxprocs=true"
             - "--prevent-volume-mode-conversion=true"
             - "--immediate-topology=false"
 {{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}
@@ -202,6 +203,7 @@ spec:
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
+            - "--automaxprocs=true"
 {{- if and .Values.provisioner.resizer.args .Values.provisioner.resizer.args.httpEndpointPort }}
             - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.resizer.args.httpEndpointPort }}"
 {{- end }}
@@ -236,6 +238,7 @@ spec:
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
             - "--extra-create-metadata=true"
+            - "--automaxprocs=true"
             - "--feature-gates=CSIVolumeGroupSnapshot={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
 {{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
             - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.snapshotter.args.httpEndpointPort }}"
@@ -266,6 +269,7 @@ spec:
           image: "{{ .Values.provisioner.attacher.image.repository }}:{{ .Values.provisioner.attacher.image.tag }}"
           imagePullPolicy: {{ .Values.provisioner.attacher.image.pullPolicy }}
           args:
+            - "--automaxprocs=true"
             - "--v={{ .Values.sidecarLogLevel }}"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election=true"

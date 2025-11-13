@@ -1,5 +1,8 @@
 ---
 ShortName: cephcsi-cephfs-test
+Timeouts:
+  ClaimProvision: 10m
+
 StorageClass:
   FromExistingClassName: k8s-storage-e2e-cephfs
   # FromFile: sc-cephfs.yaml
