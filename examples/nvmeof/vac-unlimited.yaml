@@ -1,0 +1,13 @@
+---
+# apiVersion: storage.k8s.io/v1beta1 for k8s version 1.33
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: unlimited
+driverName: nvmeof.csi.ceph.com
+parameters:
+  # Set all limits to 0 to indicate unlimited
+  rwIosPerSecond: "0"
+  rwMbytesPerSecond: "0"
+  rmBbytesPerSecond: "0"
+  wmBbytesPerSecond: "0"
