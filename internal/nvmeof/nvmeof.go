@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 
+	nvmeoferrors "github.com/ceph/ceph-csi/internal/nvmeof/errors"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -164,6 +165,43 @@ func (gw *GatewayRpcClient) DeleteNamespace(ctx context.Context, subsystemNQN st
 	}
 
 	return fmt.Errorf("gateway NamespaceDelete returned error (status=%d): %s",
+		status.GetStatus(), status.GetErrorMessage())
+}
+
+// SetQoSLimitsForNamespace sets QoS limits on a namespace.
+func (gw *GatewayRpcClient) SetQoSLimitsForNamespace(
+	ctx context.Context,
+	subsystemNQN string,
+	namespaceID uint32,
+	qos NVMeoFQosVolume,
+) error {
+	log.DebugLog(ctx, "Setting QoS limits on namespace %d in subsystem %s", namespaceID, subsystemNQN)
+
+	req := &pb.NamespaceSetQosReq{
+		SubsystemNqn:      subsystemNQN,
+		Nsid:              namespaceID,
+		RwIosPerSecond:    qos.RwIosPerSecond,
+		RwMbytesPerSecond: qos.RwMbytesPerSecond,
+		RMbytesPerSecond:  qos.RMbytesPerSecond,
+		WMbytesPerSecond:  qos.WMbytesPerSecond,
+	}
+
+	status, err := gw.client.NamespaceSetQosLimits(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to set QoS limits on namespace %d: %w", namespaceID, err)
+	}
+
+	if status.GetStatus() == 0 {
+		log.DebugLog(ctx, "QoS limits set successfully on namespace %d", namespaceID)
+
+		return nil
+	}
+
+	if status.GetStatus() == int32(syscall.EEXIST) { // EEXIST
+		return fmt.Errorf("%w: %s", nvmeoferrors.ErrRbdQoSExists, status.GetErrorMessage())
+	}
+
+	return fmt.Errorf("gateway SetNamespaceQos returned error (status=%d): %s",
 		status.GetStatus(), status.GetErrorMessage())
 }
 
