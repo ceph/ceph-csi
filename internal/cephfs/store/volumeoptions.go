@@ -684,6 +684,10 @@ func NewVolumeOptionsFromMonitorList(
 		return nil, nil, err
 	}
 
+	if err = extractOptionalOption(&opts.FsName, "fsName", options); err != nil {
+		return nil, nil, err
+	}
+
 	opts.Owner = k8s.GetOwner(options)
 	if err = opts.InitKMS(context.TODO(), options, secrets); err != nil {
 		return nil, nil, err
