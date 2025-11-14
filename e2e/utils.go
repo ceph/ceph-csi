@@ -17,7 +17,6 @@ limitations under the License.
 package e2e
 
 import (
-	"bufio"
 	"context"
 	"crypto/md5" //nolint:gosec // hash generation
 	"encoding/base64"
@@ -922,70 +921,7 @@ func getLuksStatus(selector, mountPath string, f *framework.Framework) (*cryptse
 		return nil, fmt.Errorf("failed command to get cryptsetup status from %s %s", mountPath, stdErr)
 	}
 
-	return parseLuksStatus(stdOut)
-}
-
-// PraseLuksStatus parses parts of the output of a "cryptsetup luksStatus <device>" command
-func parseLuksStatus(dump string) (luksStatus *cryptsetup.LuksStatus, err error) {
-	scanner := bufio.NewScanner(strings.NewReader(dump))
-	initLuksStatus := func() {
-		// Only init options when key present
-		if luksStatus == nil {
-			luksStatus = &cryptsetup.LuksStatus{}
-		}
-	}
-	for scanner.Scan() {
-		line := scanner.Text()
-		trimmedLine := strings.TrimSpace(line)
-		parts := strings.SplitN(trimmedLine, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-		switch key {
-		case cryptsetup.LuksStatusCipherIdentifier:
-			initLuksStatus()
-			err = luksStatus.SetCipher(value)
-
-		case cryptsetup.LuksStatusKeySizeIdentifier:
-			initLuksStatus()
-			size, errs := parseLuksStatusKeySize(value)
-			if errs != nil {
-				return nil, fmt.Errorf("failed luks status key size %w", err)
-			}
-			err = luksStatus.SetKeySize(size)
-			// typo in luksStaus
-		case cryptsetup.LuksStatusIntegrityIdentifier:
-			initLuksStatus()
-			err = luksStatus.SetIntegrityModeFromLuks(value)
-
-		case cryptsetup.LuksStatusIntegrityKeySize:
-			initLuksStatus()
-			size, errs := parseLuksStatusKeySize(value)
-			if errs != nil {
-				return nil, fmt.Errorf("failed luks status integrity key size %w", err)
-			}
-			err = luksStatus.SetIntegrityKeySize(size)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to set luks status attribute %q: %w, %s", key, err, dump)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading luks status: %w", err)
-	}
-
-	return luksStatus, nil
-}
-
-func parseLuksStatusKeySize(input string) (string, error) {
-	parts := strings.SplitN(input, " ", 2)
-	if len(parts) < 2 {
-		return "", fmt.Errorf("could not parse %s", input)
-	}
-	sizeString := parts[0]
-	return sizeString, nil
+	return cryptsetup.ParseLuksStatus(stdOut)
 }
 
 func disableVGSAlphaCLIArg(template string) string {

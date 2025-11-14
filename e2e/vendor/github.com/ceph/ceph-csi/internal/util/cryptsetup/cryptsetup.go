@@ -17,6 +17,7 @@ limitations under the License.
 package cryptsetup
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -127,7 +128,7 @@ func (l *LuksStatus) CipherKeySize() (uint, error) {
 	// up in the 'keysize' field here we subtract them
 	// so we can compare the encryption key sizes.
 	if l.IntegrityKeySize() != nil {
-		if l.keysize < *l.intgrityKeySize {
+		if l.keysize <= *l.intgrityKeySize {
 			return 0, fmt.Errorf("cipher key size %d smaller than integrity key size %d", l.keysize, *l.intgrityKeySize)
 		}
 
@@ -437,7 +438,76 @@ func (e *EncryptionOptions) Equal(luksStatus LuksStatus) (bool, error) {
 	return true, nil
 }
 
-// TODO Add LuksStatusParser to crypsetup.go
+// ParseLuksStatus parses parts of the output of a "cryptsetup luksStatus <device>" command.
+func ParseLuksStatus(dump string) (*LuksStatus, error) {
+	var (
+		luksStatus *LuksStatus
+		err        error
+	)
+	scanner := bufio.NewScanner(strings.NewReader(dump))
+	initLuksStatus := func() {
+		// Only init options when key present
+		if luksStatus == nil {
+			luksStatus = &LuksStatus{}
+		}
+	}
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmedLine := strings.TrimSpace(line)
+		parts := strings.SplitN(trimmedLine, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		switch key {
+		case LuksStatusCipherIdentifier:
+			initLuksStatus()
+			err = luksStatus.SetCipher(value)
+
+		case LuksStatusKeySizeIdentifier:
+			initLuksStatus()
+			size, errs := parseLuksStatusKeySize(value)
+			if errs != nil {
+				return nil, fmt.Errorf("failed luks status key size %w", err)
+			}
+			err = luksStatus.SetKeySize(size)
+
+		case LuksStatusIntegrityIdentifier:
+			initLuksStatus()
+			err = luksStatus.SetIntegrityModeFromLuks(value)
+
+		case LuksStatusIntegrityKeySize:
+			initLuksStatus()
+			size, errs := parseLuksStatusKeySize(value)
+			if errs != nil {
+				return nil, fmt.Errorf("failed luks status integrity key size %w", err)
+			}
+			err = luksStatus.SetIntegrityKeySize(size)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to set luks status attribute %q: %w, %s", key, err, dump)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading luks status: %w", err)
+	}
+	if luksStatus == nil {
+		return nil, fmt.Errorf("parsing failed with status: %s", dump)
+	}
+
+	return luksStatus, nil
+}
+
+func parseLuksStatusKeySize(input string) (string, error) {
+	parts := strings.SplitN(input, " ", 2)
+	if len(parts) < 2 {
+		return "", fmt.Errorf("could not parse %s", input)
+	}
+	sizeString := parts[0]
+
+	return sizeString, nil
+}
 
 // LuksWrapper is a struct that provides a context-aware wrapper around cryptsetup commands.
 type LUKSWrapper interface {

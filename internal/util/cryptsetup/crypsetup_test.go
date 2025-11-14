@@ -239,6 +239,125 @@ func TestLuksStatus(t *testing.T) {
 	}
 }
 
+func TestParseLuksStatus(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		testName              string
+		inputStatus           string
+		expectedCipher        string
+		expectedIntegrityMode string
+		expectedKeySize       uint
+		expectedParseError    bool
+		expectedKeySizeError  bool
+	}{
+		{
+			testName: "Valid aegis-128-random status",
+			inputStatus: `/dev/mapper/hallo is active.
+  type:    LUKS2
+  cipher:  aegis128-random
+  keysize: 128 bits
+  key location: keyring
+  integrity: aead
+  device:  /dev/vdb
+  sector size:  512
+  offset:  0 sectors
+  size:    11718656 sectors
+  mode:    read/write
+`,
+			expectedCipher:        "aegis128-random",
+			expectedIntegrityMode: "aead",
+			expectedKeySize:       128,
+			expectedParseError:    false,
+			expectedKeySizeError:  false,
+		},
+		{
+			testName: "Valid compound mode status",
+			inputStatus: `/dev/mapper/hallo is active.
+  type:    LUKS2
+  cipher:  aes-xts-random
+  keysize: 768 bits
+  key location: keyring
+  integrity: hmac(sha256)
+  integrity keysize: 256 bits
+  device:  /dev/vdb
+  sector size:  512
+  offset:  0 sectors
+  size:    11382776 sectors
+  mode:    read/write
+`,
+			expectedCipher:        "aes-xts-random",
+			expectedIntegrityMode: "hmac-sha256",
+			expectedKeySize:       512,
+			expectedParseError:    false,
+			expectedKeySizeError:  false,
+		},
+		{
+			testName: "Invalid compound mode status keysize is not the sum of integrity key size and cipher key size",
+			inputStatus: `/dev/mapper/hallo is active.
+  type:    LUKS2
+  cipher:  aes-xts-random
+  keysize: 768 bits
+  key location: keyring
+  integrity: hmac(sha256)
+  integrity keysize: 768 bits
+  device:  /dev/vdb
+  sector size:  512
+  offset:  0 sectors
+  size:    11382776 sectors
+  mode:    read/write
+`,
+			expectedCipher:        "aes-xts-random",
+			expectedIntegrityMode: "hmac-sha256",
+			expectedKeySize:       512,
+			expectedParseError:    false,
+			expectedKeySizeError:  true,
+		},
+		{
+			testName: "Invalid compound mode status with different separator",
+			inputStatus: `/dev/mapper/hallo is active.
+  type,    LUKS2
+  cipher,  aes-xts-random
+  keysize, 768 bits
+  key location, keyring
+  integrity, hmac(sha256)
+  integrity keysize, 256 bits
+  device,  /dev/vdb
+  sector size,  512
+  offset,  0 sectors
+  size,  11382776 sectors
+  mode,    read/write
+`,
+			expectedCipher:        "aes-xts-random",
+			expectedIntegrityMode: "hmac-sha256",
+			expectedKeySize:       512,
+			expectedParseError:    true,
+			expectedKeySizeError:  false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+			assertion := assert.New(t)
+			requirement := require.New(t)
+			status, parseError := ParseLuksStatus(tt.inputStatus)
+			if !tt.expectedParseError {
+				requirement.NoError(parseError)
+				assertion.Equal(tt.expectedCipher, status.Cipher())
+				assertion.Equal(tt.expectedIntegrityMode, *status.IntegrityMode())
+				keySize, err := status.CipherKeySize()
+				if !tt.expectedKeySizeError {
+					requirement.NoError(err)
+					assertion.Equal(tt.expectedKeySize, keySize)
+				} else {
+					requirement.Error(err)
+				}
+			} else {
+				requirement.Error(parseError)
+			}
+		})
+	}
+}
+
 func setError(requirement *require.Assertions, set func(string) error, argument string, hasError bool) {
 	err := set(argument)
 	if hasError {
