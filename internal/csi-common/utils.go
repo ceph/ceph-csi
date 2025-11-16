@@ -209,6 +209,9 @@ func getReqID(req interface{}) string {
 	case *csi.ControllerExpandVolumeRequest:
 		reqID = r.GetVolumeId()
 
+	case *csi.ControllerModifyVolumeRequest:
+		reqID = r.GetVolumeId()
+
 	case *csi.ControllerPublishVolumeRequest:
 		reqID = r.GetVolumeId()
 	case *csi.ControllerUnpublishVolumeRequest:
