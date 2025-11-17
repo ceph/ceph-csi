@@ -43,7 +43,7 @@ spec:
       priorityClassName: system-cluster-critical
       containers:
         - name: csi-cephfsplugin
-          image: quay.io/cephcsi/cephcsi:v3.15-canary
+          image: quay.io/cephcsi/cephcsi:v3.15.1
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=cephfs"
@@ -193,7 +193,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:v3.15-canary
+          image: quay.io/cephcsi/cephcsi:v3.15.1
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
