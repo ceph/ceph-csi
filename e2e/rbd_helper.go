@@ -590,6 +590,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 	if options != nil {
 		luksStatus, err := getLuksStatusFromMount(imageData.pvName, app.Name, f)
 		if err != nil {
+			_ = deletePVCAndApp("", f, pvc, app)
 			return fmt.Errorf("failed to get luks status for pv %q (app: %s): %w",
 				imageData.pvName, app.Name, err)
 		}

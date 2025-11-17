@@ -394,6 +394,11 @@ func parseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOpt
 			return nil, fmt.Errorf("failed to set integrity mode: %w", err)
 		}
 	}
+	if sectorSize, ok := volOptions["encryptionSectorSize"]; ok {
+		if err := opts.SetSectorSize(sectorSize); err != nil {
+			return nil, fmt.Errorf("failed to set sector size: %w", err)
+		}
+	}
 
 	return opts, nil
 }

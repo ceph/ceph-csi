@@ -19,6 +19,10 @@ package rbd
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
 
@@ -100,12 +104,13 @@ func TestParseEncryptionOpts(t *testing.T) {
 func TestParseCipherOptions(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		testName          string
-		volOptions        map[string]string
-		expectedCipher    *string
-		expectedIntegrity *string
-		expectedKeySize   *uint
-		expectedErr       bool
+		testName           string
+		volOptions         map[string]string
+		expectedCipher     *string
+		expectedIntegrity  *string
+		expectedKeySize    *string
+		expectedSectorSize *string
+		expectedErr        bool
 	}{
 		{
 			testName: "No Encryption Option",
@@ -122,7 +127,7 @@ func TestParseCipherOptions(t *testing.T) {
 			volOptions: map[string]string{
 				"encryptionCipher": "aes-xts-plain64",
 			},
-			expectedCipher:    stringp("aes-xts-plain64"),
+			expectedCipher:    valueToPointer("aes-xts-plain64"),
 			expectedIntegrity: nil,
 			expectedKeySize:   nil,
 			expectedErr:       false,
@@ -134,9 +139,9 @@ func TestParseCipherOptions(t *testing.T) {
 				"integrityMode":     "hmac-sha256",
 				"encryptionKeySize": "512",
 			},
-			expectedCipher:    stringp("aes-xts-plain64"),
-			expectedIntegrity: stringp("hmac-sha256"),
-			expectedKeySize:   uintp(512),
+			expectedCipher:    valueToPointer("aes-xts-plain64"),
+			expectedIntegrity: valueToPointer("hmac-sha256"),
+			expectedKeySize:   valueToPointer("512"),
 			expectedErr:       false,
 		},
 		{
@@ -152,6 +157,23 @@ func TestParseCipherOptions(t *testing.T) {
 			expectedKeySize:   nil,
 			expectedErr:       true,
 		},
+		{
+			testName: "Encryption Options with sector size",
+			volOptions: map[string]string{
+				// AES-GCM is not secure for disk encryption
+				"encryptionCipher":     "aes-xts-plain64",
+				"integrityMode":        "hmac-sha256",
+				"encryptionKeySize":    "512",
+				"encryptionSectorSize": "4096",
+			},
+			expectedCipher:     valueToPointer("aes-xts-plain64"),
+			expectedIntegrity:  valueToPointer("hmac-sha256"),
+			expectedKeySize:    valueToPointer("512"),
+			expectedSectorSize: valueToPointer("4096"),
+			expectedErr:        false,
+		},
+		// test case key size or integrity mode set
+		// will result in no encryption
 	}
 
 	for _, tt := range tests {
@@ -159,64 +181,43 @@ func TestParseCipherOptions(t *testing.T) {
 			tt.testName,
 			func(t *testing.T) {
 				t.Parallel()
+				assertion := assert.New(t)
+				requirement := require.New(t)
 				actualEncOptions, actualErr := parseCipherOptions(
 					tt.volOptions,
 				)
 				if tt.expectedErr {
-					if actualErr == nil {
-						t.Errorf("expected an error but got nil")
-
-						return
-					}
+					requirement.Error(actualErr)
 
 					return
 				}
-				if actualErr != nil {
-					t.Errorf("expected no error but got: %v", actualErr)
+				requirement.NoError(actualErr)
+				if tt.expectedCipher == nil {
+					assertion.Nil(actualEncOptions)
 
 					return
 				}
-				expectOptions := tt.expectedCipher != nil
-				actualHasOptions := actualEncOptions != nil
-
-				if expectOptions != actualHasOptions {
-					if expectOptions {
-						t.Errorf("expected options (for cipher %q) but got nil", *tt.expectedCipher)
-					} else {
-						t.Errorf("expected nil options (no cipher) but got non-nil options")
-					}
-
-					return
+				expectedEncOption := cryptsetup.EncryptionOptions{}
+				err := expectedEncOption.SetCipher(*tt.expectedCipher)
+				requirement.NoError(err)
+				if tt.expectedKeySize != nil {
+					err := expectedEncOption.SetKeySize(*tt.expectedKeySize)
+					requirement.NoError(err)
 				}
-				if !actualHasOptions {
-					return
+				if tt.expectedIntegrity != nil {
+					err := expectedEncOption.SetIntegrityMode(*tt.expectedIntegrity)
+					requirement.NoError(err)
 				}
-
-				actual := actualEncOptions.Cipher()
-				comparePtr(t, "Cipher", tt.expectedCipher, &actual)
-				comparePtr(t, "IntegrityMode", tt.expectedIntegrity, actualEncOptions.IntegrityMode())
-				comparePtr(t, "Key Size", tt.expectedKeySize, actualEncOptions.KeySize())
+				if tt.expectedSectorSize != nil {
+					err := expectedEncOption.SetSectorSize(*tt.expectedSectorSize)
+					requirement.NoError(err)
+				}
+				assertion.Equal(expectedEncOption, *actualEncOptions)
 			},
 		)
 	}
 }
 
-func comparePtr[T comparable](t *testing.T, fieldName string, expected, actual *T) {
-	t.Helper()
-	switch {
-	case expected == nil && actual != nil:
-		t.Errorf("%s: expected nil but got %v", fieldName, *actual)
-	case expected != nil && actual == nil:
-		t.Errorf("%s: expected %v but got nil", fieldName, *expected)
-	case expected != nil && actual != nil && *expected != *actual:
-		t.Errorf("%s: mismatch, expected %v but got %v", fieldName, *expected, *actual)
-	}
-}
-
-func stringp(s string) *string {
+func valueToPointer[T any](s T) *T {
 	return &s
-}
-
-func uintp(i uint) *uint {
-	return &i
 }

@@ -146,6 +146,9 @@ func TestLuksStatus(t *testing.T) {
 		expectedIntegrityKeySizeError bool
 		expectedCipherKeySize         uint
 		expectedIntegrityKeySize      uint
+		sectorSize                    string
+		expectedSectorSize            uint
+		expectedSectorSizeError       bool
 	}{
 		{
 			testName:                      "Invalid Options",
@@ -157,6 +160,8 @@ func TestLuksStatus(t *testing.T) {
 			expectedErrorIntegrity:        true,
 			integrityKeySize:              "number",
 			expectedIntegrityKeySizeError: true,
+			sectorSize:                    "number",
+			expectedSectorSizeError:       true,
 		},
 		{
 			testName:                      "Valid Status",
@@ -172,6 +177,9 @@ func TestLuksStatus(t *testing.T) {
 			expectedCipherKeySize:         512, // in a valid status the input key size is the sum of
 			// cipher key size of the integrity key size
 			expectedIntegrityKeySize: 512,
+			sectorSize:               "4096",
+			expectedSectorSize:       4096,
+			expectedSectorSizeError:  false,
 		},
 		{
 			testName:                      "Invalid Status with wrong Integrity Mode",
@@ -186,6 +194,9 @@ func TestLuksStatus(t *testing.T) {
 			expectedIntegrityKeySizeError: false,
 			expectedCipherKeySize:         512,
 			expectedIntegrityKeySize:      512,
+			sectorSize:                    "4096",
+			expectedSectorSize:            4096,
+			expectedSectorSizeError:       false,
 		},
 	}
 
@@ -194,19 +205,22 @@ func TestLuksStatus(t *testing.T) {
 			t.Parallel()
 			assertion := assert.New(t)
 			requirement := require.New(t)
+			expectNoErrors := !tt.expectedErrorCipher &&
+				!tt.expectedErrorIntegrity &&
+				!tt.expectedErrorKeySize &&
+				!tt.expectedIntegrityKeySizeError &&
+				!tt.expectedSectorSizeError
 			status := LuksStatus{}
-			// No error thrown for SetCipher()
-			setError(requirement, status.SetCipher, tt.cipher, tt.expectedErrorCipher)
+			status.SetCipher(tt.cipher)
 			setError(requirement, status.SetKeySize, tt.inputKeySize, tt.expectedErrorKeySize)
 			setError(requirement, status.SetIntegrityModeFromLuks, tt.integritymode, tt.expectedErrorIntegrity)
 			setError(requirement, status.SetIntegrityKeySize, tt.integrityKeySize, tt.expectedIntegrityKeySizeError)
-
-			getEqual(assertion, status.Cipher, tt.expectedErrorCipher, tt.cipher)
-			getEqual(assertion, status.IntegrityKeySize, tt.expectedIntegrityKeySizeError, &tt.expectedIntegrityKeySize)
-			getEqual(assertion, status.IntegrityMode, tt.expectedErrorIntegrity, &tt.expectedIntegrityMode)
+			setError(requirement, status.SetSectorSize, tt.sectorSize, tt.expectedSectorSizeError)
 			result, err := status.CipherKeySize()
 			if tt.expectedErrorCipher {
 				requirement.Error(err)
+
+				return
 			} else {
 				requirement.NoError(err)
 				assertion.Equal(tt.expectedCipherKeySize, result)
@@ -216,22 +230,17 @@ func TestLuksStatus(t *testing.T) {
 				cipher:        tt.cipher,
 				keysize:       &tt.expectedCipherKeySize,
 				integrityMode: &tt.expectedIntegrityMode,
+				sectorSize:    &tt.expectedSectorSize,
 			}
 			isEqual, err := options.Equal(status)
-			if !tt.expectedErrorCipher &&
-				!tt.expectedErrorIntegrity &&
-				!tt.expectedErrorKeySize &&
-				!tt.expectedIntegrityKeySizeError {
+			if expectNoErrors {
 				requirement.NoError(err)
 				assertion.True(isEqual)
 			}
 
 			unEqualOption := EncryptionOptions{cipher: tt.integritymode}
 			isEqual, err = unEqualOption.Equal(status)
-			if !tt.expectedErrorCipher &&
-				!tt.expectedErrorIntegrity &&
-				!tt.expectedErrorKeySize &&
-				!tt.expectedIntegrityKeySizeError {
+			if expectNoErrors {
 				requirement.NoError(err)
 				assertion.False(isEqual)
 			}
@@ -249,6 +258,7 @@ func TestParseLuksStatus(t *testing.T) {
 		expectedKeySize       uint
 		expectedParseError    bool
 		expectedKeySizeError  bool
+		expectedSectorSize    uint
 	}{
 		{
 			testName: "Valid aegis-128-random status",
@@ -269,6 +279,7 @@ func TestParseLuksStatus(t *testing.T) {
 			expectedKeySize:       128,
 			expectedParseError:    false,
 			expectedKeySizeError:  false,
+			expectedSectorSize:    512,
 		},
 		{
 			testName: "Valid compound mode status",
@@ -290,6 +301,7 @@ func TestParseLuksStatus(t *testing.T) {
 			expectedKeySize:       512,
 			expectedParseError:    false,
 			expectedKeySizeError:  false,
+			expectedSectorSize:    512,
 		},
 		{
 			testName: "Invalid compound mode status keysize is not the sum of integrity key size and cipher key size",
@@ -311,6 +323,7 @@ func TestParseLuksStatus(t *testing.T) {
 			expectedKeySize:       512,
 			expectedParseError:    false,
 			expectedKeySizeError:  true,
+			expectedSectorSize:    512,
 		},
 		{
 			testName: "Invalid compound mode status with different separator",
@@ -332,6 +345,7 @@ func TestParseLuksStatus(t *testing.T) {
 			expectedKeySize:       512,
 			expectedParseError:    true,
 			expectedKeySizeError:  false,
+			expectedSectorSize:    512,
 		},
 	}
 	for _, tt := range tests {
@@ -340,19 +354,21 @@ func TestParseLuksStatus(t *testing.T) {
 			assertion := assert.New(t)
 			requirement := require.New(t)
 			status, parseError := ParseLuksStatus(tt.inputStatus)
-			if !tt.expectedParseError {
-				requirement.NoError(parseError)
-				assertion.Equal(tt.expectedCipher, status.Cipher())
-				assertion.Equal(tt.expectedIntegrityMode, *status.IntegrityMode())
-				keySize, err := status.CipherKeySize()
-				if !tt.expectedKeySizeError {
-					requirement.NoError(err)
-					assertion.Equal(tt.expectedKeySize, keySize)
-				} else {
-					requirement.Error(err)
-				}
-			} else {
+			if tt.expectedParseError {
 				requirement.Error(parseError)
+
+				return
+			}
+			requirement.NoError(parseError)
+			assertion.Equal(tt.expectedCipher, status.Cipher())
+			assertion.Equal(tt.expectedIntegrityMode, *status.IntegrityMode())
+			assertion.Equal(tt.expectedSectorSize, *status.SectorSize())
+			keySize, err := status.CipherKeySize()
+			if !tt.expectedKeySizeError {
+				requirement.NoError(err)
+				assertion.Equal(tt.expectedKeySize, keySize)
+			} else {
+				requirement.Error(err)
 			}
 		})
 	}
@@ -365,12 +381,4 @@ func setError(requirement *require.Assertions, set func(string) error, argument 
 	} else {
 		requirement.NoError(err)
 	}
-}
-
-func getEqual[T any](assertion *assert.Assertions, get func() T, hasError bool, expected T) {
-	if hasError {
-		return
-	}
-	result := get()
-	assertion.Equal(expected, result)
 }

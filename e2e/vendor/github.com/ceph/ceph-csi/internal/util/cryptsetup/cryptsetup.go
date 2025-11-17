@@ -66,6 +66,9 @@ const (
 	// LuksStatusIntegrityKeySize is the identifier of the integrity key size section in a luks status.
 	LuksStatusIntegrityKeySize = "integrity keysize"
 
+	// LuksStatusSectorSize is the identifier of the sector size section in a luks status.
+	LuksStatusSectorSize = "sector size"
+
 	// Recommended indicates a suitable cipher, key size and integrity mode tuple configuration.
 	Recommended RecommendationLevel = "Recommended"
 
@@ -108,18 +111,15 @@ type LuksStatus struct {
 	// if this is set we have to subtract it from the
 	// keysize to get actual key size used for encryption
 	intgrityKeySize *uint
+	sectorSize      *uint
 }
-
-type luksKeySizeSetter func(size uint)
 
 func (l *LuksStatus) Cipher() string {
 	return l.cipher
 }
 
-func (l *LuksStatus) SetCipher(input string) error {
+func (l *LuksStatus) SetCipher(input string) {
 	l.cipher = input
-
-	return nil
 }
 
 func (l *LuksStatus) CipherKeySize() (uint, error) {
@@ -139,7 +139,7 @@ func (l *LuksStatus) CipherKeySize() (uint, error) {
 }
 
 func (l *LuksStatus) SetKeySize(input string) error {
-	return l.parseKeySize(input, func(size uint) {
+	return applySize(input, func(size uint) {
 		l.keysize = size
 	})
 }
@@ -154,7 +154,7 @@ func (l *LuksStatus) IntegrityKeySize() *uint {
 }
 
 func (l *LuksStatus) SetIntegrityKeySize(input string) error {
-	return l.parseKeySize(input, func(size uint) {
+	return applySize(input, func(size uint) {
 		l.intgrityKeySize = &size
 	})
 }
@@ -180,14 +180,14 @@ func (l *LuksStatus) SetIntegrityModeFromLuks(input string) error {
 	return nil
 }
 
-func (l *LuksStatus) parseKeySize(input string, setter luksKeySizeSetter) error {
-	size, err := strconv.Atoi(input)
-	if err != nil {
-		return fmt.Errorf("could not parse number from %q: %w", input, err)
-	}
-	setter(uint(size))
+func (l *LuksStatus) SectorSize() *uint {
+	return clonePtr(l.sectorSize)
+}
 
-	return nil
+func (l *LuksStatus) SetSectorSize(input string) error {
+	return applySize(input, func(size uint) {
+		l.sectorSize = &size
+	})
 }
 
 // CipherRecommendation defines the rules for the recommendation.
@@ -363,10 +363,21 @@ type EncryptionOptions struct {
 	cipher        string
 	keysize       *uint
 	integrityMode *string
+	sectorSize    *uint
+}
+
+func (e *EncryptionOptions) SectorSize() *uint {
+	return clonePtr(e.sectorSize)
+}
+
+func (e *EncryptionOptions) SetSectorSize(size string) error {
+	return applySize(size, func(size uint) {
+		e.sectorSize = &size
+	})
 }
 
 func (e *EncryptionOptions) IntegrityMode() *string {
-	return e.integrityMode
+	return clonePtr(e.integrityMode)
 }
 
 func (e *EncryptionOptions) SetIntegrityMode(integrity string) error {
@@ -383,14 +394,9 @@ func (e *EncryptionOptions) KeySize() *uint {
 }
 
 func (e *EncryptionOptions) SetKeySize(keysize string) error {
-	parsedVal, err := strconv.ParseUint(keysize, 10, 32)
-	if err != nil {
-		return fmt.Errorf("invalid keySize value '%s': %w", keysize, err)
-	}
-	e.keysize = new(uint)
-	*e.keysize = uint(parsedVal)
-
-	return nil
+	return applySize(keysize, func(keysize uint) {
+		e.keysize = &keysize
+	})
 }
 
 func (e *EncryptionOptions) Cipher() string {
@@ -417,7 +423,7 @@ func (e *EncryptionOptions) SetCipher(cipher string) error {
 //	(if present) from the total `luksStatus.keysize` before comparing.
 //	To only compare the size of the data key of the EncryptionOption and luksStatus.
 func (e *EncryptionOptions) Equal(luksStatus LuksStatus) (bool, error) {
-	if e.cipher != luksStatus.cipher {
+	if e.Cipher() != luksStatus.Cipher() {
 		return false, nil
 	}
 	if e.KeySize() != nil {
@@ -429,8 +435,13 @@ func (e *EncryptionOptions) Equal(luksStatus LuksStatus) (bool, error) {
 			return false, nil
 		}
 	}
-	if e.integrityMode != nil {
+	if e.IntegrityMode() != nil {
 		if (luksStatus.IntegrityMode() == nil) || (*e.IntegrityMode() != *luksStatus.IntegrityMode()) {
+			return false, nil
+		}
+	}
+	if e.SectorSize() != nil {
+		if (luksStatus.SectorSize() == nil) || (*e.SectorSize() != *luksStatus.SectorSize()) {
 			return false, nil
 		}
 	}
@@ -463,13 +474,13 @@ func ParseLuksStatus(dump string) (*LuksStatus, error) {
 		switch key {
 		case LuksStatusCipherIdentifier:
 			initLuksStatus()
-			err = luksStatus.SetCipher(value)
+			luksStatus.SetCipher(value)
 
 		case LuksStatusKeySizeIdentifier:
 			initLuksStatus()
-			size, errs := parseLuksStatusKeySize(value)
+			size, errs := parseLuksStatusSize(value)
 			if errs != nil {
-				return nil, fmt.Errorf("failed luks status key size %w", err)
+				return nil, fmt.Errorf("failed to parse luks status key size %w", err)
 			}
 			err = luksStatus.SetKeySize(size)
 
@@ -479,11 +490,19 @@ func ParseLuksStatus(dump string) (*LuksStatus, error) {
 
 		case LuksStatusIntegrityKeySize:
 			initLuksStatus()
-			size, errs := parseLuksStatusKeySize(value)
+			size, errs := parseLuksStatusSize(value)
 			if errs != nil {
-				return nil, fmt.Errorf("failed luks status integrity key size %w", err)
+				return nil, fmt.Errorf("failed to parse luks status integrity key size %w", err)
 			}
 			err = luksStatus.SetIntegrityKeySize(size)
+
+		case LuksStatusSectorSize:
+			initLuksStatus()
+			size, errs := parseLuksStatusSize(value)
+			if errs != nil {
+				return nil, fmt.Errorf("failed to parse luks status sector seize, %w", errs)
+			}
+			err = luksStatus.SetSectorSize(size)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to set luks status attribute %q: %w, %s", key, err, dump)
@@ -499,10 +518,10 @@ func ParseLuksStatus(dump string) (*LuksStatus, error) {
 	return luksStatus, nil
 }
 
-func parseLuksStatusKeySize(input string) (string, error) {
+func parseLuksStatusSize(input string) (string, error) {
 	parts := strings.SplitN(input, " ", 2)
-	if len(parts) < 2 {
-		return "", fmt.Errorf("could not parse %s", input)
+	if len(parts) < 1 { // will only split into one part of no unit like [bytes] or [bits] is given
+		return "", fmt.Errorf("could not parse %s, %+v", input, parts)
 	}
 	sizeString := parts[0]
 
@@ -550,6 +569,9 @@ func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *Encry
 		}
 		if cipherOptions.KeySize() != nil {
 			args = append(args, "--key-size", strconv.FormatUint(uint64(*cipherOptions.KeySize()), 10))
+		}
+		if cipherOptions.SectorSize() != nil {
+			args = append(args, "--sector-size", strconv.FormatUint(uint64(*cipherOptions.SectorSize()), 10))
 		}
 	}
 	args = append(args,
@@ -752,4 +774,23 @@ func (l *luksWrapper) execCryptsetupCommand(stdin *string, args ...string) (stri
 	}
 
 	return stdout, stderr, err
+}
+
+func clonePtr[T any](pointer *T) *T {
+	if pointer == nil {
+		return nil
+	}
+	result := *pointer
+
+	return &result
+}
+
+func applySize(input string, setter func(size uint)) error {
+	size, err := strconv.ParseUint(input, 10, 32)
+	if err != nil {
+		return fmt.Errorf("could not parse number from %q: %w", input, err)
+	}
+	setter(uint(size))
+
+	return nil
 }

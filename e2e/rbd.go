@@ -2249,6 +2249,45 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("Create a PVC and bind it to an application with an AEAD encrypted RBD volume with set encryption sector size", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				// TODO: Use exported GetAllowedCipher() function
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{"encrypted": "true",
+						"encryptionType":       crypto.EncryptionTypeBlock.String(),
+						"encryptionCipher":     "aes-xts-plain64",
+						"encryptionKeySize":    "512",
+						"integrityMode":        "hmac-sha256",
+						"encryptionSectorSize": "4096",
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
+				if err != nil {
+					logAndFail("failed to validate encrypted pvc: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+			})
+
 			ByFileAndBlockEncryption("Resize Encrypted Block PVC and check Device size", func(
 				validator encryptionValidateFunc, _ validateFunc, encType crypto.EncryptionType,
 			) {

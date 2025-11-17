@@ -122,6 +122,15 @@ parameters:
    # A string is expected here, i.e. "true", not true.
    # encrypted: "true"
 
+   # (optional) Instruct the plugin to perform encrypted I/O with
+   # a specified sector size.
+   # By default the sector size is based on the underlying data device.
+   # If encrypted is false then this flag will be ignored.
+   # The chosen sector size must be a power of two and between
+   # 512 and 4096 bytes.
+   # Only applicable for block encryption.
+   # encryptionSectorSize: "4096"
+
    # (optional) Instruct the plugin it has to encrypt the volume
    # with this specific cipher.
    # By default it is disabled.
