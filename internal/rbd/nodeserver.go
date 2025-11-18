@@ -628,6 +628,8 @@ func resizeNodeStagePath(ctx context.Context,
 
 	// if its a non encrypted block device we dont need any expansion
 	if (isBlock && !transaction.isBlockEncrypted) || transaction.isIntegrityProtected {
+		log.WarningLog(ctx, "resizing not possible or not necessary with selected options")
+		
 		return nil
 	}
 
