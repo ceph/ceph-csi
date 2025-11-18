@@ -86,7 +86,6 @@ const (
 	aesXtsRandom     string = "aes-xts-random"
 	serpentXtsPlain  string = "serpent-xts-plain64"
 	serpentXtsRandom string = "serpent-xts-random"
-	aegis128Random   string = "aegis128-random"
 )
 
 var (
@@ -256,18 +255,6 @@ var recommendationConfig = map[string]CipherRecommendation{
 			hmacSha256.name: Recommended,
 			hmacSha512.name: Recommended,
 			aead.name:       InvalidRecommended,
-			"":              InvalidRecommended,
-		},
-	},
-	aegis128Random: {
-		recommendedKeySizes: map[uint]RecommendationLevel{
-			128: Recommended,
-			256: InvalidRecommended,
-		},
-		recommendedIntegrity: map[string]RecommendationLevel{
-			aead.name:       Recommended,
-			hmacSha256.name: InvalidRecommended,
-			hmacSha512.name: InvalidRecommended,
 			"":              InvalidRecommended,
 		},
 	},

@@ -261,27 +261,6 @@ func TestParseLuksStatus(t *testing.T) {
 		expectedSectorSize    uint
 	}{
 		{
-			testName: "Valid aegis-128-random status",
-			inputStatus: `/dev/mapper/hallo is active.
-  type:    LUKS2
-  cipher:  aegis128-random
-  keysize: 128 bits
-  key location: keyring
-  integrity: aead
-  device:  /dev/vdb
-  sector size:  512
-  offset:  0 sectors
-  size:    11718656 sectors
-  mode:    read/write
-`,
-			expectedCipher:        "aegis128-random",
-			expectedIntegrityMode: "aead",
-			expectedKeySize:       128,
-			expectedParseError:    false,
-			expectedKeySizeError:  false,
-			expectedSectorSize:    512,
-		},
-		{
 			testName: "Valid compound mode status",
 			inputStatus: `/dev/mapper/hallo is active.
   type:    LUKS2
