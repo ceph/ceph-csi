@@ -76,6 +76,24 @@ func (OperatorDeployment) setEnableMetadata(value bool) error {
 	return nil
 }
 
+func (OperatorDeployment) setEnableFencing(value bool) error {
+	command := []string{
+		"operatorconfigs.csi.ceph.io",
+		OperatorConfigName,
+		"--type=merge",
+		"-p",
+		fmt.Sprintf(`{"spec": {"driverSpecDefaults": {"enableFencing": %t}}}`, value),
+	}
+
+	// Patch the operator config
+	err := retryKubectlArgs(cephCSINamespace, kubectlPatch, deployTimeout, command...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (OperatorDeployment) setClusterName(value string) error {
 	command := []string{
 		"operatorconfigs.csi.ceph.io",
