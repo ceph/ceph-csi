@@ -112,6 +112,7 @@ type DeploymentMethod interface {
 	getDaemonsetName() string
 	getPodSelector() string
 	setClusterName(clusterName string) error
+	setEnableFencing(enable bool) error
 }
 type RBDDeploymentMethod interface {
 	DeploymentMethod
@@ -155,6 +156,12 @@ func (d *DriverInfo) setClusterName(clusterName string) error {
 		return fmt.Errorf("timeout waiting for clustername arg update %s/%s: %v", cephCSINamespace, d.deploymentName, err)
 	}
 
+	return nil
+}
+
+func (d *DriverInfo) setEnableFencing(enable bool) error {
+	// No-op as fencing is enabled in the yaml files by default, disabling is not needed.
+	// Required implementation in OperatorDeployment.
 	return nil
 }
 

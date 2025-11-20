@@ -446,6 +446,11 @@ var _ = Describe("RBD", func() {
 			logAndFail("failed to set domain labels: %v", err)
 		}
 
+		err = rbdDeployment.setEnableFencing(true)
+		if err != nil {
+			logAndFail("failed to enable fencing: %v", err)
+		}
+
 		err = rbdDeployment.setClusterName(defaultClusterName)
 		if err != nil {
 			logAndFail("failed to set cluster name: %v", err)
