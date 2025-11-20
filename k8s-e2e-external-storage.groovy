@@ -178,11 +178,17 @@ node('cico-workspace') {
 			podman_pull(ci_registry, "docker.io", "library/busybox:1.29")
 			ssh "./podman2minikube.sh docker.io/library/busybox:1.29"
 		}
-		stage('deploy ceph-csi through helm') {
+		stage('deploy ceph-csi through operator') {
+			def operator_version = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${CEPH_CSI_OPERATOR_VERSION}\'',
+				returnStdout: true
+			).trim()
+
+			podman_pull(ci_registry, "quay.io", "cephcsi/ceph-csi-operator:${operator_version}")
+			ssh "./podman2minikube.sh quay.io/cephcsi/ceph-csi-operator:${operator_version}"
+
 			timeout(time: 30, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh up'
-				ssh "kubectl create namespace '${namespace}'"
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi '${namespace}'"
+				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/deploy-ceph-csi-operator.sh deploy'
 			}
 		}
 		stage("create ConfigMap & StorageClasses") {
