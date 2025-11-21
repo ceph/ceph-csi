@@ -259,6 +259,15 @@ func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase
 // ResizeEncryptedVolume resizes encrypted volume so that it can be used by the client.
 func ResizeEncryptedVolume(ctx context.Context, mapperFile string) error {
 	log.DebugLog(ctx, "Resizing LUKS device %q", mapperFile)
+	isIntegrityProtected, err := luks.IsIntegrityProtected(mapperFile)
+	if err != nil {
+		return fmt.Errorf("failed to resize LUKS device. Could not check if device is integrity protected %w", err)
+	}
+	if isIntegrityProtected {
+		log.ErrorLog(ctx, "No resize possible with integrity mode enabled")
+
+		return fmt.Errorf("cannot resize block device (%s) because integrity mode is enabled", mapperFile)
+	}
 	_, stdErr, err := luks.Resize(mapperFile)
 	if err != nil || stdErr != "" {
 		log.ErrorLog(ctx, "failed to resize LUKS device %q (%v): %s", mapperFile, err, stdErr)

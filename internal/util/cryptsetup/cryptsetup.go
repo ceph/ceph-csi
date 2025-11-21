@@ -525,6 +525,7 @@ type LUKSWrapper interface {
 	Resize(mapperFile string) (string, string, error)
 	VerifyKey(devicePath, passphrase, slot string) (bool, error)
 	Status(mapperFile string) (string, string, error)
+	IsIntegrityProtected(mapperFile string) (bool, error)
 }
 
 // luksWrapper is a type that implements LUKSWrapper interface
@@ -731,6 +732,22 @@ func (l *luksWrapper) VerifyKey(devicePath, passphrase, slot string) (bool, erro
 	}
 
 	return true, nil
+}
+
+func (l *luksWrapper) IsIntegrityProtected(mapperFile string) (bool, error) {
+	stdout, stderr, err := l.Status(mapperFile)
+	if err != nil || stderr != "" {
+		return false, fmt.Errorf("cryptsetup status failed, with msg: %s and error %w", stderr, err)
+	}
+	luksStatus, err := ParseLuksStatus(stdout)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse crypsetup status %w", err)
+	}
+	if luksStatus.integrityMode != nil {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (l *luksWrapper) execCryptsetupCommand(stdin *string, args ...string) (string, string, error) {
