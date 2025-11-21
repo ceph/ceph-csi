@@ -29,6 +29,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -173,6 +174,10 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	case strings.Contains(err.Error(), "Export already exists"):
 		return nil
 	case strings.Contains(err.Error(), "rados: ret=-2"): // try with the old command
+		log.ErrorLogMsg("going to fallback to cli, "+
+			"go-ceph failed to create export %q in NFS-cluster %q: %v",
+			nv, nfsCluster, err)
+
 		break
 	default: // any other error
 		return fmt.Errorf("exporting %q on NFS-cluster %q failed: %w",
