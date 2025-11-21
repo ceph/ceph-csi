@@ -2229,7 +2229,7 @@ func genVolFromVolIDWithMigration(
 		return genVolFromMigVolID(ctx, pmVolID, cr)
 	}
 	rv, err := GenVolFromVolID(ctx, volID, cr, secrets)
-	if err != nil {
+	if err != nil && rv != nil {
 		rv.Destroy(ctx)
 	}
 

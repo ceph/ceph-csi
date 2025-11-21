@@ -1627,6 +1627,10 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		case errors.Is(err, util.ErrPoolNotFound):
 			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", volID, err)
 			err = status.Error(codes.NotFound, err.Error())
+		case errors.Is(err, rbderrors.ErrInvalidVolID):
+			// likely a static provisioned volume
+			// InvalidArgument indicates that the CO has specified capabilities not supported by the volume
+			err = status.Errorf(codes.InvalidArgument, "volume ID %s does not support expansion", volID)
 		default:
 			err = status.Error(codes.Internal, err.Error())
 		}
