@@ -5221,6 +5221,12 @@ var _ = Describe("RBD", func() {
 						cephCSINamespace, rbdDeployment.getDeploymentName(), err)
 				}
 
+				// FIXME: OperatorDeployment.setEnableMetadata() should wait
+				if operatorDeployment {
+					// give ceph-csi-operator time to apply the change
+					time.Sleep(1 * time.Minute)
+				}
+
 				pvcSmartClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
 					logAndFail("failed to load PVC: %v", err)

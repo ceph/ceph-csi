@@ -73,6 +73,8 @@ func (OperatorDeployment) setEnableMetadata(value bool) error {
 		return err
 	}
 
+	// FIXME: wait for the change to be propagated to the pods (see e2e/rbd.go)
+
 	return nil
 }
 
