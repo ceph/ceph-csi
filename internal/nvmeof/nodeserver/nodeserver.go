@@ -121,6 +121,13 @@ func (ns *NodeServer) NodeGetCapabilities(
 					},
 				},
 			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+					},
+				},
+			},
 		},
 	}, nil
 }
@@ -335,6 +342,60 @@ func (ns *NodeServer) NodeUnstageVolume(
 	log.DebugLog(ctx, "successfully removed staging path (%s)", stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
+}
+
+// NodeExpandVolume resizes nvmeof volumes (namespace).
+func (ns *NodeServer) NodeExpandVolume(
+	ctx context.Context,
+	req *csi.NodeExpandVolumeRequest,
+) (*csi.NodeExpandVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume ID must be provided")
+	}
+
+	// Block mode - nothing to do
+	if req.GetVolumeCapability() != nil && req.GetVolumeCapability().GetBlock() != nil {
+		log.DebugLog(ctx, "nvmeof: block mode volume, no filesystem resize needed for %s", volumeID)
+
+		return &csi.NodeExpandVolumeResponse{}, nil
+	}
+
+	// Get staging path
+	volumePath := req.GetStagingTargetPath()
+	if volumePath == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+	}
+
+	if acquired := ns.volumeLocks.TryAcquire(volumeID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer ns.volumeLocks.Release(volumeID)
+
+	mountPath := volumePath + "/" + volumeID
+
+	// Find device from mount (no metadata needed!)
+	devicePath, err := ns.getDeviceFromMount(ctx, mountPath)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to find device for mount %s: %v", mountPath, err)
+
+		return nil, status.Errorf(codes.Internal, "failed to find device: %v", err)
+	}
+
+	log.DebugLog(ctx, "nvmeof: resizing filesystem on device %s at mount path %s", devicePath, mountPath)
+
+	resizer := mount.NewResizeFs(utilexec.New())
+	var ok bool
+	ok, err = resizer.Resize(devicePath, mountPath)
+	if !ok {
+		return nil, status.Errorf(codes.Internal,
+			"nvmeof: resize failed on path %s, error: %v", req.GetVolumePath(), err)
+	}
+	log.DebugLog(ctx, "nvmeof: successfully resized filesystem for volume %s", volumeID)
+
+	return &csi.NodeExpandVolumeResponse{}, nil
 }
 
 func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *csi.NodePublishVolumeRequest) error {
@@ -652,4 +713,22 @@ func getStagingTargetPath(req interface{}) string {
 	}
 
 	return ""
+}
+
+// getDeviceFromMount finds the device path for a given mount path.
+func (ns *NodeServer) getDeviceFromMount(ctx context.Context, mountPath string) (string, error) {
+	mountPoints, err := ns.Mounter.List()
+	if err != nil {
+		return "", fmt.Errorf("failed to list mounts: %w", err)
+	}
+
+	for _, mp := range mountPoints {
+		if mp.Path == mountPath {
+			log.DebugLog(ctx, "found device %s for mount path %s", mp.Device, mountPath)
+
+			return mp.Device, nil
+		}
+	}
+
+	return "", fmt.Errorf("no mount found for path %s", mountPath)
 }
