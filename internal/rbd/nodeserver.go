@@ -38,6 +38,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/fscrypt"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
@@ -1486,6 +1487,13 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
 	var err error
+	volumeId := req.GetVolumeId()
+	if volumeId == "" {
+		err = fmt.Errorf("volumeID %v is empty", volumeId)
+
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	targetPath := req.GetVolumePath()
 	if targetPath == "" {
 		err = fmt.Errorf("targetpath %v is empty", targetPath)
@@ -1512,19 +1520,98 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	if stat.Mode().IsDir() {
 		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, true)
 	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
-		return blockNodeGetVolumeStats(ctx, targetPath)
+		return ns.blockNodeGetVolumeStats(ctx, targetPath, volumeId)
 	}
 
 	return nil, fmt.Errorf("targetpath %q is not a block device", targetPath)
 }
 
 // blockNodeGetVolumeStats gets the metrics for a `volumeMode: Block` type of
-// volume. At the moment, only the size of the block-device can be returned, as
-// there are no secrets in the NodeGetVolumeStats request that enables us to
-// connect to the Ceph cluster.
+// volume. At the moment,
+// - if the volume is dynamically provisioned and secretRef is present in the
+// configmap, both size and used metrics are returned by performing a
+// DiffIterate on the rbd image.
+// - else only the size of the block-device can be returned, as there are no
+// secrets in the NodeGetVolumeStats request that enables us to connect to the
+// Ceph cluster.
 //
 // TODO: https://github.com/container-storage-interface/spec/issues/371#issuecomment-756834471
-func blockNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+func (ns *NodeServer) blockNodeGetVolumeStats(
+	ctx context.Context,
+	targetPath,
+	volumeId string,
+) (*csi.NodeGetVolumeStatsResponse, error) {
+	var (
+		err error
+		vi  util.CSIIdentifier
+	)
+	isDiffPossible := true
+
+	err = vi.DecomposeCSIID(volumeId)
+	if err != nil {
+		// treat it as a static volume if decomposition fails.
+		// Static volumes do not support diff iterate to measure usage.
+		isDiffPossible = false
+	}
+
+	secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeId, util.RBDType)
+	if errors.Is(err, util.ErrConfigNotFound) {
+		// diff iterate to measure usage is not possible without secrets.
+		isDiffPossible = false
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// If diff iterate is not possible, return only the size of the block device.
+	if !isDiffPossible {
+		return getBlockMetrics(ctx, targetPath)
+	}
+
+	secrets, err := k8s.GetSecret(secretName, secretNamespace)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get secret from k8s: %v", err)
+	}
+
+	credentials, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create credentials from secrets: %v", err)
+	}
+	defer credentials.DeleteCredentials()
+
+	rv, err := GenVolFromVolID(ctx, volumeId, credentials, secrets)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v",
+			volumeId, err)
+	}
+	defer rv.Destroy(ctx)
+
+	usedBytes, err := rv.getUsedBytes(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get used bytes for volume %s: %v",
+			rv, err)
+	}
+
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Total:     rv.VolSize,
+				Used:      int64(usedBytes),
+				Available: rv.VolSize - int64(usedBytes),
+				Unit:      csi.VolumeUsage_BYTES,
+			},
+		},
+		VolumeCondition: &csi.VolumeCondition{
+			Abnormal: false,
+			Message:  "volume is in a healthy condition",
+		},
+	}, nil
+}
+
+// getBlockMetrics gets the size of the block device at the given target path.
+func getBlockMetrics(
+	ctx context.Context,
+	targetPath string,
+) (*csi.NodeGetVolumeStatsResponse, error) {
 	mp := volume.NewMetricsBlock(targetPath)
 	m, err := mp.GetMetrics()
 	if err != nil {
