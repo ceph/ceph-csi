@@ -18,9 +18,11 @@ package nvmeof
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -33,7 +35,7 @@ import (
 const (
 	// Command timeouts.
 	connectTimeout    = 30 * time.Second
-	disconnectTimeout = 15 * time.Second
+	listSubsysTimeout = 60 * time.Second
 )
 
 // NVMeInitiator handles NVMe-oF initiator operations.
@@ -58,6 +60,54 @@ type ConnectRequest struct {
 
 // nvmeInitiator implements NVMeInitiator interface.
 type nvmeInitiator struct{}
+
+// nvmePathAddress represents a parsed NVMe path address string.
+type nvmePathAddress struct {
+	Traddr  string
+	Trsvcid string
+	SrcAddr string
+}
+
+// nvmeHost represents the structure from nvme list-subsys output.
+type nvmeHost struct {
+	HostNQN    string `json:"HostNQN"`
+	Subsystems []struct {
+		NQN   string `json:"NQN"`
+		Paths []struct {
+			Address nvmePathAddress `json:"Address"`
+			State   string          `json:"State"`
+		} `json:"Paths"`
+	} `json:"Subsystems"`
+}
+
+// nvmeHostConnections represents a collection of NVMe host connections.
+type nvmeHostConnections []nvmeHost
+
+// UnmarshalJSON implements custom JSON unmarshaling for nvmePathAddress.
+func (na *nvmePathAddress) UnmarshalJSON(data []byte) error {
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Parse: "traddr=10.242.64.32,trsvcid=4420,src_addr=10.242.64.33"
+	for part := range strings.SplitSeq(raw, ",") {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		switch kv[0] {
+		case "traddr":
+			na.Traddr = kv[1]
+		case "trsvcid":
+			na.Trsvcid = kv[1]
+		case "src_addr":
+			na.SrcAddr = kv[1]
+		}
+	}
+
+	return nil
+}
 
 // NewNVMeInitiator creates a new NVMe-oF initiator.
 func NewNVMeInitiator() NVMeInitiator {
@@ -151,4 +201,46 @@ func (ni *nvmeInitiator) GetNamespaceDeviceByUUID(ctx context.Context, uuid stri
 		// BackOffDelay is the default, starts at 100ms
 		retry.Attempts(4), // defaults to 10 delays, too many
 	)
+}
+
+// listSubsystems retrieves current NVMe subsystem connections.
+func listSubsystems(ctx context.Context) (nvmeHostConnections, error) {
+	stdout, _, err := util.ExecCommandWithTimeout(ctx, listSubsysTimeout, "nvme", "list-subsys", "-o", "json")
+	if err != nil {
+		return nil, err
+	}
+
+	var hosts nvmeHostConnections
+	if err := json.Unmarshal([]byte(stdout), &hosts); err != nil {
+		return nil, err
+	}
+
+	return hosts, nil
+}
+
+// hasLivePathToGateway checks if a live path exists to the specified gateway.
+func (nhc nvmeHostConnections) hasLivePathToGateway(subsystemNQN, hostNQN,
+	gatewayIP, gatewayPort string,
+) bool {
+	for _, host := range nhc {
+		if host.HostNQN != hostNQN {
+			continue
+		}
+
+		for _, subsys := range host.Subsystems {
+			if subsys.NQN != subsystemNQN {
+				continue
+			}
+
+			for _, path := range subsys.Paths {
+				if path.Address.Traddr == gatewayIP &&
+					path.Address.Trsvcid == gatewayPort &&
+					path.State == "live" {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
