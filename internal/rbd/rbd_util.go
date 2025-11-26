@@ -2338,3 +2338,39 @@ func (rv *rbdVolume) PrepareVolumeForSnapshot(ctx context.Context, cr *util.Cred
 
 	return nil
 }
+
+// getUsedBytes returns the logical used bytes of the rbd image by iterating over
+// the image using DiffIterate API.
+func (rv *rbdVolume) getUsedBytes(ctx context.Context) (uint64, error) {
+	img, err := rv.open()
+	if err != nil {
+		return 0, err
+	}
+	defer img.Close() //nolint:errcheck // not a critical failure
+
+	log.DebugLog(ctx, "rbd: running DiffIterate over image %s of size %d bytes", rv, rv.VolSize)
+
+	var usedBytes uint64
+	start := time.Now()
+	err = img.DiffIterate(
+		librbd.DiffIterateConfig{
+			Offset:        0,
+			Length:        uint64(rv.VolSize),
+			IncludeParent: librbd.IncludeParent,
+			WholeObject:   librbd.EnableWholeObject,
+			Callback: func(o, l uint64, _ int, _ interface{}) int {
+				usedBytes += l
+
+				return 0
+			},
+		})
+	if err != nil {
+		return 0, fmt.Errorf("failed to iterate over rbd image %s: %w", rv, err)
+	}
+
+	end := time.Now()
+	log.DebugLog(ctx, "DiffIterate on image %s of size %d bytes took %v seconds",
+		rv, rv.VolSize, end.Sub(start).Seconds())
+
+	return usedBytes, nil
+}

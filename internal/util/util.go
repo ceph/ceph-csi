@@ -372,7 +372,7 @@ func GetControllerPublishSecretRef(volumeId, driverType string) (string, string,
 
 	if secretName == "" || secretNamespace == "" {
 		return secretName, secretNamespace, fmt.Errorf("controller publish secret name or namespace is empty"+
-			" in csi config file for cluster %s", vi.ClusterID)
+			" in csi config file for cluster %s: %w", vi.ClusterID, ErrConfigNotFound)
 	}
 
 	return secretName, secretNamespace, nil
