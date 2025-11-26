@@ -124,16 +124,7 @@ func (sc *secretCache) deleteFromCache(secret *corev1.Secret) {
 func (sc *secretCache) updateCache(secret *corev1.Secret, force bool) map[string]string {
 	cKey := sc.cacheKey(secret.Namespace, secret.Name)
 
-	// We should cache this secret only if it was requested in the first place i.e force == true
-	// For all subsequent updates where this function is called, it is set to false
-	sc.RLock()
-	if _, requested := sc.cache[cKey]; !requested && !force {
-		sc.RUnlock()
-
-		return nil
-	}
-	sc.RUnlock()
-
+	// populate data outside the lock
 	secretData := make(map[string]string, len(secret.Data))
 	for key, value := range secret.Data {
 		secretData[key] = string(value)
@@ -143,8 +134,17 @@ func (sc *secretCache) updateCache(secret *corev1.Secret, force bool) map[string
 		data: secretData,
 	}
 
+	// If the key is not already in the cache and force == false, do not cache
+	// Otherwise store (or update) the secret in cache and return its data.
+	//
+	// Note: force is true only when we fetch the secret from the API server.
+	// It is set to false when called for all events on the informers.
 	sc.Lock()
 	defer sc.Unlock()
+
+	if _, present := sc.cache[cKey]; !present && !force {
+		return nil
+	}
 
 	sc.cache[cKey] = cs
 
@@ -160,29 +160,36 @@ func GetSecret(secretName, secretNamespace string) (map[string]string, error) {
 		stopCh := make(chan struct{})
 		if err := cachedSecrets.startSecretWatcher(stopCh); err != nil {
 			log.ErrorLogMsg("failed to start secret watcher: %v", err)
+
+			// retry later
+			cachedSecrets.running.Store(false)
+		} else {
+			// Cleanup the channel
+			go func() {
+				termChan := make(chan os.Signal, 1)
+				signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM)
+				defer signal.Stop(termChan)
+
+				<-termChan
+				close(stopCh)
+			}()
 		}
-
-		// Cleanup the channel
-		go func() {
-			termChan := make(chan os.Signal, 1)
-			signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM)
-			defer signal.Stop(termChan)
-
-			<-termChan
-			close(stopCh)
-		}()
 	}
 
-	key := cachedSecrets.cacheKey(secretNamespace, secretName)
+	// Read from cache only if watcher is up to avoid
+	// returning potentially stale values
+	if cachedSecrets.running.Load() {
+		key := cachedSecrets.cacheKey(secretNamespace, secretName)
 
-	// Return from cache if present
-	cachedSecrets.RLock()
-	if entry, found := cachedSecrets.cache[key]; found {
+		// Return from cache if present
+		cachedSecrets.RLock()
+		if entry, found := cachedSecrets.cache[key]; found {
+			cachedSecrets.RUnlock()
+
+			return entry.data, nil
+		}
 		cachedSecrets.RUnlock()
-
-		return entry.data, nil
 	}
-	cachedSecrets.RUnlock()
 
 	// The entry was not found in cache, fetch it from the API server
 	client, err := NewK8sClient()
