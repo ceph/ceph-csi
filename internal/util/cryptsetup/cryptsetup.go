@@ -89,15 +89,16 @@ const (
 )
 
 var (
-	hmacSha256 IntegritySpecification = IntegritySpecification{name: "hmac-sha256", luksStatusName: "hmac(sha256)"}
-	hmacSha512 IntegritySpecification = IntegritySpecification{name: "hmac-sha512", luksStatusName: "hmac(sha512)"}
-	aead       IntegritySpecification = IntegritySpecification{name: "aead", luksStatusName: "aead"}
+	hmacSha256 integritySpecification = integritySpecification{name: "hmac-sha256", luksStatusName: "hmac(sha256)"}
+	hmacSha512 integritySpecification = integritySpecification{name: "hmac-sha512", luksStatusName: "hmac(sha512)"}
+	aead       integritySpecification = integritySpecification{name: "aead", luksStatusName: "aead"}
 )
 
 // RecommendationLevel defines a "grade" for a chosen cipher, key size and integrity mode tuple.
 type RecommendationLevel string
 
-type IntegritySpecification struct {
+// integritySpecification maps an integrity algorithm's name to its expected representation in LUKS status output.
+type integritySpecification struct {
 	name           string
 	luksStatusName string
 }
@@ -113,14 +114,18 @@ type LuksStatus struct {
 	sectorSize      *uint
 }
 
+// Cipher returns the cipher name.
 func (l *LuksStatus) Cipher() string {
 	return l.cipher
 }
 
+// SetCipher sets the encryption algorithm and mode (e.g., "aes-xts-plain64").
 func (l *LuksStatus) SetCipher(input string) {
 	l.cipher = input
 }
 
+// CipherKeySize returns the effective encryption key size.
+// It accounts for integrity protection by subtracting the integrity key size from the total reported key size.
 func (l *LuksStatus) CipherKeySize() (uint, error) {
 	// When integrityKeySize is set it means that a key for encryption and
 	// a separate key for integrity protection is set. A luks status sums them
@@ -137,39 +142,42 @@ func (l *LuksStatus) CipherKeySize() (uint, error) {
 	return l.keysize, nil
 }
 
+// SetKeySize converts the size string to a uint and sets it, returning an error if parsing fails.
 func (l *LuksStatus) SetKeySize(input string) error {
 	return applySize(input, func(size uint) {
 		l.keysize = size
 	})
 }
 
+// IntegrityKeySize returns the integrity key size, or nil if non is configured.
 func (l *LuksStatus) IntegrityKeySize() *uint {
-	if l.intgrityKeySize == nil {
-		return nil
-	}
-	result := *l.intgrityKeySize
-
-	return &result
+	return clonePtr(l.intgrityKeySize)
 }
 
+// SetIntegrityKeySize parses the provided string and updates the integrity key size.
 func (l *LuksStatus) SetIntegrityKeySize(input string) error {
 	return applySize(input, func(size uint) {
 		l.intgrityKeySize = &size
 	})
 }
 
+// IntegrityMode returns the configured integrity mode or nil if not configured.
 func (l *LuksStatus) IntegrityMode() *string {
-	if l.integrityMode == nil {
-		return nil
-	}
-	result := *l.integrityMode
-
-	return &result
+	return clonePtr(l.integrityMode)
 }
 
 // SetIntegrityModeFromLuks translates the raw integrity mode string from a luksDump
 // (e.g., "hmac(sha256)") into its equivalent cryptsetup identifier (e.g., "hmac-sha256").
 func (l *LuksStatus) SetIntegrityModeFromLuks(input string) error {
+	findCryptsetupMode := func(value string) (string, error) {
+		for crypsetupMode, luksStatusMode := range integrityAllowRules.allowedValues {
+			if value == luksStatusMode {
+				return crypsetupMode, nil
+			}
+		}
+
+		return "", fmt.Errorf("could not find luksStatus equivalent for %s", value)
+	}
 	result, err := findCryptsetupMode(input)
 	if err != nil {
 		return fmt.Errorf("could not parse Integrity mode, %w", err)
@@ -179,10 +187,12 @@ func (l *LuksStatus) SetIntegrityModeFromLuks(input string) error {
 	return nil
 }
 
+// SectorSize returns the device sector size in bytes, or nil if not set.
 func (l *LuksStatus) SectorSize() *uint {
 	return clonePtr(l.sectorSize)
 }
 
+// SetSectorSize parses and sets the device sector size in bytes, returning an error if parsing fails.
 func (l *LuksStatus) SetSectorSize(input string) error {
 	return applySize(input, func(size uint) {
 		l.sectorSize = &size
@@ -274,7 +284,7 @@ func minLevel(l1, l2 RecommendationLevel) RecommendationLevel {
 	return l2
 }
 
-// CheckCombination valides the (cipher, key size, integrity mode) tuple.
+// GetRecommendation valides the (cipher, key size, integrity mode) tuple.
 // It validates against the recommendation saved in recommendationConfig.
 // Does not check if selected EncryptionsOptions are allowed by rules.
 func GetRecommendation(options EncryptionOptions) RecommendationLevel {
@@ -302,27 +312,19 @@ func GetRecommendation(options EncryptionOptions) RecommendationLevel {
 	return recommendation
 }
 
+// allowRules maintains a registry of permitted configuration values.
 type allowRules[T any] struct {
 	allowedValues map[string]T
 	name          string
 }
 
+// enforce validates that the provided value exists in the allowlist, returning an error if it does not.
 func (v *allowRules[T]) enforce(value string) error {
 	if _, ok := v.allowedValues[value]; !ok {
 		return fmt.Errorf("%s not allowed: %s", v.name, value)
 	}
 
 	return nil
-}
-
-func findCryptsetupMode(value string) (string, error) {
-	for crypsetupMode, luksStatusMode := range integrityAllowRules.allowedValues {
-		if value == luksStatusMode {
-			return crypsetupMode, nil
-		}
-	}
-
-	return "", fmt.Errorf("could not find luksStatus equivalent for %s", value)
 }
 
 var (
@@ -346,6 +348,7 @@ var (
 	}
 )
 
+// EncryptionOptions defines the configuration parameters for volume encryption.
 type EncryptionOptions struct {
 	cipher        string
 	keysize       *uint
@@ -353,20 +356,24 @@ type EncryptionOptions struct {
 	sectorSize    *uint
 }
 
+// SectorSize returns the device sector size in bytes, or nil if not set.
 func (e *EncryptionOptions) SectorSize() *uint {
 	return clonePtr(e.sectorSize)
 }
 
+// SetSectorSize parses the input string and sets the device sector size in bytes.
 func (e *EncryptionOptions) SetSectorSize(size string) error {
 	return applySize(size, func(size uint) {
 		e.sectorSize = &size
 	})
 }
 
+// IntegrityMode returns the configured integrity protection mode, or nil if disabled.
 func (e *EncryptionOptions) IntegrityMode() *string {
 	return clonePtr(e.integrityMode)
 }
 
+// // SetIntegrityMode validates and sets the integrity protection mode (e.g., "hmac-sha256").
 func (e *EncryptionOptions) SetIntegrityMode(integrity string) error {
 	if err := integrityAllowRules.enforce(integrity); err != nil {
 		return fmt.Errorf("cannot set integrity mode '%s': %w", integrity, err)
@@ -376,20 +383,24 @@ func (e *EncryptionOptions) SetIntegrityMode(integrity string) error {
 	return nil
 }
 
+// KeySize returns the encryption key size in bits, or nil if the default is used.
 func (e *EncryptionOptions) KeySize() *uint {
-	return e.keysize
+	return clonePtr(e.keysize)
 }
 
+// SetKeySize parses and sets the encryption key size in bits.
 func (e *EncryptionOptions) SetKeySize(keysize string) error {
 	return applySize(keysize, func(keysize uint) {
 		e.keysize = &keysize
 	})
 }
 
+// Cipher returns the encryption cipher suite.
 func (e *EncryptionOptions) Cipher() string {
 	return e.cipher
 }
 
+// SetCipher validates and if successful sets the encryption cipher suite.
 func (e *EncryptionOptions) SetCipher(cipher string) error {
 	if err := cipherAllowRules.enforce(cipher); err != nil {
 		return fmt.Errorf("cannot set cipher'%s': %w", cipher, err)
@@ -734,6 +745,7 @@ func (l *luksWrapper) VerifyKey(devicePath, passphrase, slot string) (bool, erro
 	return true, nil
 }
 
+// IsIntegrityProtected checks if a block device is integrity protected.
 func (l *luksWrapper) IsIntegrityProtected(mapperFile string) (bool, error) {
 	stdout, stderr, err := l.Status(mapperFile)
 	if err != nil || stderr != "" {

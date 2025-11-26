@@ -166,6 +166,7 @@ func (ve *VolumeEncryption) GetID() string {
 	return ve.id
 }
 
+// CipherOptions returns the encryption configuration parameters for the volume.
 func (ve *VolumeEncryption) CipherOptions() *cryptsetup.EncryptionOptions {
 	return ve.cipherOptions
 }
