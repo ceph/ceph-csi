@@ -38,6 +38,11 @@ const (
 	listSubsysTimeout = 60 * time.Second
 )
 
+// nvmeCtrlLossTmo is the controller loss timeout passed to nvme connect -l flag.
+// This defines how long (in seconds) the kernel will retry reconnecting to a
+// failed controller before giving up.
+const nvmeCtrlLossTmo = "1800"
+
 // NVMeInitiator handles NVMe-oF initiator operations.
 type NVMeInitiator interface {
 	// LoadKernelModules ensures required kernel modules are loaded
@@ -136,12 +141,36 @@ func (ni *nvmeInitiator) LoadKernelModules(ctx context.Context) error {
 
 // ConnectSubsystem connects to an NVMe-oF subsystem.
 func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectRequest) (bool, error) {
+	// Get existing subsystem connections once to avoid repeated nvme list-subsys calls
+	var existingConnections nvmeHostConnections
+	if req.HostNQN != "" {
+		connections, err := listSubsystems(ctx)
+		if err != nil {
+			log.WarningLog(ctx, "Failed to list existing subsystems: %v (continuing anyway)", err)
+		} else {
+			existingConnections = connections
+		}
+	}
 	// Try connecting to each address until one succeeds
 	var success bool
 	for _, listener := range req.Listeners {
-		log.DebugLog(ctx, "Connecting to NVMe-oF subsystem %s at %v:%v",
-			req.SubsystemNQN, listener.Address, listener.Port)
 		portStr := strconv.FormatUint(uint64(listener.Port), 10)
+
+		// Check if already connected to this specific gateway
+		if req.HostNQN != "" && existingConnections != nil {
+			if existingConnections.hasLivePathToGateway(
+				req.SubsystemNQN, req.HostNQN, listener.Address, portStr) {
+				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s with HostNQN %s",
+					req.SubsystemNQN, listener.Address, portStr, req.HostNQN)
+				success = true
+
+				continue
+			}
+		}
+
+		log.DebugLog(ctx, "Connecting to NVMe-oF subsystem %s at %v:%s",
+			req.SubsystemNQN, listener.Address, portStr)
+
 		// Build nvme connect command for this address
 		args := []string{
 			"connect",
@@ -149,7 +178,7 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 			"-n", req.SubsystemNQN,
 			"-a", listener.Address,
 			"-s", portStr,
-			"-l", "1800", // TODO - known value for connection timeout.move to be const.
+			"-l", nvmeCtrlLossTmo,
 		}
 
 		// Add HostNQN only if specified
