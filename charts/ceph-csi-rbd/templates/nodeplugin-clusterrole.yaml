@@ -17,7 +17,7 @@ rules:
   # allow to read Vault Token and connection options from the Tenants namespace
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get"]

@@ -22,6 +22,6 @@ rules:
   # allow to read the encryption key used with the metadata KMS
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get"]
+    verbs: ["get", "list", "watch"]
 {{- end -}}
 {{- end -}}
