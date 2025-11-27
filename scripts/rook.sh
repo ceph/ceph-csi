@@ -186,7 +186,7 @@ function check_ceph_mgr() {
 
 function check_mds_stat() {
 	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
-		echo "Configuring MDS logging to 20/20... ${retry}s"
+		echo "Configuring MDS and OSD logging to 20/20... ${retry}s"
 
 		TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
 		TOOLBOX_POD_STATUS=$(kubectl_retry -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
@@ -201,6 +201,14 @@ function check_mds_stat() {
 			echo "Ceph MDS loglevel successfully configured..."
 		else
 			echo "Failed to configure Ceph MDS loglevel..."
+			sleep 5
+			continue
+		fi
+
+		if kubectl_retry exec -n rook-ceph "$TOOLBOX_POD" -it -- ceph config set osd debug_osd 20/20 &>/dev/null; then
+			echo "Ceph OSD loglevel successfully configured..."
+		else
+			echo "Failed to configure Ceph OSD loglevel..."
 			sleep 5
 			continue
 		fi
