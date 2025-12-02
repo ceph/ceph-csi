@@ -15,7 +15,7 @@ RUN source /build.env \
     && \
     ( test -n "${GOARCH}" && exit 0; echo -e "\n\nMissing GOARCH argument for building image, install Golang or run: make containerized-build GOARCH=amd64\n\n"; exit 1 ) \
     && mkdir -p ${GOROOT} \
-    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1 \
+    && curl -L https://go.dev/dl/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1 \
     && go version \
     && true
 

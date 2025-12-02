@@ -52,7 +52,7 @@ RUN set -x \
     && dnf -y clean all \
     && gem install mdl \
     && mkdir -p ${GOROOT} \
-    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz  \
+    && curl -L https://go.dev/dl/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz  \
        | tar xzf - -C ${GOROOT} --strip-components=1 \
     && go version \
     && curl -sf "https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCI_VERSION}/install.sh" \
