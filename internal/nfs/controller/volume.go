@@ -268,8 +268,8 @@ func (nv *NFSVolume) deleteExportCommand(cmd, nfsCluster string) []string {
 	}
 }
 
-// getNFSCluster fetches the NFS-cluster name from the CephFS journal.
-func (nv *NFSVolume) getNFSCluster() (string, error) {
+// getAttribute fetches the attribute with the given key from the CephFS journal.
+func (nv *NFSVolume) getAttribute(key string) (string, error) {
 	if !nv.connected {
 		return "", fmt.Errorf("can not get NFS-cluster for %q: %w", nv, ErrNotConnected)
 	}
@@ -296,18 +296,18 @@ func (nv *NFSVolume) getNFSCluster() (string, error) {
 	}
 	defer j.Destroy()
 
-	clusterName, err := j.FetchAttribute(nv.ctx, mdPool, nv.objectUUID, clusterNameKey)
+	value, err := j.FetchAttribute(nv.ctx, mdPool, nv.objectUUID, key)
 	if err != nil && errors.Is(err, util.ErrPoolNotFound) || errors.Is(err, util.ErrKeyNotFound) {
-		return "", fmt.Errorf("cluster name for %q %w: %w", nv.objectUUID, ErrNotFound, err)
+		return "", fmt.Errorf("attribute with key %q for %q %w: %w", key, nv.objectUUID, ErrNotFound, err)
 	} else if err != nil {
-		return "", fmt.Errorf("failed to get cluster name for %q: %w", nv.objectUUID, err)
+		return "", fmt.Errorf("failed to get attribute with key %q for %q: %w", key, nv.objectUUID, err)
 	}
 
-	return clusterName, nil
+	return value, nil
 }
 
-// setNFSCluster stores the NFS-cluster name in the CephFS journal.
-func (nv *NFSVolume) setNFSCluster(clusterName string) error {
+// setAttribute stores the attribute with the key and value in the CephFS journal.
+func (nv *NFSVolume) setAttribute(key, value string) error {
 	if !nv.connected {
 		return fmt.Errorf("can not set NFS-cluster for %q: %w", nv, ErrNotConnected)
 	}
@@ -334,10 +334,20 @@ func (nv *NFSVolume) setNFSCluster(clusterName string) error {
 	}
 	defer j.Destroy()
 
-	err = j.StoreAttribute(nv.ctx, mdPool, nv.objectUUID, clusterNameKey, clusterName)
+	err = j.StoreAttribute(nv.ctx, mdPool, nv.objectUUID, key, value)
 	if err != nil {
-		return fmt.Errorf("failed to store cluster name: %w", err)
+		return fmt.Errorf("failed to store attribute with key %q: %w", key, err)
 	}
 
 	return nil
+}
+
+// getNFSCluster fetches the NFS-cluster name from the CephFS journal.
+func (nv *NFSVolume) getNFSCluster() (string, error) {
+	return nv.getAttribute(clusterNameKey)
+}
+
+// setNFSCluster stores the NFS-cluster name in the CephFS journal.
+func (nv *NFSVolume) setNFSCluster(clusterName string) error {
+	return nv.setAttribute(clusterNameKey, clusterName)
 }
