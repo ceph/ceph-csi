@@ -29,6 +29,7 @@ import (
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
+	nfs "github.com/ceph/ceph-csi/internal/nfs/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -97,7 +98,7 @@ func (cs *Server) CreateVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(ctx, backend.GetVolumeId())
+	nfsVolume, err := nfs.NewNFSVolume(ctx, backend.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -136,7 +137,7 @@ func (cs *Server) DeleteVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(ctx, req.GetVolumeId())
+	nfsVolume, err := nfs.NewNFSVolume(ctx, req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -149,7 +150,7 @@ func (cs *Server) DeleteVolume(
 
 	err = nfsVolume.DeleteExport()
 	// if the export does not exist, continue with deleting the backend volume
-	if err != nil && !errors.Is(err, ErrNotFound) {
+	if err != nil && !errors.Is(err, nfs.ErrNotFound) {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to delete export: %v", err)
 	}
 
