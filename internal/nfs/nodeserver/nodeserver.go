@@ -181,12 +181,12 @@ func (ns *NodeServer) NodeGetVolumeStats(
 			"failed to get stat for targetpath %q: %v", targetPath, err)
 	}
 
-	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
+	if !stat.Mode().IsDir() {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"targetpath %q is not a directory or device", targetPath)
 	}
 
-	return nil, status.Errorf(codes.InvalidArgument,
-		"targetpath %q is not a directory or device", targetPath)
+	return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
 }
 
 // mountNFS mounts nfs volumes.
