@@ -164,7 +164,10 @@ func Test_getSource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := getSource(tt.args.volContext)
+			req := &csi.NodePublishVolumeRequest{
+				VolumeContext: tt.args.volContext,
+			}
+			got, err := getSource(t.Context(), req)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getSource() error = %v, wantErr %v", err, tt.wantErr)
 

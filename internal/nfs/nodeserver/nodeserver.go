@@ -29,7 +29,10 @@ import (
 	mount "k8s.io/mount-utils"
 	netutil "k8s.io/utils/net"
 
+	"github.com/ceph/ceph-csi/internal/cephfs/store"
+	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/journal"
 	nfs "github.com/ceph/ceph-csi/internal/nfs/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -42,6 +45,8 @@ const (
 	paramClusterID = "clusterID"
 )
 
+var errInvalidParameter = errors.New("invalid parameter")
+
 // NodeServer struct of ceph CSI driver with supported methods of CSI
 // node server spec.
 type NodeServer struct {
@@ -53,6 +58,8 @@ func NewNodeServer(
 	d *csicommon.CSIDriver,
 	t string,
 ) *NodeServer {
+	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
+
 	return &NodeServer{
 		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
 	}
@@ -76,9 +83,11 @@ func (ns *NodeServer) NodePublishVolume(
 		mountOptions = append(mountOptions, "ro")
 	}
 
-	source, err := getSource(req.GetVolumeContext())
-	if err != nil {
+	source, err := getSource(ctx, req)
+	if err != nil && errors.Is(errInvalidParameter, err) {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	clusterID := req.GetVolumeContext()[paramClusterID]
@@ -267,10 +276,20 @@ func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 // getSource validates volume context, extracts and returns source.
 // This function expects `server` and `share` parameters to be set
 // and validates for the same.
-func getSource(volContext map[string]string) (string, error) {
-	server := volContext[nfs.ParameterServer]
-	if server == "" {
-		return "", fmt.Errorf("%v missing in request", nfs.ParameterServer)
+func getSource(ctx context.Context, req *csi.NodePublishVolumeRequest) (string, error) {
+	volContext := req.GetVolumeContext()
+
+	// default server from the VolumeContext, updated server from journal
+	server, err := getServerFromVolume(ctx, req)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get server from volume: %v", err)
+
+		return "", err
+	} else if server == "" {
+		server = volContext[nfs.ParameterServer]
+		if server == "" {
+			return "", fmt.Errorf("%w: %q missing in request", errInvalidParameter, nfs.ParameterServer)
+		}
 	}
 
 	baseDir := volContext[paramShare]
@@ -284,4 +303,38 @@ func getSource(volContext map[string]string) (string, error) {
 	}
 
 	return fmt.Sprintf("%s:%s", server, baseDir), nil
+}
+
+func getServerFromVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (string, error) {
+	secrets := req.GetSecrets()
+	if secrets == nil {
+		// no secrets, continue as if not set in metadata
+		return "", nil
+	}
+	cr, err := util.NewAdminCredentials(secrets)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to retrieve user credentials: %v", err)
+
+		// invalid secrets, continue as if not set in metadata
+		return "", nil
+	}
+	defer cr.DeleteCredentials()
+
+	nfsVolume, err := nfs.NewNFSVolume(ctx, req.GetVolumeId())
+	if err != nil {
+		return "", fmt.Errorf("failed to instantiate volume with ID %q: %w", req.GetVolumeId(), err)
+	}
+
+	err = nfsVolume.Connect(cr)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect: %w", err)
+	}
+	defer nfsVolume.Destroy()
+
+	server, err := nfsVolume.GetServer()
+	if err != nil && !errors.Is(err, nfs.ErrNotFound) {
+		return "", fmt.Errorf("failed to get server for volume with ID %q: %w", req.GetVolumeId(), err)
+	}
+
+	return server, nil
 }
