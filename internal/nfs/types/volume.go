@@ -35,6 +35,10 @@ const (
 	// clusterNameKey is the key in OMAP that contains the name of the
 	// NFS-cluster. It will be prefixed with the journal configuration.
 	clusterNameKey = "nfs.cluster"
+
+	// ParameterServer is set in the parameters on volume creation and in
+	// the VolumeContext.
+	ParameterServer = "server"
 )
 
 // NFSVolume presents the API for consumption by the CSI-controller to create,
