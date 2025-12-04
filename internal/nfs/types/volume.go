@@ -236,6 +236,16 @@ func (nv *NFSVolume) DeleteExport() error {
 	return nil
 }
 
+// SetServer stores the NFS-server name in the CephFS journal.
+func (nv *NFSVolume) SetServer(server string) error {
+	return nv.setAttribute(ParameterServer, server)
+}
+
+// GetServer fetches the NFS-server name from the CephFS journal.
+func (nv *NFSVolume) GetServer() (string, error) {
+	return nv.getAttribute(ParameterServer)
+}
+
 // createExportCommand returns the "ceph nfs export create ..." command
 // arguments (without "ceph"). The order of the parameters matches old Ceph
 // releases, new Ceph releases added --option formats, which can be added  when
