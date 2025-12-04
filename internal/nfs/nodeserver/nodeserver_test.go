@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+
+	nfs "github.com/ceph/ceph-csi/internal/nfs/types"
 )
 
 func Test_validateNodePublishVolumeRequest(t *testing.T) {
@@ -107,8 +109,8 @@ func Test_getSource(t *testing.T) {
 			name: "hostname as address",
 			args: args{
 				volContext: map[string]string{
-					paramServer: "example.io",
-					paramShare:  "/a",
+					nfs.ParameterServer: "example.io",
+					paramShare:          "/a",
 				},
 			},
 			want:    "example.io:/a",
@@ -118,8 +120,8 @@ func Test_getSource(t *testing.T) {
 			name: "ipv4 address",
 			args: args{
 				volContext: map[string]string{
-					paramServer: "10.12.1.0",
-					paramShare:  "/a",
+					nfs.ParameterServer: "10.12.1.0",
+					paramShare:          "/a",
 				},
 			},
 			want:    "10.12.1.0:/a",
@@ -129,8 +131,8 @@ func Test_getSource(t *testing.T) {
 			name: "ipv6 address",
 			args: args{
 				volContext: map[string]string{
-					paramServer: "2001:0db8:3c4d:0015:0000:0000:1a2f:1a2b",
-					paramShare:  "/a",
+					nfs.ParameterServer: "2001:0db8:3c4d:0015:0000:0000:1a2f:1a2b",
+					paramShare:          "/a",
 				},
 			},
 			want:    "[2001:0db8:3c4d:0015:0000:0000:1a2f:1a2b]:/a",
@@ -140,8 +142,8 @@ func Test_getSource(t *testing.T) {
 			name: "missing server parameter",
 			args: args{
 				volContext: map[string]string{
-					paramServer: "",
-					paramShare:  "/a",
+					nfs.ParameterServer: "",
+					paramShare:          "/a",
 				},
 			},
 			want:    "",
@@ -151,8 +153,8 @@ func Test_getSource(t *testing.T) {
 			name: "missing share parameter",
 			args: args{
 				volContext: map[string]string{
-					paramServer: "10.12.1.0",
-					paramShare:  "",
+					nfs.ParameterServer: "10.12.1.0",
+					paramShare:          "",
 				},
 			},
 			want:    "",

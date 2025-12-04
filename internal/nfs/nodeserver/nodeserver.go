@@ -30,6 +30,7 @@ import (
 	netutil "k8s.io/utils/net"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	nfs "github.com/ceph/ceph-csi/internal/nfs/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -37,7 +38,6 @@ import (
 const (
 	defaultMountPermission = os.FileMode(0o777)
 	// Address of the NFS server.
-	paramServer    = "server"
 	paramShare     = "share"
 	paramClusterID = "clusterID"
 )
@@ -268,10 +268,11 @@ func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 // This function expects `server` and `share` parameters to be set
 // and validates for the same.
 func getSource(volContext map[string]string) (string, error) {
-	server := volContext[paramServer]
+	server := volContext[nfs.ParameterServer]
 	if server == "" {
-		return "", fmt.Errorf("%v missing in request", paramServer)
+		return "", fmt.Errorf("%v missing in request", nfs.ParameterServer)
 	}
+
 	baseDir := volContext[paramShare]
 	if baseDir == "" {
 		return "", fmt.Errorf("%v missing in request", paramShare)
