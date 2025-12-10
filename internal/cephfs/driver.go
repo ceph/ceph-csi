@@ -232,7 +232,7 @@ func (fs *cephfsDriver) setupCSIAddonsServer(conf *util.Config) error {
 	is := casceph.NewIdentityServer(conf)
 	fs.cas.RegisterService(is)
 
-	if conf.IsControllerServer {
+	if conf.IsControllerServer || conf.IsNodeServer {
 		fcs := casceph.NewFenceControllerServer()
 		fs.cas.RegisterService(fcs)
 	}
