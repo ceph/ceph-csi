@@ -23,6 +23,7 @@ import (
 
 	ca "github.com/ceph/go-ceph/cephfs/admin"
 	"github.com/ceph/go-ceph/common/admin/nfs"
+	osd "github.com/ceph/go-ceph/common/admin/osd"
 	"github.com/ceph/go-ceph/rados"
 	ra "github.com/ceph/go-ceph/rbd/admin"
 )
@@ -113,6 +114,14 @@ func (cc *ClusterConnection) GetFSAdmin() (*ca.FSAdmin, error) {
 	}
 
 	return ca.NewFromConn(cc.conn), nil
+}
+
+func (cc *ClusterConnection) GetOSDAdmin() (*osd.Admin, error) {
+	if cc.conn == nil {
+		return nil, errors.New("cluster is not connected yet")
+	}
+
+	return osd.NewFromConn(cc.conn), nil
 }
 
 func (cc *ClusterConnection) GetFSID() (string, error) {

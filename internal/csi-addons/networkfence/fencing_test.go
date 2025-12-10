@@ -18,8 +18,12 @@ package networkfence
 
 import (
 	"testing"
+	"time"
 
+	osdAdmin "github.com/ceph/go-ceph/common/admin/osd"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 func TestGetIPRange(t *testing.T) {
@@ -253,6 +257,243 @@ listed 1 entries`,
 
 			result := nf.parseBlocklistForCIDR(t.Context(), tc.blocklist, tc.cidr)
 			require.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func Test_containsMatchingBlockListEntry(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		blocklist *[]osdAdmin.Blocklist
+		addr      string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "matching entry found",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "192.0.1.0:0/32",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "192.0.2.0:0/32",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "192.0.1.0",
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "address does not match",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "193.0.1.0:0/32",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "192.0.2.0:0/32",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "192.0.1.0",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "addr matches but fenced for max duration",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "192.0.1.0:0/32",
+						Until: time.Now().Add(util.MaxBlocklistTime).Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "192.0.1.0",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "Until is not in ISO8601 format",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "192.0.1.0:0/32",
+						Until: time.Now().Format(time.RFC3339),
+					},
+				},
+				addr: "192.0.1.0",
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "matching IPv6 entry found",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "2001:db8::1:0/128",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "2001:db8::2:0/128",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "IPv6 address does not match",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "2001:db8::3:0/128",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "2001:db8::2:0/128",
+						Until: time.Now().Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "IPv6 addr matches but fenced for max duration",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "2001:db8::1:0/128",
+						Until: time.Now().Add(util.MaxBlocklistTime).Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "IPv6 Until is not in ISO8601 format",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "2001:db8::1:0/128",
+						Until: time.Now().Format(time.RFC3339),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := containsMatchingBlockListEntry(tt.args.blocklist, tt.args.addr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("containsMatchingBlockListEntry() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
+			}
+			if got != tt.want {
+				t.Errorf("containsMatchingBlockListEntry() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_matchEntry(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		actual   string
+		expected string
+		want     bool
+	}{
+		{
+			name:     "IPv4 match with /32 suffix",
+			actual:   "192.168.1.1:0/32",
+			expected: "192.168.1.1",
+			want:     true,
+		},
+		{
+			name:     "IPv4 match without /32 suffix",
+			actual:   "192.168.1.1:0/878978",
+			expected: "192.168.1.1",
+			want:     false,
+		},
+		{
+			name:     "IPv4 no match different IPs",
+			actual:   "192.168.1.2:0/32",
+			expected: "192.168.1.1",
+			want:     false,
+		},
+		{
+			name:     "IPv6 match with /128 suffix",
+			actual:   "2001:db8::1:0/128",
+			expected: "2001:db8::1",
+			want:     true,
+		},
+		{
+			name:     "IPv6 match without /128 suffix",
+			actual:   "2001:db8::1:0/123213",
+			expected: "2001:db8::1",
+			want:     false,
+		},
+		{
+			name:     "IPv6 no match different IPs",
+			actual:   "2001:db8::2:0/128",
+			expected: "2001:db8::1",
+			want:     false,
+		},
+		{
+			name:     "IPv6 compressed notation match",
+			actual:   "fd4a:ecbc:cafd:4e49::1:0/128",
+			expected: "fd4a:ecbc:cafd:4e49::1",
+			want:     true,
+		},
+		{
+			name:     "Invalid expected IP",
+			actual:   "192.168.1.1:0/32",
+			expected: "invalid-ip",
+			want:     false,
+		},
+		{
+			name:     "Invalid actual IP",
+			actual:   "invalid:0/32",
+			expected: "192.168.1.1",
+			want:     false,
+		},
+		{
+			name:     "Empty strings",
+			actual:   "",
+			expected: "",
+			want:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := matchEntry(tt.actual, tt.expected)
+			if got != tt.want {
+				t.Errorf("matchEntry() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

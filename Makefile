@@ -53,7 +53,7 @@ GO_PROJECT=github.com/ceph/ceph-csi
 
 CEPH_VERSION ?= $(shell . $(CURDIR)/build.env ; echo $${CEPH_VERSION})
 # The 'ceph_preview' tag may be needed for unstable/unreleased APIs.
-GO_TAGS_LIST ?= $(CEPH_VERSION)
+GO_TAGS_LIST ?= $(CEPH_VERSION) ceph_preview
 
 # CephCSI currently has 4 modules in these directories.
 GO_MODULES_LIST = ./ e2e/ api/ actions/retest
