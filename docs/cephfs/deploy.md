@@ -221,7 +221,7 @@ The Helm chart is located in `charts/ceph-csi-cephfs`.
 
 **Deploy Helm Chart:**
 
-[See the Helm chart readme for installation instructions.](../charts/ceph-csi-cephfs/README.md)
+[See the Helm chart readme for installation instructions.](../../../charts/ceph-csi-cephfs/README.md)
 
 ## Read Affinity using crush locations for CephFS subvolumes
 
