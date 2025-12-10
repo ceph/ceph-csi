@@ -118,3 +118,11 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 
 	return &fence.UnfenceClusterNetworkResponse{}, nil
 }
+
+// GetFenceClients fetches the ceph cluster ID and the client address that need to be fenced.
+func (fcs *FenceControllerServer) GetFenceClients(
+	ctx context.Context,
+	req *fence.GetFenceClientsRequest,
+) (*fence.GetFenceClientsResponse, error) {
+	return nf.GetFenceClients(ctx, req)
+}
