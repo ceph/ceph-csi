@@ -331,3 +331,95 @@ func TestParseClientIP(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertIPToCIDR(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		ip      string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "Valid IPv4 address",
+			ip:      "192.168.1.1",
+			want:    "192.168.1.1/32",
+			wantErr: false,
+		},
+		{
+			name:    "Valid IPv4 address - loopback",
+			ip:      "127.0.0.1",
+			want:    "127.0.0.1/32",
+			wantErr: false,
+		},
+		{
+			name:    "Valid IPv4 address - zero",
+			ip:      "0.0.0.0",
+			want:    "0.0.0.0/32",
+			wantErr: false,
+		},
+		{
+			name:    "Valid IPv6 address",
+			ip:      "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+			want:    "2001:db8:85a3::8a2e:370:7334/128",
+			wantErr: false,
+		},
+		{
+			name:    "Valid IPv6 address - compressed",
+			ip:      "fd98::4",
+			want:    "fd98::4/128",
+			wantErr: false,
+		},
+		{
+			name:    "Valid IPv6 address - loopback",
+			ip:      "::1",
+			want:    "::1/128",
+			wantErr: false,
+		},
+		{
+			name:    "Valid IPv6 address - zero",
+			ip:      "::",
+			want:    "::/128",
+			wantErr: false,
+		},
+		{
+			name:    "Invalid IP address - empty string",
+			ip:      "",
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Invalid IP address - malformed",
+			ip:      "invalid",
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Invalid IP address - incomplete IPv4",
+			ip:      "192.168.1",
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Invalid IP address - out of range",
+			ip:      "256.256.256.256",
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := ConvertIPToCIDR(tt.ip)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ConvertIPToCIDR() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
+			}
+
+			if got != tt.want {
+				t.Errorf("ConvertIPToCIDR() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
