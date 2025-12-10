@@ -76,6 +76,12 @@ func (cs *Server) ControllerGetCapabilities(
 	return cs.backendServer.ControllerGetCapabilities(ctx, req)
 }
 
+// ValidateControllerServiceRequest uses the RBD backendServer driver field.
+// It checks whether the controller service request is valid.
+func (cs *Server) ValidateControllerServiceRequest(capability csi.ControllerServiceCapability_RPC_Type) error {
+	return cs.backendServer.Driver.ValidateControllerServiceRequest(capability)
+}
+
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
 func (cs *Server) ValidateVolumeCapabilities(
@@ -330,16 +336,18 @@ func (cs *Server) ControllerModifyVolume(
 	return &csi.ControllerModifyVolumeResponse{}, nil
 }
 
-// ControllerExpandVolume handles volume expansion requests.
-// For now it only updates the capacity in the response as NVMe-oF
-// this must be added because ControllerModifyVolume requires the sidecar csi-resizer. and
-// csi-resizer searches for the capacity ControllerServiceCapability_RPC_EXPAND_VOLUME.
-// In the future, if NVMe-oF gateway supports volume expansion, the logic must be added here.
 func (cs *Server) ControllerExpandVolume(
 	ctx context.Context,
 	req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "ControllerExpandVolume is not implemented for NVMe-oF volumes")
+	err := cs.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid expand volume req: %v", err)
+
+		return nil, err
+	}
+	// expand volume is handled by rbd backend server
+	return cs.backendServer.ControllerExpandVolume(ctx, req)
 }
 
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
