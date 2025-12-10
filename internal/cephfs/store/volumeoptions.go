@@ -992,7 +992,7 @@ func (vo *VolumeOptions) CopyEncryptionConfig(ctx context.Context, cp *VolumeOpt
 	}
 
 	if cp.Encryption == nil {
-		cp.Encryption, err = util.NewVolumeEncryption(vo.Encryption.GetID(), vo.Encryption.KMS)
+		cp.Encryption, err = util.NewVolumeEncryption(vo.Encryption.GetID(), vo.Encryption.KMS, nil)
 		if errors.Is(err, util.ErrDEKStoreNeeded) {
 			_, err := vo.Encryption.KMS.GetSecret(ctx, "")
 			if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
@@ -1031,8 +1031,8 @@ func (vo *VolumeOptions) ConfigureEncryption(
 
 		return err
 	}
-
-	vo.Encryption, err = util.NewVolumeEncryption(kmsID, kms)
+	// With cephfs selecting the cipher is not possible
+	vo.Encryption, err = util.NewVolumeEncryption(kmsID, kms, nil)
 
 	if errors.Is(err, util.ErrDEKStoreNeeded) {
 		// fscrypt uses secrets directly from the KMS.

@@ -32,7 +32,7 @@ func TestGetPassphraseFromKMS(t *testing.T) {
 		kms := kmsapi.GetKMSTestDummy(provider.UniqueID)
 		require.NotNil(t, kms)
 
-		volEnc, err := NewVolumeEncryption(provider.UniqueID, kms)
+		volEnc, err := NewVolumeEncryption(provider.UniqueID, kms, nil)
 		if errors.Is(err, ErrDEKStoreNeeded) {
 			_, err = volEnc.KMS.GetSecret(t.Context(), "")
 			if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
