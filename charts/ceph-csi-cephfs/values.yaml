@@ -411,6 +411,12 @@ volumeSnapshotClass:
   #   storageclass.kubernetes.io/is-default-class: "true"
   annotations: {}
 
+  # Labels for the VolumeSnapshotClass
+  # Example:
+  # labels:
+  #   velero.io/csi-volumesnapshot-class: "true"
+  labels: {}
+
   # String representing a Ceph cluster to provision storage snapshot from.
   # Should be unique across all Ceph clusters in use for provisioning,
   # cannot be greater than 36 bytes in length, and should remain immutable for

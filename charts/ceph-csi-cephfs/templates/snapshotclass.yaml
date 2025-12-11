@@ -13,6 +13,7 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.volumeSnapshotClass.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 driver: {{ .Values.driverName }}
 parameters:
   clusterID: {{ .Values.volumeSnapshotClass.clusterID }}
