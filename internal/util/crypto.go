@@ -55,6 +55,7 @@ var (
 	luks = cryptsetup.NewLUKSWrapper(context.Background())
 )
 
+// VolumeEncryption is for file encryption and block encryption.
 type VolumeEncryption struct {
 	KMS kms.EncryptionKMS
 
@@ -62,7 +63,8 @@ type VolumeEncryption struct {
 	// different object implementing the DEKStore interface.
 	dekStore kms.DEKStore
 
-	id string
+	id            string
+	cipherOptions *cryptsetup.EncryptionOptions
 }
 
 // FetchEncryptionKMSID returns non-empty kmsID if 'encrypted' parameter is evaluated as true.
@@ -106,7 +108,11 @@ func FetchEncryptionType(volOptions map[string]string, fallback crypto.Encryptio
 // Callers that receive a ErrDEKStoreNeeded error, should use
 // VolumeEncryption.SetDEKStore() to configure an alternative storage for the
 // DEKs.
-func NewVolumeEncryption(id string, ekms kms.EncryptionKMS) (*VolumeEncryption, error) {
+func NewVolumeEncryption(
+	id string,
+	ekms kms.EncryptionKMS,
+	cipher *cryptsetup.EncryptionOptions,
+) (*VolumeEncryption, error) {
 	kmsID := id
 	if kmsID == "" {
 		// if kmsID is not set, encryption is enabled, and the type is
@@ -115,8 +121,9 @@ func NewVolumeEncryption(id string, ekms kms.EncryptionKMS) (*VolumeEncryption, 
 	}
 
 	ve := &VolumeEncryption{
-		id:  kmsID,
-		KMS: ekms,
+		id:            kmsID,
+		KMS:           ekms,
+		cipherOptions: cipher,
 	}
 
 	if ekms.RequiresDEKStore() == kms.DEKStoreIntegrated {
@@ -157,6 +164,11 @@ func (ve *VolumeEncryption) RemoveDEK(ctx context.Context, volumeID string) erro
 
 func (ve *VolumeEncryption) GetID() string {
 	return ve.id
+}
+
+// CipherOptions returns the encryption configuration parameters for the volume.
+func (ve *VolumeEncryption) CipherOptions() *cryptsetup.EncryptionOptions {
+	return ve.cipherOptions
 }
 
 // StoreCryptoPassphrase takes an unencrypted passphrase, encrypts it and saves
@@ -220,9 +232,13 @@ func VolumeMapper(volumeID string) (string, string) {
 }
 
 // EncryptVolume encrypts provided device with LUKS.
-func EncryptVolume(ctx context.Context, devicePath, passphrase string) error {
+func EncryptVolume(ctx context.Context, devicePath, passphrase string, cipher *cryptsetup.EncryptionOptions) error {
 	log.DebugLog(ctx, "Encrypting device %q	 with LUKS", devicePath)
-	_, stdErr, err := luks.Format(devicePath, passphrase)
+	if cipher != nil {
+		recommendation := cryptsetup.GetRecommendation(*cipher)
+		log.UsefulLog(ctx, "current encryption configuration is: %v", recommendation)
+	}
+	_, stdErr, err := luks.Format(devicePath, passphrase, cipher)
 	if err != nil || stdErr != "" {
 		log.ErrorLog(ctx, "failed to encrypt device %q with LUKS (%v): %s", devicePath, err, stdErr)
 	}
@@ -244,6 +260,15 @@ func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase
 // ResizeEncryptedVolume resizes encrypted volume so that it can be used by the client.
 func ResizeEncryptedVolume(ctx context.Context, mapperFile string) error {
 	log.DebugLog(ctx, "Resizing LUKS device %q", mapperFile)
+	isIntegrityProtected, err := luks.IsIntegrityProtected(mapperFile)
+	if err != nil {
+		return fmt.Errorf("failed to resize LUKS device. Could not check if device is integrity protected %w", err)
+	}
+	if isIntegrityProtected {
+		log.ErrorLog(ctx, "No resize possible with integrity mode enabled")
+
+		return fmt.Errorf("cannot resize block device (%s) because integrity mode is enabled", mapperFile)
+	}
 	_, stdErr, err := luks.Resize(mapperFile)
 	if err != nil || stdErr != "" {
 		log.ErrorLog(ctx, "failed to resize LUKS device %q (%v): %s", mapperFile, err, stdErr)
