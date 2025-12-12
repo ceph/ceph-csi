@@ -227,6 +227,79 @@ func createNFSStorageClass(
 	})
 }
 
+func createNFSVolumeAttributesClass(
+	c clientset.Interface,
+	f *framework.Framework,
+	params map[string]string,
+) error {
+	vacPath := fmt.Sprintf("%s/%s", nfsExamplePath, "volumeattributesclass.yaml")
+	vac, err := getVolumeAttributesClass(vacPath)
+	if err != nil {
+		return err
+	}
+
+	// overload any parameters that were passed
+	if params == nil {
+		// create an empty params, so that params["clusterID"] below
+		// does not panic
+		params = map[string]string{}
+	}
+	for param, value := range params {
+		vac.Parameters[param] = value
+	}
+
+	vac.DriverName = nfsDriverName
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err = c.StorageV1().VolumeAttributesClasses().Create(ctx, &vac, metav1.CreateOptions{})
+		if err != nil {
+			framework.Logf("error creating VolumeAttributesClass %q: %v", vac.Name, err)
+			if apierrs.IsAlreadyExists(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to create VolumeAttributesClass %q: %w", vac.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
+func deleteNFSVolumeAttributesClass(
+	c clientset.Interface,
+	f *framework.Framework,
+) error {
+	vacPath := fmt.Sprintf("%s/%s", nfsExamplePath, "volumeattributesclass.yaml")
+	vac, err := getVolumeAttributesClass(vacPath)
+	if err != nil {
+		return err
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		err = c.StorageV1().VolumeAttributesClasses().Delete(ctx, vac.Name, metav1.DeleteOptions{})
+		if err != nil {
+			framework.Logf("error deleting VolumeAttributesClass %q: %v", vac.Name, err)
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to delete VolumeAttributesClass %q: %w", vac.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
 // unmountNFSVolume unmounts a NFS volume mounted on a pod.
 func unmountNFSVolume(f *framework.Framework, appName, pvcName string) error {
 	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
@@ -497,6 +570,60 @@ var _ = Describe("nfs", func() {
 				err = deleteResource(nfsExamplePath + "storageclass.yaml")
 				if err != nil {
 					logAndFail("failed to delete NFS storageclass: %v", err)
+				}
+			})
+
+			By("create a storageclass with relocated server and a PVC then bind it to an app", func() {
+				if !k8sVersionGreaterEquals(c, 1, 34) {
+					framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34")
+
+					return
+				}
+
+				err := createNFSStorageClass(f.ClientSet, f, false, map[string]string{
+					"server": "relocated.example.net", // mounting will fail without vac
+				})
+				if err != nil {
+					logAndFail("failed to create NFS storageclass: %v", err)
+				}
+				err = createNFSVolumeAttributesClass(f.ClientSet, f, map[string]string{
+					"server": "rook-ceph-nfs-my-nfs-a." + rookNamespace + ".svc.cluster.local",
+				})
+				if err != nil {
+					logAndFail("failed to create NFS voluemattributesclass: %v", err)
+				}
+
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("Could not create PVC: 1 %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				vacName := "updated-parameters"
+				pvc.Spec.VolumeAttributesClassName = &vacName
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					logAndFail("failed to load application: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC or application: %v", err)
+				}
+
+				// delete PVC and app
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					logAndFail("failed to delete PVC or application: %v", err)
+				}
+				err = deleteResource(nfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete NFS storageclass: %v", err)
+				}
+				err = deleteNFSVolumeAttributesClass(f.ClientSet, f)
+				if err != nil {
+					logAndFail("failed to delete NFS voluemattributesclass: %v", err)
 				}
 			})
 
