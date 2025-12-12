@@ -56,7 +56,9 @@ func GetReadAffinityMapOptions(
 		configReadAffinityEnabled bool
 		configCrushLocationLabels string
 	)
-
+	if clusterID != "" {
+		return "", nil
+	}
 	configReadAffinityEnabled, configCrushLocationLabels, err = GetCrushLocationLabels(csiConfigFile, clusterID)
 	if err != nil {
 		return "", err
