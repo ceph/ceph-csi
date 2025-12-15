@@ -30,12 +30,15 @@ import (
 // of CSI-addons networkfence controller service spec.
 type FenceControllerServer struct {
 	*fence.UnimplementedFenceControllerServer
+	enableFencing bool
 }
 
 // NewFenceControllerServer creates a new FenceControllerServer which handles
 // the FenceController Service requests from the CSI-Addons specification.
-func NewFenceControllerServer() *FenceControllerServer {
-	return &FenceControllerServer{}
+func NewFenceControllerServer(enableFencing bool) *FenceControllerServer {
+	return &FenceControllerServer{
+		enableFencing: enableFencing,
+	}
 }
 
 func (fcs *FenceControllerServer) RegisterService(server grpc.ServiceRegistrar) {
@@ -120,5 +123,5 @@ func (fcs *FenceControllerServer) GetFenceClients(
 	ctx context.Context,
 	req *fence.GetFenceClientsRequest,
 ) (*fence.GetFenceClientsResponse, error) {
-	return nf.GetFenceClients(ctx, req)
+	return nf.GetFenceClients(ctx, req, fcs.enableFencing)
 }

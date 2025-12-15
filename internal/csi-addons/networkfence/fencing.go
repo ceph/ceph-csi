@@ -461,6 +461,7 @@ func (nf *NetworkFence) parseBlocklistForCIDR(ctx context.Context, blocklist, ci
 func GetFenceClients(
 	ctx context.Context,
 	req *fence.GetFenceClientsRequest,
+	enableFencing bool,
 ) (*fence.GetFenceClientsResponse, error) {
 	options := req.GetParameters()
 	clusterID, err := util.GetClusterID(options)
@@ -509,12 +510,14 @@ func GetFenceClients(
 		return nil, status.Errorf(codes.Internal, "failed to convert IP to CIDR: %s", err)
 	}
 
-	err = autoUnfenceClientOnMatch(ctx, conn, addr)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to auto unfence client: %s", err)
+	if enableFencing {
+		err = autoUnfenceClientOnMatch(ctx, conn, addr)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to auto unfence client: %s", err)
 
-		return nil, status.Errorf(codes.Internal,
-			"failed to unfence client: %s", err)
+			return nil, status.Errorf(codes.Internal,
+				"failed to unfence client: %s", err)
+		}
 	}
 
 	resp := &fence.GetFenceClientsResponse{
