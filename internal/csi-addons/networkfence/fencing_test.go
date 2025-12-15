@@ -274,22 +274,152 @@ func Test_containsMatchingBlockListEntry(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "matching entry found",
+			name: "matching entry found blocked outside cool down period 1",
 			args: args{
 				blocklist: &[]osdAdmin.Blocklist{
 					{
 						Addr:  "192.0.1.0:0/32",
-						Until: time.Now().Format(ISO8601TimeLayout),
+						Until: time.Now().Add(1 * time.Hour).Format(ISO8601TimeLayout),
 					},
 					{
 						Addr:  "192.0.2.0:0/32",
-						Until: time.Now().Format(ISO8601TimeLayout),
+						Until: time.Now().Add(1 * time.Hour).Format(ISO8601TimeLayout),
 					},
 				},
 				addr: "192.0.1.0",
 			},
 			want:    true,
 			wantErr: false,
+		},
+		{
+			name: "matching entry found blocked outside cool down period 2",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "192.0.1.0:0/32",
+						Until: time.Now().Add(util.AutoBlocklistTime - blockListCoolDownPeriod).Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "192.0.2.0:0/32",
+						Until: time.Now().Add(util.AutoBlocklistTime - blockListCoolDownPeriod).Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "192.0.1.0",
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "matching entry found blocked in cool down period 1",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "192.0.1.0:0/32",
+						Until: time.Now().Add(util.AutoBlocklistTime).Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "192.0.2.0:0/32",
+						Until: time.Now().Add(util.AutoBlocklistTime).Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "192.0.1.0",
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "matching entry found blocked in cool down period 2",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr: "192.0.1.0:0/32",
+						Until: time.Now().Add(util.AutoBlocklistTime - 2*time.Minute).
+							Format(ISO8601TimeLayout),
+					},
+					{
+						Addr: "192.0.2.0:0/32",
+						Until: time.Now().Add(util.AutoBlocklistTime - 2*time.Minute).
+							Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "192.0.1.0",
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "matching IPv6 entry found blocked outside cool down period 1",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "2001:db8::1:0/128",
+						Until: time.Now().Add(1 * time.Hour).Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "2001:db8::2:0/128",
+						Until: time.Now().Add(1 * time.Hour).Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "matching IPv6 entry found blocked outside cool down period 2",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "2001:db8::1:0/128",
+						Until: time.Now().Add(util.AutoBlocklistTime - blockListCoolDownPeriod).Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "2001:db8::2:0/128",
+						Until: time.Now().Add(util.AutoBlocklistTime - blockListCoolDownPeriod).Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "matching IPv6 entry found blocked in cool down period 1",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr:  "2001:db8::1:0/128",
+						Until: time.Now().Add(util.AutoBlocklistTime).Format(ISO8601TimeLayout),
+					},
+					{
+						Addr:  "2001:db8::2:0/128",
+						Until: time.Now().Add(util.AutoBlocklistTime).Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "matching IPv6 entry found blocked in cool down period 2",
+			args: args{
+				blocklist: &[]osdAdmin.Blocklist{
+					{
+						Addr: "2001:db8::1:0/128",
+						Until: time.Now().Add(util.AutoBlocklistTime - 2*time.Minute).
+							Format(ISO8601TimeLayout),
+					},
+					{
+						Addr: "2001:db8::2:0/128",
+						Until: time.Now().Add(util.AutoBlocklistTime - 2*time.Minute).
+							Format(ISO8601TimeLayout),
+					},
+				},
+				addr: "2001:db8::1",
+			},
+			want:    false,
+			wantErr: true,
 		},
 		{
 			name: "address does not match",

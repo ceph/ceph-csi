@@ -37,7 +37,11 @@ import (
 
 const (
 	ISO8601TimeLayout = "2006-01-02T15:04:05.000000-0700"
-	invalidCommandStr = "invalid command"
+	// BlockListCoolDownPeriod defines the time duration
+	// after which a blocklist entry can be removed.
+	// TODO: Make this configurable.
+	blockListCoolDownPeriod = 5 * time.Minute
+	invalidCommandStr       = "invalid command"
 	// we can always use mds rank 0, since all the clients have a session with rank-0.
 	mdsRank = 0
 )
@@ -592,7 +596,17 @@ func containsMatchingBlockListEntry(
 				entry.Until, err)
 		}
 
-		if until.Sub(time.Now()) <= util.AutoBlocklistTime {
+		timeLeftUntilExpire := time.Until(until)
+		// Check if the blocklist entry is eligible for auto-unfencing if
+		// 1. the time left until expiry is less than or equal to AutoBlocklistTime,
+		// 2. the blocklist was done at least blockListCoolDownPeriod seconds (5 Minutes) ago.
+		if timeLeftUntilExpire <= util.AutoBlocklistTime {
+			if timeLeftUntilExpire > (util.AutoBlocklistTime - blockListCoolDownPeriod) {
+				// still in cool-down period
+				return false, fmt.Errorf("blocklist entry %q is still in cool-down period for %s",
+					entry.Addr, (timeLeftUntilExpire - (util.AutoBlocklistTime - blockListCoolDownPeriod)))
+			}
+
 			return true, nil
 		}
 	}
