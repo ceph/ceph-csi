@@ -188,7 +188,8 @@ node('cico-workspace') {
 			ssh "./podman2minikube.sh quay.io/cephcsi/ceph-csi-operator:${operator_version}"
 
 			timeout(time: 30, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/deploy-ceph-csi-operator.sh deploy'
+				ssh "kubectl create namespace '${namespace}'"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && OPERATOR_NAMESPACE='${namespace}' ./scripts/deploy-ceph-csi-operator.sh deploy"
 			}
 		}
 		stage("create ConfigMap & StorageClasses") {
