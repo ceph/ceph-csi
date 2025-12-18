@@ -215,6 +215,7 @@ github.com/ceph/go-ceph/cephfs
 github.com/ceph/go-ceph/cephfs/admin
 github.com/ceph/go-ceph/common/admin/manager
 github.com/ceph/go-ceph/common/admin/nfs
+github.com/ceph/go-ceph/common/admin/osd
 github.com/ceph/go-ceph/common/commands
 github.com/ceph/go-ceph/internal/callbacks
 github.com/ceph/go-ceph/internal/commands

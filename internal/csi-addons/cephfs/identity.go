@@ -86,6 +86,18 @@ func (is *IdentityServer) GetCapabilities(
 			})
 	}
 
+	if is.config.IsNodeServer {
+		// we're running as a CSI node-plugin service
+		caps = append(caps,
+			&identity.Capability{
+				Type: &identity.Capability_NetworkFence_{
+					NetworkFence: &identity.Capability_NetworkFence{
+						Type: identity.Capability_NetworkFence_GET_CLIENTS_TO_FENCE,
+					},
+				},
+			})
+	}
+
 	res := &identity.GetCapabilitiesResponse{
 		Capabilities: caps,
 	}
