@@ -40,6 +40,8 @@ var (
 
 	// krbd features supported by the loaded driver.
 	krbdFeatures uint
+
+	rbdTrashMaxDelay uint
 )
 
 // SetGlobalInt provides a way for the rbd-driver to configure global variables
@@ -60,6 +62,8 @@ func SetGlobalInt(name string, value uint) {
 		minSnapshotsOnImageToStartFlatten = value
 	case "krbdFeatures":
 		krbdFeatures = value
+	case "rbdTrashMaxDelay":
+		rbdTrashMaxDelay = value
 	default:
 		panic(fmt.Sprintf("BUG: can not set unknown variable %q", name))
 	}

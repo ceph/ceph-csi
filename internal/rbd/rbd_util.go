@@ -707,7 +707,8 @@ func (ri *rbdImage) Delete(ctx context.Context) error {
 	}
 
 	rbdImage := librbd.GetImage(ri.ioctx, image)
-	err = rbdImage.Trash(0)
+	// rbdTrashMaxDelay is the delay in seconds to delete the image from trash
+	err = rbdImage.Trash(uint64(rbdTrashMaxDelay))
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
 			return fmt.Errorf("Failed as %w (internal %w)", rbderrors.ErrImageNotFound, err)

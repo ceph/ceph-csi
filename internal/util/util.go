@@ -137,6 +137,10 @@ type Config struct {
 	// reached cephcsi will start flattening the older rbd images.
 	MinSnapshotsOnImage uint
 
+	// RbdTrashMaxDelay is the maximum time in seconds to delay the deletion of a
+	// volume in the trash.
+	RbdTrashMaxDelay uint
+
 	PidLimit    int           // PID limit to configure through cgroups")
 	MetricsPort int           // TCP port for liveness/grpc metrics requests
 	PollTime    time.Duration // time interval in seconds between each poll
