@@ -93,6 +93,9 @@ const (
 	// Suffix added to the temp cloned image name.
 	// This will always be (rbd image name + "-temp").
 	tempImageSuffix = "-temp"
+
+	// trashMaxDelayKey is the key used to store the trash max delay.
+	trashMaxDelayKey = "csi.ceph.com/trashMaxDelay"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -707,8 +710,25 @@ func (ri *rbdImage) Delete(ctx context.Context) error {
 	}
 
 	rbdImage := librbd.GetImage(ri.ioctx, image)
+
+	// verify if the image has the trashMaxDelayKey in the metadata
+	// if it does, use that value, otherwise use the global rbdTrashMaxDelay
+	trashDelay := rbdTrashMaxDelay
+	img, err := ri.open()
+	if err == nil {
+		val, metaErr := img.GetMetadata(trashMaxDelayKey)
+		img.Close()
+		if metaErr == nil {
+			if v, parseErr := strconv.ParseUint(val, 10, 64); parseErr == nil {
+				trashDelay = uint(v)
+			}
+		}
+	} else if !errors.Is(err, librbd.ErrNotFound) {
+		log.WarningLog(ctx, "failed to open rbd image %q to check metadata: %v", ri, err)
+	}
+
 	// rbdTrashMaxDelay is the delay in seconds to delete the image from trash
-	err = rbdImage.Trash(uint64(rbdTrashMaxDelay))
+	err = rbdImage.Trash(uint64(trashDelay))
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
 			return fmt.Errorf("Failed as %w (internal %w)", rbderrors.ErrImageNotFound, err)

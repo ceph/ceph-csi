@@ -445,6 +445,9 @@ func (cs *ControllerServer) CreateVolume(
 
 	// Set Metadata on PV Create
 	metadata := k8s.GetVolumeMetadata(req.GetParameters())
+	if delay, ok := req.GetParameters()["trashMaxDelay"]; ok {
+		metadata[trashMaxDelayKey] = delay
+	}
 	err = rbdVol.setAllMetadata(metadata)
 	if err != nil {
 		if deleteErr := rbdVol.Delete(ctx); deleteErr != nil {
