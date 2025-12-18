@@ -17,7 +17,8 @@ OPERATOR_URL="https://raw.githubusercontent.com/ceph/ceph-csi-operator/${CEPH_CS
 # operator deployment files
 OPERATOR_INSTALL="${OPERATOR_URL}/deploy/all-in-one/install.yaml"
 
-OPERATOR_NAMESPACE="ceph-csi-operator-system"
+DEFAULT_OPERATOR_NAMESPACE="ceph-csi-operator-system"
+OPERATOR_NAMESPACE=${OPERATOR_NAMESPACE:-"${DEFAULT_OPERATOR_NAMESPACE}"}
 IMAGESET_CONFIGMAP_NAME="ceph-csi-imageset"
 ENCRYPTION_CONFIGMAP_NAME="ceph-csi-encryption-kms-config"
 
@@ -31,6 +32,11 @@ K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"registry.k8s.io/sig-storage"}
 
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
+
+function generate_operator_install() {
+    curl "${OPERATOR_INSTALL}" | \
+        sed "s/namespace: ${DEFAULT_OPERATOR_NAMESPACE}/namespace: ${OPERATOR_NAMESPACE}/g"
+}
 
 function generate_imageset_configmap() {
     cat <<EOF >"${TEMP_DIR}/imageset-configmap.yaml"
@@ -103,7 +109,7 @@ EOF
 }
 
 function deploy_operator() {
-    kubectl_retry create -f "${OPERATOR_INSTALL}"
+    generate_operator_install | kubectl_retry create -f -
     generate_operator_config
     generate_driver "${RBD_DRIVER_NAME}"
     generate_driver "${CEPHFS_DRIVER_NAME}"
@@ -127,7 +133,7 @@ function cleanup() {
 
     # Delete all the generated files at once
     kubectl_retry delete -f "${TEMP_DIR}"
-    kubectl_retry delete -f "${OPERATOR_INSTALL}"
+    generate_operator_install | kubectl_retry delete -f -
 }
 
 case "${1:-}" in
