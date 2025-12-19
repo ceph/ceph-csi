@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"syscall"
 
+	osdAdmin "github.com/ceph/go-ceph/common/admin/osd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
@@ -1127,62 +1128,14 @@ func deleteSnapshotAndUndoReservation(
 }
 
 // ControllerPublishVolume implements the CSI ControllerPublishVolume RPC.
-// This function is responsible for unfencing a node when a volume is published.
+// This function is a no-op for CephFS CSI driver since only
+// ControllerUnPublishVolume is used for fencing nodes and removing
+// node related metadata but still needs to be implemented to
+// satisfy the CSI spec.
 func (cs *ControllerServer) ControllerPublishVolume(
 	ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
-	// If the CSI driver is not running on Kubernetes, we do not need to
-	// unfence the node, so we return immediately.
-	// This is because the unfencing logic is specific to Kubernetes environments.
-	if !k8s.RunsOnKubernetes() {
-		return &csi.ControllerPublishVolumeResponse{}, nil
-	}
-
-	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
-	}
-	if req.GetNodeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Node ID cannot be empty")
-	}
-	if req.GetVolumeCapability() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
-	}
-
-	volumeId := req.GetVolumeId()
-	if acquired := cs.VolumeLocks.TryAcquire(volumeId); !acquired {
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeId)
-	}
-	defer cs.VolumeLocks.Release(volumeId)
-
-	secrets := req.GetSecrets()
-	if secrets == nil {
-		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeId, util.CephFsType)
-		if err != nil {
-			log.WarningLog(ctx, "controller publish secret not found: %v", err)
-
-			// If the secret is not found, return success to not break for older PVs
-			// without controller-publish secrets.
-			return &csi.ControllerPublishVolumeResponse{}, nil
-		}
-
-		secrets, err = k8s.GetSecret(secretName, secretNamespace)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
-		}
-	}
-
-	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil, secrets, cs.ClusterName, cs.SetMetadata)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v", volumeId, err)
-	}
-	defer volOptions.Destroy()
-
-	err = cs.unfenceNode(ctx, volumeId, req.GetNodeId(), secrets, volOptions)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
@@ -1347,7 +1300,8 @@ func (cs *ControllerServer) removeUserIdMapping(
 //   - If the node is not tainted with `out-of-service`, the function removes the
 //     client address metadata from the subvolume.
 //   - If the node is tainted with `out-of-service`, it retrieves the client address
-//     from the subvolume metadata and adds it to the Ceph blocklist.
+//     from the subvolume metadata, adds it to the Ceph blocklist and removes client address
+//     metadata.
 //   - Handles missing or empty metadata gracefully and logs appropriate warnings.
 //
 // Returns an error if any step in the fencing process fails.
@@ -1415,81 +1369,30 @@ func (cs *ControllerServer) fenceNode(
 		return fmt.Errorf("client address metadata %s for %s is empty", metadataKey, handler.logSubvolumeName)
 	}
 
-	err = util.AddCephBlocklist(ctx, volOptions.Monitors, cr, clientAddress, false)
+	clientCIDR, err := util.ConvertIPToCIDR(clientAddress)
 	if err != nil {
-		return fmt.Errorf("failed to add client address to blocklist: %w", err)
+		return fmt.Errorf("failed to convert client address %s to CIDR: %w", clientAddress, err)
 	}
 
-	return nil
-}
-
-// unfenceNode removes fencing of a client node,
-// allowing it to access the specified CephFS subvolume again.
-//
-// Parameters:
-//   - volumeId: The ID of the volume to be unfenced.
-//   - nodeId: The ID of the node to be unfenced.
-//   - secrets: The secrets to access the Ceph cluster.
-//   - volOptions: The volume options for the CephFS subvolume.
-//
-// Behavior:
-//   - If `IsFencingEnabled` is false, the function returns immediately without
-//     performing any unfencing operations.
-//   - Retrieves the client address from the subvolume metadata corresponding to the node.
-//   - If the metadata exists and contains a client address, removes it from the Ceph blocklist.
-//   - Removes the associated client address metadata from the subvolume.
-//   - Gracefully handles cases where metadata is missing or empty, logging warnings as needed.
-//
-// Returns an error if any step in the unfencing process fails.
-func (cs *ControllerServer) unfenceNode(
-	ctx context.Context,
-	volumeId, nodeId string,
-	secrets map[string]string,
-	volOptions *store.VolumeOptions,
-) error {
-	if !cs.Driver.IsFencingEnabled() {
-		return nil
-	}
-
-	cr, err := util.NewAdminCredentials(secrets)
+	blocklistAdmin, err := volOptions.GetConnection().GetOSDAdmin()
 	if err != nil {
-		return fmt.Errorf("failed to create credentials from secrets: %w", err)
+		return fmt.Errorf("failed to get osd admin for fencing: %w", err)
 	}
-	defer cr.DeleteCredentials()
 
-	handler, err := cs.getSubvolumeMetadataHandler(ctx, volOptions, secrets)
+	entry := osdAdmin.AddressEntry{
+		Addr:   clientCIDR,
+		Expire: util.AutoBlocklistTime.Seconds(),
+	}
+
+	err = blocklistAdmin.OSDBlocklistAdd(entry)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to add client address %s to Ceph blocklist: %w", clientAddress, err)
 	}
 
-	metadataKey := core.GetClientAddressKey(volumeId, nodeId)
-	metadata, err := handler.listMetadataFunc()
-	if err != nil {
-		return fmt.Errorf("failed to list metadata %s for %s: %w",
-			metadataKey, handler.logSubvolumeName, err)
-	}
-
-	clientAddress, exists := metadata[metadataKey]
-	if !exists {
-		// If the metadata doesn't exist, we do not need to add it to the blocklist
-		// as it does not contain any client address to block.
-		log.DebugLog(ctx, "metadata %s for %s doesn't exists, skipping unfencing for nodeId %s",
-			metadataKey, handler.logSubvolumeName, nodeId)
-
-		return nil
-	}
-
-	if clientAddress == "" {
-		return fmt.Errorf("client address metadata %s for %s is empty",
-			metadataKey, handler.logSubvolumeName)
-	}
-
-	if err = util.RemoveCephBlocklist(ctx, volOptions.Monitors, cr, clientAddress, "", false); err != nil {
-		return fmt.Errorf("failed to remove client address %s from blocklist: %w", clientAddress, err)
-	}
-
-	if err = handler.unsetAllMetadataFunc([]string{metadataKey}); err != nil {
-		return fmt.Errorf("failed to remove metadata %s from %s: %w", metadataKey, handler.logSubvolumeName, err)
+	err = handler.unsetAllMetadataFunc([]string{metadataKey})
+	if err != nil && !errors.Is(err, core.ErrSubVolMetadataNotSupported) {
+		return fmt.Errorf("failed to remove metadata %s from subvolume %s: %w",
+			metadataKey, volOptions.VolID, err)
 	}
 
 	return nil

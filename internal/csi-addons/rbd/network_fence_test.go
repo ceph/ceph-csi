@@ -26,7 +26,7 @@ import (
 func TestFenceClusterNetwork(t *testing.T) {
 	t.Parallel()
 
-	controller := NewFenceControllerServer()
+	controller := NewFenceControllerServer(true)
 
 	req := &fence.FenceClusterNetworkRequest{
 		Parameters: map[string]string{},
@@ -43,7 +43,7 @@ func TestFenceClusterNetwork(t *testing.T) {
 // operations can not be performed.
 func TestUnfenceClusterNetwork(t *testing.T) {
 	t.Parallel()
-	controller := NewFenceControllerServer()
+	controller := NewFenceControllerServer(true)
 
 	req := &fence.UnfenceClusterNetworkRequest{
 		Parameters: map[string]string{},
