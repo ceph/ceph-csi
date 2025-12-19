@@ -45,32 +45,12 @@ This stored address can then be used:
   has the `out-of-service` taints, ensuring it no longer has access to the
   volume.
 
-* In `ControllerPublishVolume()` to remove the client from the blocklist,
-  allowing the volume to be accessed again when the node recovers.
+Removal of blocklist can either be done manually or can be automated by enabling
+CSI-Addons in Ceph-CSI deployment and creating of networkFenceClass. Ceph-CSI will
+auto unblocklist itself during CSI-Addons `GetFenceClient()` call when pods are
+rescheduled after node recovery.
 
 ## Implementation Details
-
-### ControllerPublishVolume()
-
-* Check if the metadata key `.[rbd|cephfs].csi.ceph.com/clientAddress/<NodeId>`
-  exists (`NodeId` from the request)
-
-* If it exists:
-   * Remove the client from the blocklist:
-
-    ```
-    ceph osd blocklist rm <clientAddress>
-    ```
-
-   * Remove the metadata key after removing from blocklist
-
-    ```
-    # RBD
-    rbd image-meta remove <pool>/<namespace>/<image> .rbd.csi.ceph.com/clientAddress/<NodeId>
-
-    # CephFS
-    ceph fs subvolume metadata rm <vol_name> <sub_name> .cephfs.csi.ceph.com/clientAddress/<NodeId> [<group_name>]
-    ```
 
 ### NodeStageVolume()
 
@@ -120,6 +100,17 @@ This stored address can then be used:
         # a complete power cycle, as premature expiration could lead to data corruption
         ceph osd blocklist add <clientAddress> 157784760
         ```
+
+   * Remove the `.[rbd|cephfs].csi.ceph.com/clientAddress/<NodeId>` metadata
+      key
+
+    ```
+    # RBD
+    rbd image-meta remove <pool>/<namespace>/<image> .rbd.csi.ceph.com/clientAddress/<NodeId>
+
+    # CephFS
+    ceph fs subvolume metadata rm <vol_name> <sub_name> .cephfs.csi.ceph.com/clientAddress/<NodeId> [<group_name>]
+    ```
 
 * If the node doesn't have the `out-of-service` taint:
    * Remove the `.[rbd|cephfs].csi.ceph.com/clientAddress/<NodeId>` metadata
