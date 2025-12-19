@@ -322,6 +322,20 @@ func ParseClientIP(addr string) (string, error) {
 	return "", fmt.Errorf("failed to extract IP address, incorrect format: %s", addr)
 }
 
+// ConvertIPToCIDR converts an IP address to its corresponding CIDR notation.
+func ConvertIPToCIDR(ip string) (string, error) {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return "", fmt.Errorf("invalid IP address: %s", ip)
+	}
+
+	if parsedIP.To4() != nil {
+		return parsedIP.String() + "/32", nil
+	}
+
+	return parsedIP.String() + "/128", nil
+}
+
 // GetControllerPublishSecretRef retrieves the controller publish secret from ceph-csi-config ConfigMap
 // for a given clusterID. Fetches the secret from Kubernetes, and returns it as a map of key-value pairs.
 func GetControllerPublishSecretRef(volumeId, driverType string) (string, string, error) {
