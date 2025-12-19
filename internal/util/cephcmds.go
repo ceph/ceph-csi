@@ -33,8 +33,9 @@ import (
 
 const (
 	// InvalidPoolID used to denote an invalid pool.
-	InvalidPoolID int64 = -1
-	blocklistTime       = "157784760"
+	InvalidPoolID     int64 = -1
+	AutoBlocklistTime       = time.Second * 94670856  // 3 year in seconds
+	MaxBlocklistTime        = time.Second * 157784760 // 5 years in seconds
 )
 
 // ExecuteCommandWithNSEnter executes passed in program with args with nsenter
@@ -316,7 +317,7 @@ func AddCephBlocklist(ctx context.Context, monitors string, cr *Credentials, ip 
 	if useRange {
 		cmd = append(cmd, "range")
 	}
-	cmd = append(cmd, "add", ip, blocklistTime)
+	cmd = append(cmd, "add", ip, MaxBlocklistTime.String())
 	cmd = append(cmd, arg...)
 	_, stderr, err := ExecCommand(ctx, "ceph", cmd...)
 	if err != nil {

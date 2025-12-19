@@ -238,7 +238,7 @@ func (r *rbdDriver) setupCSIAddonsServer(conf *util.Config) error {
 
 	if conf.IsControllerServer || conf.IsNodeServer {
 		// Register FenceController only once
-		fcs := casrbd.NewFenceControllerServer()
+		fcs := casrbd.NewFenceControllerServer(conf.EnableFencing)
 		r.cas.RegisterService(fcs)
 	}
 	if conf.IsControllerServer {
