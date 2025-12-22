@@ -33,12 +33,15 @@ import (
 // of CSI-Addons networkfence controller service spec.
 type FenceControllerServer struct {
 	*fence.UnimplementedFenceControllerServer
+	enableFencing bool
 }
 
 // NewFenceControllerServer creates a new FenceControllerServer which handles
 // the FenceController Service requests from the CSI-Addons specification.
-func NewFenceControllerServer() *FenceControllerServer {
-	return &FenceControllerServer{}
+func NewFenceControllerServer(enableFencing bool) *FenceControllerServer {
+	return &FenceControllerServer{
+		enableFencing: enableFencing,
+	}
 }
 
 // RegisterService registers the FenceControllerServer's service
@@ -117,4 +120,12 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 	}
 
 	return &fence.UnfenceClusterNetworkResponse{}, nil
+}
+
+// GetFenceClients fetches the ceph cluster ID and the client address that need to be fenced.
+func (fcs *FenceControllerServer) GetFenceClients(
+	ctx context.Context,
+	req *fence.GetFenceClientsRequest,
+) (*fence.GetFenceClientsResponse, error) {
+	return nf.GetFenceClients(ctx, req, fcs.enableFencing)
 }
