@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20251105130956-2cc225b176fc
-	github.com/ceph/go-ceph v0.36.0
+	github.com/ceph/go-ceph v0.37.0
 	github.com/container-storage-interface/spec v1.12.0
 	github.com/csi-addons/kubernetes-csi-addons v0.13.0
 	github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79
