@@ -244,7 +244,7 @@ func (gw *GatewayRpcClient) GetUUIDBySubsystemAndNameSpaceID(
 }
 
 // CreateSubsystem creates an NVMe-oF subsystem on the gateway.
-func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN string) error {
+func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN, networkMask string) error {
 	log.DebugLog(ctx, "Creating NVMe subsystem: %s on gateway %s",
 		subsystemNQN, gw.config)
 
@@ -262,7 +262,9 @@ func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN st
 		// DhchapKey: nil,       // No authentication
 		// KeyEncrypted: nil,    // No encryption
 	}
-
+	if networkMask != "" {
+		req.NetworkMask = &networkMask
+	}
 	status, err := gw.client.CreateSubsystem(ctx, req)
 	switch {
 	case err != nil:

@@ -637,7 +637,8 @@ func (cs *Server) modifyNVMeoFQoS(
 func ensureSubsystem(
 	ctx context.Context,
 	gateway *nvmeof.GatewayRpcClient,
-	subsystemNQN string,
+	subsystemNQN,
+	networkMask string,
 	listeners []nvmeof.ListenerDetails,
 ) error {
 	exists, err := gateway.SubsystemExists(ctx, subsystemNQN)
@@ -648,16 +649,20 @@ func ensureSubsystem(
 		return nil
 	}
 	// Create if doesn't exist (controller decision)
-	err = gateway.CreateSubsystem(ctx, subsystemNQN)
+	err = gateway.CreateSubsystem(ctx, subsystemNQN, networkMask)
 	if err != nil {
 		return err
 	}
 
-	// Create all listeners
-	for i, listener := range listeners {
-		log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
-		if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
-			return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
+	// if networkMask is not provided, listeners are not created automatically by gateway,
+	// should create them manually one by one.
+	if networkMask == "" {
+		// Create all listeners
+		for i, listener := range listeners {
+			log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
+			if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
+				return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
+			}
 		}
 	}
 
@@ -725,6 +730,7 @@ func (cs *Server) createNVMeoFResources(
 	// Step 1: Extract parameters (already validated)
 	params := req.GetParameters()
 
+	networkMask := params["networkMask"]
 	nvmeofGatewayPortStr := params["nvmeofGatewayPort"]
 	nvmeofGatewayPort, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
 	if err != nil {
@@ -782,7 +788,7 @@ func (cs *Server) createNVMeoFResources(
 	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 
 	// Step 3: Ensure subsystem exists (and listener)
-	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
+	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask, nvmeofData.ListenerInfo); err != nil {
 		return nil, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 
@@ -804,6 +810,16 @@ func (cs *Server) createNVMeoFResources(
 			*nvmeofQoS); err != nil {
 			return nil, fmt.Errorf("setting QoS limits failed: %w", err)
 		}
+	}
+
+	// Step 6: If using auto-listeners, query them back for storing in metadata
+	if networkMask != "" {
+		autoListeners, err := gateway.ListListeners(ctx, nvmeofData.SubsystemNQN)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list auto-created listeners: %w", err)
+		}
+		nvmeofData.ListenerInfo = nvmeof.ConvertListenersFromProto(autoListeners.GetListeners())
+		log.DebugLog(ctx, "Retrieved %d auto-created listeners", len(nvmeofData.ListenerInfo))
 	}
 
 	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
