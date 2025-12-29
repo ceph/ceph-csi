@@ -115,7 +115,8 @@ func TestRealGateway(t *testing.T) {
 	})
 
 	// Test create subsystem
-	err = client.CreateSubsystem(ctx, nvmeofData.SubsystemNQN)
+	networkMask := "" // No auto-listeners
+	err = client.CreateSubsystem(ctx, nvmeofData.SubsystemNQN, networkMask)
 	require.NoError(t, err)
 	t.Logf("✓ Subsystem created: %s", nvmeofData.SubsystemNQN)
 
