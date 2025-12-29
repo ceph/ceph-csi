@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -359,17 +360,29 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	params := req.GetParameters()
 	requiredParams := []string{
 		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
-		"listeners",
 	}
 	for _, param := range requiredParams {
 		if params[param] == "" {
 			return fmt.Errorf("missing required parameter: %s", param)
 		}
 	}
-	// Validate listeners JSON
-	_, err := parseListeners(params["listeners"])
+	// Validate listeners JSON if provided
+	listeners, err := parseListeners(params["listeners"])
 	if err != nil {
 		return fmt.Errorf("invalid listeners parameter: %w", err)
+	}
+	// Validate network mask if provided
+	err = validateNetworkMask(params["networkMask"])
+	if err != nil {
+		return fmt.Errorf("invalid network mask parameter: %w", err)
+	}
+	networkMask := params["networkMask"]
+	// Must have EITHER listeners XOR networkMask
+	if len(listeners) == 0 && networkMask == "" {
+		return errors.New("must specify either 'listeners' xor 'networkMask', but got neither")
+	}
+	if len(listeners) > 0 && networkMask != "" {
+		return errors.New("must specify either 'listeners' xor 'networkMask',but got both")
 	}
 	// Validate QoS parameters - cannot mix RBD and NVMe-oF QoS
 	mutableParams := req.GetMutableParameters()
@@ -395,7 +408,7 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
 	volumeContext := req.GetVolumeContext()
 	requiredParams := []string{
-		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort", "listeners",
+		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
 	}
 	for _, param := range requiredParams {
 		if volumeContext[param] == "" {
@@ -407,12 +420,15 @@ func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error
 }
 
 func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
+	if listenersJSON == "" { // No "listeners" entry was provided
+		return []nvmeof.ListenerDetails{}, nil
+	}
 	var listeners []nvmeof.ListenerDetails
 	if err := json.Unmarshal([]byte(listenersJSON), &listeners); err != nil {
 		return nil, fmt.Errorf("failed to parse listeners JSON: %w", err)
 	}
 
-	if len(listeners) == 0 { // TODO: when auto listener will be implemented , make listeners optional
+	if len(listeners) == 0 { // At least one listener is required
 		return nil, errors.New("at least one listener must be specified")
 	}
 
@@ -424,6 +440,20 @@ func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
 	}
 
 	return listeners, nil
+}
+
+// Validate network mask CIDR format.
+func validateNetworkMask(networkMask string) error {
+	if networkMask == "" {
+		return nil
+	}
+
+	_, _, err := net.ParseCIDR(networkMask)
+	if err != nil {
+		return fmt.Errorf("invalid network mask CIDR format: %w", err)
+	}
+
+	return nil
 }
 
 // parseQoSParameters extracts and parses QoS parameters from the given map.
