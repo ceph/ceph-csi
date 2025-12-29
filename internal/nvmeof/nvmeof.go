@@ -493,6 +493,43 @@ func (gw *GatewayRpcClient) ListNamespaces(ctx context.Context, subsystemNQN str
 	return resp, nil
 }
 
+// List listeners in a subsystem.
+func (gw *GatewayRpcClient) ListListeners(ctx context.Context, subsystemNQN string) (*pb.ListenersInfo, error) {
+	log.DebugLog(ctx, "Listing listeners in subsystem %s", subsystemNQN)
+
+	req := &pb.ListListenersReq{
+		Subsystem: subsystemNQN,
+	}
+
+	resp, err := gw.client.ListListeners(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list listeners in subsystem %s: %w", subsystemNQN, err)
+	}
+	if resp.GetStatus() != 0 {
+		return nil, fmt.Errorf("gateway ListListeners returned error: %s", resp.GetErrorMessage())
+	}
+
+	log.DebugLog(ctx, "Listed listeners in subsystem %s successfully", subsystemNQN)
+
+	return resp, nil
+}
+
+// ConvertListenersFromProto converts protobuf ListenerInfo to internal ListenerDetails format.
+func ConvertListenersFromProto(protoListeners []*pb.ListenerInfo) []ListenerDetails {
+	listeners := make([]ListenerDetails, 0, len(protoListeners))
+	for _, l := range protoListeners {
+		listeners = append(listeners, ListenerDetails{
+			GatewayAddress: GatewayAddress{
+				Address: l.GetTraddr(),
+				Port:    l.GetTrsvcid(),
+			},
+			Hostname: l.GetHostName(),
+		})
+	}
+
+	return listeners
+}
+
 // Connect to Gateway gRPC server.
 func (c *GatewayRpcClient) connect() error {
 	// Create connection using new gRPC API
