@@ -88,6 +88,9 @@ func TestRealGateway(t *testing.T) {
 			},
 		},
 		GatewayManagementInfo: *config,
+		Security: nvmeof.NVMeoFSecurityConfig{
+			DhchapMode: "none",
+		},
 	}
 
 	t.Cleanup(func() {
@@ -121,7 +124,8 @@ func TestRealGateway(t *testing.T) {
 	t.Logf("✓ Subsystem created: %s", nvmeofData.SubsystemNQN)
 
 	// Test add host
-	err = client.AddHost(ctx, nvmeofData.SubsystemNQN, hostNQN)
+	noneDhchapKeys := nvmeof.DHCHAPKeys{} // No DH-CHAP authentication
+	err = client.AddHost(ctx, nvmeofData.SubsystemNQN, hostNQN, noneDhchapKeys)
 	require.NoError(t, err)
 	t.Logf("✓ Host added: %s to subsystem %s", hostNQN, nvmeofData.SubsystemNQN)
 
