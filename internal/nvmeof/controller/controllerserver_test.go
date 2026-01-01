@@ -89,6 +89,9 @@ func TestPolulateVolumeContext(t *testing.T) {
 			Address: "127.0.0.2",
 			Port:    5500,
 		},
+		Security: nvmeof.NVMeoFSecurityConfig{
+			DhchapMode: "none",
+		},
 	}
 
 	err := populateVolumeContext(volume, config)

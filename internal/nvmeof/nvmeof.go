@@ -347,10 +347,12 @@ func (gw *GatewayRpcClient) SubsystemExists(ctx context.Context, subsystemNQN st
 }
 
 // AddHost adds a host to a subsystem (allows access).
-func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN string) error {
+func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN string, dhchapKeys DHCHAPKeys) error {
 	log.DebugLog(ctx, "Adding host %s to subsystem %s on gateway %s",
 		hostNQN, subsystemNQN, gw.config)
 
+	// TODO: if GW deployed with encryption=True it means KeyEncrypted and CtrlrKeyEncrypted
+	// should be set to true as well.
 	req := &pb.AddHostReq{
 		SubsystemNqn: subsystemNQN,
 		HostNqn:      hostNQN,
@@ -358,8 +360,17 @@ func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN s
 		// DhchapKey: nil,    // No DH-CHAP authentication
 		// PskEncrypted: nil, // No PSK encryption
 		// KeyEncrypted: nil, // No key encryption
+		// CtrlrKeyEncrypted: nil, // No controller key encryption
 	}
 
+	// Add DH-CHAP key if provided
+	if dhchapKeys.HostKey != "" {
+		req.DhchapKey = &dhchapKeys.HostKey
+	}
+
+	if dhchapKeys.SubsystemKey != "" {
+		req.DhchapCtrlrKey = &dhchapKeys.SubsystemKey
+	}
 	resp, err := gw.client.AddHost(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to add host %s to subsystem %s: %w", hostNQN, subsystemNQN, err)

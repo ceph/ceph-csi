@@ -245,7 +245,7 @@ func (cs *Server) ControllerPublishVolume(
 	defer cs.hostLocks.Release(nodeID)
 
 	// Publish NVMe-oF resources
-	hostNqn, err := publishResources(ctx, req)
+	hostNqn, err := cs.publishResources(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to publish resources: %v", err)
 	}
@@ -304,7 +304,7 @@ func (cs *Server) ControllerUnpublishVolume(
 	}
 
 	// Unpublish NVMe-oF resources
-	if err := unpublishResources(ctx, nvmeofData, nodeID); err != nil {
+	if err := cs.unpublishResources(ctx, secrets, nvmeofData, nodeID, req.GetVolumeId()); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unpublish resources: %v", err)
 	}
 
@@ -919,7 +919,7 @@ func (cs *Server) cleanupNVMeoFResources(
 }
 
 // publishResources publishes the HostNQN to be allowed to see the Volume.
-func publishResources(ctx context.Context,
+func (cs *Server) publishResources(ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (string, error) {
 	nodeID := req.GetNodeId()
@@ -953,8 +953,16 @@ func publishResources(ctx context.Context,
 		}
 	}()
 
+	// Get DH-CHAP configuration from volume context
+	dhchapMode := volumeContext[vcDHCHAPMode] // "none", "unidirectional", "bidirectional", or empty
+	var dhchapKeys nvmeof.DHCHAPKeys
+	dhchapKeys, err = cs.setupDHCHAPKeys(ctx, req, nodeID, subsystemNQN, hostNQN, dhchapMode)
+	if err != nil {
+		return "", err
+	}
+
 	// Add host to subsystem
-	if err := gateway.AddHost(ctx, subsystemNQN, hostNQN); err != nil {
+	if err := gateway.AddHost(ctx, subsystemNQN, hostNQN, dhchapKeys); err != nil {
 		return "", fmt.Errorf("failed to add host %s: %w", hostNQN, err)
 	}
 
@@ -964,7 +972,9 @@ func publishResources(ctx context.Context,
 }
 
 // unpublishResources removes the host from the NVMe-oF subsystem.
-func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, nodeID string) error {
+func (cs *Server) unpublishResources(ctx context.Context,
+	secrets map[string]string, data *nvmeof.NVMeoFVolumeData, nodeID, volumeID string,
+) error {
 	// Extract host NQN from nodeID
 	hostNQN, err := getHostNQNFromNodeID(nodeID)
 	if err != nil {
@@ -1009,6 +1019,16 @@ func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, node
 			hostNQN, subsystemNQN, err)
 	}
 	log.DebugLog(ctx, "Host %s removed from subsystem %s", hostNQN, subsystemNQN)
+
+	// Cleanup DH-CHAP keys if any
+	if data.Security.DhchapMode == nvmeof.DHCHAPModeUniDirectional ||
+		data.Security.DhchapMode == nvmeof.DHCHAPModeBiDirectional {
+		err = cs.cleanupDHCHAPKeys(ctx, secrets, nodeID, volumeID, subsystemNQN,
+			data.Security.DhchapMode, data.Security.AuthenticationKMSID)
+		if err != nil {
+			return fmt.Errorf("failed to cleanup DH-CHAP keys for host %s: %w", hostNQN, err)
+		}
+	}
 
 	return nil
 }
