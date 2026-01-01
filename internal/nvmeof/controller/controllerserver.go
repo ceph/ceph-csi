@@ -391,6 +391,16 @@ func (cs *Server) DeleteSnapshot(
 	return cs.backendServer.DeleteSnapshot(ctx, req)
 }
 
+// validateDHCHAPParameter helper function to validates the DH-CHAP parameters.
+func validateDHCHAPParameter(dhchapMode string) error {
+	if dhchapMode != nvmeof.DHCHAPEmpty && dhchapMode != nvmeof.DHCHAPModeNone &&
+		dhchapMode != nvmeof.DHCHAPModeUniDirectional && dhchapMode != nvmeof.DHCHAPModeBiDirectional {
+		return fmt.Errorf("invalid dhchapMode: %s", dhchapMode)
+	}
+
+	return nil
+}
+
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
 // the rest of the parameters are validated by RBD.
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
@@ -437,6 +447,10 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	_, err = parseQoSParameters(mutableParams)
 	if err != nil {
 		return fmt.Errorf("invalid NVMe-oF QoS parameters: %w", err)
+	}
+	err = validateDHCHAPParameter(params["dhchapMode"])
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -983,6 +997,12 @@ const (
 	// Gateway management info.
 	vcGatewayAddress = "GatewayAddress"
 	vcGatewayPort    = "GatewayPort"
+
+	// Additional KMS ID for authentication if needed.
+	vcAuthenticationKMSID = "authenticationKMSID"
+
+	// DH-CHAP mode for authentication.
+	vcDHCHAPMode = "dhchapMode"
 )
 
 // toRBDMetadataKey converts clean volume context key to prefixed RBD metadata key.
@@ -1009,6 +1029,10 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) er
 		return fmt.Errorf("failed to marshal listener info: %w", err)
 	}
 	volume.VolumeContext[vcListeners] = string(listenersJSON)
+
+	// Store Security info
+	volume.VolumeContext[vcAuthenticationKMSID] = data.Security.AuthenticationKMSID
+	volume.VolumeContext[vcDHCHAPMode] = data.Security.DhchapMode
 
 	return nil
 }
