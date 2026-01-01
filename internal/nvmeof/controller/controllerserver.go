@@ -54,6 +54,9 @@ type Server struct {
 	// anymore" subsystem (and listeners).
 	subsystemLocks *util.IDLocker
 
+	// securityKeys manages DH-CHAP and PSK\TLS keys
+	securityKeys nvmeof.SecurityKeyManager
+
 	// backendServer handles the RBD requests
 	backendServer *rbd.ControllerServer
 }
@@ -65,6 +68,7 @@ func NewControllerServer(d *csicommon.CSIDriver) (*Server, error) {
 		hostLocks:      util.NewIDLocker(),
 		subsystemLocks: util.NewIDLocker(),
 		backendServer:  rbddriver.NewControllerServer(d),
+		securityKeys:   nil, // Initialize lazily when needed
 	}, nil
 }
 
