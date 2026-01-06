@@ -560,6 +560,7 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("verify readAffinity support", func() {
+				Skip("skipping readAffinity test for RBD due to issue https://tracker.ceph.com/issues/73997")
 				err := verifyReadAffinity(f, pvcPath, appPath,
 					rbdDeployment.getDaemonsetName(), rbdContainerName, cephCSINamespace)
 				if err != nil {
