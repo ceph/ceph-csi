@@ -178,8 +178,8 @@ func createNFSStorageClass(
 	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = cephFSProvisionerSecretName
 
-	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = cephFSNodePluginSecretName
+	sc.Parameters["csi.storage.k8s.io/node-publish-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/node-publish-secret-name"] = cephFSNodePluginSecretName
 
 	if enablePool {
 		sc.Parameters["pool"] = "myfs-replicated"
