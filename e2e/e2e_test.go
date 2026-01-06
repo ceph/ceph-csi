@@ -35,7 +35,7 @@ func init() {
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
 	flag.BoolVar(&deployCephFS, "deploy-cephfs", true, "deploy cephFS csi driver")
 	flag.BoolVar(&deployRBD, "deploy-rbd", true, "deploy rbd csi driver")
-	flag.BoolVar(&deployNFS, "deploy-nfs", false, "deploy nfs csi driver")
+	flag.BoolVar(&deployNFS, "deploy-nfs", true, "deploy nfs csi driver")
 	flag.BoolVar(&deployNVMeoF, "deploy-nvmeof", false, "deploy nvmeof csi driver")
 	flag.BoolVar(&testCephFS, "test-cephfs", true, "test cephFS csi driver")
 	flag.BoolVar(&testCephFSFscrypt, "test-cephfs-fscrypt", false, "test CephFS csi driver fscrypt support")
