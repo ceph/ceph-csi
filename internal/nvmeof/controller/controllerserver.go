@@ -122,7 +122,7 @@ func (cs *Server) CreateVolume(
 
 	backend := res.GetVolume()
 	volumeID := backend.GetVolumeId()
-
+	volumeContext := backend.GetVolumeContext()
 	defer func() {
 		// skip cleanup if there was no error
 		if err == nil {
@@ -141,11 +141,13 @@ func (cs *Server) CreateVolume(
 		}
 	}()
 
-	rbdImageName := res.GetVolume().GetVolumeContext()["imageName"]
-	rbdPoolName := res.GetVolume().GetVolumeContext()["pool"]
+	rbdImageName := volumeContext["imageName"]
+	rbdPoolName := volumeContext["pool"]
+	// can be empty. if it was defined in config-map the rbd csi driver would have set it already
+	rbdRadosNameSpace := res.GetVolume().GetVolumeContext()["radosNamespace"]
 
 	// Step 2: Setup NVMe-oF resources
-	nvmeofData, err := cs.createNVMeoFResources(ctx, req, rbdPoolName, rbdImageName)
+	nvmeofData, err := cs.createNVMeoFResources(ctx, req, rbdPoolName, rbdRadosNameSpace, rbdImageName)
 	if err != nil {
 		log.ErrorLog(ctx, "NVMe-oF resource setup failed for volumeID %s: %v", volumeID, err)
 
@@ -628,6 +630,7 @@ func (cs *Server) createNVMeoFResources(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 	rbdPoolName,
+	rbdRadosNameSpace,
 	rbdImageName string,
 ) (*nvmeof.NVMeoFVolumeData, error) {
 	// Step 1: Extract parameters (already validated)
@@ -697,7 +700,7 @@ func (cs *Server) createNVMeoFResources(
 		nvmeofData.ListenerInfo)
 
 	// Step 4: Create namespace and set its uuid
-	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdImageName)
+	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdRadosNameSpace, rbdImageName)
 	if err != nil {
 		return nil, fmt.Errorf("namespace creation failed: %w", err)
 	}

@@ -104,7 +104,10 @@ func (c *GatewayRpcClient) Destroy() error {
 }
 
 // CreateNamespace creates a namespace in a subsystem.
-func (gw *GatewayRpcClient) CreateNamespace(ctx context.Context, subsystemNQN, poolName, imageName string,
+func (gw *GatewayRpcClient) CreateNamespace(
+	ctx context.Context,
+	subsystemNQN string,
+	poolName, radosNamespace, imageName string,
 ) (uint32, error) {
 	log.DebugLog(ctx, "Creating namespace for RBD %s/%s in subsystem %s",
 		poolName, imageName, subsystemNQN)
@@ -125,7 +128,9 @@ func (gw *GatewayRpcClient) CreateNamespace(ctx context.Context, subsystemNQN, p
 		// DisableAutoResize: nil,
 		// ReadOnly:          nil,
 	}
-
+	if radosNamespace != "" {
+		req.RadosNamespaceName = &radosNamespace
+	}
 	resp, err := gw.client.NamespaceAdd(ctx, req)
 	switch {
 	case err != nil:
