@@ -49,7 +49,7 @@ func TestKMSWorkflow(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, kmsProvider)
 
-	ve, err := NewVolumeEncryption("", kmsProvider)
+	ve, err := NewVolumeEncryption("", kmsProvider, nil)
 	require.NoError(t, err)
 	require.NotNil(t, ve)
 	require.Equal(t, kms.DefaultKMSType, ve.GetID())

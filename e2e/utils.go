@@ -30,6 +30,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/util/cryptsetup"
 	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -904,6 +905,23 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 	err = deletePVCAndApp("", f, pvc, app)
 
 	return err
+}
+
+func getLuksStatus(selector, mountPath string, f *framework.Framework) (*cryptsetup.LuksStatus, error) {
+	opt := metav1.ListOptions{
+		LabelSelector: selector,
+	}
+	cmd := fmt.Sprintf("mappedDev=$(findmnt -n -o SOURCE --target %s);sudo cryptsetup status $mappedDev;",
+		mountPath)
+	stdOut, stdErr, err := execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
+	if err != nil {
+		return nil, fmt.Errorf("failed command to get cryptsetup status from %s %w", mountPath, err)
+	}
+	if stdErr != "" {
+		return nil, fmt.Errorf("failed command to get cryptsetup status from %s %s", mountPath, stdErr)
+	}
+
+	return cryptsetup.ParseLuksStatus(stdOut)
 }
 
 func disableVGSAlphaCLIArg(template string) string {
