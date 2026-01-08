@@ -56,7 +56,8 @@ function lint_yaml() {
 
 function lint_helm() {
     # Install via: https://github.com/helm/helm/blob/master/docs/install.md
-    run_check '' helm lint --namespace=test charts/*
+    # shellcheck disable=SC2046 # we want to pass multiple arguments
+    run_check '' helm lint --namespace=test $(find charts/* -maxdepth 0 -type d)
 }
 
 function lint_py() {

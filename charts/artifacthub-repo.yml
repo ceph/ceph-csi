@@ -1,0 +1,10 @@
+---
+# see https://artifacthub.io/docs/topics/repositories/#ownership-claim
+repositoryID: ceph-csi
+owners:
+  - name: Madhu Rajanna
+    email: madhupr007@gmail.com
+  - name: Niels de Vos
+    email: ndevos@ibm.com
+  - name: Rakshith R
+    email: rar@redhat.com
