@@ -1,6 +1,6 @@
 ---
 # see https://artifacthub.io/docs/topics/repositories/#ownership-claim
-repositoryID: ceph-csi
+repositoryID: 5509143c-e176-40de-94d3-56c00be47aee
 owners:
   - name: Madhu Rajanna
     email: madhupr007@gmail.com
