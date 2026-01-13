@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -359,17 +360,29 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	params := req.GetParameters()
 	requiredParams := []string{
 		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
-		"listeners",
 	}
 	for _, param := range requiredParams {
 		if params[param] == "" {
 			return fmt.Errorf("missing required parameter: %s", param)
 		}
 	}
-	// Validate listeners JSON
-	_, err := parseListeners(params["listeners"])
+	// Validate listeners JSON if provided
+	listeners, err := parseListeners(params["listeners"])
 	if err != nil {
 		return fmt.Errorf("invalid listeners parameter: %w", err)
+	}
+	// Validate network mask if provided
+	err = validateNetworkMask(params["networkMask"])
+	if err != nil {
+		return fmt.Errorf("invalid network mask parameter: %w", err)
+	}
+	networkMask := params["networkMask"]
+	// Must have EITHER listeners XOR networkMask
+	if len(listeners) == 0 && networkMask == "" {
+		return errors.New("must specify either 'listeners' xor 'networkMask', but got neither")
+	}
+	if len(listeners) > 0 && networkMask != "" {
+		return errors.New("must specify either 'listeners' xor 'networkMask',but got both")
 	}
 	// Validate QoS parameters - cannot mix RBD and NVMe-oF QoS
 	mutableParams := req.GetMutableParameters()
@@ -395,7 +408,7 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
 	volumeContext := req.GetVolumeContext()
 	requiredParams := []string{
-		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort", "listeners",
+		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
 	}
 	for _, param := range requiredParams {
 		if volumeContext[param] == "" {
@@ -407,12 +420,15 @@ func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error
 }
 
 func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
+	if listenersJSON == "" { // No "listeners" entry was provided
+		return []nvmeof.ListenerDetails{}, nil
+	}
 	var listeners []nvmeof.ListenerDetails
 	if err := json.Unmarshal([]byte(listenersJSON), &listeners); err != nil {
 		return nil, fmt.Errorf("failed to parse listeners JSON: %w", err)
 	}
 
-	if len(listeners) == 0 { // TODO: when auto listener will be implemented , make listeners optional
+	if len(listeners) == 0 { // At least one listener is required
 		return nil, errors.New("at least one listener must be specified")
 	}
 
@@ -424,6 +440,20 @@ func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
 	}
 
 	return listeners, nil
+}
+
+// Validate network mask CIDR format.
+func validateNetworkMask(networkMask string) error {
+	if networkMask == "" {
+		return nil
+	}
+
+	_, _, err := net.ParseCIDR(networkMask)
+	if err != nil {
+		return fmt.Errorf("invalid network mask CIDR format: %w", err)
+	}
+
+	return nil
 }
 
 // parseQoSParameters extracts and parses QoS parameters from the given map.
@@ -548,7 +578,8 @@ func (cs *Server) modifyNVMeoFQoS(
 func ensureSubsystem(
 	ctx context.Context,
 	gateway *nvmeof.GatewayRpcClient,
-	subsystemNQN string,
+	subsystemNQN,
+	networkMask string,
 	listeners []nvmeof.ListenerDetails,
 ) error {
 	exists, err := gateway.SubsystemExists(ctx, subsystemNQN)
@@ -559,16 +590,20 @@ func ensureSubsystem(
 		return nil
 	}
 	// Create if doesn't exist (controller decision)
-	err = gateway.CreateSubsystem(ctx, subsystemNQN)
+	err = gateway.CreateSubsystem(ctx, subsystemNQN, networkMask)
 	if err != nil {
 		return err
 	}
 
-	// Create all listeners
-	for i, listener := range listeners {
-		log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
-		if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
-			return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
+	// if networkMask is not provided, listeners are not created automatically by gateway,
+	// should create them manually one by one.
+	if networkMask == "" {
+		// Create all listeners
+		for i, listener := range listeners {
+			log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
+			if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
+				return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
+			}
 		}
 	}
 
@@ -641,7 +676,7 @@ func (cs *Server) createNVMeoFResources(
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse listeners: %w", err)
 	}
-
+	networkMask := params["networkMask"]
 	nvmeofGatewayPortStr := params["nvmeofGatewayPort"]
 	nvmeofGatewayPort, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
 	if err != nil {
@@ -692,7 +727,7 @@ func (cs *Server) createNVMeoFResources(
 	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 
 	// Step 3: Ensure subsystem exists (and listener)
-	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
+	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask, nvmeofData.ListenerInfo); err != nil {
 		return nil, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 
@@ -714,6 +749,16 @@ func (cs *Server) createNVMeoFResources(
 			*nvmeofQoS); err != nil {
 			return nil, fmt.Errorf("setting QoS limits failed: %w", err)
 		}
+	}
+
+	// Step 6: If using auto-listeners, query them back for storing in metadata
+	if networkMask != "" {
+		autoListeners, err := gateway.ListListeners(ctx, nvmeofData.SubsystemNQN)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list auto-created listeners: %w", err)
+		}
+		nvmeofData.ListenerInfo = nvmeof.ConvertListenersFromProto(autoListeners.GetListeners())
+		log.DebugLog(ctx, "Retrieved %d auto-created listeners", len(nvmeofData.ListenerInfo))
 	}
 
 	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
