@@ -94,8 +94,12 @@ const (
 	// This will always be (rbd image name + "-temp").
 	tempImageSuffix = "-temp"
 
-	// trashMaxDelayKey is the key used to store the trash max delay.
+	// trashMaxDelayKey is the key used to store the trash max delay in metadata.
+	// DEPRECATED: use trashMaxDelayXattr instead.
 	trashMaxDelayKey = "csi.ceph.com/trashMaxDelay"
+
+	// trashMaxDelayXattr is the key used to store the trash max delay in xattrs.
+	trashMaxDelayXattr = "csi.ceph.com/trashMaxDelay"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -136,6 +140,9 @@ type rbdImage struct {
 
 	// Owner is the creator (tenant, Kubernetes Namespace) of the volume
 	Owner string
+
+	// TrashMaxDelay is the retention period for the image in trash
+	TrashMaxDelay time.Duration
 
 	// VolSize is the size of the RBD image backing this rbdImage.
 	VolSize int64
@@ -494,6 +501,17 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		}
 	}
 
+	if pOpts.TrashMaxDelay > 0 {
+		err = pOpts.getImageID()
+		if err != nil {
+			return fmt.Errorf("failed to get image id for %s: %w", pOpts, err)
+		}
+		err = pOpts.setTrashMaxDelayAttribute(ctx, pOpts.TrashMaxDelay)
+		if err != nil {
+			return fmt.Errorf("failed to set trash delay attribute for %s: %w", pOpts, err)
+		}
+	}
+
 	return nil
 }
 
@@ -653,8 +671,23 @@ func isCephMgrSupported(ctx context.Context, clusterID string, err error) (bool,
 	return true, nil
 }
 
+func (ri *rbdImage) setTrashMaxDelayAttribute(ctx context.Context, delay time.Duration) error {
+	headerObject := "rbd_header." + ri.ImageID
+	return ri.ioctx.SetXattr(headerObject, trashMaxDelayXattr, []byte(delay.String()))
+}
+
+func (ri *rbdImage) getTrashMaxDelayAttribute(ctx context.Context) (time.Duration, error) {
+	headerObject := "rbd_header." + ri.ImageID
+	data := make([]byte, 64)
+	n, err := ri.ioctx.GetXattr(headerObject, trashMaxDelayXattr, data)
+	if err != nil {
+		return 0, err
+	}
+	// data[:n] contains the duration string
+	return time.ParseDuration(string(data[:n]))
+}
+
 // ensureImageCleanup finds image in trash and if found removes it
-// from trash.
 func (ri *rbdImage) ensureImageCleanup(ctx context.Context) error {
 	err := ri.openIoctx()
 	if err != nil {
@@ -709,26 +742,20 @@ func (ri *rbdImage) Delete(ctx context.Context) error {
 		return err
 	}
 
-	rbdImage := librbd.GetImage(ri.ioctx, image)
+	imgHandle := librbd.GetImage(ri.ioctx, image)
 
-	// verify if the image has the trashMaxDelayKey in the metadata
-	// if it does, use that value, otherwise use the global rbdTrashMaxDelay
-	trashDelay := rbdTrashMaxDelay
-	img, err := ri.open()
-	if err == nil {
-		val, metaErr := img.GetMetadata(trashMaxDelayKey)
-		img.Close()
-		if metaErr == nil {
-			if v, parseErr := strconv.ParseUint(val, 10, 64); parseErr == nil {
-				trashDelay = uint(v)
-			}
+	// verify if the image has the trashMaxDelayXattr in the xattrs
+	// if it does, use that value, otherwise use the default delay of 0
+	trashDelay, err := ri.getTrashMaxDelayAttribute(ctx)
+	if err != nil {
+		if !errors.Is(err, rados.ErrNotFound) {
+			log.WarningLog(ctx, "failed to read trash delay xattr for %s: %v", ri, err)
 		}
-	} else if !errors.Is(err, librbd.ErrNotFound) {
-		log.WarningLog(ctx, "failed to open rbd image %q to check metadata: %v", ri, err)
+		trashDelay = 0
 	}
 
 	// rbdTrashMaxDelay is the delay in seconds to delete the image from trash
-	err = rbdImage.Trash(uint64(trashDelay))
+	err = imgHandle.Trash(trashDelay)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
 			return fmt.Errorf("Failed as %w (internal %w)", rbderrors.ErrImageNotFound, err)
@@ -737,6 +764,10 @@ func (ri *rbdImage) Delete(ctx context.Context) error {
 		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", ri, err)
 
 		return err
+	}
+
+	if trashDelay > 0 {
+		return nil
 	}
 
 	return ri.trashRemoveImage(ctx)
@@ -1654,6 +1685,17 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 
 	// Success! Do not delete the cloned image now :)
 	deleteClone = false
+
+	if rv.TrashMaxDelay > 0 {
+		err = rv.getImageID()
+		if err != nil {
+			return fmt.Errorf("failed to get image id for %s: %w", rv, err)
+		}
+		err = rv.setTrashMaxDelayAttribute(ctx, rv.TrashMaxDelay)
+		if err != nil {
+			return fmt.Errorf("failed to set trash delay attribute for %s: %w", rv, err)
+		}
+	}
 
 	return nil
 }
