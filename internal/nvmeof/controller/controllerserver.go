@@ -149,12 +149,7 @@ func (cs *Server) CreateVolume(
 
 	// Step 2: Setup NVMe-oF resources
 	var nvmeofData *nvmeof.NVMeoFVolumeData
-	nvmeofData, err = cs.createNVMeoFResources(ctx, req, rbdPoolName, rbdRadosNameSpace, rbdImageName)
-	if err != nil {
-		log.ErrorLog(ctx, "NVMe-oF resource setup failed for volumeID %s: %v", volumeID, err)
-
-		return nil, status.Errorf(codes.Internal, "NVMe-oF setup failed: %v", err)
-	}
+	// Defer: Cleanup NVMe-oF on any error (BEFORE the call!)
 	defer func() {
 		// Cleanup NVMe-oF resources on subsequent errors.
 		// only if there was an error and nvmeofData is not nil, it means resources were created.
@@ -167,6 +162,12 @@ func (cs *Server) CreateVolume(
 		}
 	}()
 
+	nvmeofData, err = cs.createNVMeoFResources(ctx, req, rbdPoolName, rbdRadosNameSpace, rbdImageName)
+	if err != nil {
+		log.ErrorLog(ctx, "NVMe-oF resource setup failed for volumeID %s: %v", volumeID, err)
+
+		return nil, status.Errorf(codes.Internal, "NVMe-oF setup failed: %v", err)
+	}
 	// step 3: Populate volume context for NodeServer
 	err = populateVolumeContext(backend, nvmeofData)
 	if err != nil {
