@@ -158,19 +158,26 @@ func (gw *GatewayRpcClient) DeleteNamespace(ctx context.Context, subsystemNQN st
 	if err != nil {
 		return fmt.Errorf("failed to delete namespace %d: %w", namespaceID, err)
 	}
-	if status.GetStatus() == 0 {
+	switch {
+	case status.GetStatus() == 0:
 		log.DebugLog(ctx, "Namespace deleted successfully: %d", namespaceID)
 
 		return nil
-	}
-	if status.GetStatus() == int32(syscall.ENOENT) { // ENOENT
-		log.DebugLog(ctx, "Namespace %d already deleted (not found)", namespaceID)
 
-		return nil // Namespace already deleted, no error
-	}
+	case status.GetStatus() == int32(syscall.ENOENT):
+		log.DebugLog(ctx, "The subsystem %s that contains namespace %d already deleted (not found)",
+			subsystemNQN, namespaceID)
 
-	return fmt.Errorf("gateway NamespaceDelete returned error (status=%d): %s",
-		status.GetStatus(), status.GetErrorMessage())
+		return nil // Subsystem (and Namespace) are already deleted, no error
+	case status.GetStatus() == int32(syscall.ENODEV):
+		log.DebugLog(ctx, "The namespace %d already deleted (not found)",
+			subsystemNQN, namespaceID)
+
+		return nil // Namespace is already deleted, no error
+	default:
+		return fmt.Errorf("gateway NamespaceDelete returned error (status=%d): %s",
+			status.GetStatus(), status.GetErrorMessage())
+	}
 }
 
 // SetQoSLimitsForNamespace sets QoS limits on a namespace.
@@ -271,6 +278,8 @@ func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN, n
 		return fmt.Errorf("failed to create subsystem %s: %w", subsystemNQN, err)
 	case status.GetStatus() == int32(syscall.EEXIST):
 		// subsystem was already created
+		log.DebugLog(ctx, "Subsystem %s already exists", subsystemNQN)
+
 		return nil
 	case status.GetStatus() != 0:
 		return fmt.Errorf("gateway CreateSubsystem returned error: %s", status.GetErrorMessage())
