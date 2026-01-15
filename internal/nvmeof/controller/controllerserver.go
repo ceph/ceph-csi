@@ -648,14 +648,14 @@ func ensureSubsystem(
 	if err != nil {
 		return err
 	}
-	if exists {
-		return nil
+	if !exists {
+		// Create if it doesn't exist (controller decision)
+		err = gateway.CreateSubsystem(ctx, subsystemNQN, networkMask)
+		if err != nil {
+			return err
+		}
 	}
-	// Create if doesn't exist (controller decision)
-	err = gateway.CreateSubsystem(ctx, subsystemNQN, networkMask)
-	if err != nil {
-		return err
-	}
+	// if the subsystem exists, we need to ensure the listeners are created. (if exists, it is OK)
 
 	// if networkMask is not provided, listeners are not created automatically by gateway,
 	// should create them manually one by one.
