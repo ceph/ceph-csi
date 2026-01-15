@@ -148,31 +148,34 @@ func (cs *Server) CreateVolume(
 	rbdRadosNameSpace := res.GetVolume().GetVolumeContext()["radosNamespace"]
 
 	// Step 2: Setup NVMe-oF resources
-	nvmeofData, err := cs.createNVMeoFResources(ctx, req, rbdPoolName, rbdRadosNameSpace, rbdImageName)
+	var nvmeofData *nvmeof.NVMeoFVolumeData
+	nvmeofData, err = cs.createNVMeoFResources(ctx, req, rbdPoolName, rbdRadosNameSpace, rbdImageName)
 	if err != nil {
 		log.ErrorLog(ctx, "NVMe-oF resource setup failed for volumeID %s: %v", volumeID, err)
 
 		return nil, status.Errorf(codes.Internal, "NVMe-oF setup failed: %v", err)
 	}
 	defer func() {
-		// skip cleanup if there was no error
-		if err == nil {
-			return
-		}
-
-		cleanupErr := cs.cleanupNVMeoFResources(ctx, nvmeofData)
-		if cleanupErr != nil {
-			log.ErrorLog(ctx, "failed to cleanup NVMe-oF resources for volume  %q: %v", volumeID, cleanupErr)
+		// Cleanup NVMe-oF resources on subsequent errors.
+		// only if there was an error and nvmeofData is not nil, it means resources were created.
+		if err != nil && nvmeofData != nil {
+			log.DebugLog(ctx, "Cleaning up NVMe-oF resources for volume %q due to error: %v", volumeID, err)
+			cleanupErr := cs.cleanupNVMeoFResources(ctx, nvmeofData)
+			if cleanupErr != nil {
+				log.ErrorLog(ctx, "failed to cleanup NVMe-oF resources for volume  %q: %v", volumeID, cleanupErr)
+			}
 		}
 	}()
 
 	// step 3: Populate volume context for NodeServer
-	if err := populateVolumeContext(backend, nvmeofData); err != nil {
+	err = populateVolumeContext(backend, nvmeofData)
+	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to populate volume context: %v", err)
 	}
 
 	// Step 4: Store NVMe-oF metadata in the volume context
-	if err := cs.storeNVMeoFMetadata(ctx, req, volumeID, nvmeofData); err != nil {
+	err = cs.storeNVMeoFMetadata(ctx, req, volumeID, nvmeofData)
+	if err != nil {
 		return nil, err // Error already formatted with proper status code
 	}
 
@@ -789,7 +792,7 @@ func (cs *Server) createNVMeoFResources(
 
 	// Step 3: Ensure subsystem exists (and listener)
 	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask, nvmeofData.ListenerInfo); err != nil {
-		return nil, fmt.Errorf("subsystem setup failed: %w", err)
+		return nvmeofData, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 
 	log.DebugLog(ctx, "subsystem %s and Listener %s for the subsystem were created", nvmeofData.SubsystemNQN,
@@ -798,7 +801,7 @@ func (cs *Server) createNVMeoFResources(
 	// Step 4: Create namespace and set its uuid
 	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdRadosNameSpace, rbdImageName)
 	if err != nil {
-		return nil, fmt.Errorf("namespace creation failed: %w", err)
+		return nvmeofData, fmt.Errorf("namespace creation failed: %w", err)
 	}
 	log.DebugLog(ctx, "Namespace created: %s/%s with NSID: %d", rbdPoolName, rbdImageName, nsid)
 	nvmeofData.NamespaceID = nsid
@@ -808,7 +811,7 @@ func (cs *Server) createNVMeoFResources(
 		log.DebugLog(ctx, "Setting QoS limits: %s", nvmeofQoS)
 		if err := gateway.SetQoSLimitsForNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID,
 			*nvmeofQoS); err != nil {
-			return nil, fmt.Errorf("setting QoS limits failed: %w", err)
+			return nvmeofData, fmt.Errorf("setting QoS limits failed: %w", err)
 		}
 	}
 
@@ -816,7 +819,7 @@ func (cs *Server) createNVMeoFResources(
 	if networkMask != "" {
 		autoListeners, err := gateway.ListListeners(ctx, nvmeofData.SubsystemNQN)
 		if err != nil {
-			return nil, fmt.Errorf("failed to list auto-created listeners: %w", err)
+			return nvmeofData, fmt.Errorf("failed to list auto-created listeners: %w", err)
 		}
 		nvmeofData.ListenerInfo = nvmeof.ConvertListenersFromProto(autoListeners.GetListeners())
 		log.DebugLog(ctx, "Retrieved %d auto-created listeners", len(nvmeofData.ListenerInfo))
@@ -824,15 +827,16 @@ func (cs *Server) createNVMeoFResources(
 
 	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
 	if err != nil {
-		return nil, fmt.Errorf("get namespace uuid failed: %w", err)
+		return nvmeofData, fmt.Errorf("get namespace uuid failed: %w", err)
 	}
 	nvmeofData.NamespaceUUID = uuid
 
 	return nvmeofData, nil
 }
 
-// cleanupNVMeoFResources cleans up NVMe-oF resources associated with the volume.
-// This includes removing the host, listener, namespace, and potentially the subsystem.
+// cleanupEmptySubsystem removes the subsystem if it exists and has no namespaces.
+// This function is idempotent and safe to call even if the subsystem doesn't exist
+// or has active namespaces.
 func (cs *Server) cleanupNVMeoFResources(
 	ctx context.Context,
 	nvmeofData *nvmeof.NVMeoFVolumeData,
@@ -851,11 +855,6 @@ func (cs *Server) cleanupNVMeoFResources(
 		}
 	}()
 
-	// TODO: maybe just check before if the subsystem exists, if not ,
-	// there is no relevant to continue , will make it simple ?
-	// instead of check in the std error if "not found"..
-
-	// TODO: replace util.VolumeOperationAlreadyExistsFmt
 	if acquired := cs.subsystemLocks.TryAcquire(nvmeofData.SubsystemNQN); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
 
@@ -864,11 +863,18 @@ func (cs *Server) cleanupNVMeoFResources(
 	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 
 	// Step 2: Delete namespace
-	if err := gateway.DeleteNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID); err != nil {
-		return fmt.Errorf("failed to delete namespace %d for subsystem %s: %w",
-			nvmeofData.NamespaceID, nvmeofData.SubsystemNQN, err)
+	// just in case namespace was created. NsID=0 means it was never created.
+	// it is not possible to have a namespace with ID 0.
+	if nvmeofData.NamespaceID > 0 {
+		log.DebugLog(ctx, "Deleting namespace %d for subsystem %s", nvmeofData.NamespaceID, nvmeofData.SubsystemNQN)
+		if err := gateway.DeleteNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID); err != nil {
+			return fmt.Errorf("failed to delete namespace %d for subsystem %s: %w",
+				nvmeofData.NamespaceID, nvmeofData.SubsystemNQN, err)
+		}
+		log.DebugLog(ctx, "Namespace %d deleted for subsystem %s", nvmeofData.NamespaceID, nvmeofData.SubsystemNQN)
+	} else {
+		log.DebugLog(ctx, "No namespace ID found in NVMe-oF metadata, skipping namespace deletion")
 	}
-	log.DebugLog(ctx, "Namespace %d deleted for subsystem %s", nvmeofData.NamespaceID, nvmeofData.SubsystemNQN)
 
 	// Step 3: Cleanup empty subsystem
 	if err := cleanupEmptySubsystem(ctx, gateway, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
