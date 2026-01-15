@@ -707,7 +707,9 @@ func cleanupEmptySubsystem(
 	// subsystem is empty delete listener first
 	for i, listener := range listeners {
 		if err := gateway.DeleteListener(ctx, subsystemNQN, listener); err != nil {
-			return fmt.Errorf("failed to delete listener %d (%s) for subsystem %s: %w",
+			// Log and continue deleting other listeners. maybe on failure in creation some listeners were not created.
+			// anyway we want to delete the empty subsystem. deleting the subsystem will delete all listeners anyway.
+			log.WarningLog(ctx, "Failed to delete listener %d (%s) for subsystem %s: %v",
 				i, listener.String(), subsystemNQN, err)
 		}
 	}
