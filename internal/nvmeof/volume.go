@@ -23,4 +23,10 @@ type NVMeoFVolumeData struct {
 	NamespaceUUID         string
 	ListenerInfo          []ListenerDetails
 	GatewayManagementInfo GatewayConfig
+	Security              NVMeoFSecurityConfig
+}
+
+type NVMeoFSecurityConfig struct {
+	DhchapMode          string
+	AuthenticationKMSID string
 }
