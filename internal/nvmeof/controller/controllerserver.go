@@ -765,12 +765,25 @@ func (cs *Server) createNVMeoFResources(
 			Address: params["nvmeofGatewayAddress"],
 			Port:    uint32(nvmeofGatewayPort),
 		},
+		Security: nvmeof.NVMeoFSecurityConfig{
+			DhchapMode:          params["dhchapMode"],
+			AuthenticationKMSID: params["authenticationKMSID"],
+		},
 	}
 
 	// setup listeners (if provided, otherwise it will be set by gateway based on network mask)
 	err = setupDefaultListenersValues(params["listeners"], nvmeofData)
 	if err != nil {
 		return nil, err
+	}
+
+	// If dhchapMode was explicitly provided and is not "none", and authenticationKMSID is empty,
+	// use a default KMS ID - RBD metadata KMS.
+	// In production, users should always provide a KMS ID when using DH-CHAP.
+	if nvmeofData.Security.DhchapMode != nvmeof.DHCHAPEmpty &&
+		nvmeofData.Security.DhchapMode != nvmeof.DHCHAPModeNone &&
+		nvmeofData.Security.AuthenticationKMSID == "" {
+		nvmeofData.Security.AuthenticationKMSID = "metadata"
 	}
 
 	// extract Qos parameters if any
@@ -1114,6 +1127,10 @@ func (cs *Server) storeNVMeoFMetadata(
 		// Gateway management info
 		toRBDMetadataKey(vcGatewayAddress): nvmeofData.GatewayManagementInfo.Address,
 		toRBDMetadataKey(vcGatewayPort):    gatewayManagementInfoPortStr,
+
+		// DH-CHAP mode
+		toRBDMetadataKey(vcDHCHAPMode):          nvmeofData.Security.DhchapMode,
+		toRBDMetadataKey(vcAuthenticationKMSID): nvmeofData.Security.AuthenticationKMSID,
 	}
 
 	// Store all metadata entries
@@ -1165,6 +1182,8 @@ func (cs *Server) getNVMeoFMetadata(
 		toRBDMetadataKey(vcListeners),
 		toRBDMetadataKey(vcGatewayAddress),
 		toRBDMetadataKey(vcGatewayPort),
+		toRBDMetadataKey(vcDHCHAPMode),
+		toRBDMetadataKey(vcAuthenticationKMSID),
 	}
 
 	// Retrieve all metadata values
@@ -1211,6 +1230,10 @@ func (cs *Server) getNVMeoFMetadata(
 		GatewayManagementInfo: nvmeof.GatewayConfig{
 			Address: metadata[toRBDMetadataKey(vcGatewayAddress)],
 			Port:    uint32(gatewayPort),
+		},
+		Security: nvmeof.NVMeoFSecurityConfig{
+			DhchapMode:          metadata[toRBDMetadataKey(vcDHCHAPMode)],
+			AuthenticationKMSID: metadata[toRBDMetadataKey(vcAuthenticationKMSID)],
 		},
 	}
 
