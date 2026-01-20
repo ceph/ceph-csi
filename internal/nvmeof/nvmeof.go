@@ -269,8 +269,13 @@ func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN, n
 		// DhchapKey: nil,       // No authentication
 		// KeyEncrypted: nil,    // No encryption
 	}
+	// TODO: Due to there is no official NVMe-oF releaser with AutoListener feature
+	// proto file was changed lately and make networkMask to be list of string.
+	// for now CreateSubsystem will support only one network mask.
+	listNetworkMask := []string{}
 	if networkMask != "" {
-		req.NetworkMask = &networkMask
+		listNetworkMask = append(listNetworkMask, networkMask)
+		req.NetworkMask = listNetworkMask
 	}
 	status, err := gw.client.CreateSubsystem(ctx, req)
 	switch {
