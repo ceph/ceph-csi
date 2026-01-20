@@ -485,8 +485,8 @@ github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyY
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
-github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20251228182201-41573a292917 h1:lzt5OFV9pm0soex1mzq5ZY7IquZkOFT61uni3fxhZZo=
-github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20251228182201-41573a292917/go.mod h1:P+rCBJEUy2Yt6vOcTh7pyh9/g+o9pOZc7kyY6k/PS5U=
+github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260120065657-2425981cdad5 h1:giK4rX93KFW4C361EHurz46iM5nqFOKOT4EMuuroi+E=
+github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260120065657-2425981cdad5/go.mod h1:P+rCBJEUy2Yt6vOcTh7pyh9/g+o9pOZc7kyY6k/PS5U=
 github.com/ceph/go-ceph v0.37.0 h1:KXliBe3ZDr3/AtfY7n9d1MG7ippYNCVhMPcAgm05CFI=
 github.com/ceph/go-ceph v0.37.0/go.mod h1:3y2tOlITlyuVFhy8v6PpCEfjMwKPfXJiH0/2hKZZQRE=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
