@@ -151,12 +151,13 @@ func init() {
 		"Minimum number of snapshots required on rbd image to start flattening")
 	flag.BoolVar(&conf.SkipForceFlatten, "skipforceflatten", false,
 		"skip image flattening if kernel support mapping of rbd images which has the deep-flatten feature")
-	flag.UintVar(
+	flag.DurationVar(
 		&conf.RbdTrashMaxDelay,
 		"rbdtrashmaxdelay",
 		0,
-		"Storage class parameter 'trashMaxDelay' value used for a delay (in seconds)"+
-			" before processing the deletion of the rbd image.")
+		"Delay before permanently deleting RBD images from trash. When set to a positive duration, "+
+			"deleted volumes are moved to Ceph trash and retained for this period. Users are responsible "+
+			"for purging trash after the retention period.")
 
 	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
 	flag.BoolVar(&conf.EnableProfiling, "enableprofiling", false, "enable go profiling")

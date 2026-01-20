@@ -102,7 +102,7 @@ func (r *rbdDriver) Run(conf *util.Config) {
 	rbd.SetGlobalBool("skipForceFlatten", conf.SkipForceFlatten)
 	rbd.SetGlobalInt("maxSnapshotsOnImage", conf.MaxSnapshotsOnImage)
 	rbd.SetGlobalInt("minSnapshotsOnImageToStartFlatten", conf.MinSnapshotsOnImage)
-	rbd.SetGlobalInt("rbdTrashMaxDelay", conf.RbdTrashMaxDelay)
+	rbd.SetGlobalDuration("rbdTrashMaxDelay", conf.RbdTrashMaxDelay)
 	// Create instances of the volume and snapshot journal
 	rbd.InitJournals(conf.InstanceID)
 

@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -209,14 +208,6 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	err = rbdVol.initKMS(ctx, req.GetParameters(), req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	if delay, ok := req.GetParameters()["trashMaxDelay"]; ok {
-		d, err := time.ParseDuration(delay)
-		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "invalid trashMaxDelay: %v", err)
-		}
-		rbdVol.TrashMaxDelay = d
 	}
 
 	rbdVol.RequestName = req.GetName()
@@ -454,9 +445,6 @@ func (cs *ControllerServer) CreateVolume(
 
 	// Set Metadata on PV Create
 	metadata := k8s.GetVolumeMetadata(req.GetParameters())
-	if delay, ok := req.GetParameters()["trashMaxDelay"]; ok {
-		metadata[trashMaxDelayKey] = delay
-	}
 	err = rbdVol.setAllMetadata(metadata)
 	if err != nil {
 		if deleteErr := rbdVol.Delete(ctx); deleteErr != nil {

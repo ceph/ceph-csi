@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/journal"
 )
@@ -41,7 +42,7 @@ var (
 	// krbd features supported by the loaded driver.
 	krbdFeatures uint
 
-	rbdTrashMaxDelay uint
+	rbdTrashMaxDelay time.Duration
 )
 
 // SetGlobalInt provides a way for the rbd-driver to configure global variables
@@ -62,10 +63,19 @@ func SetGlobalInt(name string, value uint) {
 		minSnapshotsOnImageToStartFlatten = value
 	case "krbdFeatures":
 		krbdFeatures = value
+	default:
+		panic(fmt.Sprintf("BUG: can not set unknown variable %q", name))
+	}
+}
+
+// SetGlobalDuration provides a way for the rbd-driver to configure global
+// duration variables in the rbd package.
+func SetGlobalDuration(name string, value time.Duration) {
+	switch name {
 	case "rbdTrashMaxDelay":
 		rbdTrashMaxDelay = value
 	default:
-		panic(fmt.Sprintf("BUG: can not set unknown variable %q", name))
+		panic(fmt.Sprintf("BUG: can not set unknown duration variable %q", name))
 	}
 }
 

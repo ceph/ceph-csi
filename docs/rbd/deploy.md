@@ -49,6 +49,7 @@ make image-cephcsi
 | `--enable-read-affinity` | `false`                       | enable read affinity                                                                                                                                                                                                                                                                 |
 | `--crush-location-labels`| _empty_                       | Kubernetes node labels that determine the CRUSH location the node belongs to, separated by ','.<br>`Note: These labels will be replaced if crush location labels are defined in the ceph-csi-config ConfigMap for the specific cluster.`                                                                                                                                                                                       |
 | `--logslowopinterval`    | `30s`                         | Log slow operations at the specified rate. Operation is considered slow if it outlives its deadline.                                                                                                                                                                                                                                                                                                                           |
+| `--rbdtrashmaxdelay`     | `0`                           | Delay before permanently deleting RBD images from trash. When set to a positive duration (e.g., `24h`, `7d`), deleted volumes are moved to Ceph trash and retained for this period. See [RBD Trash Retention](#rbd-trash-retention) for details.                                                                                                                                                                               |
 
 **Available volume parameters:**
 
@@ -560,6 +561,44 @@ kubectl edit cm ceph-config
 
 This will update the `ceph.conf` of the underlying ceph cluster to enable
 librbd logs in `csi-rbdplugin` container.
+
+## RBD Trash Retention
+
+Ceph-CSI supports configuring a retention delay for deleted RBD volumes using
+the `--rbdtrashmaxdelay` command-line flag. When this flag is set to a positive
+duration, deleted volumes are moved to the Ceph RBD trash instead of being
+immediately removed.
+
+### Configuration
+
+Set the `--rbdtrashmaxdelay` flag on the csi-rbdplugin-provisioner deployment:
+
+```yaml
+args:
+  - "--rbdtrashmaxdelay=24h"  # Retain deleted images in trash for 24 hours
+```
+
+The value accepts Go duration format (e.g., `1h`, `24h`, `7d`, `168h`).
+
+### Behavior
+
+- When `--rbdtrashmaxdelay` is set to `0` (default): Volumes are immediately
+  deleted from trash after being moved there (current behavior preserved).
+- When `--rbdtrashmaxdelay` is set to a positive duration: Volumes are moved
+  to Ceph trash and the CSI driver returns immediately. The image remains in
+  trash until Ceph's trash purge mechanism removes it.
+
+### Important Notes
+
+- **Users are responsible for purging RBD trash** after the retention period.
+  Ceph-CSI does not automatically purge images from trash.
+- To purge expired images from trash, use the Ceph CLI:
+  ```bash
+  rbd trash purge <pool-name>
+  ```
+- The configured delay applies to all volumes deleted while that configuration
+  is active. Changing the flag value only affects future deletions.
+- Images in trash still consume storage space until purged.
 
 ## Changed Block Tracking (CBT)
 
