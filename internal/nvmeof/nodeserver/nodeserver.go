@@ -350,8 +350,8 @@ func (ns *NodeServer) NodeExpandVolume(
 	req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "volume ID must be provided")
+	if err := util.ValidateVolumeID(volumeID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// Block mode - nothing to do
