@@ -189,8 +189,8 @@ func (cs *Server) DeleteVolume(
 	req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
-	if volumeID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "empty volume ID in request")
+	if err := util.ValidateVolumeID(volumeID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// prevent concurrent requests for the same volume
@@ -314,6 +314,9 @@ func (cs *Server) ControllerModifyVolume(
 ) (*csi.ControllerModifyVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	params := req.GetMutableParameters()
+	if err := util.ValidateVolumeID(volumeID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	// Step 1: Acquire volume lock
 	if acquired := cs.volumeLocks.TryAcquire(volumeID); !acquired {
