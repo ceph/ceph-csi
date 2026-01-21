@@ -173,7 +173,8 @@ type VolumeReplicationStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:JSONPath=".metadata.creationTimestamp",name=Age,type=date
 // +kubebuilder:printcolumn:JSONPath=".spec.volumeReplicationClass",name=volumeReplicationClass,type=string
-// +kubebuilder:printcolumn:JSONPath=".spec.dataSource.name",name=pvcName,type=string
+// +kubebuilder:printcolumn:JSONPath=".spec.dataSource.kind",name=SourceKind,type=string
+// +kubebuilder:printcolumn:JSONPath=".spec.dataSource.name",name=SourceName,type=string
 // +kubebuilder:printcolumn:JSONPath=".spec.replicationState",name=desiredState,type=string
 // +kubebuilder:printcolumn:JSONPath=".status.state",name=currentState,type=string
 // +kubebuilder:resource:shortName=vr

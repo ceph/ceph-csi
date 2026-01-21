@@ -16,7 +16,7 @@ require (
 	github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260120065657-2425981cdad5
 	github.com/ceph/go-ceph v0.37.0
 	github.com/container-storage-interface/spec v1.12.0
-	github.com/csi-addons/kubernetes-csi-addons v0.13.0
+	github.com/csi-addons/kubernetes-csi-addons v0.14.0
 	github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79
 	github.com/gemalto/kmip-go v0.1.0
 	github.com/golang/protobuf v1.5.4
@@ -143,7 +143,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/oauth2 v0.32.0 // indirect

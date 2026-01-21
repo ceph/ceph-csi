@@ -88,7 +88,10 @@ type VolumeGroupReplicationContentStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,shortName=vgrcontent
+// +kubebuilder:printcolumn:JSONPath=".spec.volumeGroupReplicationClassName",name=VolumeGroupReplicationClass,type=string
+// +kubebuilder:printcolumn:JSONPath=".spec.volumeGroupReplicationRef.name",name=VolumeGroupReplication,type=string
+// +kubebuilder:printcolumn:JSONPath=".metadata.creationTimestamp",name=Age,type=date
 
 // VolumeGroupReplicationContent is the Schema for the volumegroupreplicationcontents API
 type VolumeGroupReplicationContent struct {
