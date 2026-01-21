@@ -1705,25 +1705,6 @@ func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 	return (vMajor > major) || (vMajor == major && vMinor >= minor)
 }
 
-var brokenMetrics *bool = nil
-
-// k8sBrokenMetrics detects if Kubernetes 1.34 is used, this version has broken
-// kube_volume_stats_* metrics:
-// https://github.com/kubernetes/kubernetes/issues/133847
-func k8sBrokenMetrics(c kubernetes.Interface) bool {
-	if brokenMetrics == nil {
-		broken := true
-		functional := true
-		if k8sVersionGreaterEquals(c, 1, 34) && !k8sVersionGreaterEquals(c, 1, 35) {
-			brokenMetrics = &broken
-		} else {
-			brokenMetrics = &functional
-		}
-	}
-
-	return *brokenMetrics
-}
-
 // waitForJobCompletion polls the status of the given job and waits until the
 // jobs has succeeded or until the timeout is hit.
 func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) error {
