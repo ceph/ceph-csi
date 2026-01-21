@@ -72,8 +72,8 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 			if vol == nil {
 				return status.Error(codes.NotFound, "volume cannot be empty")
 			}
-			if vol.GetVolumeId() == "" {
-				return status.Error(codes.NotFound, "volume ID cannot be empty")
+			if err := util.ValidateVolumeID(vol.GetVolumeId()); err != nil {
+				return status.Error(codes.InvalidArgument, err.Error())
 			}
 
 		default:
@@ -85,10 +85,14 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 }
 
 // validateDeleteVolumeRequest validates the Controller DeleteVolume request.
-func (cs *ControllerServer) validateDeleteVolumeRequest() error {
+func (cs *ControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid DeleteVolumeRequest: %w", err)
+	}
+
+	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	return nil
@@ -100,8 +104,8 @@ func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpan
 		return fmt.Errorf("invalid ExpandVolumeRequest: %w", err)
 	}
 
-	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	capRange := req.GetCapacityRange()

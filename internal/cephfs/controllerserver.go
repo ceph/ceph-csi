@@ -491,7 +491,7 @@ func (cs *ControllerServer) DeleteVolume(
 	ctx context.Context,
 	req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
-	if err := cs.validateDeleteVolumeRequest(); err != nil {
+	if err := cs.validateDeleteVolumeRequest(req); err != nil {
 		log.ErrorLog(ctx, "DeleteVolumeRequest validation failed: %v", err)
 
 		return nil, err
@@ -975,8 +975,8 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	if req.GetName() == "" {
 		return status.Error(codes.NotFound, "snapshot Name cannot be empty")
 	}
-	if req.GetSourceVolumeId() == "" {
-		return status.Error(codes.NotFound, "source Volume ID cannot be empty")
+	if err := util.ValidateVolumeID(req.GetSourceVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	return nil
@@ -1152,11 +1152,11 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
 
-	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	volumeId := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeId); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	volumeId := req.GetVolumeId()
 	if acquired := cs.VolumeLocks.TryAcquire(volumeId); !acquired {
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeId)
 	}
