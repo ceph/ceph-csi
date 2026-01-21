@@ -17,15 +17,23 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+// A regex to verify the expected format: 0000-0000-arbitrary-number-of-000-and-chars.
+// First two blocks are hexadecimal.
+var validator = regexp.MustCompile(`^[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[a-zA-Z0-9\-]+$`)
+
 // ValidateControllerPublishVolumeRequest validates the controller publish request.
 func ValidateControllerPublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
-	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "volume ID missing in request")
+	if err := ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if req.GetVolumeCapability() == nil {
@@ -40,8 +48,8 @@ func ValidateControllerPublishVolumeRequest(req *csi.ControllerPublishVolumeRequ
 
 // ValidateControllerUnpublishVolumeRequest validates the controller unpublish request.
 func ValidateControllerUnpublishVolumeRequest(req *csi.ControllerUnpublishVolumeRequest) error {
-	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "volume ID missing in request")
+	if err := ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if req.GetNodeId() == "" {
@@ -57,8 +65,8 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 		return status.Error(codes.InvalidArgument, "volume capability missing in request")
 	}
 
-	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "volume ID missing in request")
+	if err := ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if req.GetStagingTargetPath() == "" {
@@ -83,8 +91,8 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 
 // ValidateNodeUnstageVolumeRequest validates the node unstage request.
 func ValidateNodeUnstageVolumeRequest(req *csi.NodeUnstageVolumeRequest) error {
-	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "volume ID missing in request")
+	if err := ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if req.GetStagingTargetPath() == "" {
@@ -100,8 +108,8 @@ func ValidateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 		return status.Error(codes.InvalidArgument, "volume capability missing in request")
 	}
 
-	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "volume ID missing in request")
+	if err := ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if req.GetTargetPath() == "" {
@@ -117,8 +125,8 @@ func ValidateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 
 // ValidateNodeUnpublishVolumeRequest validates the node unpublish request.
 func ValidateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) error {
-	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "volume ID missing in request")
+	if err := ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if req.GetTargetPath() == "" {
@@ -140,5 +148,33 @@ func CheckReadOnlyManyIsSupported(req *csi.CreateVolumeRequest) error {
 		}
 	}
 
+	return nil
+}
+
+// ValidateVolumeID checks if the specified volumeID matches
+// the expected format: 0000-0000-arbitrary-number-of-000-and-chars
+// and is void of path traversal characters.
+func ValidateVolumeID(volumeID string) error {
+	validator := regexp.MustCompile(`^\d{4}-\d{4}-[a-zA-Z0-9\-]+$`)
+
+	// should be non empty
+	if volumeID == "" {
+		return fmt.Errorf("the volumeID cannot be empty: %q", volumeID)
+	}
+
+	// should not contain path traversal sequences
+	if strings.Contains(volumeID, "..") {
+		return fmt.Errorf("the volumeID contains path traversal sequences: %q", volumeID)
+	}
+	if strings.ContainsAny(volumeID, "/\\") {
+		return fmt.Errorf("volumeID contains invalid path characters: %q", volumeID)
+	}
+
+	// Should match the expected format: 0000-0000-arbitrary-number-of-000-and-chars
+	if matches := validator.MatchString(volumeID); !matches {
+		return fmt.Errorf("the volumeID has an unexpected format: %q", volumeID)
+	}
+
+	// Is a valid volumeID
 	return nil
 }
