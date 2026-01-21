@@ -54,8 +54,8 @@ func (ekrs *EncryptionKeyRotationServer) EncryptionKeyRotate(
 ) (*ekr.EncryptionKeyRotateResponse, error) {
 	// Get the volume ID from the request
 	volID := req.GetVolumeId()
-	if volID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	if err := util.ValidateVolumeID(volID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if acquired := ekrs.volLock.TryAcquire(volID); !acquired {
