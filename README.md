@@ -115,6 +115,7 @@ for its support details.
 |        | Creating and deleting snapshot                            | Alpha          | >= v3.7.0          | >= v1.1.0        | Pacific (>=v16.2.0)  | >= v1.17.0         |
 |        | Provision volume from snapshot                            | Alpha          | >= v3.7.0          | >= v1.1.0        | Pacific (>=v16.2.0)  | >= v1.17.0         |
 |        | Provision volume from another volume                      | Alpha          | >= v3.7.0          | >= v1.1.0        | Pacific (>=v16.2.0)  | >= v1.16.0         |
+|        | Modify volume parameters with ControllerModifyVolume      | Alpha          | >= v3.17.0         | >= v1.12.0       | Pacific (>=v16.2.0)  | >= v1.34.0         |
 
 `NOTE`: The `Alpha` status reflects possible non-backward
 compatible changes in the future, and is thus not recommended
