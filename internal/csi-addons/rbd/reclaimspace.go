@@ -64,8 +64,8 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 	req *rs.ControllerReclaimSpaceRequest,
 ) (*rs.ControllerReclaimSpaceResponse, error) {
 	volumeID := req.GetVolumeId()
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	if err := util.ValidateVolumeID(volumeID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if acquired := rscs.volumeLocks.TryAcquire(volumeID); !acquired {
@@ -127,8 +127,8 @@ func (rsns *ReclaimSpaceNodeServer) NodeReclaimSpace(
 	// volumeID is a required attribute, it is part of the path to run the
 	// space reducing command on
 	volumeID := req.GetVolumeId()
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	if err := util.ValidateVolumeID(volumeID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if acquired := rsns.volumeLocks.TryAcquire(volumeID); !acquired {

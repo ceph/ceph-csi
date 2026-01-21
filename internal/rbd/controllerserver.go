@@ -874,8 +874,8 @@ func checkContentSource(
 			return nil, nil, status.Error(codes.NotFound, "volume cannot be empty")
 		}
 		volID := vol.GetVolumeId()
-		if volID == "" {
-			return nil, nil, status.Errorf(codes.NotFound, "volume ID cannot be empty")
+		if err := util.ValidateVolumeID(volID); err != nil {
+			return nil, nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		rbdvol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
@@ -963,8 +963,8 @@ func (cs *ControllerServer) DeleteVolume(
 
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
-	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	if err := util.ValidateVolumeID(volumeID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
@@ -1127,8 +1127,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if len(req.GetVolumeCapabilities()) == 0 {
@@ -1598,8 +1598,8 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 
 	volID := req.GetVolumeId()
-	if volID == "" {
-		return nil, status.Error(codes.InvalidArgument, "volume ID cannot be empty")
+	if err := util.ValidateVolumeID(volID); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	capRange := req.GetCapacityRange()
@@ -1711,8 +1711,8 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	if !k8s.RunsOnKubernetes() {
 		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
-	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	volumeId := req.GetVolumeId()
