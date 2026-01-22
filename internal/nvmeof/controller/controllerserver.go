@@ -357,6 +357,40 @@ func (cs *Server) ControllerExpandVolume(
 	return cs.backendServer.ControllerExpandVolume(ctx, req)
 }
 
+// CreateSnapshot forwards the snapshot creation to the backend RBD driver. Because Snapshots do not need to
+// be available in the NVMe-oF gateway, there are no further actions needed.
+func (cs *Server) CreateSnapshot(
+	ctx context.Context,
+	req *csi.CreateSnapshotRequest,
+) (*csi.CreateSnapshotResponse, error) {
+	err := cs.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid create snapshot req: %v", err)
+
+		return nil, err
+	}
+
+	// create snapshot is handled by rbd backend server
+	return cs.backendServer.CreateSnapshot(ctx, req)
+}
+
+// DeleteSnapshot forwards the snapshot deletion to the backend RBD driver. Because Snapshots are not
+// available in the NVMe-oF gateway, there are no further actions needed.
+func (cs *Server) DeleteSnapshot(
+	ctx context.Context,
+	req *csi.DeleteSnapshotRequest,
+) (*csi.DeleteSnapshotResponse, error) {
+	err := cs.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid delete snapshot req: %v", err)
+
+		return nil, err
+	}
+
+	// delete snapshot is handled by rbd backend server
+	return cs.backendServer.DeleteSnapshot(ctx, req)
+}
+
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
 // the rest of the parameters are validated by RBD.
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
