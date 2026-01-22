@@ -207,16 +207,7 @@ func (r *ReconcileVGRContent) reconcileVGRContent(ctx context.Context, obj runti
 
 	reqName := vgrc.Name
 	groupHandle := vgrc.Spec.VolumeGroupReplicationHandle
-	volumeRefs := vgrc.Status.PersistentVolumeRefList
-	volumeIds := make([]string, len(volumeRefs))
-	for i := range volumeRefs {
-		pv := &corev1.PersistentVolume{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: volumeRefs[i].Name}, pv)
-		if err != nil {
-			return fmt.Errorf("failed to get persistentvolume %s: %w", volumeRefs[i].Name, err)
-		}
-		volumeIds[i] = pv.Spec.CSI.VolumeHandle
-	}
+	volumeIds := vgrc.Spec.Source.VolumeHandles
 
 	if groupHandle == "" {
 		return errors.New("volume group replication handle is empty")
