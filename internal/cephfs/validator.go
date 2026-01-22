@@ -72,7 +72,7 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 			if vol == nil {
 				return status.Error(codes.NotFound, "volume cannot be empty")
 			}
-			if err := util.ValidateVolumeID(vol.GetVolumeId()); err != nil {
+			if err := util.ValidateVolumeID(vol.GetVolumeId(), true); err != nil {
 				return status.Error(codes.InvalidArgument, err.Error())
 			}
 
@@ -91,7 +91,7 @@ func (cs *ControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeReq
 		return fmt.Errorf("invalid DeleteVolumeRequest: %w", err)
 	}
 
-	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+	if err := util.ValidateVolumeID(req.GetVolumeId(), true); err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -104,7 +104,7 @@ func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpan
 		return fmt.Errorf("invalid ExpandVolumeRequest: %w", err)
 	}
 
-	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+	if err := util.ValidateVolumeID(req.GetVolumeId(), true); err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 

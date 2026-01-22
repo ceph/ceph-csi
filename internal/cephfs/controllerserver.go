@@ -975,7 +975,7 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	if req.GetName() == "" {
 		return status.Error(codes.NotFound, "snapshot Name cannot be empty")
 	}
-	if err := util.ValidateVolumeID(req.GetSourceVolumeId()); err != nil {
+	if err := util.ValidateVolumeID(req.GetSourceVolumeId(), true); err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -1153,7 +1153,7 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	}
 
 	volumeId := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volumeId); err != nil {
+	if err := util.ValidateVolumeID(volumeId, true); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
