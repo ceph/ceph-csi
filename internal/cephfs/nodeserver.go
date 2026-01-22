@@ -911,7 +911,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	}
 
 	volumeID := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volumeID); err != nil {
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 

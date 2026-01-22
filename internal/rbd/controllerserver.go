@@ -874,7 +874,7 @@ func checkContentSource(
 			return nil, nil, status.Error(codes.NotFound, "volume cannot be empty")
 		}
 		volID := vol.GetVolumeId()
-		if err := util.ValidateVolumeID(volID); err != nil {
+		if err := util.ValidateVolumeID(volID, true); err != nil {
 			return nil, nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		rbdvol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
@@ -963,7 +963,7 @@ func (cs *ControllerServer) DeleteVolume(
 
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volumeID); err != nil {
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -1127,7 +1127,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+	if err := util.ValidateVolumeID(req.GetVolumeId(), util.IsStaticVol(req.GetVolumeContext())); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -1598,7 +1598,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 
 	volID := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volID); err != nil {
+	if err := util.ValidateVolumeID(volID, true); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -1711,7 +1711,7 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	if !k8s.RunsOnKubernetes() {
 		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
-	if err := util.ValidateVolumeID(req.GetVolumeId()); err != nil {
+	if err := util.ValidateVolumeID(req.GetVolumeId(), true); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 

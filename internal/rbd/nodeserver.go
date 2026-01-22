@@ -1234,7 +1234,7 @@ func (ns *NodeServer) NodeExpandVolume(
 	req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volumeID); err != nil {
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -1496,7 +1496,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 ) (*csi.NodeGetVolumeStatsResponse, error) {
 	var err error
 	volumeId := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volumeId); err != nil {
+	if err := util.ValidateVolumeID(volumeId, true); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
