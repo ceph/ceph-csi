@@ -72,15 +72,15 @@ queue_rules:
               - or:
                   - label=ci/skip/e2e
                   - and:
-                      - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
                       - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
                       - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
-                      - "status-success=ci/centos/mini-e2e-helm/k8s-1.32"
+                      - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
                       - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
                       - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
-                      - "status-success=ci/centos/mini-e2e/k8s-1.32"
+                      - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
                       - "status-success=ci/centos/mini-e2e/k8s-1.33"
                       - "status-success=ci/centos/mini-e2e/k8s-1.34"
+                      - "status-success=ci/centos/mini-e2e/k8s-1.35"
                       - "status-success=ci/centos/upgrade-tests-cephfs"
                       - "status-success=ci/centos/upgrade-tests-rbd"
           - and:
@@ -149,15 +149,15 @@ pull_request_rules:
       - or:
           - label=ci/skip/e2e
           - and:
-              - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
               - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
               - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
-              - "status-success=ci/centos/mini-e2e-helm/k8s-1.32"
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
               - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
               - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
-              - "status-success=ci/centos/mini-e2e/k8s-1.32"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
               - "status-success=ci/centos/mini-e2e/k8s-1.33"
               - "status-success=ci/centos/mini-e2e/k8s-1.34"
+              - "status-success=ci/centos/mini-e2e/k8s-1.35"
               - "status-success=ci/centos/upgrade-tests-cephfs"
               - "status-success=ci/centos/upgrade-tests-rbd"
     actions:
@@ -253,15 +253,15 @@ pull_request_rules:
               - or:
                   - label=ci/skip/e2e
                   - and:
-                      - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
                       - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
                       - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
-                      - "status-success=ci/centos/mini-e2e-helm/k8s-1.32"
+                      - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
                       - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
                       - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
-                      - "status-success=ci/centos/mini-e2e/k8s-1.32"
+                      - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
                       - "status-success=ci/centos/mini-e2e/k8s-1.33"
                       - "status-success=ci/centos/mini-e2e/k8s-1.34"
+                      - "status-success=ci/centos/mini-e2e/k8s-1.35"
                       - "status-success=ci/centos/upgrade-tests-cephfs"
                       - "status-success=ci/centos/upgrade-tests-rbd"
     actions:
