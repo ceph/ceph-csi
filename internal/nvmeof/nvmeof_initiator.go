@@ -158,7 +158,7 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 
 		// Check if already connected to this specific gateway
 		if req.HostNQN != "" && existingConnections != nil {
-			if existingConnections.hasLivePathToGateway(
+			if existingConnections.hasPathToGateway(
 				req.SubsystemNQN, req.HostNQN, listener.Address, portStr) {
 				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s with HostNQN %s",
 					req.SubsystemNQN, listener.Address, portStr, req.HostNQN)
@@ -247,8 +247,8 @@ func listSubsystems(ctx context.Context) (nvmeHostConnections, error) {
 	return hosts, nil
 }
 
-// hasLivePathToGateway checks if a live path exists to the specified gateway.
-func (nhc nvmeHostConnections) hasLivePathToGateway(subsystemNQN, hostNQN,
+// hasPathToGateway checks if a path exists to the specified gateway.
+func (nhc nvmeHostConnections) hasPathToGateway(subsystemNQN, hostNQN,
 	gatewayIP, gatewayPort string,
 ) bool {
 	for _, host := range nhc {
@@ -261,10 +261,25 @@ func (nhc nvmeHostConnections) hasLivePathToGateway(subsystemNQN, hostNQN,
 				continue
 			}
 
+			// loop through paths to find matching path
 			for _, path := range subsys.Paths {
+				// Check if the path matches the gateway IP and port
+				// and is in a usable state:
+				// - "live": connection is active and working
+				// - "connecting": kernel is actively trying to (re)connect
+				//
+				// The "connecting" state occurs when:
+				// 1. Initial connection is being established
+				// 2. Connection lost and kernel is retrying (ctrl_loss_tmo in effect)
+				// 3. Subsystem was deleted/recreated on the gateway
+				//
+				// In all cases, the kernel's retry mechanism handles reconnection
+				// for up to ctrl_loss_tmo seconds, so we should not attempt another
+				// connection which would fail with "already connected" error.
 				if path.Address.Traddr == gatewayIP &&
 					path.Address.Trsvcid == gatewayPort &&
-					path.State == "live" {
+					(path.State == "live" ||
+						path.State == "connecting") {
 					return true
 				}
 			}
