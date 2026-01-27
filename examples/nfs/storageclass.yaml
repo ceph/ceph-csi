@@ -38,8 +38,11 @@ parameters:
   csi.storage.k8s.io/provisioner-secret-namespace: default
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: default
-  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/node-stage-secret-namespace: default
+  csi.storage.k8s.io/controller-modify-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-modify-secret-namespace: default
+  # publish-secret is needed for parameters set by a VolumeAttributeClass
+  csi.storage.k8s.io/node-publish-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: default
 
   # (optional) Prefix to use for naming subvolumes.
   # If omitted, defaults to "csi-vol-".

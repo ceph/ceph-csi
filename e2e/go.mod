@@ -18,7 +18,7 @@ require (
 	// when updating k8s.io modules, update the 'replace' section below too
 	k8s.io/api v0.35.0
 	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/client-go v0.35.0
 	k8s.io/cloud-provider v0.35.0
 	k8s.io/kubernetes v1.35.0
 	k8s.io/pod-security-admission v0.35.0
@@ -35,6 +35,8 @@ replace (
 	k8s.io/kubectl => k8s.io/kubectl v0.35.0
 	k8s.io/kubelet => k8s.io/kubelet v0.35.0
 )
+
+exclude k8s.io/client-go v12.0.0+incompatible
 
 require (
 	cel.dev/expr v0.24.0 // indirect
@@ -123,7 +125,7 @@ require (
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	k8s.io/kubectl v0.0.0 // indirect
-	k8s.io/kubelet v0.33.2 // indirect
+	k8s.io/kubelet v0.0.0 // indirect
 	k8s.io/mount-utils v0.35.0 // indirect
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.2 // indirect

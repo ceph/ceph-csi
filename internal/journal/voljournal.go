@@ -828,7 +828,7 @@ func (conn *Connection) FetchAttribute(ctx context.Context, pool, reservedUUID, 
 
 	value, ok := values[key]
 	if !ok {
-		return "", fmt.Errorf("failed to find key %q in returned map: %v", key, values)
+		return "", fmt.Errorf("%w: missing key %q: %v", util.ErrKeyNotFound, key, values)
 	}
 
 	return value, nil
