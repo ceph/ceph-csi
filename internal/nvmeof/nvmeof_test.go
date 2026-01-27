@@ -317,7 +317,7 @@ func TestHasLivePathToGateway(t *testing.T) {
 			hostNQN:      "nqn.2014-08.org.nvmexpress:uuid:test-host",
 			gatewayIP:    "10.129.2.45",
 			gatewayPort:  "4420",
-			want:         false,
+			want:         true,
 		},
 		{
 			name:         "wrong gateway IP",
@@ -357,7 +357,7 @@ func TestHasLivePathToGateway(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := connections.hasLivePathToGateway(
+			got := connections.hasPathToGateway(
 				tt.subsystemNQN,
 				tt.hostNQN,
 				tt.gatewayIP,
