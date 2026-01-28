@@ -19,16 +19,37 @@ jobs:
     name: multi-arch-build
     runs-on: ubuntu-latest
     steps:
+      - name: delay a minute to have labels added
+        run: sleep 1m
+      - name: detect single-arch-build
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0
+        id: detect-single-arch-build
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            })
+
+            for (const label of pr.data.labels) {
+              if (label.name === 'ci/skip/multi-arch-build') {
+                return true
+              }
+            }
+
+            return false
+          result-encoding: string
+
       # yamllint disable-line rule:line-length
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       - name: multi-arch-build
-        # yamllint disable-line rule:line-length
-        if: ${{ ! contains(github.event.pull_request.labels.*.name, 'ci/skip/multi-arch-build') }}
+        if: steps.detect-single-arch-build.outputs.result != 'true'
         # podman cannot pull images with both tag and digest
         # https://github.com/containers/buildah/issues/1407
         # use docker to build images
         run: CONTAINER_CMD=docker ./scripts/build-multi-arch-image.sh
       - name: single-arch-build
-        # yamllint disable-line rule:line-length
-        if: ${{ contains(github.event.pull_request.labels.*.name, 'ci/skip/multi-arch-build') }}
+        if: steps.detect-single-arch-build.outputs.result == 'true'
         run: make containerized-build
