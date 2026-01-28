@@ -23,7 +23,11 @@ TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o=jsonpath='
 FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
 MONITOR=$(kubectl -n rook-ceph get services -l app=rook-ceph-mon -o=jsonpath='{.items[0].spec.clusterIP}:{.items[0].spec.ports[0].port}')
 
-cat << EOF | kubectl -n "${NAMESPACE}" replace -f -
+# in certain scenarios the configmap does not exist yet
+ACTION='replace'
+kubectl -n "${NAMESPACE}" get configmap/ceph-csi-config || ACTION='create'
+
+cat << EOF | kubectl -n "${NAMESPACE}" "${ACTION}" -f -
 ---
 apiVersion: v1
 kind: ConfigMap
