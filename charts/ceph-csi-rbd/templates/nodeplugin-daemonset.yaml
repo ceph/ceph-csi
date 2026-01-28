@@ -66,7 +66,7 @@ spec:
             - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
-{{- if .Values.topology.domainLabels }}
+{{- if and .Values.topology.domainLabels (gt (len .Values.topology.domainLabels) 0) }}
             - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
 {{- end }}
 {{- if .Values.instanceID }}
