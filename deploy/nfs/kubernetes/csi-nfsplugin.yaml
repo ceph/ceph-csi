@@ -73,6 +73,8 @@ spec:
               mountPath: /etc/ceph/
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
         - name: driver-registrar
           # This is necessary only for systems with SELinux, where
           # non-privileged sidecar containers cannot access unix domain socket
@@ -133,3 +135,7 @@ spec:
         - name: ceph-csi-config
           configMap:
             name: ceph-csi-config
+        - name: keys-tmp-dir
+          emptyDir: {
+            medium: "Memory"
+          }
