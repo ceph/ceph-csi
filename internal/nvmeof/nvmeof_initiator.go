@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -58,7 +59,7 @@ type NVMeInitiator interface {
 // ConnectRequest represents a subsystem connection request.
 type ConnectRequest struct {
 	SubsystemNQN string
-	Listeners    []GatewayAddress
+	Listeners    []ListenerDetails
 	Transport    string // "tcp"
 	HostNQN      string // Optional - empty means use system default
 }
@@ -154,14 +155,29 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 	// Try connecting to each address until one succeeds
 	var success bool
 	for _, listener := range req.Listeners {
+		//  resolve the IP-address of the listener, .Address can be set to 0.0.0.0
+		addrs, err := net.LookupHost(listener.Hostname)
+		if err != nil {
+			log.WarningLog(ctx, "Failed to resolve %q: %v", listener.Hostname, err)
+
+			continue
+		}
+		if len(addrs) == 0 {
+			log.WarningLog(ctx, "Resolving %q returned 0 IP-addresses", listener.Hostname)
+
+			continue
+		}
+
+		ip := addrs[0]
+
 		portStr := strconv.FormatUint(uint64(listener.Port), 10)
 
 		// Check if already connected to this specific gateway
 		if req.HostNQN != "" && existingConnections != nil {
 			if existingConnections.hasPathToGateway(
-				req.SubsystemNQN, req.HostNQN, listener.Address, portStr) {
+				req.SubsystemNQN, req.HostNQN, ip, portStr) {
 				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s with HostNQN %s",
-					req.SubsystemNQN, listener.Address, portStr, req.HostNQN)
+					req.SubsystemNQN, ip, portStr, req.HostNQN)
 				success = true
 
 				continue
@@ -169,14 +185,14 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 		}
 
 		log.DebugLog(ctx, "Connecting to NVMe-oF subsystem %s at %v:%s",
-			req.SubsystemNQN, listener.Address, portStr)
+			req.SubsystemNQN, ip, portStr)
 
 		// Build nvme connect command for this address
 		args := []string{
 			"connect",
 			"-t", req.Transport,
 			"-n", req.SubsystemNQN,
-			"-a", listener.Address,
+			"-a", ip,
 			"-s", portStr,
 			"-l", nvmeCtrlLossTmo,
 		}
