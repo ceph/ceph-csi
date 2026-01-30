@@ -369,6 +369,13 @@ func getStorageClass(path string) (scv1.StorageClass, error) {
 	return sc, err
 }
 
+func getVolumeAttributesClass(path string) (scv1.VolumeAttributesClass, error) {
+	vac := scv1.VolumeAttributesClass{}
+	err := unmarshal(path, &vac)
+
+	return vac, err
+}
+
 func getSecret(path string) (v1.Secret, error) {
 	sc := v1.Secret{}
 	err := unmarshal(path, &sc)
