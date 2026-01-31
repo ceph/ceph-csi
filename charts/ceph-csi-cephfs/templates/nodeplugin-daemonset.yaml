@@ -166,37 +166,6 @@ spec:
               mountPath: /registration
           resources:
 {{ toYaml .Values.nodeplugin.registrar.resources | indent 12 }}
-{{- if .Values.nodeplugin.httpMetrics.enabled }}
-        - name: liveness-prometheus
-          securityContext:
-            privileged: true
-            allowPrivilegeEscalation: true
-          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
-          args:
-            - "--type=liveness"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport={{ .Values.nodeplugin.httpMetrics.containerPort }}"
-            - "--metricspath=/metrics"
-            - "--polltime=60s"
-            - "--timeout=3s"
-          env:
-            - name: CSI_ENDPOINT
-              value: "unix:///csi/{{ .Values.pluginSocketFile }}"
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          ports:
-            - containerPort: {{ .Values.nodeplugin.httpMetrics.containerPort }}
-              name: metrics
-              protocol: TCP
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-          resources:
-{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
-{{- end }}
       volumes:
         - name: socket-dir
           hostPath:

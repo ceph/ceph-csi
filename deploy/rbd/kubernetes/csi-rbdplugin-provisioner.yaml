@@ -1,22 +1,4 @@
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-rbdplugin-provisioner
-  # replace with non-default namespace name
-  namespace: default
-  labels:
-    app: csi-metrics
-spec:
-  selector:
-    app: csi-rbdplugin-provisioner
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8680
-
----
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -231,30 +213,6 @@ spec:
               mountPath: /tmp/csi/keys
             - name: ceph-config
               mountPath: /etc/ceph/
-        - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:canary
-          args:
-            - "--type=liveness"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8680"
-            - "--metricspath=/metrics"
-            - "--polltime=60s"
-            - "--timeout=3s"
-          env:
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi-provisioner.sock
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          ports:
-            - containerPort: 8680
-              name: http-metrics
-              protocol: TCP
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: host-dev
           hostPath:

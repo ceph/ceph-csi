@@ -132,18 +132,6 @@ spec:
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
-        - name: liveness-prometheus
-          securityContext:
-            privileged: true
-            allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/cephcsi:canary
-          args:
-            - "--type=liveness"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8680"
-            - "--metricspath=/metrics"
-            - "--polltime=60s"
-            - "--timeout=3s"
           env:
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
@@ -211,21 +199,3 @@ spec:
                   path: oidc-token
                   expirationSeconds: 3600
                   audience: ceph-csi-kms
----
-# This is a service to expose the liveness metrics
-apiVersion: v1
-kind: Service
-metadata:
-  name: csi-metrics-rbdplugin
-  # replace with non-default namespace name
-  namespace: default
-  labels:
-    app: csi-metrics
-spec:
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8680
-  selector:
-    app: csi-rbdplugin

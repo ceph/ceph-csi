@@ -122,29 +122,6 @@ spec:
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
-        - name: liveness-prometheus
-          securityContext:
-            privileged: true
-            allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/cephcsi:canary
-          args:
-            - "--type=liveness"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8681"
-            - "--metricspath=/metrics"
-            - "--polltime=60s"
-            - "--timeout=3s"
-          env:
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi.sock
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: socket-dir
           hostPath:
@@ -194,19 +171,3 @@ spec:
         - name: ceph-csi-encryption-kms-config
           configMap:
             name: ceph-csi-encryption-kms-config
----
-# This is a service to expose the liveness metrics
-apiVersion: v1
-kind: Service
-metadata:
-  name: csi-metrics-cephfsplugin
-  labels:
-    app: csi-metrics
-spec:
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8681
-  selector:
-    app: csi-cephfsplugin

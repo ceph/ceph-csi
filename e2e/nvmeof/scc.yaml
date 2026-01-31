@@ -14,8 +14,6 @@ priority:
 # SYS_ADMIN is needed for rbd to execute rbd map command
 allowedCapabilities:
   - "SYS_ADMIN"
-# Needed as we run liveness container on daemonset pods
-allowHostPorts: true
 # Set to false as we write to RootFilesystem inside container
 readOnlyRootFilesystem: false
 requiredDropCapabilities:

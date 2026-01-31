@@ -31,7 +31,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/controller/persistentvolume"
 	"github.com/ceph/ceph-csi/internal/controller/volumegroup"
-	"github.com/ceph/ceph-csi/internal/liveness"
 	nfsdriver "github.com/ceph/ceph-csi/internal/nfs/driver"
 	nvmeofdriver "github.com/ceph/ceph-csi/internal/nvmeof/driver"
 	rbddriver "github.com/ceph/ceph-csi/internal/rbd/driver"
@@ -45,7 +44,6 @@ const (
 	cephFSDefaultName   = "cephfs.csi.ceph.com"
 	nfsDefaultName      = "nfs.csi.ceph.com"
 	nvmeofDefaultName   = "nvmeof.csi.ceph.com"
-	livenessDefaultName = "liveness.csi.ceph.com"
 
 	pollTime     = 60 // seconds
 	probeTimeout = 3  // seconds
@@ -61,7 +59,7 @@ var conf util.Config
 
 func init() {
 	// common flags
-	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|nfs|nvmeof|liveness|controller]")
+	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|nfs|nvmeof|controller]")
 	flag.StringVar(&conf.Endpoint, "endpoint", "unix:///tmp/csi.sock", "CSI endpoint")
 	flag.StringVar(&conf.DriverName, "drivername", "", "name of the driver")
 	flag.StringVar(&conf.DriverNamespace, "drivernamespace", defaultNS, "namespace in which driver is deployed")
@@ -181,8 +179,6 @@ func getDriverName() string {
 		return nfsDefaultName
 	case util.NVMeoFType:
 		return nvmeofDefaultName
-	case util.LivenessType:
-		return livenessDefaultName
 	default:
 		return ""
 	}
@@ -227,7 +223,7 @@ func main() {
 	// set the PID limit (for native Ceph threads) after conf.AutoMaxProcs
 	setPIDLimit(&conf)
 
-	if conf.EnableProfiling || conf.Vtype == util.LivenessType {
+	if conf.EnableProfiling {
 		// validate metrics endpoint
 		conf.MetricsIP = os.Getenv("POD_IP")
 
@@ -264,8 +260,6 @@ func main() {
 	case util.NVMeoFType:
 		driver := nvmeofdriver.NewDriver()
 		driver.Run(&conf)
-	case util.LivenessType:
-		liveness.Run(&conf)
 
 	case util.ControllerType:
 		cfg := controller.Config{

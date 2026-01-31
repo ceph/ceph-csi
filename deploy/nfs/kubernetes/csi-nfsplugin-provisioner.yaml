@@ -1,19 +1,4 @@
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-nfsplugin-provisioner
-  labels:
-    app: csi-metrics
-spec:
-  selector:
-    app: csi-nfsplugin-provisioner
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8682
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -147,30 +132,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:canary
-          args:
-            - "--type=liveness"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8682"
-            - "--metricspath=/metrics"
-            - "--polltime=60s"
-            - "--timeout=3s"
-          env:
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi-provisioner.sock
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          ports:
-            - containerPort: 8682
-              name: http-metrics
-              protocol: TCP
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-          imagePullPolicy: "IfNotPresent"
       serviceAccountName: nfs-csi-provisioner
       volumes:
         - emptyDir:
