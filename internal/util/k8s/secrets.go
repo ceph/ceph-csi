@@ -155,6 +155,26 @@ func (sc *secretCache) updateCache(secret *corev1.Secret, force bool) map[string
 // It returns a map of key-value pairs contained in the Secret's data.
 // If the Secret does not exist or cannot be accessed, it returns an error.
 func GetSecret(secretName, secretNamespace string) (map[string]string, error) {
+	client, err := NewK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Kubernetes: %w", err)
+	}
+
+	secret, err := client.CoreV1().Secrets(secretNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret %q in namespace %q information: %w", secretName, secretNamespace, err)
+	}
+
+	secretData := make(map[string]string, len(secret.Data))
+	for k, v := range secret.Data {
+		secretData[k] = string(v)
+	}
+
+	return secretData, nil
+}
+
+// FIXME: Implement the secret cache in a manner that does not explode memory.
+func _(secretName, secretNamespace string) (map[string]string, error) {
 	// Start the watcher if not already running, only once
 	if cachedSecrets.running.CompareAndSwap(false, true) {
 		stopCh := make(chan struct{})
