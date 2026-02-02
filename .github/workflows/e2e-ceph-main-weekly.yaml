@@ -1,0 +1,28 @@
+name: Weekly E2E (Ceph main)
+
+on:
+  schedule:
+    # Run once a week (Sunday 00:00 UTC)
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  e2e-ceph-main:
+    name: E2E tests against Ceph main
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout ceph-csi
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run E2E tests (Ceph main)
+        env:
+          CEPH_VERSION: main
+        run: |
+          make e2e
