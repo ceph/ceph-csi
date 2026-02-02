@@ -42,7 +42,6 @@ const (
 	CephFsType     = "cephfs"
 	NFSType        = "nfs"
 	NVMeoFType     = "nvmeof"
-	LivenessType   = "liveness"
 	ControllerType = "controller"
 )
 
@@ -96,7 +95,7 @@ var (
 
 // Config holds the parameters list which can be configured.
 type Config struct {
-	Vtype           string // driver type [rbd|cephfs|liveness|controller]
+	Vtype string // driver type [rbd|cephfs|nfs|nvmeof|controller]
 	Endpoint        string // CSI endpoint
 	DriverName      string // name of the driver
 	DriverNamespace string // namespace in which driver is deployed
@@ -107,7 +106,7 @@ type Config struct {
 	DomainLabels    string // list of domain labels to read from the node
 	// metrics related flags
 	MetricsPath string // path of prometheus endpoint where metrics will be available
-	MetricsIP   string // TCP port for liveness/ metrics requests
+	MetricsIP   string // IP address for metrics endpoint
 
 	// CSI-Addons endpoint
 	CSIAddonsEndpoint string
@@ -138,7 +137,7 @@ type Config struct {
 	MinSnapshotsOnImage uint
 
 	PidLimit    int           // PID limit to configure through cgroups")
-	MetricsPort int           // TCP port for liveness/grpc metrics requests
+	MetricsPort int    // TCP port for metrics endpoint
 	PollTime    time.Duration // time interval in seconds between each poll
 	PoolTimeout time.Duration // probe timeout in seconds
 	// Log interval for slow GRPC calls. Calls that outlive their context deadline
