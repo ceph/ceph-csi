@@ -250,9 +250,11 @@ func (ns *NodeServer) mountNFS(
 
 // validateNodePublishVolumeRequest validates node publish volume request.
 func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
+	if err := util.ValidateVolumeID(req.GetVolumeId(), util.IsStaticVol(req.GetVolumeContext())); err != nil {
+		return err
+	}
+
 	switch {
-	case req.GetVolumeId() == "":
-		return errors.New("volume ID missing in request")
 	case req.GetVolumeCapability() == nil:
 		return errors.New("volume capability missing in request")
 	case req.GetTargetPath() == "":
