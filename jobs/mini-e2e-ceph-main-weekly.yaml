@@ -1,0 +1,21 @@
+- job:
+    name: mini-e2e-ceph-main-weekly
+    project-type: pipeline
+    description: "Weekly mini E2E against Ceph main"
+
+    triggers:
+      - timed: "H H * * 0" # weekly (Sunday)
+
+    parameters:
+      - string:
+          name: CEPH_VERSION
+          default: main
+          description: "Ceph version to test against"
+
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/ceph/ceph-csi.git
+            branches:
+              - ci/centos
+      script-path: mini-e2e-ceph-main-weekly.groovy
