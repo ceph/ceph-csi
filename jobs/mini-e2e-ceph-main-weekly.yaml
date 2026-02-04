@@ -1,10 +1,11 @@
+---
 - job:
     name: mini-e2e-ceph-main-weekly
     project-type: pipeline
     description: "Weekly mini E2E against Ceph main"
 
     triggers:
-      - timed: "H H * * 0" # weekly (Sunday)
+      - timed: "H H * * 0"      # weekly (Sunday)
 
     parameters:
       - string:
