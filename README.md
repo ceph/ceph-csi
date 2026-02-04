@@ -54,10 +54,11 @@ Status: **GA**
 Ceph CSI drivers are currently developed and tested **exclusively** in Kubernetes
 environments.
 
-| Ceph CSI Version | Container Orchestrator Name | Version Tested     |
-| -----------------| --------------------------- | -------------------|
-| v3.16.0          | Kubernetes                  | v1.32, v1.33, v1.34|
-| v3.15.0          | Kubernetes                  | v1.31, v1.32, v1.33|
+| Ceph CSI Version | Container Orchestrator Name | Version Tested      |
+| -----------------| --------------------------- | ------------------- |
+| devel (v3.17.0)  | Kubernetes                  | v1.33, v1.34, v1.35 |
+| v3.16.0          | Kubernetes                  | v1.32, v1.33, v1.34 |
+| v3.15.0          | Kubernetes                  | v1.31, v1.32, v1.33 |
 
 There is work in progress to make this CO-independent and thus
 support other orchestration environments (Nomad, Mesos..etc).
