@@ -39,6 +39,10 @@ func Test_validateNodePublishVolumeRequest(t *testing.T) {
 					VolumeId:         "123",
 					TargetPath:       "/target",
 					VolumeCapability: &csi.VolumeCapability{},
+					// staticVolume ensures format validation for volumeID is skipped.
+					VolumeContext: map[string]string{
+						"staticVolume": "true",
+					},
 				},
 			},
 			wantErr: false,
