@@ -127,6 +127,11 @@ func (cs *Server) DeleteVolume(
 	ctx context.Context,
 	req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	secret := req.GetSecrets()
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
@@ -136,7 +141,7 @@ func (cs *Server) DeleteVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(ctx, req.GetVolumeId())
+	nfsVolume, err := NewNFSVolume(ctx, volumeID)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
