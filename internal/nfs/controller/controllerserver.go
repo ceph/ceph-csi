@@ -29,6 +29,7 @@ import (
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
+	nfs "github.com/ceph/ceph-csi/internal/nfs/types"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -97,7 +98,7 @@ func (cs *Server) CreateVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(ctx, backend.GetVolumeId())
+	nfsVolume, err := nfs.NewNFSVolume(ctx, backend.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -118,6 +119,21 @@ func (cs *Server) CreateVolume(
 	// volume has been exported over NFS, set the "share" parameter to
 	// allow mounting
 	backend.VolumeContext["share"] = nfsVolume.GetExportPath()
+
+	// apply MutableParameters through ControllerModifyVolume()
+	if req.GetMutableParameters() != nil {
+		log.DebugLog(ctx, "modifying parameters: %v", req.GetMutableParameters())
+
+		_, err = cs.ControllerModifyVolume(ctx,
+			&csi.ControllerModifyVolumeRequest{
+				VolumeId:          backend.GetVolumeId(),
+				Secrets:           req.GetSecrets(),
+				MutableParameters: req.GetMutableParameters(),
+			})
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &csi.CreateVolumeResponse{Volume: backend}, nil
 }
@@ -141,7 +157,7 @@ func (cs *Server) DeleteVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(ctx, volumeID)
+	nfsVolume, err := nfs.NewNFSVolume(ctx, volumeID)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -154,7 +170,7 @@ func (cs *Server) DeleteVolume(
 
 	err = nfsVolume.DeleteExport()
 	// if the export does not exist, continue with deleting the backend volume
-	if err != nil && !errors.Is(err, ErrNotFound) {
+	if err != nil && !errors.Is(err, nfs.ErrNotFound) {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to delete export: %v", err)
 	}
 
@@ -189,4 +205,41 @@ func (cs *Server) DeleteSnapshot(
 	req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
 	return cs.backendServer.DeleteSnapshot(ctx, req)
+}
+
+// ControllerModifyVolume adjusts parameters after a volume has been created.
+// The new parameters from the [mutable_parameters] attribute are stored in
+// the [NFSVolume] object (which stores the parameters in the volumes OMAP).
+func (cs *Server) ControllerModifyVolume(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+) (*csi.ControllerModifyVolumeResponse, error) {
+	secret := req.GetSecrets()
+	cr, err := util.NewAdminCredentials(secret)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to retrieve admin credentials: %v", err)
+
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	nfsVolume, err := nfs.NewNFSVolume(ctx, req.GetVolumeId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = nfsVolume.Connect(cr)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to connect: %v", err)
+	}
+	defer nfsVolume.Destroy()
+
+	if servername, ok := req.GetMutableParameters()[nfs.ParameterServer]; ok {
+		err := nfsVolume.SetServer(servername)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
+	return &csi.ControllerModifyVolumeResponse{}, nil
 }
