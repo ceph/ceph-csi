@@ -122,6 +122,36 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 	return nil
 }
 
+// setConfigBoolean fetches a value from a configuration map and converts it to
+// a boolean.
+//
+// If the value is not available, *option is not adjusted and
+// errConfigOptionMissing is returned.
+// In case the value is available, but can not be parsed to a boolean,
+// errConfigOptionInvalid is returned.
+func setConfigBoolean(option *bool, config map[string]any, key string) error {
+	value, ok := config[key]
+	if !ok {
+		return fmt.Errorf("%w: %s", errConfigOptionMissing, key)
+	}
+
+	s, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("%w: expected string for %q, but got %T",
+			errConfigOptionInvalid, key, value)
+	}
+
+	b, err := strconv.ParseBool(s)
+	if err != nil {
+		return fmt.Errorf("%w: expected a valid boolean value for %q, but got %T",
+			errConfigOptionInvalid, key, value)
+	}
+
+	*option = b
+
+	return nil
+}
+
 // Destroy frees allocated resources. For a vaultConnection that means removing
 // the created temporary files.
 func (vc *vaultConnection) Destroy() {

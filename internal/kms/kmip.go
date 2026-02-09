@@ -20,6 +20,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -73,6 +75,14 @@ const (
 	kmipCLientCert       = "CLIENT_CERT"
 	kmipClientKey        = "CLIENT_KEY"
 	kmipUniqueIdentifier = "UNIQUE_IDENTIFIER"
+
+	// A config boolean stating the RPCs to use for encrypt
+	// and decrypt operations.
+	//
+	// When set to true: ENCRYPT and DECRYPT RPCs are used.
+	// Otherwise: GET RPC is used to fetch the key referenced
+	// by `UNIQUE_IDENTIFIER` and crypto is performed locally.
+	kmipUseCryptoRPC = "USE_CRYPTO_RPC"
 )
 
 var _ = RegisterProvider(Provider{
@@ -91,6 +101,7 @@ type kmipKMS struct {
 	uniqueIdentifier string
 	readTimeout      uint8
 	writeTimeout     uint8
+	useCryptoRPC     bool
 }
 
 func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) {
@@ -108,6 +119,13 @@ func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 
 	err = setConfigString(&kms.endpoint, args.Config, kmipEndpoint)
 	if err != nil {
+		return nil, err
+	}
+
+	// optional
+	kms.useCryptoRPC = true
+	err = setConfigBoolean(&kms.useCryptoRPC, args.Config, kmipUseCryptoRPC)
+	if errors.Is(err, errConfigOptionInvalid) {
 		return nil, err
 	}
 
@@ -178,8 +196,46 @@ func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
-// EncryptDEK uses the KMIP encrypt operation to encrypt the DEK.
-func (kms *kmipKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string, error) {
+// EncryptDEK calls either GET or ENCRYPT operation on the KMIP kms to encrypt the DEK.
+// The operation to call depends upon the config value `USE_CRYPTO_RPC`.
+//
+// If USE_CRYPTO_RPC == false : GET operation is used.
+// If USE_CRYPTO_RPC == true : ENCRYPT operation is used.
+func (kms *kmipKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
+	if kms.useCryptoRPC {
+		return kms.encryptDEKUsingEncryptRPC(ctx, volumeID, plainDEK)
+	}
+
+	return kms.encryptDEKUsingRemoteKey(ctx, volumeID, plainDEK)
+}
+
+// DecryptDEK calls either GET or DECRYPT operation on the KMIP kms to decrypt the DEK.
+// The operation to call depends upon the config value `USE_CRYPTO_RPC`.
+//
+// If USE_CRYPTO_RPC == false : GET operation is used.
+// If USE_CRYPTO_RPC == true : DECRYPT operation is used.
+func (kms *kmipKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK string) (string, error) {
+	if kms.useCryptoRPC {
+		return kms.decryptDEKUsingDecryptRPC(ctx, volumeID, encryptedDEK)
+	}
+
+	return kms.decryptDEKUsingRemoteKey(ctx, volumeID, encryptedDEK)
+}
+
+func (kms *kmipKMS) Destroy() {
+	// Nothing to do.
+}
+
+func (kms *kmipKMS) RequiresDEKStore() DEKStoreType {
+	return DEKStoreMetadata
+}
+
+func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
+	return "", ErrGetSecretUnsupported
+}
+
+// encryptDEKUsingEncryptRPC uses the KMIP encrypt operation to encrypt the DEK.
+func (kms *kmipKMS) encryptDEKUsingEncryptRPC(_ context.Context, _, plainDEK string) (string, error) {
 	conn, err := kms.connect()
 	if err != nil {
 		return "", err
@@ -234,8 +290,55 @@ func (kms *kmipKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string,
 	return string(emdData), nil
 }
 
-// DecryptDEK uses the KMIP decrypt operation  to decrypt the DEK.
-func (kms *kmipKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (string, error) {
+// encryptDEKUsingRemoteKey uses the KMIP get operation to fetch the key and encrypts DEK using GCM.
+func (kms *kmipKMS) encryptDEKUsingRemoteKey(_ context.Context, _, plainDEK string) (string, error) {
+	// Fetch the key from the KMS
+	key, err := kms.getKey(kms.uniqueIdentifier)
+	if err != nil {
+		return "", err
+	}
+
+	// Seal the passphrase using GCM
+	emd, err := symmetricEncrypt(plainDEK, key)
+	if err != nil {
+		return "", err
+	}
+
+	// Return encrypted passphrase with nonce
+	emdData, err := json.Marshal(emd)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert encryptedMetadataDEK to JSON: %w", err)
+	}
+
+	return string(emdData), nil
+}
+
+// decryptDEKUsingRemoteKey uses the KMIP get operation to fetch the key and decrypts the DEK using GCM.
+func (kms *kmipKMS) decryptDEKUsingRemoteKey(_ context.Context, _, encryptedDEK string) (string, error) {
+	emd := encryptedMetadataDEK{}
+	err := json.Unmarshal([]byte(encryptedDEK), &emd)
+	if err != nil {
+		return "", fmt.Errorf("failed to unmarshal encrypted DEK: %w", err)
+	}
+
+	// Fetch the key
+	key, err := kms.getKey(kms.uniqueIdentifier)
+	if err != nil {
+		return "", err
+	}
+
+	// Decrypt locally
+	plainDEK, err := symmetricDecrypt(&emd, key)
+	if err != nil {
+		return "", err
+	}
+
+	// Just return the plain text
+	return plainDEK, nil
+}
+
+// decryptDEKUsingDecryptRPC uses the KMIP decrypt operation to decrypt the DEK.
+func (kms *kmipKMS) decryptDEKUsingDecryptRPC(_ context.Context, _, encryptedDEK string) (string, error) {
 	conn, err := kms.connect()
 	if err != nil {
 		return "", err
@@ -282,18 +385,6 @@ func (kms *kmipKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (str
 	}
 
 	return string(decryptRespPayload.Data), nil
-}
-
-func (kms *kmipKMS) Destroy() {
-	// Nothing to do.
-}
-
-func (kms *kmipKMS) RequiresDEKStore() DEKStoreType {
-	return DEKStoreMetadata
-}
-
-func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
-	return "", ErrGetSecretUnsupported
 }
 
 // getSecrets returns required options from the Kubernetes Secret.
@@ -493,6 +584,107 @@ func (kms *kmipKMS) verifyResponse(
 	}
 
 	return &batchItem, nil
+}
+
+// symmetricEncrypt seals the plainText DEK using the given key and returns
+// `encryptedMetadataDEK` with nonce.
+func symmetricEncrypt(plainDEK string, key []byte) (*encryptedMetadataDEK, error) {
+	plainText := []byte(plainDEK)
+
+	// Create GCM cipher, simpler, does not require padding
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a cipher from the given key: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	// Generate a nonce
+	nonce, err := generateNonce(gcm.NonceSize())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate a nonce for DEK encryption: %w", err)
+	}
+
+	cipherText := gcm.Seal(nil, nonce, plainText, nil)
+
+	return &encryptedMetadataDEK{
+		Nonce: nonce,
+		DEK:   cipherText,
+	}, nil
+}
+
+// symmetricDecrypt decrypts an encrypted DEK using the given key.
+func symmetricDecrypt(emd *encryptedMetadataDEK, key []byte) (string, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to create a cipher from the given key: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	decrypted, err := gcm.Open(nil, emd.Nonce, emd.DEK, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt the DEK using the provided key: %w", err)
+	}
+
+	return string(decrypted), nil
+}
+
+// getKey fetches the symmetric key with given UUID from the KMS.
+func (kms *kmipKMS) getKey(keyUID string) ([]byte, error) {
+	conn, err := kms.connect()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close() //nolint:errcheck // more important errors are returned
+
+	payload := &kmip.GetRequestPayload{
+		UniqueIdentifier: keyUID,
+	}
+
+	resp, decoder, uid, err := kms.send(conn, kmip14.OperationGet, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	batchItem, err := kms.verifyResponse(resp, kmip14.OperationGet, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	ttlvPayload, ok := batchItem.ResponsePayload.(ttlv.TTLV)
+	if !ok {
+		return nil, errors.New("failed to cast payload to TTLV")
+	}
+
+	var getRespPayload kmip.GetResponsePayload
+	err = decoder.DecodeValue(&getRespPayload, ttlvPayload)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reject other objects.
+	if getRespPayload.ObjectType != kmip14.ObjectTypeSymmetricKey {
+		return nil, fmt.Errorf("received object is of unknown type: %s", getRespPayload.ObjectType)
+	}
+
+	// Ensure the key has a value and also prevent nil derefs.
+	if getRespPayload.SymmetricKey == nil || getRespPayload.SymmetricKey.KeyBlock.KeyValue == nil {
+		return nil, errors.New("retrieved symmetric key has no value")
+	}
+
+	// return the raw bytes.
+	if keyMaterial, ok := getRespPayload.SymmetricKey.KeyBlock.KeyValue.KeyMaterial.([]byte); ok {
+		return keyMaterial, nil
+	}
+
+	return nil, errors.New("failed to convert the key material to bytes")
 }
 
 // TODO: use the following structs from https://github.com/gemalto/kmip-go
