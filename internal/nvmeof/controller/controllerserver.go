@@ -796,12 +796,12 @@ func (cs *Server) createNVMeoFResources(
 
 	// Step 6: If using auto-listeners, query them back for storing in metadata
 	if networkMask != "" {
-		autoListeners, err := gateway.ListListeners(ctx, nvmeofData.SubsystemNQN)
+		listenersDetailsList, err := gateway.GetListeners(ctx, nvmeofData.SubsystemNQN)
 		if err != nil {
-			return nvmeofData, fmt.Errorf("failed to list auto-created listeners: %w", err)
+			return nvmeofData, fmt.Errorf("failed to retrieve auto-created listeners after retries: %w", err)
 		}
-		nvmeofData.ListenerInfo = nvmeof.ConvertListenersFromProto(autoListeners.GetListeners())
-		log.DebugLog(ctx, "Retrieved %d auto-created listeners", len(nvmeofData.ListenerInfo))
+		log.DebugLog(ctx, "Retrieved %d auto-created listeners", len(listenersDetailsList))
+		nvmeofData.ListenerInfo = listenersDetailsList
 	}
 
 	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)

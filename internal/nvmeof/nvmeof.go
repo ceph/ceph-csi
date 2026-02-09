@@ -23,6 +23,7 @@ import (
 	"math/big"
 	"syscall"
 
+	"github.com/avast/retry-go/v4"
 	pb "github.com/ceph/ceph-nvmeof/lib/go/nvmeof"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -534,6 +535,30 @@ func ConvertListenersFromProto(protoListeners []*pb.ListenerInfo) []ListenerDeta
 	}
 
 	return listeners
+}
+
+// GetListeners retrieves listeners for a subsystem with retry logic.
+// Auto-listeners feature may takes time to sync to OMAP state, so this retries with
+// exponential backoff.
+func (gw *GatewayRpcClient) GetListeners(
+	ctx context.Context,
+	subsystemNQN string,
+) ([]ListenerDetails, error) {
+	return retry.DoWithData(
+		func() ([]ListenerDetails, error) {
+			autoListeners, err := gw.ListListeners(ctx, subsystemNQN)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list auto-created listeners: %w", err)
+			}
+
+			if len(autoListeners.GetListeners()) == 0 {
+				return nil, fmt.Errorf("no auto-listeners found for subsystem %s", subsystemNQN)
+			}
+
+			return ConvertListenersFromProto(autoListeners.GetListeners()), nil
+		},
+		retry.Attempts(6), // ~100ms, 200ms, 400ms, 800ms, 1.6s, 3.2s = ~6.3s total
+	)
 }
 
 // Connect to Gateway gRPC server.
