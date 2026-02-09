@@ -104,15 +104,15 @@ compatibility support and without prior notice.
 For example, upgrading from 3.13 to 3.16 is not recommended.
 
 **Refer to the Breaking Changes Section in the
-[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.16.0) before
+[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.16.1) before
 proceeding further.**
 
-git checkout v3.16.0 tag
+git checkout v3.16.1 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.16.0
+git checkout v3.16.1
 ```
 
 ```console
