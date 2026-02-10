@@ -385,7 +385,7 @@ func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN str
 	req := &pb.CreateListenerReq{
 		Nqn:      subsystemNQN,
 		HostName: listenerInfo.Hostname,
-		Traddr:   listenerInfo.Address,
+		Traddr:   "0.0.0.0",
 		Trsvcid:  &listenerInfo.Port,
 		Adrfam:   &adrfam, // Assuming IPv4, can be configurable // TODO - make it configurable
 		// Secure  // false, // Assuming no security for now   // TODO - make it configurable?
