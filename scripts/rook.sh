@@ -39,6 +39,7 @@ function deploy_rook() {
 	# disable rook deployed csi drivers
 	sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
 	sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
+	sed -i 's|ROOK_USE_CSI_OPERATOR: "true"|ROOK_USE_CSI_OPERATOR: "false"|g' "${TEMP_DIR}/operator.yaml"
 
 	kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
 	# Override the ceph version which rook installs by default.
