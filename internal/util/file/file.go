@@ -22,8 +22,8 @@ import (
 )
 
 // CreateTempFile create a temporary file with the given string
-// content and returns the reference to the file.
-// The caller is responsible for disposing the file.
+// content and returns the reference to the file. The file is automatically
+// closed; the caller is responsible for removing the file when done.
 func CreateTempFile(prefix, contents string) (*os.File, error) {
 	// Create a temp file
 	file, err := os.CreateTemp("", prefix)
@@ -31,8 +31,10 @@ func CreateTempFile(prefix, contents string) (*os.File, error) {
 		return nil, fmt.Errorf("failed to create temporary file: %w", err)
 	}
 
-	// In case of error, remove the file if it was created
+	// Always close the file and remove it on error
 	defer func() {
+		//nolint:errcheck // close error is less important than sync error
+		_ = file.Close()
 		if err != nil {
 			//nolint:errcheck // temporary file failed to remove, shrug
 			_ = os.Remove(file.Name())
@@ -46,9 +48,9 @@ func CreateTempFile(prefix, contents string) (*os.File, error) {
 		return nil, fmt.Errorf("failed to write temporary file: %w", err)
 	}
 
-	// Close the handle
-	if err = file.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close temporary file: %w", err)
+	// Flush the contents to ensure they're written to disk
+	if err = file.Sync(); err != nil {
+		return nil, fmt.Errorf("failed to sync temporary file: %w", err)
 	}
 
 	return file, nil
