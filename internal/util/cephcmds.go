@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"time"
 
+	osdAdmin "github.com/ceph/go-ceph/common/admin/osd"
 	"github.com/ceph/go-ceph/rados"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -301,11 +302,22 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 // AddCephBlocklist adds the IP to the Ceph blocklist.
 func AddCephBlocklist(ctx context.Context, monitors string, cr *Credentials, ip string, useRange bool) error {
-	arg := []string{
-		"--id=" + cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-m=" + monitors,
+	conn := ClusterConnection{}
+	err := conn.Connect(monitors, cr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to cluster: %w", err)
 	}
+	defer conn.Destroy()
+
+	blocklistAdmin, err := conn.GetOSDAdmin()
+	if err != nil {
+		return fmt.Errorf("failed to get osd admin for blocklisting: %w", err)
+	}
+
+	// When useRange is true, ip is already in CIDR format.
+	// When useRange is false, ip is a plain IP address.
+	// The go-ceph library automatically detects if it's a CIDR and adds "range" to the command.
+	clientAddr := ip
 
 	// TODO: add blocklist till infinity.
 	// Currently, ceph does not provide the functionality to blocklist IPs
@@ -313,17 +325,16 @@ func AddCephBlocklist(ctx context.Context, monitors string, cr *Credentials, ip 
 	// represent infinity from ceph-csi side.
 	// At any point in this time, the IPs can be unblocked by an UnfenceClusterReq.
 	// This needs to be updated once ceph provides functionality for the same.
-	cmd := []string{"osd", "blocklist"}
-	if useRange {
-		cmd = append(cmd, "range")
+	entry := osdAdmin.AddressEntry{
+		Addr:   clientAddr,
+		Expire: MaxBlocklistTime.Seconds(),
 	}
-	cmd = append(cmd, "add", ip, MaxBlocklistTime.String())
-	cmd = append(cmd, arg...)
-	_, stderr, err := ExecCommand(ctx, "ceph", cmd...)
+
+	err = blocklistAdmin.OSDBlocklistAdd(entry)
 	if err != nil {
-		return fmt.Errorf("failed to blocklist IP %q: %w stderr: %q", ip, err, stderr)
+		return fmt.Errorf("failed to blocklist IP %q: %w", clientAddr, err)
 	}
-	log.DebugLog(ctx, "blocklisted IP %q successfully", ip)
+	log.DebugLog(ctx, "blocklisted IP %q successfully", clientAddr)
 
 	return nil
 }
@@ -331,32 +342,41 @@ func AddCephBlocklist(ctx context.Context, monitors string, cr *Credentials, ip 
 // RemoveCephBlocklist removes the IP from the Ceph blocklist.
 // The value of nonce is ignored if useRange is true.
 func RemoveCephBlocklist(ctx context.Context, monitors string, cr *Credentials, ip, nonce string, useRange bool) error {
-	arg := []string{
-		"--id=" + cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-m=" + monitors,
-	}
-
-	cmd := []string{"osd", "blocklist"}
-	if useRange {
-		cmd = append(cmd, "range")
-	}
-
-	// If nonce is not empty and we are not using
-	// range based blocks, we need to add the nonce
-	if nonce != "" && !useRange {
-		cmd = append(cmd, "rm", fmt.Sprintf("%s:0/%s", ip, nonce))
-	} else {
-		cmd = append(cmd, "rm", ip)
-	}
-
-	cmd = append(cmd, arg...)
-
-	_, stdErr, err := ExecCommand(ctx, "ceph", cmd...)
+	conn := ClusterConnection{}
+	err := conn.Connect(monitors, cr)
 	if err != nil {
-		return fmt.Errorf("failed to unblock IP %q: %v %w", ip, stdErr, err)
+		return fmt.Errorf("failed to connect to cluster: %w", err)
 	}
-	log.DebugLog(ctx, "unblocked IP %q successfully", ip)
+	defer conn.Destroy()
+
+	blocklistAdmin, err := conn.GetOSDAdmin()
+	if err != nil {
+		return fmt.Errorf("failed to get osd admin for blocklist removal: %w", err)
+	}
+
+	var clientAddr string
+	if useRange {
+		// When useRange is true, ip is already in CIDR format
+		clientAddr = ip
+	} else {
+		// If nonce is not empty and we are not using
+		// range based blocks, we need to add the nonce
+		if nonce != "" {
+			clientAddr = fmt.Sprintf("%s:0/%s", ip, nonce)
+		} else {
+			clientAddr = ip
+		}
+	}
+
+	entry := osdAdmin.AddressEntry{
+		Addr: clientAddr,
+	}
+
+	err = blocklistAdmin.OSDBlocklistRemove(entry)
+	if err != nil {
+		return fmt.Errorf("failed to unblock IP %q: %w", clientAddr, err)
+	}
+	log.DebugLog(ctx, "unblocked IP %q successfully", clientAddr)
 
 	return nil
 }
