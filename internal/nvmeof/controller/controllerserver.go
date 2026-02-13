@@ -54,6 +54,9 @@ type Server struct {
 	// anymore" subsystem (and listeners).
 	subsystemLocks *util.IDLocker
 
+	// securityKeys manages DH-CHAP and PSK\TLS keys
+	securityKeys nvmeof.SecurityKeyManager
+
 	// backendServer handles the RBD requests
 	backendServer *rbd.ControllerServer
 }
@@ -65,6 +68,7 @@ func NewControllerServer(d *csicommon.CSIDriver) (*Server, error) {
 		hostLocks:      util.NewIDLocker(),
 		subsystemLocks: util.NewIDLocker(),
 		backendServer:  rbddriver.NewControllerServer(d),
+		securityKeys:   nil, // Initialize lazily when needed
 	}, nil
 }
 
@@ -241,7 +245,7 @@ func (cs *Server) ControllerPublishVolume(
 	defer cs.hostLocks.Release(nodeID)
 
 	// Publish NVMe-oF resources
-	hostNqn, err := publishResources(ctx, req)
+	hostNqn, err := cs.publishResources(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to publish resources: %v", err)
 	}
@@ -300,7 +304,7 @@ func (cs *Server) ControllerUnpublishVolume(
 	}
 
 	// Unpublish NVMe-oF resources
-	if err := unpublishResources(ctx, nvmeofData, nodeID); err != nil {
+	if err := cs.unpublishResources(ctx, secrets, nvmeofData, nodeID, req.GetVolumeId()); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unpublish resources: %v", err)
 	}
 
@@ -394,6 +398,16 @@ func (cs *Server) DeleteSnapshot(
 	return cs.backendServer.DeleteSnapshot(ctx, req)
 }
 
+// validateDHCHAPParameter helper function to validates the DH-CHAP parameters.
+func validateDHCHAPParameter(dhchapMode string) error {
+	if dhchapMode != nvmeof.DHCHAPEmpty && dhchapMode != nvmeof.DHCHAPModeNone &&
+		dhchapMode != nvmeof.DHCHAPModeUniDirectional && dhchapMode != nvmeof.DHCHAPModeBiDirectional {
+		return fmt.Errorf("invalid dhchapMode: %s", dhchapMode)
+	}
+
+	return nil
+}
+
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
 // the rest of the parameters are validated by RBD.
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
@@ -440,6 +454,10 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	_, err = parseQoSParameters(mutableParams)
 	if err != nil {
 		return fmt.Errorf("invalid NVMe-oF QoS parameters: %w", err)
+	}
+	err = validateDHCHAPParameter(params["dhchapMode"])
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -734,7 +752,21 @@ func (cs *Server) createNVMeoFResources(
 			Address: params["nvmeofGatewayAddress"],
 			Port:    uint32(nvmeofGatewayPort),
 		},
+		Security: nvmeof.NVMeoFSecurityConfig{
+			DhchapMode:          params["dhchapMode"],
+			AuthenticationKMSID: params["authenticationKMSID"],
+		},
 	}
+
+	// If dhchapMode was explicitly provided and is not "none", and authenticationKMSID is empty,
+	// use a default KMS ID - RBD metadata KMS.
+	// In production, users should always provide a KMS ID when using DH-CHAP.
+	if nvmeofData.Security.DhchapMode != nvmeof.DHCHAPEmpty &&
+		nvmeofData.Security.DhchapMode != nvmeof.DHCHAPModeNone &&
+		nvmeofData.Security.AuthenticationKMSID == "" {
+		nvmeofData.Security.AuthenticationKMSID = "metadata"
+	}
+
 	// extract Qos parameters if any
 	mutableParams := req.GetMutableParameters()
 	// It take the mutableParams value from the volumeAttributesClassName in the PersistentVolumeClaim yaml.
@@ -864,7 +896,7 @@ func (cs *Server) cleanupNVMeoFResources(
 }
 
 // publishResources publishes the HostNQN to be allowed to see the Volume.
-func publishResources(ctx context.Context,
+func (cs *Server) publishResources(ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (string, error) {
 	nodeID := req.GetNodeId()
@@ -898,8 +930,16 @@ func publishResources(ctx context.Context,
 		}
 	}()
 
+	// Get DH-CHAP configuration from volume context
+	dhchapMode := volumeContext[vcDHCHAPMode] // "none", "unidirectional", "bidirectional", or empty
+	var dhchapKeys nvmeof.DHCHAPKeys
+	dhchapKeys, err = cs.setupDHCHAPKeys(ctx, req, nodeID, subsystemNQN, hostNQN, dhchapMode)
+	if err != nil {
+		return "", err
+	}
+
 	// Add host to subsystem
-	if err := gateway.AddHost(ctx, subsystemNQN, hostNQN); err != nil {
+	if err := gateway.AddHost(ctx, subsystemNQN, hostNQN, dhchapKeys); err != nil {
 		return "", fmt.Errorf("failed to add host %s: %w", hostNQN, err)
 	}
 
@@ -909,7 +949,9 @@ func publishResources(ctx context.Context,
 }
 
 // unpublishResources removes the host from the NVMe-oF subsystem.
-func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, nodeID string) error {
+func (cs *Server) unpublishResources(ctx context.Context,
+	secrets map[string]string, data *nvmeof.NVMeoFVolumeData, nodeID, volumeID string,
+) error {
 	// Extract host NQN from nodeID
 	hostNQN, err := getHostNQNFromNodeID(nodeID)
 	if err != nil {
@@ -955,6 +997,16 @@ func unpublishResources(ctx context.Context, data *nvmeof.NVMeoFVolumeData, node
 	}
 	log.DebugLog(ctx, "Host %s removed from subsystem %s", hostNQN, subsystemNQN)
 
+	// Cleanup DH-CHAP keys if any
+	if data.Security.DhchapMode == nvmeof.DHCHAPModeUniDirectional ||
+		data.Security.DhchapMode == nvmeof.DHCHAPModeBiDirectional {
+		err = cs.cleanupDHCHAPKeys(ctx, secrets, nodeID, volumeID, subsystemNQN,
+			data.Security.DhchapMode, data.Security.AuthenticationKMSID)
+		if err != nil {
+			return fmt.Errorf("failed to cleanup DH-CHAP keys for host %s: %w", hostNQN, err)
+		}
+	}
+
 	return nil
 }
 
@@ -986,6 +1038,12 @@ const (
 	// Gateway management info.
 	vcGatewayAddress = "GatewayAddress"
 	vcGatewayPort    = "GatewayPort"
+
+	// Additional KMS ID for authentication if needed.
+	vcAuthenticationKMSID = "authenticationKMSID"
+
+	// DH-CHAP mode for authentication.
+	vcDHCHAPMode = "dhchapMode"
 )
 
 // toRBDMetadataKey converts clean volume context key to prefixed RBD metadata key.
@@ -1012,6 +1070,10 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) er
 		return fmt.Errorf("failed to marshal listener info: %w", err)
 	}
 	volume.VolumeContext[vcListeners] = string(listenersJSON)
+
+	// Store Security info
+	volume.VolumeContext[vcAuthenticationKMSID] = data.Security.AuthenticationKMSID
+	volume.VolumeContext[vcDHCHAPMode] = data.Security.DhchapMode
 
 	return nil
 }
@@ -1066,6 +1128,10 @@ func (cs *Server) storeNVMeoFMetadata(
 		// Gateway management info
 		toRBDMetadataKey(vcGatewayAddress): nvmeofData.GatewayManagementInfo.Address,
 		toRBDMetadataKey(vcGatewayPort):    gatewayManagementInfoPortStr,
+
+		// DH-CHAP mode
+		toRBDMetadataKey(vcDHCHAPMode):          nvmeofData.Security.DhchapMode,
+		toRBDMetadataKey(vcAuthenticationKMSID): nvmeofData.Security.AuthenticationKMSID,
 	}
 
 	// Store all metadata entries
@@ -1117,6 +1183,8 @@ func (cs *Server) getNVMeoFMetadata(
 		toRBDMetadataKey(vcListeners),
 		toRBDMetadataKey(vcGatewayAddress),
 		toRBDMetadataKey(vcGatewayPort),
+		toRBDMetadataKey(vcDHCHAPMode),
+		toRBDMetadataKey(vcAuthenticationKMSID),
 	}
 
 	// Retrieve all metadata values
@@ -1163,6 +1231,10 @@ func (cs *Server) getNVMeoFMetadata(
 		GatewayManagementInfo: nvmeof.GatewayConfig{
 			Address: metadata[toRBDMetadataKey(vcGatewayAddress)],
 			Port:    uint32(gatewayPort),
+		},
+		Security: nvmeof.NVMeoFSecurityConfig{
+			DhchapMode:          metadata[toRBDMetadataKey(vcDHCHAPMode)],
+			AuthenticationKMSID: metadata[toRBDMetadataKey(vcAuthenticationKMSID)],
 		},
 	}
 

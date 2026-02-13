@@ -45,6 +45,12 @@ type NodeServer struct {
 	volumeLocks *util.IDLocker
 
 	initiator nvmeof.NVMeInitiator
+
+	// securityKeys manages DH-CHAP and PSK\TLS keys
+	securityKeys nvmeof.SecurityKeyManager
+
+	// node ID of this node server
+	nodeID string
 }
 
 // ConnectionInfo holds NVMe-oF connection details.
@@ -55,6 +61,7 @@ type NvmeConnectionInfo struct {
 	Listeners     []nvmeof.GatewayAddress `json:"listeners"`
 	HostNQN       string                  `json:"hostNQN,omitempty"`
 	Transport     string                  `json:"transport"`
+	DhchapMode    string                  `json:"dhchapMode,omitempty"`
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed
@@ -76,6 +83,8 @@ const (
 	nvmeofListeners     = "listeners"
 	nvmeofHostNQN       = "HostNQN"
 	defaultTransport    = "tcp"
+	nvmeofdhchapMode    = "dhchapMode"
+	authenticationKMSID = "authenticationKMSID"
 )
 
 // NewNodeServer initialize a node server for ceph CSI driver.
@@ -90,6 +99,8 @@ func NewNodeServer(
 		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
 		initiator:         nvmeInitiator,
 		volumeLocks:       util.NewIDLocker(),
+		securityKeys:      nil, // Initialize lazily when needed
+		nodeID:            nodeID,
 	}
 
 	// Load nvme kernel modules
@@ -141,13 +152,7 @@ func (ns *NodeServer) NodeStageVolume(
 	if err = util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
-
 	volumeID := req.GetVolumeId()
-	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	defer cr.DeleteCredentials()
 	if acquired := ns.volumeLocks.TryAcquire(volumeID); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
 
@@ -173,10 +178,13 @@ func (ns *NodeServer) NodeStageVolume(
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid volume context: %v", err)
 	}
+	// Get authentication KMS ID from volume context.
+	// can be empty! it will take default KMS in that case
+	authKMSID := volumeContext[authenticationKMSID]
 
 	// perform the actual staging and if this fails, have undoStagingTransaction
 	// cleans up for us
-	txn, err := ns.stageTransaction(ctx, req, connectionInfo)
+	txn, err := ns.stageTransaction(ctx, req, connectionInfo, authKMSID)
 	defer func() {
 		if err != nil {
 			ns.undoStagingTransaction(ctx, req, txn)
@@ -426,16 +434,18 @@ func (ns *NodeServer) stageTransaction(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
 	connectionInfo *NvmeConnectionInfo,
+	authKMSID string,
 ) (*stageTransaction, error) {
 	transaction := &stageTransaction{}
 
 	var err error
 
 	// perform the actual staging
-	devicePath, err := ns.connectToSubsystem(ctx, connectionInfo)
+	devicePath, err := ns.connectToSubsystem(ctx, req.GetVolumeId(), connectionInfo, req.GetSecrets(), authKMSID)
 	if err != nil {
 		return transaction, err
 	}
+
 	transaction.devicePath = devicePath
 
 	stagingTargetPath := getStagingTargetPath(req)
@@ -579,6 +589,10 @@ func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string
 	if !ok || hostNQN == "" {
 		return nil, errors.New("missing host NQN in publish context")
 	}
+	dhchapMode, ok := volumeContext[nvmeofdhchapMode]
+	if !ok || dhchapMode == "" || dhchapMode == "none" {
+		dhchapMode = ""
+	}
 
 	return &NvmeConnectionInfo{
 		SubsystemNQN:  subsystemNQN,
@@ -587,17 +601,31 @@ func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string
 		Listeners:     listeners,
 		HostNQN:       hostNQN,
 		Transport:     defaultTransport,
+		DhchapMode:    dhchapMode,
 	}, nil
 }
 
 // connectToSubsystem connects to the NVMe-oF subsystem and returns device path.
-func (ns *NodeServer) connectToSubsystem(ctx context.Context, info *NvmeConnectionInfo) (string, error) {
+func (ns *NodeServer) connectToSubsystem(
+	ctx context.Context,
+	volumeID string,
+	info *NvmeConnectionInfo,
+	secrets map[string]string,
+	authKMSID string,
+) (string, error) {
 	// Create connect request
 	connectReq := &nvmeof.ConnectRequest{
 		SubsystemNQN: info.SubsystemNQN,
 		Listeners:    info.Listeners,
 		Transport:    info.Transport,
 		HostNQN:      info.HostNQN,
+	}
+
+	// Setup DH-CHAP authentication if required
+	if info.DhchapMode != nvmeof.DHCHAPEmpty && info.DhchapMode != nvmeof.DHCHAPModeNone {
+		if err := ns.setupDHCHAPAuth(ctx, volumeID, info, secrets, authKMSID, connectReq); err != nil {
+			return "", err
+		}
 	}
 
 	// Connect to subsystem

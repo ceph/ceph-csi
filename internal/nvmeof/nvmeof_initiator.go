@@ -61,6 +61,10 @@ type ConnectRequest struct {
 	Listeners    []GatewayAddress
 	Transport    string // "tcp"
 	HostNQN      string // Optional - empty means use system default
+	// Optional - In-band authentication controller secret for bi-directional authentication.
+	SubsystemDhchapKey string
+	// Optional - In-band authentication secret for uni-directional authentication
+	HostDhchapKey string
 }
 
 // nvmeInitiator implements NVMeInitiator interface.
@@ -185,7 +189,14 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 		if req.HostNQN != "" {
 			args = append(args, "--hostnqn", req.HostNQN)
 		}
-
+		// if Host DH-CHAP key is provided, add it to the command
+		if req.HostDhchapKey != "" {
+			args = append(args, "--dhchap-secret", req.HostDhchapKey)
+		}
+		// if Subsystem DH-CHAP key is provided, add it to the command (for bi-directional auth)
+		if req.SubsystemDhchapKey != "" {
+			args = append(args, "--dhchap-ctrl-secret", req.SubsystemDhchapKey)
+		}
 		stdout, stderr, err := util.ExecCommandWithTimeout(ctx, connectTimeout, "nvme", args...)
 		// Execute connection
 		if err != nil {
