@@ -121,23 +121,22 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 		pvcPath := nvmeofExamplePath + "pvc.yaml"
 		appPath := nvmeofExamplePath + "pod.yaml"
+		rawPvcPath := nvmeofExamplePath + "raw-block-pvc.yaml"
+		rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
 
 		ginkgo.It("create a PVC and delete it", func() {
-			ginkgo.By("prepare PVC")
 			pvc, err := loadPVC(pvcPath)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			pvc.Namespace = f.UniqueName
 			pvc.Spec.StorageClassName = &nvmeofStorageClass
 
-			ginkgo.By("create the PVC")
 			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			validateRBDImageCount(f, 1, nvmeofPool)
 			validateOmapCount(f, 1, rbdType, nvmeofPool, volumesType)
 
-			ginkgo.By("delete the PVC again")
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -146,6 +145,36 @@ var _ = ginkgo.Describe("nvmeof", func() {
 				pvcPath, appPath,
 				".rbd.csi.ceph.com/serviceaccount", nvmeofPool,
 				&nvmeofStorageClass, f)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// validate created backend rbd images
+			validateRBDImageCount(f, 0, nvmeofPool)
+			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+		})
+
+		ginkgo.It("Resize Filesystem PVC and check application directory size", func() {
+			pvc, err := loadPVC(pvcPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			pvc.Namespace = f.UniqueName
+			pvc.Spec.StorageClassName = &nvmeofStorageClass
+
+			err = resizePVCAndValidateSize(pvc, appPath, f)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// validate created backend rbd images
+			validateRBDImageCount(f, 0, nvmeofPool)
+			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+		})
+
+		ginkgo.It("Resize Block PVC and check Device size", func() {
+			pvc, err := loadPVC(rawPvcPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			pvc.Namespace = f.UniqueName
+			pvc.Spec.StorageClassName = &nvmeofStorageClass
+
+			err = resizePVCAndValidateSize(pvc, rawAppPath, f)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// validate created backend rbd images
