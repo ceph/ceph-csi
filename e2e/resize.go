@@ -86,20 +86,41 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 	})
 }
 
-func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) error {
+// resizePVCAndValidateSize creates a PVC and starts an application Pod with
+// it. Once the Pod is running, the PVC is expanded and the size of the PVC
+// inside the Pod is verified.
+//
+// pvcObj can be a string (path to a YAML file for a PVC), or a pointer to a
+// PVC in case the object has been pre-created with special parameters (like
+// a StorageClass).
+func resizePVCAndValidateSize(pvcObj any, appPath string, f *framework.Framework) error {
+	var (
+		err            error
+		pvc, resizePvc *v1.PersistentVolumeClaim
+	)
+
 	size := "1Gi"
 	expandSize := "10Gi"
-	pvc, err := loadPVC(pvcPath)
-	if err != nil {
-		return err
-	}
-	pvc.Namespace = f.UniqueName
 
-	resizePvc, err := loadPVC(pvcPath)
-	if err != nil {
-		return err
+	switch pvcObj.(type) {
+	case string:
+		pvc, err = loadPVC(pvcObj.(string))
+		if err != nil {
+			return err
+		}
+		pvc.Namespace = f.UniqueName
+
+		resizePvc, err = loadPVC(pvcObj.(string))
+		if err != nil {
+			return err
+		}
+		resizePvc.Namespace = f.UniqueName
+	case *v1.PersistentVolumeClaim:
+		pvc = pvcObj.(*v1.PersistentVolumeClaim)
+		resizePvc = pvc.DeepCopy()
+	default:
+		return fmt.Errorf("BUG: pvcObj should be a string or *PersistentVolumeClaim, not a %T", pvcObj)
 	}
-	resizePvc.Namespace = f.UniqueName
 
 	app, err := loadApp(appPath)
 	if err != nil {

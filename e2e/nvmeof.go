@@ -120,29 +120,61 @@ var _ = ginkgo.Describe("nvmeof", func() {
 	ginkgo.Context("Test NVMe CSI", func() {
 
 		pvcPath := nvmeofExamplePath + "pvc.yaml"
+		appPath := nvmeofExamplePath + "pod.yaml"
+		rawPvcPath := nvmeofExamplePath + "raw-block-pvc.yaml"
+		rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
 
-		ginkgo.It("create a PVC and delete it", func() {
-			ginkgo.By("prepare PVC")
-			pvc, err := loadPVC(pvcPath)
-			Expect(err).ShouldNot(HaveOccurred())
+		ginkgo.It("Test NVMe CSI", func() {
+			ginkgo.By("create a PVC and delete it", func() {
+				pvc, err := loadPVC(pvcPath)
+				Expect(err).ShouldNot(HaveOccurred())
 
-			pvc.Namespace = f.UniqueName
-			pvc.Spec.StorageClassName = &nvmeofStorageClass
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.StorageClassName = &nvmeofStorageClass
 
-			ginkgo.By("create the PVC")
-			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-			Expect(err).ShouldNot(HaveOccurred())
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				Expect(err).ShouldNot(HaveOccurred())
 
-			validateRBDImageCount(f, 1, nvmeofPool)
-			validateOmapCount(f, 1, rbdType, nvmeofPool, volumesType)
+				validateRBDImageCount(f, 1, nvmeofPool)
+				validateOmapCount(f, 1, rbdType, nvmeofPool, volumesType)
 
-			ginkgo.By("delete the PVC again")
-			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-			Expect(err).ShouldNot(HaveOccurred())
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				Expect(err).ShouldNot(HaveOccurred())
 
-			// validate created backend rbd images
-			validateRBDImageCount(f, 0, nvmeofPool)
-			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, nvmeofPool)
+				validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+			})
+
+			ginkgo.By("Resize Filesystem PVC and check application directory size", func() {
+				pvc, err := loadPVC(pvcPath)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.StorageClassName = &nvmeofStorageClass
+
+				err = resizePVCAndValidateSize(pvc, appPath, f)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, nvmeofPool)
+				validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+			})
+
+			ginkgo.By("Resize Block PVC and check Device size", func() {
+				pvc, err := loadPVC(rawPvcPath)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.StorageClassName = &nvmeofStorageClass
+
+				err = resizePVCAndValidateSize(pvc, rawAppPath, f)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, nvmeofPool)
+				validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+			})
 		})
 	})
 })
