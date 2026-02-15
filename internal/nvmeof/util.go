@@ -17,6 +17,8 @@ limitations under the License.
 package nvmeof
 
 import (
+	"fmt"
+	"net"
 	"strings"
 
 	"github.com/google/uuid"
@@ -38,4 +40,21 @@ func formatUUID(rawUUID string) string {
 	}
 
 	return newUUID.String()
+}
+
+// ResolveIPAddress resolves the given host to an IP address.
+// It returns the first resolved IP address as a string, or an error if resolution fails.
+func ResolveIPAddress(host string) (string, error) {
+	// TODO - IPv6 support: we currently return the first resolved address,
+	// which may be an IPv4 or IPv6 address. We should consider how to handle this
+	// in a way that supports both protocols.
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve %s: %w", host, err)
+	}
+	if len(addrs) == 0 {
+		return "", fmt.Errorf("no IP addresses for %s", host)
+	}
+
+	return addrs[0], nil
 }
