@@ -90,6 +90,10 @@ const (
 	// starts with `.` to avoid copying it to the mirrored image.
 	userIdMappingKey = ".rbd.csi.ceph.com/userid"
 
+	// serviceAccountKey is the key used to restrict volume access to a specific
+	// Kubernetes service account. starts with `.` to avoid copying it to the mirrored image.
+	serviceAccountKey = ".rbd.csi.ceph.com/serviceaccount"
+
 	// Suffix added to the temp cloned image name.
 	// This will always be (rbd image name + "-temp").
 	tempImageSuffix = "-temp"

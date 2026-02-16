@@ -1227,7 +1227,7 @@ type imageInfo struct {
 	StripeUnit  int    `json:"stripe_unit"`
 	StripeCount int    `json:"stripe_count"`
 	ObjectSize  int    `json:"object_size"`
-	DataPool    string  `json:"data_pool"`
+	DataPool    string `json:"data_pool"`
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -1342,9 +1342,270 @@ func validateDataPool(f *framework.Framework, imageName, poolName string, wants 
 	if err != nil {
 		return fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, imgInfoStr)
 	}
-	
+
 	if imgInfo.DataPool != wants {
 		return fmt.Errorf("unexpected data_pool: got %q, want %q", imgInfo.DataPool, wants)
+	}
+
+	return nil
+}
+
+// setImageMeta sets a metadata key-value pair on an RBD image.
+func setImageMeta(rbdImageSpec, metaKey, metaValue string, f *framework.Framework) error {
+	cmd := fmt.Sprintf("rbd image-meta set %s %s %q", rbdImageSpec, metaKey, metaValue)
+	_, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("failed to set image metadata: %s", stdErr)
+	}
+
+	return nil
+}
+
+// removeImageMeta removes a metadata key from an RBD image.
+func removeImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) error {
+	cmd := fmt.Sprintf("rbd image-meta remove %s %s", rbdImageSpec, metaKey)
+	_, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("failed to remove image metadata: %s", stdErr)
+	}
+
+	return nil
+}
+
+// validateServiceAccountVolumeRestriction tests that volume access can be
+// restricted to a specific Kubernetes service account. It creates a PVC,
+// sets the given saMetadataKey metadata on the backing RBD image, then
+// verifies:
+//   - A pod using the allowed service account can mount the volume.
+//   - A pod using a different service account is rejected with PermissionDenied.
+//
+// The pool parameter specifies the RBD pool for the image. If scName is
+// non-nil the storage class is set on the PVC.
+func validateServiceAccountVolumeRestriction(
+	pvcPath, appPath, saMetadataKey, pool string,
+	scName *string,
+	f *framework.Framework,
+) error {
+	allowedSA := "allowed-sa-" + f.UniqueName
+	deniedSA := "denied-sa-" + f.UniqueName
+	thirdSA := "third-sa-" + f.UniqueName
+
+	// Create service accounts.
+	_, err := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Create(
+		context.TODO(),
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: allowedSA},
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create allowed ServiceAccount: %w", err)
+	}
+	defer func() {
+		delErr := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Delete(
+			context.TODO(), allowedSA, metav1.DeleteOptions{})
+		if delErr != nil {
+			framework.Logf("failed to delete ServiceAccount %s: %v", allowedSA, delErr)
+		}
+	}()
+
+	_, err = f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Create(
+		context.TODO(),
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: deniedSA},
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create denied ServiceAccount: %w", err)
+	}
+	defer func() {
+		delErr := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Delete(
+			context.TODO(), deniedSA, metav1.DeleteOptions{})
+		if delErr != nil {
+			framework.Logf("failed to delete ServiceAccount %s: %v", deniedSA, delErr)
+		}
+	}()
+
+	_, err = f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Create(
+		context.TODO(),
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: thirdSA},
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create third ServiceAccount: %w", err)
+	}
+	defer func() {
+		delErr := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Delete(
+			context.TODO(), thirdSA, metav1.DeleteOptions{})
+		if delErr != nil {
+			framework.Logf("failed to delete ServiceAccount %s: %v", thirdSA, delErr)
+		}
+	}()
+
+	// Create PVC and wait for it to be bound.
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC: %w", err)
+	}
+	pvc.Namespace = f.UniqueName
+	if scName != nil {
+		pvc.Spec.StorageClassName = scName
+	}
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC: %w", err)
+	}
+
+	defer func() {
+		delErr := deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+		if delErr != nil {
+			framework.Logf("failed to delete PVC: %v", delErr)
+		}
+	}()
+
+	// Get the RBD image info from the PVC.
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return fmt.Errorf("failed to get image info from PVC: %w", err)
+	}
+	rbdImageSpec := imageSpec(pool, imageData.imageName)
+
+	// Set the service account restriction metadata on the RBD image.
+	err = setImageMeta(rbdImageSpec, saMetadataKey, allowedSA, f)
+	if err != nil {
+		return fmt.Errorf("failed to set service account metadata: %w", err)
+	}
+	defer func() {
+		// Clean up the metadata regardless of test outcome.
+		delErr := removeImageMeta(rbdImageSpec, saMetadataKey, f)
+		if delErr != nil {
+			framework.Logf("failed to remove service account metadata: %v", delErr)
+		}
+	}()
+
+	// Verify the metadata was set correctly.
+	saValue, err := getImageMeta(rbdImageSpec, saMetadataKey, f)
+	if err != nil {
+		return fmt.Errorf("failed to get service account metadata: %w", err)
+	}
+	if saValue != allowedSA {
+		return fmt.Errorf("expected service account metadata %q, got %q", allowedSA, saValue)
+	}
+
+	// Test 1: Pod with the allowed service account should succeed.
+	app, err := loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-allowed-pod"
+	app.Spec.ServiceAccountName = allowedSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("pod with allowed service account %q should have started but failed: %w", allowedSA, err)
+	}
+	framework.Logf("pod with allowed service account %q started successfully", allowedSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete allowed pod: %w", err)
+	}
+
+	// Test 2: Pod with a denied service account should fail with PermissionDenied.
+	app, err = loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app for denied test: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-denied-pod"
+	app.Spec.ServiceAccountName = deniedSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createAppErr(
+		f.ClientSet, app, deployTimeout,
+		[]string{"PermissionDenied", "is restricted to service account"},
+	)
+	if err != nil {
+		return fmt.Errorf("pod with denied service account should have failed with PermissionDenied: %w", err)
+	}
+	framework.Logf("pod with denied service account %q was correctly rejected", deniedSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete denied pod: %w", err)
+	}
+
+	// Test 3: Update metadata to a comma-separated list of allowed service accounts and verify access.
+	err = setImageMeta(rbdImageSpec, saMetadataKey, allowedSA+","+thirdSA, f)
+	if err != nil {
+		return fmt.Errorf("failed to set comma-separated service account metadata: %w", err)
+	}
+
+	// Verify the metadata was set correctly.
+	saValue, err = getImageMeta(rbdImageSpec, saMetadataKey, f)
+	if err != nil {
+		return fmt.Errorf("failed to get service account metadata: %w", err)
+	}
+	if saValue != (allowedSA + "," + thirdSA) {
+		return fmt.Errorf("expected service account metadata %q, got %q",
+			(allowedSA + "," + thirdSA), saValue)
+	}
+
+	// Wait for volume to be fully detached before updating metadata
+	// to ensure fresh ControllerPublishVolume call with new metadata.
+	err = waitForPVCVolumeAttachmentsCleanup(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait for volume detachment: %w", err)
+	}
+
+	// Pod with thirdSA should succeed (in the list).
+	app, err = loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app for multi-SA test: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-third-pod"
+	app.Spec.ServiceAccountName = thirdSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf(
+			"pod with third service account %q should have started but failed: %w", thirdSA, err)
+	}
+	framework.Logf("pod with third service account %q started successfully (comma-separated list)", thirdSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete third pod: %w", err)
+	}
+
+	// Pod with deniedSA should still be rejected.
+	app, err = loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app for multi-SA denied test: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-denied-multi-pod"
+	app.Spec.ServiceAccountName = deniedSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createAppErr(
+		f.ClientSet, app, deployTimeout,
+		[]string{"PermissionDenied", "is restricted to service account"},
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"pod with denied SA should have failed with PermissionDenied (comma-separated list): %w", err)
+	}
+	framework.Logf("pod with denied service account %q was correctly rejected (comma-separated list)", deniedSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete denied multi pod: %w", err)
 	}
 
 	return nil

@@ -12,6 +12,6 @@ metadata:
   name: "rbd.csi.ceph.com"
 spec:
   attachRequired: true
-  podInfoOnMount: false
+  podInfoOnMount: true
   seLinuxMount: true
   fsGroupPolicy: File

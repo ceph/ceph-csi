@@ -483,6 +483,63 @@ func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 	return err
 }
 
+// waitForPVCVolumeAttachmentsCleanup waits until all
+// VolumeAttachments for a PVC's backing PV are deleted. This ensures
+// the volume is fully detached from all nodes before proceeding.
+// This is necessary to force Kubernetes to call ControllerPublishVolume
+// again with fresh metadata when a new pod mounts the volume.
+func waitForPVCVolumeAttachmentsCleanup(
+	c kubernetes.Interface,
+	pvc *v1.PersistentVolumeClaim,
+	timeout int,
+) error {
+	timeoutDuration := time.Duration(timeout) * time.Minute
+	ctx := context.TODO()
+
+	return wait.PollUntilContextTimeout(ctx, poll, timeoutDuration, true,
+		func(ctx context.Context) (bool, error) {
+			// Fetch fresh PVC to get current volume name
+			freshPVC, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).
+				Get(ctx, pvc.Name, metav1.GetOptions{})
+			if err != nil {
+				if apierrs.IsNotFound(err) {
+					// PVC already deleted
+					return true, nil
+				}
+				return false, err
+			}
+
+			pvName := freshPVC.Spec.VolumeName
+			if pvName == "" {
+				// PVC not yet bound, continue waiting
+				return false, nil
+			}
+
+			// List all VolumeAttachments
+			VAList, err := c.StorageV1().VolumeAttachments().List(ctx,
+				metav1.ListOptions{})
+			if err != nil {
+				if apierrs.IsNotFound(err) {
+					return true, nil
+				}
+				return false, err
+			}
+
+			// Check if any VolumeAttachment references this PV
+			for _, va := range VAList.Items {
+				if va.Spec.Source.PersistentVolumeName != nil &&
+					*va.Spec.Source.PersistentVolumeName == pvName {
+					// VolumeAttachment still exists
+					return false, nil
+				}
+			}
+
+			// All VolumeAttachments cleaned up
+			framework.Logf("Volume %s fully detached", pvName)
+			return true, nil
+		})
+}
+
 // calculateSHA512sum returns the sha512sum of a file inside a pod.
 func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, opt *metav1.ListOptions) (string, error) {
 	cmd := "sha512sum " + filePath

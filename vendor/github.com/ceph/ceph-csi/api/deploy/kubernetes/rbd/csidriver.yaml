@@ -5,6 +5,6 @@ metadata:
   name: "{{ .Name }}"
 spec:
   attachRequired: true
-  podInfoOnMount: false
+  podInfoOnMount: true
   seLinuxMount: true
   fsGroupPolicy: File

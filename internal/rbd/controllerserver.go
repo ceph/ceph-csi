@@ -1692,15 +1692,84 @@ func (cs *ControllerServer) ControllerExpandVolume(
 }
 
 // ControllerPublishVolume implements the CSI ControllerPublishVolume RPC.
-// This function is a no-op for RBD CSI driver since only
-// ControllerUnPublishVolume is used for fencing nodes and removing
-// node related metadata but still needs to be implemented to
-// satisfy the CSI spec.
+// It reads the service account restriction metadata from the backing RBD image
+// and passes it to the node via publish context.
 func (cs *ControllerServer) ControllerPublishVolume(
 	ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
-	return &csi.ControllerPublishVolumeResponse{}, nil
+	publishContext := map[string]string{}
+
+	// Read service account restriction from RBD image metadata, if set.
+	serviceAccount, err := cs.getServiceAccountRestriction(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if serviceAccount != "" {
+		publishContext[util.PublishContextServiceAccount] = serviceAccount
+	}
+
+	return &csi.ControllerPublishVolumeResponse{
+		PublishContext: publishContext,
+	}, nil
+}
+
+// getServiceAccountRestriction reads the service account restriction metadata
+// from the RBD image backing the volume. Returns empty string if no restriction
+// is set.
+func (cs *ControllerServer) getServiceAccountRestriction(
+	ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+) (string, error) {
+	volumeID := req.GetVolumeId()
+	secrets := req.GetSecrets()
+
+	if secrets == nil {
+		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeID, util.RBDType)
+		if err != nil {
+			log.WarningLog(ctx, "controller publish secret not found: %v", err)
+
+			return "", nil
+		}
+
+		secrets, err = k8s.GetSecret(secretName, secretNamespace)
+		if err != nil {
+			return "", status.Errorf(codes.Internal,
+				"failed to get controller publish secret from k8s: %v", err)
+		}
+	}
+
+	cr, err := util.NewUserCredentials(secrets)
+	if err != nil {
+		return "", status.Errorf(codes.InvalidArgument,
+			"failed to create credentials for volume %s: %v", volumeID, err)
+	}
+	defer cr.DeleteCredentials()
+
+	rv, err := GenVolFromVolID(ctx, volumeID, cr, secrets)
+	if err != nil {
+		if rv != nil {
+			rv.Destroy(ctx)
+		}
+
+		return "", status.Errorf(codes.Internal,
+			"failed to find volume %q for service account check: %v", volumeID, err)
+	}
+	defer rv.Destroy(ctx)
+
+	serviceAccount, err := rv.GetMetadata(serviceAccountKey)
+	if err != nil {
+		if !errors.Is(err, librbd.ErrNotFound) {
+			return "", status.Errorf(codes.Internal,
+				"failed to get service account metadata for volume %s: %v", volumeID, err)
+		}
+		// No service account restriction set on this image
+		return "", nil
+	}
+
+	log.DebugLog(ctx, "volume %s has service account restriction: %q", volumeID, serviceAccount)
+
+	return serviceAccount, nil
 }
 
 // ControllerUnpublishVolume implements the CSI ControllerUnpublishVolume RPC.

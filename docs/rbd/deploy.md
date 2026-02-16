@@ -602,3 +602,88 @@ Additional Resources:
 
 * External Snapshot Metadata sidecar project:
   [repository](https://github.com/kubernetes-csi/external-snapshot-metadata)
+
+## Kubernetes ServiceAccount Based Volume Access
+
+Ceph-CSI supports optionally restricting RBD volume
+access to specific Kubernetes ServiceAccounts. When
+configured, only Pods running with one of the allowed
+ServiceAccounts can mount the volume. One or more
+ServiceAccounts can be specified as a comma-separated
+list. This feature uses RBD image metadata to store
+the restriction and the CSI
+[`podInfoOnMount`][pod-info-on-mount] mechanism to identify
+the Pod's ServiceAccount during mount.
+
+[pod-info-on-mount]:
+<https://kubernetes-csi.github.io/docs/pod-info.html#pod-info-on-mount-with-csi-driver-object>
+
+### How it works
+
+1. A storage admin sets the
+   `.rbd.csi.ceph.com/serviceaccount` metadata on an
+   RBD image to specify the allowed ServiceAccount
+   name(s) as a comma-separated list.
+1. During `ControllerPublishVolume`, Ceph-CSI reads this metadata and passes
+   it to the node via publish context.
+1. During `NodePublishVolume`, Ceph-CSI splits the
+   comma-separated value and checks whether the Pod's
+   ServiceAccount (provided via volume context by
+   Kubelet) matches any entry.
+1. If the ServiceAccount was set in metadata and does
+   not match any of the allowed ServiceAccounts, the
+   mount is rejected with a `PermissionDenied` error.
+
+### Prerequisites
+
+The [`podInfoOnMount`][pod-info-on-mount] field must be
+set to `true` in the CSIDriver spec so that Kubelet
+passes Pod information (including ServiceAccount name)
+in the volume context during `NodePublishVolume`.
+Without this, the restriction cannot be enforced and
+all mounts are allowed.
+
+This feature requires controller-publish-secret set in storageclass
+for newer PVCs. For existing PVCs, the workaround mentioned
+[here](../design/proposals/non-graceful-node-shutdown.md#workaround-for-older-pvs)
+can be used.
+
+### Setting the restriction on an RBD image
+
+Use the `rbd image-meta set` command to set the
+allowed ServiceAccount(s). Multiple ServiceAccounts
+can be specified as a comma-separated list:
+
+```bash
+rbd image-meta set <pool>/<image> \
+  .rbd.csi.ceph.com/serviceaccount \
+  <service-account-name>[,<service-account-name>...]
+```
+
+For example, to restrict a volume to the
+`my-app-sa` ServiceAccount:
+
+```bash
+rbd image-meta set mypool/csi-vol-abc123 \
+  .rbd.csi.ceph.com/serviceaccount my-app-sa
+```
+
+To allow multiple ServiceAccounts:
+
+```bash
+rbd image-meta set mypool/csi-vol-abc123 \
+  .rbd.csi.ceph.com/serviceaccount \
+  my-app-sa,my-worker-sa
+```
+
+### Removing the restriction
+
+To remove the restriction and allow any ServiceAccount to mount the volume:
+
+```bash
+rbd image-meta remove <pool>/<image> .rbd.csi.ceph.com/serviceaccount
+```
+
+All the Pods using the PVC should be scaled down completely and
+then scaled up for removing the restriction after
+removing metadata from the image.

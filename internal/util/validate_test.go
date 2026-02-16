@@ -18,6 +18,8 @@ package util
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateVolumeID(t *testing.T) {
@@ -72,6 +74,94 @@ func TestValidateVolumeID(t *testing.T) {
 			err := ValidateVolumeID(tt.volumeID, tt.skipFormat)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateVolumeID(%q) error = %v, wantErr %v", tt.volumeID, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateServiceAccountRestriction(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		allowedSA string
+		podSA     string
+		expectErr bool
+	}{
+		{
+			name:      "no restriction set, allow all",
+			allowedSA: "",
+			podSA:     "default",
+			expectErr: false,
+		},
+		{
+			name:      "restriction matches pod SA",
+			allowedSA: "my-app-sa",
+			podSA:     "my-app-sa",
+			expectErr: false,
+		},
+		{
+			name:      "restriction does not match pod SA",
+			allowedSA: "my-app-sa",
+			podSA:     "other-sa",
+			expectErr: true,
+		},
+		{
+			name:      "restriction set but podInfoOnMount not enabled",
+			allowedSA: "my-app-sa",
+			podSA:     "",
+			expectErr: false,
+		},
+		{
+			name:      "comma-separated list, match first",
+			allowedSA: "sa1,sa2,sa3",
+			podSA:     "sa1",
+			expectErr: false,
+		},
+		{
+			name:      "comma-separated list, match middle",
+			allowedSA: "sa1,sa2,sa3",
+			podSA:     "sa2",
+			expectErr: false,
+		},
+		{
+			name:      "comma-separated list, match last",
+			allowedSA: "sa1,sa2,sa3",
+			podSA:     "sa3",
+			expectErr: false,
+		},
+		{
+			name:      "comma-separated list, no match",
+			allowedSA: "sa1,sa2,sa3",
+			podSA:     "sa4",
+			expectErr: true,
+		},
+		{
+			name:      "two SAs, match second",
+			allowedSA: "sa1,sa2",
+			podSA:     "sa2",
+			expectErr: false,
+		},
+		{
+			name:      "partial name should not match",
+			allowedSA: "my-app-sa,other-sa",
+			podSA:     "my-app",
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := t.Context()
+			err := ValidateServiceAccountRestriction(
+				ctx, tt.allowedSA, tt.podSA, "test-vol-id")
+
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

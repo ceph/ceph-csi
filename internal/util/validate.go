@@ -17,14 +17,29 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
+)
+
+const (
+	// VolumeContextServiceAccountKey is the key in the volume context that
+	// contains the pod's service account name, set by Kubelet when
+	// podInfoOnMount is enabled in the CSIDriver spec.
+	VolumeContextServiceAccountKey = "csi.storage.k8s.io/serviceAccount.name"
+
+	// PublishContextServiceAccount is the publish context key for the allowed
+	// service account, set during ControllerPublishVolume.
+	PublishContextServiceAccount = "serviceAccount"
 )
 
 // A regex to verify the expected format: 0000-0000-arbitrary-number-of-000-and-chars.
@@ -194,4 +209,43 @@ func IsStaticVol(volAttrs map[string]string) bool {
 	}
 
 	return false
+}
+
+// ValidateServiceAccountRestriction checks whether the pod's service
+// account is allowed to mount the volume. allowedSA is a
+// comma-separated list of permitted service accounts (empty means no
+// restriction). podSA is the service account of the requesting pod.
+// volumeID is used only for log/error messages.
+func ValidateServiceAccountRestriction(
+	ctx context.Context,
+	allowedSA, podSA, volumeID string,
+) error {
+	if allowedSA == "" {
+		return nil
+	}
+
+	if podSA == "" {
+		// podInfoOnMount is not enabled, cannot enforce restriction
+		log.WarningLog(ctx,
+			"volume %s has service account restriction "+
+				"but podInfoOnMount is not enabled, "+
+				"skipping check",
+			volumeID)
+
+		return nil
+	}
+
+	allowedSAs := strings.Split(allowedSA, ",")
+	if !slices.Contains(allowedSAs, podSA) {
+		return fmt.Errorf(
+			"volume %s service account restriction "+
+				"does not match pod's service account",
+			volumeID)
+	}
+
+	log.DebugLog(ctx,
+		"service account is allowed to mount volume %s",
+		volumeID)
+
+	return nil
 }
