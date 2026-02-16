@@ -669,7 +669,7 @@ func RegenerateJournal(
 			}
 		}
 		// Update Metadata on reattach of the same old PV
-		parameters := k8s.PrepareVolumeMetadata(claimName, owner, "")
+		parameters := k8s.PrepareVolumeMetadata(claimName, owner, requestName)
 		err = rbdVol.setAllMetadata(parameters)
 		if err != nil {
 			return "", fmt.Errorf("failed to set volume metadata: %w", err)
