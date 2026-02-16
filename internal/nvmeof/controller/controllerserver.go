@@ -1207,6 +1207,8 @@ func (cs *Server) getNVMeoFMetadata(
 		toRBDMetadataKey(vcListeners),
 		toRBDMetadataKey(vcGatewayAddress),
 		toRBDMetadataKey(vcGatewayPort),
+	}
+	optionalKeys := []string{
 		toRBDMetadataKey(vcDHCHAPMode),
 		toRBDMetadataKey(vcAuthenticationKMSID),
 	}
@@ -1221,6 +1223,22 @@ func (cs *Server) getNVMeoFMetadata(
 		if value == "" {
 			return nil, fmt.Errorf("%w: metadata %s is empty",
 				nvmeoferrors.ErrMetadataNotFound, key)
+		}
+		metadata[key] = value
+	}
+
+	// Optional metadata keys
+	for _, key := range optionalKeys {
+		value, err := rbdVol.GetMetadata(key)
+		if err != nil {
+			log.DebugLog(ctx, "Optional metadata %s not found: %v", key, err)
+
+			continue
+		}
+		if value == "" {
+			log.DebugLog(ctx, "Optional metadata %s is empty", key)
+
+			continue
 		}
 		metadata[key] = value
 	}
