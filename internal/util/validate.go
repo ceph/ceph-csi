@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -25,6 +26,19 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
+)
+
+const (
+	// VolumeContextServiceAccountKey is the key in the volume context that
+	// contains the pod's service account name, set by Kubelet when
+	// podInfoOnMount is enabled in the CSIDriver spec.
+	VolumeContextServiceAccountKey = "csi.storage.k8s.io/serviceAccount.name"
+
+	// PublishContextServiceAccount is the publish context key for the allowed
+	// service account, set during ControllerPublishVolume.
+	PublishContextServiceAccount = "serviceAccount"
 )
 
 // A regex to verify the expected format: 0000-0000-arbitrary-number-of-000-and-chars.
@@ -194,4 +208,39 @@ func IsStaticVol(volAttrs map[string]string) bool {
 	}
 
 	return false
+}
+
+// ValidateServiceAccountRestriction checks whether the pod's service account
+// is allowed to mount the volume. The allowed service account is read from the
+// publish context (set during ControllerPublishVolume). If no restriction is
+// set, all service accounts are allowed.
+func ValidateServiceAccountRestriction(
+	ctx context.Context,
+	req *csi.NodePublishVolumeRequest,
+) error {
+	allowedSA := req.GetPublishContext()[PublishContextServiceAccount]
+	if allowedSA == "" {
+		return nil
+	}
+
+	podServiceAccount := req.GetVolumeContext()[VolumeContextServiceAccountKey]
+	if podServiceAccount == "" {
+		// podInfoOnMount is not enabled, cannot enforce restriction
+		log.WarningLog(ctx,
+			"volume %s has service account restriction %q but podInfoOnMount is not enabled, skipping check",
+			req.GetVolumeId(), allowedSA)
+
+		return nil
+	}
+
+	if podServiceAccount != allowedSA {
+		return status.Errorf(codes.PermissionDenied,
+			"volume %s is restricted to service account %q, but pod uses service account %q",
+			req.GetVolumeId(), allowedSA, podServiceAccount)
+	}
+
+	log.DebugLog(ctx, "service account %q is allowed to mount volume %s",
+		podServiceAccount, req.GetVolumeId())
+
+	return nil
 }

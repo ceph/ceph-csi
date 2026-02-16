@@ -857,6 +857,11 @@ func (ns *NodeServer) NodePublishVolume(
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
+	// Validate that the pod's service account is allowed to mount this volume
+	if err = util.ValidateServiceAccountRestriction(ctx, req); err != nil {
+		return nil, err
+	}
+
 	fileEncrypted, err := IsFileEncrypted(ctx, req.GetVolumeContext())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

@@ -597,3 +597,54 @@ Additional Resources:
 
 * External Snapshot Metadata sidecar project:
   [repository](https://github.com/kubernetes-csi/external-snapshot-metadata)
+
+## Service Account Based Volume Access Restriction
+
+Ceph-CSI supports optionally restricting RBD volume access to specific Kubernetes
+service accounts. When configured, only pods running with the allowed service account
+can mount the volume. This feature uses RBD image metadata to store the
+restriction and the CSI `podInfoOnMount` mechanism to identify the pod's service
+account during mount.
+
+### How it works
+
+1. A user sets the `.rbd.csi.ceph.com/serviceaccount` metadata on an
+   RBD image to specify the allowed service account name.
+1. During `ControllerPublishVolume`, Ceph-CSI reads this metadata and passes
+   it to the node via publish context.
+1. During `NodePublishVolume`, Ceph-CSI compares the value against the
+   pod's service account (provided via volume context by Kubelet).
+1. If the service account was set in metadata and does not match the pod's
+   service account, the mount is rejected with a `PermissionDenied` error.
+
+### Prerequisites
+
+The `podInfoOnMount` field must be set to `true` in the CSIDriver spec so that
+Kubelet passes pod information (including service account name) in the volume
+context during `NodePublishVolume`. Without this, the restriction cannot be
+enforced and all mounts are allowed.
+
+### Setting the restriction on an RBD image
+
+Use the `rbd image-meta set` command to set the allowed service account:
+
+```bash
+rbd image-meta set <pool>/<image> .rbd.csi.ceph.com/serviceaccount <service-account-name>
+```
+
+For example, to restrict a volume to the `my-app-sa` service account:
+
+```bash
+rbd image-meta set mypool/csi-vol-abc123 .rbd.csi.ceph.com/serviceaccount my-app-sa
+```
+
+### Removing the restriction
+
+To remove the restriction and allow any service account to mount the volume:
+
+```bash
+rbd image-meta remove <pool>/<image> .rbd.csi.ceph.com/serviceaccount
+```
+
+The Deployment should be scaled down completely and then scaled up for this removing
+the restriction after removing metadata from the image.

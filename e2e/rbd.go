@@ -5808,6 +5808,19 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("test service account based volume access restriction", func() {
+				err := validateServiceAccountVolumeRestriction(
+					pvcPath, appPath,
+					".rbd.csi.ceph.com/serviceaccount", defaultRBDPool,
+					nil, f)
+				if err != nil {
+					logAndFail("service account volume restriction test failed: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
 			By("create a PVC and bind it to an app with encrypted RBD volume (default type setting)", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {

@@ -18,6 +18,11 @@ package util
 
 import (
 	"testing"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestValidateVolumeID(t *testing.T) {
@@ -71,6 +76,78 @@ func TestValidateVolumeID(t *testing.T) {
 			err := ValidateVolumeID(tt.volumeID, tt.skipFormat)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateVolumeID(%q) error = %v, wantErr %v", tt.volumeID, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateServiceAccountRestriction(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		publishCtxSA string
+		volumeCtxSA  string
+		expectErr    bool
+		expectCode   codes.Code
+	}{
+		{
+			name:         "no restriction set, allow all",
+			publishCtxSA: "",
+			volumeCtxSA:  "default",
+			expectErr:    false,
+		},
+		{
+			name:         "restriction matches pod SA",
+			publishCtxSA: "my-app-sa",
+			volumeCtxSA:  "my-app-sa",
+			expectErr:    false,
+		},
+		{
+			name:         "restriction does not match pod SA",
+			publishCtxSA: "my-app-sa",
+			volumeCtxSA:  "other-sa",
+			expectErr:    true,
+			expectCode:   codes.PermissionDenied,
+		},
+		{
+			name:         "restriction set but podInfoOnMount not enabled",
+			publishCtxSA: "my-app-sa",
+			volumeCtxSA:  "",
+			expectErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			publishCtx := map[string]string{}
+			if tt.publishCtxSA != "" {
+				publishCtx[PublishContextServiceAccount] = tt.publishCtxSA
+			}
+
+			volumeCtx := map[string]string{}
+			if tt.volumeCtxSA != "" {
+				volumeCtx[VolumeContextServiceAccountKey] = tt.volumeCtxSA
+			}
+
+			req := &csi.NodePublishVolumeRequest{
+				VolumeId:       "test-vol-id",
+				PublishContext: publishCtx,
+				VolumeContext:  volumeCtx,
+			}
+
+			ctx := t.Context()
+			err := ValidateServiceAccountRestriction(ctx, req)
+
+			if tt.expectErr {
+				require.Error(t, err)
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+				require.Equal(t, tt.expectCode, st.Code())
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
