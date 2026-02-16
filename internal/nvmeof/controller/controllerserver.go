@@ -253,6 +253,15 @@ func (cs *Server) ControllerPublishVolume(
 	// populate publish context
 	publishContext := populatePublishContext(req, hostNqn)
 
+	// Delegate to RBD backend to get service account restriction from image metadata.
+	rbdResp, err := cs.backendServer.ControllerPublishVolume(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if sa := rbdResp.GetPublishContext()[util.PublishContextServiceAccount]; sa != "" {
+		publishContext[util.PublishContextServiceAccount] = sa
+	}
+
 	return &csi.ControllerPublishVolumeResponse{
 		PublishContext: publishContext,
 	}, nil

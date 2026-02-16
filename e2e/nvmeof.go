@@ -120,6 +120,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 	ginkgo.Context("Test NVMe CSI", ginkgo.Ordered, func() {
 
 		pvcPath := nvmeofExamplePath + "pvc.yaml"
+		appPath := nvmeofExamplePath + "pod.yaml"
 
 		ginkgo.It("create a PVC and delete it", func() {
 			ginkgo.By("prepare PVC")
@@ -138,6 +139,13 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 			ginkgo.By("delete the PVC again")
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("test service account based volume access restriction")
+			err = validateServiceAccountVolumeRestriction(
+				pvcPath, appPath,
+				".rbd.csi.ceph.com/serviceaccount", nvmeofPool,
+				&nvmeofStorageClass, f)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// validate created backend rbd images
