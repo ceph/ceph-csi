@@ -780,16 +780,20 @@ func (l *luksWrapper) execCryptsetupCommand(stdin *string, args ...string) (stri
 	stdout := stdoutBuf.String()
 	stderr := stderrBuf.String()
 
-	if errors.Is(l.ctx.Err(), context.DeadlineExceeded) {
+	if errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(l.ctx.Err(), context.DeadlineExceeded) {
 		return stdout, stderr, fmt.Errorf("timeout occurred while running %s args: %v", program, sanitizedArgs)
 	}
 
 	if err != nil {
-		return stdout, stderr, fmt.Errorf("an error (%v)"+
-			" occurred while running %s args: %v", err, program, sanitizedArgs)
+		if e := strings.TrimSpace(stderr); e != "" {
+			return stdout, stderr, fmt.Errorf("error running %s args: %v: %w; stderr: %s", program, sanitizedArgs, err, e)
+		}
+
+		return stdout, stderr, fmt.Errorf("error running %s args: %v: %w", program, sanitizedArgs, err)
 	}
 
-	return stdout, stderr, err
+	return stdout, stderr, nil
 }
 
 func clonePtr[T any](pointer *T) *T {
