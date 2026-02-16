@@ -236,6 +236,11 @@ func (ns *NodeServer) NodePublishVolume(
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
+	// Validate that the pod's service account is allowed to mount this volume
+	if err = util.ValidateServiceAccountRestriction(ctx, req); err != nil {
+		return nil, err
+	}
+
 	// Publish Path
 	err = ns.mountVolume(ctx, stagingPath, req)
 	if err != nil {
