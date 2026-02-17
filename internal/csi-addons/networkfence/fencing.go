@@ -589,14 +589,7 @@ func containsMatchingBlockListEntry(
 			continue
 		}
 
-		// Until is in ISO8601 format.
-		until, err := time.Parse(ISO8601TimeLayout, entry.Until)
-		if err != nil {
-			return false, fmt.Errorf("failed to parse blocklist entry time %q: %w",
-				entry.Until, err)
-		}
-
-		timeLeftUntilExpire := time.Until(until)
+		timeLeftUntilExpire := time.Until(entry.Until)
 		// Check if the blocklist entry is eligible for auto-unfencing if
 		// 1. the time left until expiry is less than or equal to AutoBlocklistTime,
 		// 2. the blocklist was done at least blockListCoolDownPeriod seconds (5 Minutes) ago.
