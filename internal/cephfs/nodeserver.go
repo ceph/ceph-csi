@@ -626,6 +626,14 @@ func (ns *NodeServer) NodePublishVolume(
 		return nil, err
 	}
 
+	// Validate that the pod's service account is allowed to mount this volume
+	if err := util.ValidateServiceAccountRestriction(ctx,
+		req.GetPublishContext()[util.PublishContextServiceAccount],
+		req.GetVolumeContext()[util.VolumeContextServiceAccountKey],
+		req.GetVolumeId()); err != nil {
+		return nil, status.Error(codes.PermissionDenied, err.Error())
+	}
+
 	stagingTargetPath := req.GetStagingTargetPath()
 	targetPath := req.GetTargetPath()
 	volID := fsutil.VolumeID(req.GetVolumeId())

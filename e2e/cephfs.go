@@ -1733,6 +1733,19 @@ var _ = Describe(cephfsType, func() {
 			}
 		})
 
+		It("test service account based volume access restriction", func() {
+			err := validateCephFSServiceAccountVolumeRestriction(
+				pvcPath, appPath,
+				".cephfs.csi.ceph.com/serviceaccount",
+				f)
+			if err != nil {
+				logAndFail("service account volume restriction test failed: %v", err)
+			}
+			// validate no subvolumes remain
+			validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+		})
+
 		if testCephFSFscrypt {
 			for _, kmsID := range []string{"secrets-metadata-test", "vault-test"} {
 				It("checking encrypted snapshot-backed volume with KMS "+kmsID, func() {

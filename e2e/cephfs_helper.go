@@ -691,6 +691,278 @@ func verifyClientAddressMetadataSnapshotBacked(
 	return nil
 }
 
+func setCephFSSubvolumeMetadata(
+	f *framework.Framework,
+	filesystem,
+	subvolume,
+	groupname,
+	key,
+	value string,
+) error {
+	_, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume metadata set %s %s --group_name=%s %s %q",
+			filesystem, subvolume, groupname, key, value),
+		rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("%s", stdErr)
+	}
+
+	return nil
+}
+
+func removeCephFSSubvolumeMetadata(
+	f *framework.Framework,
+	filesystem,
+	subvolume,
+	groupname,
+	key string,
+) error {
+	_, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume metadata rm %s %s --group_name=%s %s",
+			filesystem, subvolume, groupname, key),
+		rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("%s", stdErr)
+	}
+
+	return nil
+}
+
+// validateCephFSServiceAccountVolumeRestriction tests that CephFS volume access
+// can be restricted to a specific Kubernetes service account. It creates a PVC,
+// sets the given saMetadataKey metadata on the backing CephFS subvolume, then
+// verifies:
+//   - A pod using the allowed service account can mount the volume.
+//   - A pod using a different service account is rejected with PermissionDenied.
+func validateCephFSServiceAccountVolumeRestriction(
+	pvcPath, appPath, saMetadataKey string,
+	f *framework.Framework,
+) error {
+	allowedSA := "allowed-sa-" + f.UniqueName
+	deniedSA := "denied-sa-" + f.UniqueName
+	thirdSA := "third-sa-" + f.UniqueName
+
+	// Create service accounts.
+	_, err := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Create(
+		context.TODO(),
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: allowedSA},
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create allowed ServiceAccount: %w", err)
+	}
+	defer func() {
+		delErr := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Delete(
+			context.TODO(), allowedSA, metav1.DeleteOptions{})
+		if delErr != nil {
+			framework.Logf("failed to delete ServiceAccount %s: %v", allowedSA, delErr)
+		}
+	}()
+
+	_, err = f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Create(
+		context.TODO(),
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: deniedSA},
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create denied ServiceAccount: %w", err)
+	}
+	defer func() {
+		delErr := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Delete(
+			context.TODO(), deniedSA, metav1.DeleteOptions{})
+		if delErr != nil {
+			framework.Logf("failed to delete ServiceAccount %s: %v", deniedSA, delErr)
+		}
+	}()
+
+	_, err = f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Create(
+		context.TODO(),
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: thirdSA},
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create third ServiceAccount: %w", err)
+	}
+	defer func() {
+		delErr := f.ClientSet.CoreV1().ServiceAccounts(f.UniqueName).Delete(
+			context.TODO(), thirdSA, metav1.DeleteOptions{})
+		if delErr != nil {
+			framework.Logf("failed to delete ServiceAccount %s: %v", thirdSA, delErr)
+		}
+	}()
+
+	// Create PVC and wait for it to be bound.
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC: %w", err)
+	}
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC: %w", err)
+	}
+
+	defer func() {
+		delErr := deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+		if delErr != nil {
+			framework.Logf("failed to delete PVC: %v", delErr)
+		}
+	}()
+
+	// Get the subvolume name from the PVC.
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return fmt.Errorf("failed to get image info from PVC: %w", err)
+	}
+
+	// Set the service account restriction metadata on the subvolume.
+	err = setCephFSSubvolumeMetadata(f, fileSystemName, imageData.imageName, subvolumegroup,
+		saMetadataKey, allowedSA)
+	if err != nil {
+		return fmt.Errorf("failed to set service account metadata: %w", err)
+	}
+	defer func() {
+		delErr := removeCephFSSubvolumeMetadata(f, fileSystemName, imageData.imageName, subvolumegroup,
+			saMetadataKey)
+		if delErr != nil {
+			framework.Logf("failed to remove service account metadata: %v", delErr)
+		}
+	}()
+
+	// Verify the metadata was set correctly.
+	saValue, err := getCephFSSubvolumeMetadata(f, fileSystemName, imageData.imageName,
+		subvolumegroup, saMetadataKey)
+	if err != nil {
+		return fmt.Errorf("failed to get service account metadata: %w", err)
+	}
+	if saValue != allowedSA {
+		return fmt.Errorf("expected service account metadata %q, got %q", allowedSA, saValue)
+	}
+
+	// Test 1: Pod with the allowed service account should succeed.
+	app, err := loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-allowed-pod"
+	app.Spec.ServiceAccountName = allowedSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("pod with allowed service account %q should have started but failed: %w", allowedSA, err)
+	}
+	framework.Logf("pod with allowed service account %q started successfully", allowedSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete allowed pod: %w", err)
+	}
+
+	// Test 2: Pod with a denied service account should fail with PermissionDenied.
+	app, err = loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app for denied test: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-denied-pod"
+	app.Spec.ServiceAccountName = deniedSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createAppErr(
+		f.ClientSet, app, deployTimeout,
+		[]string{"PermissionDenied", "is restricted to service account"},
+	)
+	if err != nil {
+		return fmt.Errorf("pod with denied service account should have failed with PermissionDenied: %w", err)
+	}
+	framework.Logf("pod with denied service account %q was correctly rejected", deniedSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete denied pod: %w", err)
+	}
+
+	// Wait for volume to be fully detached before updating metadata
+	// to ensure fresh ControllerPublishVolume call with new metadata.
+	err = waitForPVCVolumeAttachmentsCleanup(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait for volume detachment: %w", err)
+	}
+
+	// Test 3: Update metadata to a comma-separated list of allowed service accounts and verify access.
+	err = setCephFSSubvolumeMetadata(
+		f, fileSystemName, imageData.imageName, subvolumegroup, saMetadataKey, allowedSA+","+thirdSA)
+	if err != nil {
+		return fmt.Errorf("failed to set comma-separated service account metadata: %w", err)
+	}
+
+	// Verify the metadata was set correctly.
+	saValue, err = getCephFSSubvolumeMetadata(f, fileSystemName, imageData.imageName,
+		subvolumegroup, saMetadataKey)
+	if err != nil {
+		return fmt.Errorf("failed to get service account metadata: %w", err)
+	}
+	if saValue != (allowedSA + "," + thirdSA) {
+		return fmt.Errorf("expected service account metadata %q, got %q", allowedSA+","+thirdSA, saValue)
+	}
+	// Pod with thirdSA should succeed (in the list).
+	app, err = loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app for multi-SA test: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-third-pod"
+	app.Spec.ServiceAccountName = thirdSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf(
+			"pod with third service account %q should have started but failed: %w", thirdSA, err)
+	}
+	framework.Logf("pod with third service account %q started successfully (comma-separated list)", thirdSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete third pod: %w", err)
+	}
+
+	// Pod with deniedSA should still be rejected.
+	app, err = loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app for multi-SA denied test: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	app.Name = "sa-denied-multi-pod"
+	app.Spec.ServiceAccountName = deniedSA
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err = createAppErr(
+		f.ClientSet, app, deployTimeout,
+		[]string{"PermissionDenied", "is restricted to service account"},
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"pod with denied SA should have failed with PermissionDenied (comma-separated list): %w", err)
+	}
+	framework.Logf("pod with denied service account %q was correctly rejected (comma-separated list)", deniedSA)
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete denied multi pod: %w", err)
+	}
+
+	return nil
+}
+
 func verifyUserIdMappingMetadataSnapshotBacked(
 	f *framework.Framework,
 	pvc *v1.PersistentVolumeClaim,
