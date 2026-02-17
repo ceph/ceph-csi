@@ -1004,15 +1004,16 @@ func (cs *Server) unpublishResources(ctx context.Context,
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces for subsystem %s: %w", subsystemNQN, err)
 	}
-	for _, ns := range namespaces.GetNamespaces() {
-		for _, host := range ns.GetHosts() {
-			if host == hostNQN {
-				log.DebugLog(ctx, "Host %s is still using namespace %s, not removing", hostNQN, ns.GetNsid())
+	// Count other namespaces in the subsystem (excluding this volume's namespace)
+	otherNamespacesCount := len(namespaces.GetNamespaces()) - 1
 
-				return nil
-			}
-		}
+	if otherNamespacesCount > 0 {
+		log.DebugLog(ctx, "Subsystem %s still has %d other namespaces, not removing host %s",
+			subsystemNQN, otherNamespacesCount, hostNQN)
+
+		return nil
 	}
+
 	// Remove host from subsystem
 	if err := gateway.RemoveHost(ctx, subsystemNQN, hostNQN); err != nil {
 		return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
