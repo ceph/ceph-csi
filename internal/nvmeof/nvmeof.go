@@ -448,18 +448,28 @@ func (gw *GatewayRpcClient) RemoveHost(ctx context.Context, subsystemNQN, hostNQ
 	if err != nil {
 		return fmt.Errorf("failed to remove host %s from subsystem %s: %w", hostNQN, subsystemNQN, err)
 	}
-	if resp.GetStatus() == 0 {
+	switch resp.GetStatus() {
+	case 0:
 		log.DebugLog(ctx, "Host %s removed successfully from subsystem %s", hostNQN, subsystemNQN)
 
 		return nil
-	}
-	if resp.GetStatus() == int32(syscall.ENOENT) { // ENOENT
+	case int32(syscall.EBUSY):
+		// we check there is no more namespace in the subsystem before we remove the host.
+		// so we dont care if there are still open connections with this host to subsystem,
+		//  because there is no more namespace to access.
+		log.DebugLog(ctx, "All ok, There are still open connections with this host %s to subsystem %s",
+			hostNQN, subsystemNQN)
+
+		// Host still has open connections, but we never run nvme disconnect,
+		//  so we can treat this as success for our use case
+		return nil
+	case int32(syscall.ENOENT):
 		log.DebugLog(ctx, "Host %s already removed from subsystem %s (not found)", hostNQN, subsystemNQN)
 
-		return nil
+		return nil // Host already removed, no error
+	default:
+		return fmt.Errorf("gateway RemoveHost returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
 	}
-
-	return fmt.Errorf("gateway RemoveHost returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
 }
 
 // List namespaces in a subsystem.
