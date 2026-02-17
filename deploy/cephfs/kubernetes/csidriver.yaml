@@ -12,6 +12,6 @@ metadata:
   name: "cephfs.csi.ceph.com"
 spec:
   attachRequired: true
-  podInfoOnMount: false
+  podInfoOnMount: true
   fsGroupPolicy: File
   seLinuxMount: true

@@ -637,6 +637,11 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 	defer ns.VolumeLocks.Release(targetPath)
 
+	// Validate that the pod's service account is allowed to mount this volume
+	if err := util.ValidateServiceAccountRestriction(ctx, req); err != nil {
+		return nil, err
+	}
+
 	volOptions := &store.VolumeOptions{}
 	defer volOptions.Destroy()
 

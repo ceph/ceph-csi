@@ -35,6 +35,10 @@ const (
 	// userIdMappingKey is the key used to store the userID mapping.
 	// starts with `.` to avoid copying it to the mirrored subvolume.
 	userIdMappingKey = ".cephfs.csi.ceph.com/userid"
+
+	// ServiceAccountKey is the key used to restrict volume access to a specific
+	// Kubernetes service account. Starts with `.` to avoid copying it to the mirrored subvolume.
+	ServiceAccountKey = ".cephfs.csi.ceph.com/serviceaccount"
 )
 
 // ErrSubVolMetadataNotSupported is returned when set/get/list/remove subvolume metadata options are not supported.

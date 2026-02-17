@@ -948,6 +948,19 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("test service account based volume access restriction", func() {
+				err := validateCephFSServiceAccountVolumeRestriction(
+					pvcPath, appPath,
+					".cephfs.csi.ceph.com/serviceaccount",
+					f)
+				if err != nil {
+					logAndFail("service account volume restriction test failed: %v", err)
+				}
+				// validate no subvolumes remain
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+			})
+
 			By("create/delete multiple PVCs and Apps", func() {
 				totalCount := 2
 				pvc, err := loadPVC(pvcPath)

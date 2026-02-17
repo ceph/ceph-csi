@@ -10,6 +10,6 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   attachRequired: {{ .Values.provisioner.attacher.enabled }}
-  podInfoOnMount: false
+  podInfoOnMount: true
   fsGroupPolicy: {{ .Values.CSIDriver.fsGroupPolicy }}
   seLinuxMount: {{ .Values.CSIDriver.seLinuxMount }}
