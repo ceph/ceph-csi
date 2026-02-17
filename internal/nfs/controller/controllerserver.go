@@ -179,6 +179,24 @@ func (cs *Server) DeleteVolume(
 	return cs.backendServer.DeleteVolume(ctx, req)
 }
 
+// ControllerPublishVolume delegates to the CephFS backend to read the service
+// account restriction metadata from the backing CephFS subvolume and pass it
+// to the node via publish context.
+func (cs *Server) ControllerPublishVolume(
+	ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+) (*csi.ControllerPublishVolumeResponse, error) {
+	return cs.backendServer.ControllerPublishVolume(ctx, req)
+}
+
+// ControllerUnpublishVolume is a no-op for the NFS CSI driver.
+func (cs *Server) ControllerUnpublishVolume(
+	ctx context.Context,
+	req *csi.ControllerUnpublishVolumeRequest,
+) (*csi.ControllerUnpublishVolumeResponse, error) {
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
+}
+
 // ControllerExpandVolume calls the backend (CephFS) procedure to expand the
 // volume. There is no interaction with the NFS-server needed to publish the
 // new size.

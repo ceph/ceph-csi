@@ -4,7 +4,8 @@ kind: CSIDriver
 metadata:
   name: "{{ .Name }}"
 spec:
-  attachRequired: false
+  attachRequired: true
+  podInfoOnMount: true
   fsGroupPolicy: File
   seLinuxMount: true
   volumeLifecycleModes:

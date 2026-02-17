@@ -179,6 +179,9 @@ func createNFSStorageClass(
 	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = cephFSProvisionerSecretName
 
+	sc.Parameters["csi.storage.k8s.io/controller-publish-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/controller-publish-secret-name"] = cephFSProvisionerSecretName
+
 	sc.Parameters["csi.storage.k8s.io/node-publish-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/node-publish-secret-name"] = cephFSNodePluginSecretName
 
@@ -751,6 +754,19 @@ var _ = Describe("nfs", func() {
 			if err != nil {
 				logAndFail("failed to delete PVC or application: %v", err)
 			}
+		})
+
+		It("test service account based volume access restriction", func() {
+			err := validateCephFSServiceAccountVolumeRestriction(
+				pvcPath, appPath,
+				".cephfs.csi.ceph.com/serviceaccount",
+				f)
+			if err != nil {
+				logAndFail("service account volume restriction test failed: %v", err)
+			}
+			// validate no subvolumes remain
+			validateSubvolumeCount(f, 0, fileSystemName, defaultSubvolumegroup)
+			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 		})
 
 		It("Mount pvc as readonly in pod", func() {

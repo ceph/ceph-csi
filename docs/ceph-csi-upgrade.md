@@ -302,6 +302,11 @@ we have successfully upgraded RBD csi from v3.15 to v3.16
 
 ### Upgrading NFS
 
+> **Note:** Only for upgrade from v3.16 to v3.17, old NFS csidriver
+object will need to be deleted and created again since
+the `spec.attachRequired` field is being updated to `true` in
+v3.17 release. Refer to v3.17 release notes for more details.
+
 Upgrading nfs csi includes upgrade of nfs driver and as well as
 kubernetes sidecar containers and also the permissions required for the
 kubernetes sidecar containers, lets upgrade the things one by one
