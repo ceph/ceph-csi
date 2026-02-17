@@ -7,24 +7,44 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/ceph/go-ceph/internal/commands"
 )
 
+const layout = "2006-01-02T15:04:05.000000-0700"
+
+type expireTime time.Time
+
 type ipList struct {
-	IPAddr string `json:"addr"`
-	Until  string `json:"until"`
+	IPAddr string     `json:"addr"`
+	Until  expireTime `json:"until"`
 }
 
 type networkList struct {
-	Network string `json:"range"`
-	Until   string `json:"until"`
+	Network string     `json:"range"`
+	Until   expireTime `json:"until"`
+}
+
+func (et *expireTime) UnmarshalText(data []byte) error {
+	t, err := time.Parse(layout, string(data))
+	if err != nil {
+		return err
+	}
+
+	*et = expireTime(t)
+
+	return nil
+}
+
+func (et *expireTime) Time() time.Time {
+	return time.Time(*et)
 }
 
 // Blocklist contains the address and expire value for a blocklist entry.
 type Blocklist struct {
 	Addr  string
-	Until string
+	Until time.Time
 }
 
 func parseBlocklist(res response) (*[]Blocklist, error) {
@@ -44,7 +64,7 @@ func parseBlocklist(res response) (*[]Blocklist, error) {
 			for _, i := range ip {
 				bl = append(bl, Blocklist{
 					Addr:  i.IPAddr,
-					Until: i.Until,
+					Until: i.Until.Time(),
 				})
 			}
 		case 1:
@@ -57,7 +77,7 @@ func parseBlocklist(res response) (*[]Blocklist, error) {
 			for _, n := range nw {
 				bl = append(bl, Blocklist{
 					Addr:  n.Network,
-					Until: n.Until,
+					Until: n.Until.Time(),
 				})
 			}
 		default:
