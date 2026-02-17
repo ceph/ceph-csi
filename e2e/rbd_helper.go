@@ -284,9 +284,16 @@ func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (
 	imageIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
 	imageID := imageIDRegex.FindString(pv.Spec.CSI.VolumeHandle)
 
+	prefix := "csi-vol-"
+	if pv.Spec.CSI.VolumeAttributes != nil {
+		if val, ok := pv.Spec.CSI.VolumeAttributes["volumeNamePrefix"]; ok {
+			prefix = val
+		}
+	}
+
 	imageData = imageInfoFromPVC{
 		imageID:         imageID,
-		imageName:       "csi-vol-" + imageID,
+		imageName:       prefix + imageID,
 		csiVolumeHandle: pv.Spec.CSI.VolumeHandle,
 		pvName:          pv.Name,
 	}
