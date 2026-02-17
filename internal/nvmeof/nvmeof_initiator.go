@@ -83,6 +83,7 @@ type nvmeHost struct {
 	Subsystems []struct {
 		NQN   string `json:"NQN"`
 		Paths []struct {
+			Name    string          `json:"Name"`
 			Address nvmePathAddress `json:"Address"`
 			State   string          `json:"State"`
 		} `json:"Paths"`
@@ -155,6 +156,8 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 			existingConnections = connections
 		}
 	}
+	// Track if any listener was already connected
+	var alreadyConnected bool
 	// Try connecting to each address until one succeeds
 	var success bool
 	for _, listener := range req.Listeners {
@@ -167,6 +170,7 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s with HostNQN %s",
 					req.SubsystemNQN, listener.Address, portStr, req.HostNQN)
 				success = true
+				alreadyConnected = true
 
 				continue
 			}
@@ -208,6 +212,15 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 		log.DebugLog(ctx, "Successfully connected to subsystem %s via %s",
 			req.SubsystemNQN, listener)
 	}
+
+	// Rescan once after the loop if any existing connection was found.
+	// This recovers from stale namespace state that can occur when a subsystem
+	// is deleted and recreated without disconnecting - the kernel reconnects but
+	// marks the namespace with "identifiers changed", leaving it invisible until rescanned.
+	if alreadyConnected {
+		rescanSubsystem(ctx, req.SubsystemNQN, req.HostNQN, existingConnections)
+	}
+
 	if !success {
 		return false, fmt.Errorf("failed to connect to any gateway address for subsystem %s", req.SubsystemNQN)
 	}
@@ -340,4 +353,36 @@ func ResolveListeners(ctx context.Context, listeners []ListenerDetails) ([]Liste
 	log.DebugLog(ctx, "Successfully resolved %d listener(s)", len(validListeners))
 
 	return validListeners, nil
+}
+
+// rescanSubsystem triggers a rescan of all controllers for the given subsystem
+// and host NQN combination, to detect new or changed namespaces.
+// This is needed when a subsystem was deleted and recreated without disconnecting,
+// causing the kernel to have stale namespace state after reconnect.
+func rescanSubsystem(ctx context.Context, subsystemNQN, hostNQN string, connections nvmeHostConnections) {
+	for _, host := range connections {
+		if host.HostNQN != hostNQN {
+			continue
+		}
+		for _, subsys := range host.Subsystems {
+			if subsys.NQN != subsystemNQN {
+				continue
+			}
+			for _, path := range subsys.Paths {
+				devPath := "/dev/" + path.Name
+				log.DebugLog(ctx, "Rescanning controller %s for subsystem %s", devPath, subsystemNQN)
+				_, stderr, err := util.ExecCommandWithTimeout(ctx, connectTimeout, "nvme", "ns-rescan", devPath)
+				if err != nil {
+					log.WarningLog(ctx, "Failed to rescan controller %s for subsystem %s: %v - stderr: %s (continuing)",
+						devPath, subsystemNQN, err, stderr)
+				} else {
+					log.DebugLog(ctx, "Successfully rescanned controller %s for subsystem %s", devPath, subsystemNQN)
+				}
+			}
+			// Found the subsystem, no need to check other subsystems for this host
+			return
+		}
+	}
+
+	return
 }
