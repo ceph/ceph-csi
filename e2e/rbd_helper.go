@@ -1227,6 +1227,7 @@ type imageInfo struct {
 	StripeUnit  int    `json:"stripe_unit"`
 	StripeCount int    `json:"stripe_count"`
 	ObjectSize  int    `json:"object_size"`
+	DataPool    string  `json:"data_pool"`
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -1325,6 +1326,25 @@ func validateQOS(f *framework.Framework,
 		if qosVal != v {
 			return fmt.Errorf("%s: %s does not match expected %s", k, qosVal, v)
 		}
+	}
+
+	return nil
+}
+
+func validateDataPool(f *framework.Framework, imageName, poolName string, wants string) error {
+	var imgInfo imageInfo
+	imgInfoStr, err := getImageInfo(f, imageName, poolName)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal([]byte(imgInfoStr), &imgInfo)
+	if err != nil {
+		return fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, imgInfoStr)
+	}
+	
+	if imgInfo.DataPool != wants {
+		return fmt.Errorf("unexpected data_pool: got %q, want %q", imgInfo.DataPool, wants)
 	}
 
 	return nil

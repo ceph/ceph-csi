@@ -1195,6 +1195,400 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create a PVC in replica pool, snapshot it, and clone to erasure coded pool", func() {
+				// This test validates cross-pool cloning from replica to erasure-coded pool
+				// 1. Create PVC in replica pool (defaultRBDPool)
+				// 2. Create snapshot in same pool
+				// 3. Clone snapshot to new PVC with erasure-coded pool storageclass
+
+				// Create snapshot class
+				err := createRBDSnapshotClass(f)
+				if err != nil {
+					logAndFail("failed to create snapshotclass: %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
+					if err != nil {
+						logAndFail("failed to delete VolumeSnapshotClass: %v", err)
+					}
+				}()
+
+				// Create PVC in replica pool
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC: %v", err)
+				}
+
+				// Create app and write data
+				app, err := loadApp(appPath)
+				if err != nil {
+					logAndFail("failed to load app: %v", err)
+				}
+				label := make(map[string]string)
+				label[appKey] = appLabel
+				app.Namespace = f.UniqueName
+				app.Labels = label
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+				}
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				checkSum, err := writeDataAndCalChecksum(app, &opt, f)
+				if err != nil {
+					logAndFail("failed to calculate checksum: %v", err)
+				}
+
+				// Validate image is in replica pool
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				// Create snapshot
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create snapshot: %v", err)
+				}
+
+				// Validate snapshot is created (1 parent image + 1 snapshot)
+				validateRBDImageCount(f, 2, defaultRBDPool)
+
+				// Create storageclass with erasure-coded pool
+				ecSCName := "ec-storageclass"
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					ecSCName,
+					nil,
+					map[string]string{
+						"dataPool": erasureCodedPool,
+						"pool":     defaultRBDPool,
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create erasure-coded storageclass: %v", err)
+				}
+
+				// Clone snapshot to PVC with erasure-coded pool
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					logAndFail("failed to load clone PVC: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = snap.Name
+				pvcClone.Spec.StorageClassName = &ecSCName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone PVC: %v", err)
+				}
+
+				// Validate clone is in erasure-coded pool
+				err = checkPVCDataPoolForImageInPool(f, pvcClone, defaultRBDPool, erasureCodedPool)
+				if err != nil {
+					logAndFail("failed to check data pool for image: %v", err)
+				}
+
+				validateRBDImageCount(f, 3, defaultRBDPool)
+
+				// Create app with cloned PVC and verify data
+				appClone, err := loadApp(appClonePath)
+				if err != nil {
+					logAndFail("failed to load clone app: %v", err)
+				}
+				appClone.Namespace = f.UniqueName
+				appClone.Labels = label
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+
+				err = createApp(f.ClientSet, appClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone app: %v", err)
+				}
+
+				// Verify data integrity
+				filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				newCheckSum, err := calculateSHA512sum(f, appClone, filePath, &opt)
+				if err != nil {
+					logAndFail("failed to calculate checksum for clone: %v", err)
+				}
+				if newCheckSum != checkSum {
+					logAndFail(
+						"checksum mismatch in clone, expected %s got %s",
+						checkSum,
+						newCheckSum)
+				}
+
+				// Cleanup
+				err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone app: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone PVC: %v", err)
+				}
+
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete snapshot: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete PVC: %v", err)
+				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				// Delete erasure-coded storageclass and restore default
+				err = c.StorageV1().StorageClasses().Delete(context.TODO(), ecSCName, metav1.DeleteOptions{})
+				if err != nil {
+					logAndFail("failed to delete erasure-coded storageclass: %v", err)
+				}
+			})
+
+			By("create a PVC in erasure coded pool, snapshot it, and clone to replica pool", func() {
+				// This test validates cross-pool cloning from erasure-coded to replica pool
+				// 1. Create EC storageclass
+				// 2. Create PVC from it and verify it's created in correct dataPool
+				// 3. Create snapshot and verify rbd image created in correct pool
+				// 4. Clone the PVC to a replica pool storageclass and verify clone is in replica pool
+
+				// Create storageclass with erasure-coded pool
+				ecSCName := "ec-storageclass"
+				err := createRBDStorageClass(
+					f.ClientSet,
+					f,
+					ecSCName,
+					nil,
+					map[string]string{
+						"dataPool": erasureCodedPool,
+						"pool":     defaultRBDPool,
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create erasure-coded storageclass: %v", err)
+				}
+
+				// Create snapshot class
+				err = createRBDSnapshotClass(f)
+				if err != nil {
+					logAndFail("failed to create snapshotclass: %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
+					if err != nil {
+						logAndFail("failed to delete VolumeSnapshotClass: %v", err)
+					}
+				}()
+
+				// Create PVC in erasure-coded pool
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.StorageClassName = &ecSCName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC: %v", err)
+				}
+
+				// Verify PVC is created in erasure-coded pool
+				err = checkPVCDataPoolForImageInPool(f, pvc, defaultRBDPool, erasureCodedPool)
+				if err != nil {
+					logAndFail("failed to check data pool for image: %v", err)
+				}
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				// Create app and write data
+				app, err := loadApp(appPath)
+				if err != nil {
+					logAndFail("failed to load app: %v", err)
+				}
+				label := make(map[string]string)
+				label[appKey] = appLabel
+				app.Namespace = f.UniqueName
+				app.Labels = label
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+				}
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				checkSum, err := writeDataAndCalChecksum(app, &opt, f)
+				if err != nil {
+					logAndFail("failed to calculate checksum: %v", err)
+				}
+
+				// Create snapshot
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create snapshot: %v", err)
+				}
+
+				// Validate snapshot is created in erasure-coded pool (1 parent image + 1 snapshot)
+				validateRBDImageCount(f, 2, defaultRBDPool)
+
+				// Validate if the backing snapshot image has data-pool set
+				snapshotImageName, err := getSnapName(snap.Namespace, snap.Name)
+				if err != nil {
+					logAndFail("failed to get snapshot name: %v", err)
+				}
+
+				err = validateDataPool(f, snapshotImageName, defaultRBDPool, erasureCodedPool)
+				if err != nil {
+					logAndFail("failed to validate data_pool: %v", err)
+				}
+
+				// Clone snapshot to PVC with replica pool
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					logAndFail("failed to load clone PVC: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = snap.Name
+				// StorageClassName is not set, will use the default storageclass
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone PVC: %v", err)
+				}
+
+				// Validate clone is in replica pool
+				validateRBDImageCount(f, 3, defaultRBDPool)
+
+				// Create app with cloned PVC and verify data
+				appClone, err := loadApp(appClonePath)
+				if err != nil {
+					logAndFail("failed to load clone app: %v", err)
+				}
+				appClone.Namespace = f.UniqueName
+				appClone.Labels = label
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+
+				err = createApp(f.ClientSet, appClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone app: %v", err)
+				}
+
+				// Verify data integrity
+				filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				newCheckSum, err := calculateSHA512sum(f, appClone, filePath, &opt)
+				if err != nil {
+					logAndFail("failed to calculate checksum for clone: %v", err)
+				}
+				if newCheckSum != checkSum {
+					logAndFail(
+						"checksum mismatch in clone, expected %s got %s",
+						checkSum,
+						newCheckSum)
+				}
+
+				// Cleanup
+				err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone app: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone PVC: %v", err)
+				}
+
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete snapshot: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete PVC: %v", err)
+				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				// Delete erasure-coded storageclass
+				err = c.StorageV1().StorageClasses().Delete(context.TODO(), ecSCName, metav1.DeleteOptions{})
+				if err != nil {
+					logAndFail("failed to delete erasure-coded storageclass: %v", err)
+				}
+			})
+
+			By("clone a PVC from default pool to erasure-coded pool and validate temp image data pool", func() {
+				// Create PVC in default pool
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC: %v", err)
+				}
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				// Create EC storageclass for the clone
+				ecSCName := "ec-storageclass"
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					ecSCName,
+					nil,
+					map[string]string{
+						"dataPool": erasureCodedPool,
+						"pool":     defaultRBDPool,
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create erasure-coded storageclass: %v", err)
+				}
+
+				// Create PVC clone with EC storageclass
+				pvcClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					logAndFail("failed to load clone PVC: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = pvc.Name
+				pvcClone.Spec.StorageClassName = &ecSCName
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone PVC: %v", err)
+				}
+
+				// parent + temp + clone = 3 images
+				validateRBDImageCount(f, 3, defaultRBDPool)
+
+				// Validate that the temp image has data_pool set to erasure-coded pool
+				cloneImageData, err := getImageInfoFromPVC(pvcClone.Namespace, pvcClone.Name, f)
+				if err != nil {
+					logAndFail("failed to get clone image info: %v", err)
+				}
+				tempImageName := cloneImageData.imageName + "-temp"
+				err = validateDataPool(f, tempImageName, defaultRBDPool, erasureCodedPool)
+				if err != nil {
+					logAndFail("failed to validate data_pool on temp image: %v", err)
+				}
+
+				// Cleanup
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone PVC: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete PVC: %v", err)
+				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				// Delete EC storageclass
+				err = c.StorageV1().StorageClasses().Delete(context.TODO(), ecSCName, metav1.DeleteOptions{})
+				if err != nil {
+					logAndFail("failed to delete erasure-coded storageclass: %v", err)
+				}
+			})
+
 			By("create a PVC and bind it to an app with ext4 as the FS ", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
