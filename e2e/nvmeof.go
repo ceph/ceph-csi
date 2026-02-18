@@ -22,6 +22,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2edebug "k8s.io/kubernetes/test/e2e/framework/debug"
 	"k8s.io/pod-security-admission/api"
@@ -107,6 +108,13 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			logsCSIPods("app="+nvmeofDeploymentName, f.ClientSet)
 			// log node plugin
 			logsCSIPods("app="+nvmeofDaemonsetName, f.ClientSet)
+
+			// Gateway logs - need to search in rook-ceph namespace
+			opt := metav1.ListOptions{LabelSelector: "app=ceph-nvmeof-gateway"}
+			podList, _ := f.ClientSet.CoreV1().Pods(rookNamespace).List(context.TODO(), opt)
+			for i := range podList.Items {
+				kubectlLogPod(f.ClientSet, &podList.Items[i])
+			}
 
 			// log all details from the namespace where Ceph-CSI is deployed
 			e2edebug.DumpAllNamespaceInfo(context.TODO(), f.ClientSet, cephCSINamespace)
