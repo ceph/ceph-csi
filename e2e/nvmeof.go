@@ -155,6 +155,13 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			})
 
 			ginkgo.By("Resize Filesystem PVC and check application directory size", func() {
+
+				// GADI
+				// Get gateway IP before test
+				gwName, gwIP := getNVMeofGateway(f.ClientSet)
+				framework.Logf("Gateway before filesystem test: %s at IP %s", gwName, gwIP)
+				// end GADI
+
 				pvc, err := loadPVC(pvcPath)
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -164,12 +171,25 @@ var _ = ginkgo.Describe("nvmeof", func() {
 				err = resizePVCAndValidateSize(pvc, appPath, f)
 				Expect(err).ShouldNot(HaveOccurred())
 
+				// GADI
+				// Get gateway IP after test
+				gwName, gwIP = getNVMeofGateway(f.ClientSet)
+				framework.Logf("Gateway after filesystem test: %s at IP %s", gwName, gwIP)
+				// end GADI
+
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, nvmeofPool)
 				validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
 			})
 
 			ginkgo.By("Resize Block PVC and check Device size", func() {
+
+				// GADI
+				// Get gateway IP before test
+				gwName, gwIP := getNVMeofGateway(f.ClientSet)
+				framework.Logf("Gateway before block test: %s at IP %s", gwName, gwIP)
+				// end GADI
+
 				pvc, err := loadPVC(rawPvcPath)
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -178,6 +198,12 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 				err = resizePVCAndValidateSize(pvc, rawAppPath, f)
 				Expect(err).ShouldNot(HaveOccurred())
+
+				// GADI
+				// Get gateway IP after test
+				gwName, gwIP = getNVMeofGateway(f.ClientSet)
+				framework.Logf("Gateway after block test: %s at IP %s", gwName, gwIP)
+				// end GADI
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, nvmeofPool)
