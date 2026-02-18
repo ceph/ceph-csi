@@ -48,6 +48,10 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	tempClone := rv.generateTempClone()
 	defer tempClone.Destroy(ctx)
 
+	// Use the data pool from the destination volume's StorageClass
+	// This ensures the temporary clone uses the same data pool configuration as the final volume.
+	tempClone.DataPool = rv.DataPool
+
 	snap := &rbdSnapshot{}
 	defer snap.Destroy(ctx)
 	snap.RbdSnapName = rv.RbdImageName
@@ -186,6 +190,10 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
 	defer tempClone.Destroy(ctx)
+
+	// Use the data pool from the destination volume's StorageClass
+	// This ensures the temporary clone uses the same data pool configuration as the final volume.
+	tempClone.DataPool = rv.DataPool
 
 	// snapshot name is same as temporary cloned image, This helps to
 	// flatten the temporary cloned images as we cannot have more than 510

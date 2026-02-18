@@ -1395,6 +1395,10 @@ func (cs *ControllerServer) doSnapshotClone(
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
 	cloneRbd.ImageFeatureSet = librbd.FeatureSetFromNames(f)
 
+	// For snapshot creation, the temporary clone must use the same data pool as the parent
+	// volume to ensure correct storage placement for erasure-coded pools.
+	cloneRbd.DataPool = parentVol.DataPool
+
 	err := cloneRbd.Connect(cr)
 	if err != nil {
 		return cloneRbd, err

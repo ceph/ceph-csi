@@ -536,6 +536,47 @@ func (ri *rbdImage) getImageID() error {
 	return nil
 }
 
+// getDataPoolID returns the pool ID where the image data is stored.
+// For an image with an erasure-coded data pool, this returns the EC poolID.
+// For an image without a separate data pool, this returns the regular poolID.
+func (ri *rbdImage) getDataPoolID() (int64, error) {
+	image, err := ri.open()
+	if err != nil {
+		return util.InvalidPoolID, err
+	}
+	defer image.Close() //nolint:errcheck // not a critical failure
+
+	return image.GetDataPoolID()
+}
+
+// populateDataPool retrieves and sets the data pool name for the volume.
+// This ensures the DataPool field is populated so that clone and snapshot
+// preserve the data pool configuration.
+func (rv *rbdVolume) populateDataPool(ctx context.Context, cr *util.Credentials, poolId int64) error {
+	dataPoolID, err := rv.getDataPoolID()
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get data pool ID for volume %s: %v", rv, err)
+
+		return err
+	}
+	if poolId == dataPoolID {
+		return nil
+	}
+
+	dataPoolName, err := util.GetPoolName(rv.Monitors, cr, dataPoolID)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get data pool name for volume %s (pool ID %d): %v",
+			rv, dataPoolID, err)
+
+		return err
+	}
+
+	rv.DataPool = dataPoolName
+	log.DebugLog(ctx, "set data pool %q for volume %s", dataPoolName, rv)
+
+	return nil
+}
+
 // open the rbdImage after it has been connected.
 // ErrPoolNotFound or ErrImageNotFound are returned in case the pool or image
 // can not be found, other errors will contain more details about other issues
@@ -1242,8 +1283,16 @@ func generateVolumeFromVolumeID(
 		}
 	}
 	err = rbdVol.getImageInfo()
+	if err != nil {
+		return rbdVol, err
+	}
 
-	return rbdVol, err
+	err = rbdVol.populateDataPool(ctx, cr, vi.LocationID)
+	if err != nil {
+		return rbdVol, err
+	}
+
+	return rbdVol, nil
 }
 
 // ShouldRetryVolumeGeneration determines whether the process of finding or generating
