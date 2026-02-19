@@ -80,7 +80,9 @@ func TestE2E(t *testing.T) {
 	}
 	isOpenShift = ocpDetected
 
-	RunSpecs(t, "E2e Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.FailFast = true
+	RunSpecs(t, "E2e Suite", suiteConfig, reporterConfig)
 }
 
 func handleFlags() {
