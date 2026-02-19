@@ -52,6 +52,10 @@ var _ = ginkgo.Describe("nvmeof", func() {
 	var nvmeofStorageClass string
 
 	ginkgo.BeforeEach(func() {
+		if !deployNVMeoF {
+			return
+		}
+
 		version, err := getCephVersion(f)
 		if err != nil {
 			logAndFail("failed to get Ceph cluster version: %v", err)
@@ -59,10 +63,6 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		if version.GetMajor() < CephMajorTentacle {
 			deployNVMeoF = false
 			ginkgo.Skip("Skipping NVMe-oF E2E, requires Ceph 20 (Tentacle):" + version.String())
-		}
-
-		if !deployNVMeoF {
-			return
 		}
 
 		framework.Logf("NVMe-oF testing supported, Ceph version: %s", version)
@@ -141,19 +141,13 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// validate created backend rbd images
-			validateRBDImageCount(f, 0, nvmeofPool)
-			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
-		})
-
-		ginkgo.It("test service account based volume access restriction", func() {
-			err := validateServiceAccountVolumeRestriction(
+			ginkgo.By("test service account based volume access restriction")
+			err = validateServiceAccountVolumeRestriction(
 				pvcPath, appPath,
 				".rbd.csi.ceph.com/serviceaccount", nvmeofPool,
 				&nvmeofStorageClass, f)
-			if err != nil {
-				logAndFail("service account volume restriction test failed: %v", err)
-			}
+			Expect(err).ShouldNot(HaveOccurred())
+
 			// validate created backend rbd images
 			validateRBDImageCount(f, 0, nvmeofPool)
 			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
