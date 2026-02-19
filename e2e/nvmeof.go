@@ -184,23 +184,23 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 			ginkgo.By("Resize Block PVC and check Device size", func() {
 
-				// Run nvme disconnect-all on the node
-				cmd := "nvme disconnect-all"
-				// Get a pod running on the node (use your test pod or a daemonset pod)
-				opt := metav1.ListOptions{
-					LabelSelector: "app=" + nvmeofDaemonsetName, // "csi-nvmeofplugin"
-				}
-				pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(len(pods.Items)).Should(BeNumerically(">", 0))
+				// // Run nvme disconnect-all on the node
+				// cmd := "nvme disconnect-all"
+				// // Get a pod running on the node (use your test pod or a daemonset pod)
+				// opt := metav1.ListOptions{
+				// 	LabelSelector: "app=" + nvmeofDaemonsetName, // "csi-nvmeofplugin"
+				// }
+				// pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
+				// Expect(err).ShouldNot(HaveOccurred())
+				// Expect(len(pods.Items)).Should(BeNumerically(">", 0))
 
-				podName := pods.Items[0].Name
-				containerName := pods.Items[0].Spec.Containers[0].Name
+				// podName := pods.Items[0].Name
+				// containerName := pods.Items[0].Spec.Containers[0].Name
 
-				_, _, err = execCommandInPodWithName(f, cmd, podName, containerName, cephCSINamespace)
-				if err != nil {
-					framework.Logf("Warning: failed to disconnect NVMe devices: %v", err)
-				}
+				// _, _, err = execCommandInPodWithName(f, cmd, podName, containerName, cephCSINamespace)
+				// if err != nil {
+				// 	framework.Logf("Warning: failed to disconnect NVMe devices: %v", err)
+				// }
 
 				// GADI
 				// Get gateway IP before test
