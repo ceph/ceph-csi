@@ -19,6 +19,9 @@ RUN dnf -y update --nobest \
        && dnf clean all \
        && rm -rf /var/cache/yum
 
+# similar to https://github.com/ceph/ceph/pull/67285
+RUN dnf -y downgrade nvme-cli-2.13 libnvme-1.13
+
 FROM updated_base as builder
 
 LABEL stage="build"
