@@ -478,6 +478,26 @@ func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error
 	return util.ValidateControllerPublishVolumeRequest(req)
 }
 
+// parseListeners parses the listeners JSON parameter and validates its contents.
+// it possible to have zero listeners if networkMask is provided,
+// because in that case the gateway will automatically create listeners
+// for all interfaces in the specified network mask.
+// Also it possible to have listeners with empty address or port,
+// in that case the gateway will listen on all
+// interfaces (0.0.0.0) and use the default port (4420).
+// example of listeners JSON:
+// [
+//
+//	{
+//	  "hostname": "gateway-1",
+//	  "address": "192.168.234.123",
+//	  "port": 4420
+//	},
+//	{
+//	  "hostname": "gateway-2.ceph.example.net"
+//	}
+//
+// ].
 func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
 	if listenersJSON == "" { // No "listeners" entry was provided
 		return []nvmeof.ListenerDetails{}, nil
@@ -492,9 +512,11 @@ func parseListeners(listenersJSON string) ([]nvmeof.ListenerDetails, error) {
 	}
 
 	// Validate each listener
+	// Listener address can be empty. it will set to default 0.0.0.0
+	// Port can be empty (will use default - 4420).
 	for i, listener := range listeners {
-		if listener.Address == "" || listener.Port == 0 || listener.Hostname == "" {
-			return nil, fmt.Errorf("listener %d: missing required fields (address, port, hostname)", i)
+		if listener.Hostname == "" {
+			return nil, fmt.Errorf("listener %d: missing required fields (hostname)", i)
 		}
 	}
 
@@ -732,11 +754,6 @@ func (cs *Server) createNVMeoFResources(
 	// Step 1: Extract parameters (already validated)
 	params := req.GetParameters()
 
-	// Parse listeners from JSON
-	listeners, err := parseListeners(params["listeners"])
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse listeners: %w", err)
-	}
 	networkMask := params["networkMask"]
 	nvmeofGatewayPortStr := params["nvmeofGatewayPort"]
 	nvmeofGatewayPort, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
@@ -745,9 +762,9 @@ func (cs *Server) createNVMeoFResources(
 	}
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
 		SubsystemNQN:  params["subsystemNQN"],
-		NamespaceID:   0,  // will be set after namespace creation,
-		NamespaceUUID: "", // will be set after namespace creation
-		ListenerInfo:  listeners,
+		NamespaceID:   0,   // will be set after namespace creation,
+		NamespaceUUID: "",  // will be set after namespace creation
+		ListenerInfo:  nil, // will be set after listener creation or retrieval
 		GatewayManagementInfo: nvmeof.GatewayConfig{
 			Address: params["nvmeofGatewayAddress"],
 			Port:    uint32(nvmeofGatewayPort),
@@ -756,6 +773,12 @@ func (cs *Server) createNVMeoFResources(
 			DhchapMode:          params["dhchapMode"],
 			AuthenticationKMSID: params["authenticationKMSID"],
 		},
+	}
+
+	// setup listeners (if provided, otherwise it will be set by gateway based on network mask)
+	err = setupDefaultListenersValues(params["listeners"], nvmeofData)
+	if err != nil {
+		return nil, err
 	}
 
 	// If dhchapMode was explicitly provided and is not "none", and authenticationKMSID is empty,
@@ -1297,4 +1320,30 @@ func connectGateway(ctx context.Context, config *nvmeof.GatewayConfig) (*nvmeof.
 	log.DebugLog(ctx, "Connected to the gateway %s", config)
 
 	return gateway, nil
+}
+
+// setupDefaultListeners validates and sets up default values for NVMe-oF listeners.
+// if listeners are provided, it ensures they are fully populated with
+// default values if needed (port and address).
+func setupDefaultListenersValues(listenersJSON string, info *nvmeof.NVMeoFVolumeData) error {
+	// Parse listeners from JSON
+	listeners, err := parseListeners(listenersJSON)
+	if err != nil {
+		return fmt.Errorf("failed to parse listeners: %w", err)
+	}
+
+	// ensure listeners are fully populated with default values if needed (port and address)
+	// before storing in metadata and creating subsystem/listeners
+	for i := range listeners {
+		if listeners[i].Port == 0 {
+			listeners[i].Port = 4420
+		}
+		// if address is empty, set it to default 0.0.0.0
+		if listeners[i].Address == "" {
+			listeners[i].Address = "0.0.0.0"
+		}
+	}
+	info.ListenerInfo = listeners
+
+	return nil
 }
