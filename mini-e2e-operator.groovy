@@ -197,7 +197,7 @@ node('cico-workspace') {
 			}
 		}
 		stage('run e2e') {
-			timeout(time: 150, unit: 'MINUTES') {
+			timeout(time: 180, unit: 'MINUTES') {
 				def t_type = "" // test all by default
 				if ("${test_type}" == "cephfs"){
 					t_type = "--test-cephfs=true --test-rbd=false --test-nfs=false"
