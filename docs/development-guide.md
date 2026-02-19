@@ -15,7 +15,7 @@ it is **highly** encouraged to:
 
 * [Download](https://golang.org/dl/) Go (>=1.17.x) and
    [install](https://golang.org/doc/install) it on your system.
-* Setup the [GOPATH](http://www.g33knotes.org/2014/07/60-second-count-down-to-go.html)
+* Setup the [GOPATH](https://go.dev/doc/gopath_code)
    environment.
 * `CGO_ENABLED` is enabled by default, if `CGO_ENABLED` is set to `0` we need
   to set it to `1` as we need to build with go-ceph bindings.

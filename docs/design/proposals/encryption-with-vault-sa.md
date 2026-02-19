@@ -27,14 +27,14 @@ An example of the per Tenant configuration options are in
 [`tenant-config.yaml`](../../../examples/kms/vault/tenant-config.yaml) and
 [`tenant-token.yaml`](../../../examples/kms/vault/tenant-token.yaml).
 
-Implementation is in [`vault_tokens.go`](../../../internal/util/vault_tokens.go)
+Implementation is in [`vault_tokens.go`](../../../internal/kms/vault_tokens.go)
 .
 
 ### Vault
 
 - uses Kubernetes Auth with single service account (aka storage admin account)
 
-Implementation is in [`vault.go`](../../../internal/util/vault.go).
+Implementation is in [`vault.go`](../../../internal/kms/vault.go).
 
 ## Extension or New KMS implementation
 
