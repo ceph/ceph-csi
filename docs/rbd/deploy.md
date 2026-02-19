@@ -514,6 +514,10 @@ file](../../examples/kms/vault/kms-config.yaml):
 
 1. `KMS_PROVIDER`: should be set to `kmip`.
 1. `KMIP_ENDPOINT` KMIP endpoint address.
+1. `USE_CRYPTO_RPC`(optional): Indicates whether to use the KMIP Encrypt and
+    Decrypt RPC operations. Defaults to `true`. Set to `false` if the KMS does not
+    support these RPCs, in which case encryption is performed locally using a
+    cipher derived from the key referenced by `UNIQUE_IDENTIFIER` in the secret.
 1. `KMIP_SECRET_NAME`(optional): name of the Kubernetes Secret which contains
    the credentials for communicating with KMIP server, defaults to
    `ceph-csi-kmip-credentials`.
