@@ -34,6 +34,7 @@ func TestValidateVolumeID(t *testing.T) {
 		{"valid short", "0001-0024-pool-abc", false, false},
 		{"valid long", "0001-0024-cluster-pool-0000-0000-0000-0001", false, false},
 		{"valid very long", "0001-000b-clusterID-1-0000000000000001-c156bd07-e430-435f-b175-56c61a2d9297", false, false},
+		{"valid with underscore", "0001-0024-rook_ceph-pool-uuid", false, false},
 		{"invalid very long", "00fg-01bg-clusterID-1-0000000000000001-c156bd07-e430-435f-b175-56c61a2d9297", false, true},
 
 		// Static Volumes, skip enforcing format.
