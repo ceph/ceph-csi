@@ -58,7 +58,7 @@ type NVMeInitiator interface {
 // ConnectRequest represents a subsystem connection request.
 type ConnectRequest struct {
 	SubsystemNQN string
-	Listeners    []GatewayAddress
+	Listeners    []ListenerDetails
 	Transport    string // "tcp"
 	HostNQN      string // Optional - empty means use system default
 	// Optional - In-band authentication controller secret for bi-directional authentication.
@@ -298,4 +298,46 @@ func (nhc nvmeHostConnections) hasPathToGateway(subsystemNQN, hostNQN,
 	}
 
 	return false
+}
+
+// ResolveListeners resolves listener IP addresses from hostnames and returns only valid listeners.
+// Returns error only if all listeners fail to resolve.
+func ResolveListeners(ctx context.Context, listeners []ListenerDetails) ([]ListenerDetails, error) {
+	var resolveErrors []string
+	var validListeners []ListenerDetails
+
+	for i := range listeners {
+		// if the address was empty, and the controller assigned it to default 0.0.0.0,
+		// resolve the IP address from hostname for the node to connect to the subsystem
+		if listeners[i].Address == "0.0.0.0" {
+			addrs, err := ResolveIPAddress(listeners[i].Hostname)
+			if err != nil {
+				errMsg := fmt.Sprintf("listener %d (%s): %v", i, listeners[i].Hostname, err)
+				log.WarningLog(ctx, "%s", errMsg)
+				resolveErrors = append(resolveErrors, errMsg)
+
+				continue // Skip this listener
+			}
+			listeners[i].Address = addrs
+			log.DebugLog(ctx, "Resolved %s to %s", listeners[i].Hostname, listeners[i].Address)
+		}
+
+		// Add to valid listeners (either resolved or already had an address)
+		validListeners = append(validListeners, listeners[i])
+	}
+
+	// If no listeners succeeded, return error
+	if len(validListeners) == 0 {
+		return nil, fmt.Errorf("failed to resolve any listener hostnames: %v", strings.Join(resolveErrors, "; "))
+	}
+
+	// If some failed, log warning but continue
+	if len(resolveErrors) > 0 {
+		log.WarningLog(ctx, "Some listeners failed to resolve (using %d valid listeners): %v",
+			len(validListeners), strings.Join(resolveErrors, "; "))
+	}
+
+	log.DebugLog(ctx, "Successfully resolved %d listener(s)", len(validListeners))
+
+	return validListeners, nil
 }
