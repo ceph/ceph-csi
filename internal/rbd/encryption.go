@@ -542,6 +542,18 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 		return errors.New("key rotation not supported for unencrypted device")
 	}
 
+	// Do not allow more than the configured max rotations per driver
+	if encryptionKeyRotationSemaphore != nil {
+		if acquired := encryptionKeyRotationSemaphore.TryAcquire(); !acquired {
+			inUse := encryptionKeyRotationSemaphore.InUse()
+			log.WarningLog(ctx, "encryption key rotation limit reached (%d concurrent operations), "+
+				"rejecting request for volume %s", inUse, rv.VolID)
+
+			return fmt.Errorf("encryption key rotation capacity exceeded: %d operations in progress, please retry later", inUse)
+		}
+		defer encryptionKeyRotationSemaphore.Release()
+	}
+
 	// Call open Ioctx to create a new ioctx object
 	// if the obj already exists, no error is returned
 	err = rv.openIoctx()

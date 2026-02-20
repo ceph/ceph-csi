@@ -104,6 +104,8 @@ func (r *rbdDriver) Run(conf *util.Config) {
 	rbd.SetGlobalInt("minSnapshotsOnImageToStartFlatten", conf.MinSnapshotsOnImage)
 	// Create instances of the volume and snapshot journal
 	rbd.InitJournals(conf.InstanceID)
+	// Initialize encryption key rotation concurrency limit
+	rbd.InitEncryptionKeyRotationSemaphore(conf.MaxConcurrentKeyRotations)
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID, conf.InstanceID,

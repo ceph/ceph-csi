@@ -137,6 +137,10 @@ type Config struct {
 	// reached cephcsi will start flattening the older rbd images.
 	MinSnapshotsOnImage uint
 
+	// MaxConcurrentKeyRotations limits the number of concurrent encryption key rotations
+	// to prevent OOM kills from too many cryptsetup processes running simultaneously.
+	MaxConcurrentKeyRotations int
+
 	PidLimit    int           // PID limit to configure through cgroups")
 	MetricsPort int           // TCP port for liveness/grpc metrics requests
 	PollTime    time.Duration // time interval in seconds between each poll

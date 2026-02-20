@@ -151,6 +151,11 @@ func init() {
 		"Minimum number of snapshots required on rbd image to start flattening")
 	flag.BoolVar(&conf.SkipForceFlatten, "skipforceflatten", false,
 		"skip image flattening if kernel support mapping of rbd images which has the deep-flatten feature")
+	flag.IntVar(
+		&conf.MaxConcurrentKeyRotations,
+		"max-concurrent-key-rotations",
+		10,
+		"Maximum number of concurrent encryption key rotations")
 
 	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
 	flag.BoolVar(&conf.EnableProfiling, "enableprofiling", false, "enable go profiling")

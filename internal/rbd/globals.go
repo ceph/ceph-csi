@@ -20,6 +20,8 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/journal"
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 var (
@@ -40,6 +42,10 @@ var (
 
 	// krbd features supported by the loaded driver.
 	krbdFeatures uint
+
+	// encryptionKeyRotationSemaphore limits concurrent encryption key rotations
+	// to prevent OOM kills from too many cryptsetup processes.
+	encryptionKeyRotationSemaphore *util.Semaphore
 )
 
 // SetGlobalInt provides a way for the rbd-driver to configure global variables
@@ -89,4 +95,17 @@ func SetGlobalBool(name string, value bool) {
 func InitJournals(instance string) {
 	volJournal = journal.NewCSIVolumeJournal(instance)
 	snapJournal = journal.NewCSISnapshotJournal(instance)
+}
+
+// InitEncryptionKeyRotationSemaphore initializes the global semaphore that limits
+// concurrent encryption key rotations to prevent OOM kills.
+// This is called from the rbd-driver on startup.
+func InitEncryptionKeyRotationSemaphore(maxConcurrent int) {
+	if maxConcurrent <= 0 {
+		// Set to default of 10
+		maxConcurrent = 10
+	}
+	encryptionKeyRotationSemaphore = util.NewSemaphore(maxConcurrent)
+
+	log.DefaultLog("encryption key rotation concurrency limited to %d", maxConcurrent)
 }
