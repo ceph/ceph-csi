@@ -69,5 +69,5 @@ storageclass.storage.k8s.io/csi-nfs-sc created
 - deploy the kubernetes-csi/csi-driver-nfs
 - create the CSIDriver object
 
-[rook_ceph]: https://rook.io/docs/rook/latest/ceph-nfs-crd.html
-[rook_toolbox]: https://rook.io/docs/rook/latest/ceph-toolbox.html
+[rook_ceph]: https://rook.io/docs/rook/latest/CRDs/ceph-nfs-crd/
+[rook_toolbox]: https://rook.io/docs/rook/latest/Troubleshooting/ceph-toolbox/

@@ -190,7 +190,7 @@ status:
     ```
 
 >:bulb: We can also take backup using external tools like **Velero**.
-> Refer [velero documentation]((https://velero.io/docs/main/)) for more information.
+> Refer [velero documentation](https://velero.io/docs/main/) for more information.
 
 * Restoring on the secondary cluster(cluster-2)
 

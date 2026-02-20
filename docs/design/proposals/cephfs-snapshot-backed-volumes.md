@@ -4,13 +4,13 @@ Snapshot-backed volumes allow CephFS subvolume snapshots to be exposed as
 regular read-only PVCs. No data cloning is performed and provisioning such
 volumes is done in constant time.
 
-For more details please refer to [Snapshots as shallow read-only volumes](./design/proposals/cephfs-snapshot-shallow-ro-vol.md)
+For more details please refer to [Snapshots as shallow read-only volumes](./cephfs-snapshot-shallow-ro-vol.md)
 design document.
 
 ## Prerequisites
 
 Prerequisites for this feature are the same as for creating PVCs with snapshot
-volume source. See [Create snapshot and Clone Volume](./snap-clone.md) for more
+volume source. See [Create snapshot and Clone Volume](../../snap-clone.md) for more
 information.
 
 ## Usage
@@ -34,7 +34,7 @@ for `ReadOnlyMany` PVC a clone will get created in ceph cluster.
 
 Steps for defining a PersistentVolume and PersistentVolumeClaim for
 pre-provisioned CephFS subvolumes are identical to those described in
-[Static PVC with ceph-csi](./static-pvc.md), except one additional parameter
+[Static PVC with ceph-csi](../../static-pvc.md), except one additional parameter
 must be specified: `backingSnapshotID`. CephFS-CSI driver will retrieve the
 snapshot identified by the given ID from within the specified subvolume, and
 expose it to workloads in read-only mode. Volume access mode must be set to

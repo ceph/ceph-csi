@@ -11,7 +11,7 @@ redirecting in-tree operation calls to the CSI Driver instead of the in-tree
 driver, the external components will pick up these in-tree PV's and use a
 translation library to translate to CSI Source. For more information on CSI
 migration effort
-refer [design doc](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/storage/csi-migration.md)
+refer [design doc](https://github.com/kubernetes/design-proposals-archive/blob/main/storage/csi-migration.md)
 
 ## RBD in-tree plugin to CSI migration
 

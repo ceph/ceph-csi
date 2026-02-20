@@ -375,7 +375,7 @@ documentation](https://www.vaultproject.io/docs/auth/kubernetes.html).
 
 If token reviewer is used, you will need to configure service account for
 that also like in
-[example](../examples/kms/vault/csi-vaulttokenreview-rbac.yaml) to be able to
+[example](../../examples/kms/vault/csi-vaulttokenreview-rbac.yaml) to be able to
 review jwt tokens.
 
 Configure a role(s) for service accounts used for ceph-csi:

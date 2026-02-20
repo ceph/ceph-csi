@@ -83,7 +83,7 @@ you're running it inside a k8s cluster and find the config itself).
 | `extraDeploy` | no | array of extra objects to deploy with the release |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
-running pods. Refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
+running pods. Refer to [Creating CSI configuration](../../examples/README.md#creating-csi-configuration)
 for more information.
 
 **NOTE:** A suggested way to populate and retain uniqueness of the clusterID is
@@ -105,7 +105,7 @@ for a zero-sized volume means no quota attribute will be set.
 
 Requires Kubernetes 1.14+
 
-Use the [cephfs templates](../deploy/cephfs/kubernetes)
+Use the [cephfs templates](../../deploy/cephfs/kubernetes)
 
 Your Kubernetes cluster must allow privileged pods (i.e. `--allow-privileged`
 flag must be set to true for both the API server and the kubelet). Moreover, as
@@ -140,7 +140,7 @@ kubectl create -f csi-config-map.yaml
 
 The configmap deploys an empty CSI configuration that is mounted as a volume
 within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
-details, refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
+details, refer to [Creating CSI configuration](../../examples/README.md#creating-csi-configuration)
 for more information.
 
 **Deploy Ceph configuration ConfigMap for CSI pods:**
@@ -152,7 +152,7 @@ kubectl create -f ../../ceph-conf.yaml
 **Deploy prerequisites for CSI Snapshot:**
 
 If you intend to use the snapshot functionality in Kubernetes cluster,
-please refer to [snap-clone.md](./snap-clone.md#prerequisite)
+please refer to [snap-clone.md](../snap-clone.md#prerequisite)
 
 **Deploy CSI sidecar containers:**
 
@@ -175,15 +175,15 @@ the CSI CephFS driver.
 **NOTE:**
 In case you want to use a different release version, replace canary with the
 release version in the
-[provisioner](../deploy/cephfs/kubernetes/csi-cephfsplugin-provisioner.yaml)
-and [nodeplugin](../deploy/cephfs/kubernetes/csi-cephfsplugin.yaml) YAMLs.
+[provisioner](../../deploy/cephfs/kubernetes/csi-cephfsplugin-provisioner.yaml)
+and [nodeplugin](../../deploy/cephfs/kubernetes/csi-cephfsplugin.yaml) YAMLs.
 
 ```yaml
 # for stable functionality replace canary with latest release version
     image: quay.io/cephcsi/cephcsi:canary
 ```
 
-Check the release version [here.](../README.md#ceph-csi-container-images-and-release-compatibility)
+Check the release version [here.](../../README.md#ceph-csi-container-images-and-release-compatibility)
 
 ## Verifying the deployment in Kubernetes
 
@@ -202,7 +202,7 @@ service/csi-cephfsplugin-provisioner   ClusterIP   10.101.78.75     <none>      
 
 Once the CSI plugin configuration is updated with details from a Ceph cluster of
 choice, you can try deploying a demo pod from examples/cephfs using the
-instructions [provided](../examples/README.md#deploying-the-storage-class) to
+instructions [provided](../../examples/README.md#deploying-the-storage-class) to
 test the deployment further.
 
 ### Notes on volume deletion
@@ -221,7 +221,7 @@ The Helm chart is located in `charts/ceph-csi-cephfs`.
 
 **Deploy Helm Chart:**
 
-[See the Helm chart readme for installation instructions.](../../../charts/ceph-csi-cephfs/README.md)
+[See the Helm chart readme for installation instructions.](../../charts/ceph-csi-cephfs/README.md)
 
 ## Read Affinity using crush locations for CephFS subvolumes
 
@@ -251,7 +251,7 @@ Requires fscrypt support in the Linux kernel and Ceph.
 Key management is compatible with the
 [fscrypt](https://github.com/google/fscrypt) userspace tool. See the
 design doc [Ceph Filesystem fscrypt
-Support](design/proposals/cephfs-fscrypt.md) for details.
+Support](../design/proposals/cephfs-fscrypt.md) for details.
 
 In general the KMS configuration is the same as for RBD encryption and
 can even be shared.

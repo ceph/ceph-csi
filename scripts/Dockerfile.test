@@ -62,6 +62,8 @@ RUN set -x \
     && npm init -y \
     && npm install @commitlint/cli@"${COMMITLINT_VERSION}" \
     && popd \
+    && ARCH=$(case "${GOARCH}" in amd64) echo "x86_64";; arm64) echo "aarch64";; *) echo "x86_64";; esac) \
+    && curl -sSfL "https://github.com/lycheeverse/lychee/releases/download/lychee-${LYCHEE_VERSION}/lychee-${ARCH}-unknown-linux-gnu.tar.gz" | tar -xz -C /usr/local/bin \
     && git config --global --add safe.directory ${CEPHCSIPATH} \
     && go install github.com/augmentable-dev/tickgit/cmd/tickgit@latest \
     && true

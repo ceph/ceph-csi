@@ -92,7 +92,7 @@ endif
 
 all: cephcsi
 
-.PHONY: go-test static-check mod-check go-lint lint-extras commitlint codespell
+.PHONY: go-test static-check mod-check go-lint lint-extras commitlint link-check codespell
 ifeq ($(CONTAINERIZED),no)
 # include mod-check in non-containerized runs
 test: go-test static-check mod-check
@@ -167,6 +167,9 @@ commitlint:
 	git fetch -v $(shell cut -d/ -f1 <<< "$(GIT_SINCE)") $(shell cut -d/ -f2- <<< "$(GIT_SINCE)")
 	@test $(REBASE) -eq 0 || git -c user.name=commitlint -c user.email=commitline@localhost rebase FETCH_HEAD
 	commitlint --verbose --from $(GIT_SINCE)
+
+link-check:
+	lychee --config lychee.toml .
 
 .PHONY: cephcsi
 cephcsi: check-env
