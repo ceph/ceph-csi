@@ -29,7 +29,7 @@ import (
 
 // A regex to verify the expected format: 0000-0000-arbitrary-number-of-000-and-chars.
 // First two blocks are hexadecimal.
-var validator = regexp.MustCompile(`^[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[a-zA-Z0-9\-]+$`)
+var validator = regexp.MustCompile(`^[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[a-zA-Z0-9\-_]+$`)
 
 // ValidateControllerPublishVolumeRequest validates the controller publish request.
 func ValidateControllerPublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
