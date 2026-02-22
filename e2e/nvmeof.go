@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"strings"
 
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -133,6 +134,57 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
 
 		ginkgo.It("Test NVMe CSI", func() {
+			ginkgo.By("Check Kubernetes setup details", func() {
+				// Check nodes
+				nodes, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+				if err == nil && len(nodes.Items) > 0 {
+					node := nodes.Items[0]
+					framework.Logf("Node name: %s", node.Name)
+					framework.Logf("Node labels: %v", node.Labels)
+					framework.Logf("Node provider ID: %s", node.Spec.ProviderID)
+				}
+
+				// Check for network mode
+				cmd := "ip route show && ip addr show"
+				opt := metav1.ListOptions{
+					LabelSelector: "app=" + nvmeofDaemonsetName,
+				}
+				pods, _ := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
+				if len(pods.Items) > 0 {
+					stdout, _, _ := execCommandInPodWithName(f, cmd, pods.Items[0].Name, nvmeofContainerName, cephCSINamespace)
+					framework.Logf("Network routing info:\n%s", stdout)
+				}
+			})
+
+			ginkgo.By("Check CNI configuration", func() {
+				// Method 1: Check for CNI pods
+				cniPods, err := f.ClientSet.CoreV1().Pods("kube-system").List(context.TODO(), metav1.ListOptions{})
+				if err == nil {
+					framework.Logf("kube-system pods:")
+					for _, pod := range cniPods.Items {
+						if strings.Contains(pod.Name, "calico") ||
+							strings.Contains(pod.Name, "flannel") ||
+							strings.Contains(pod.Name, "weave") ||
+							strings.Contains(pod.Name, "cilium") ||
+							strings.Contains(pod.Name, "kindnet") {
+							framework.Logf("  CNI pod found: %s", pod.Name)
+						}
+					}
+				}
+
+				// Method 2: Check node for CNI config
+				cmd := "ls -la /etc/cni/net.d/ && cat /etc/cni/net.d/* 2>/dev/null || echo 'No CNI config found'"
+
+				opt := metav1.ListOptions{
+					LabelSelector: "app=" + nvmeofDaemonsetName,
+				}
+				pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
+				if err == nil && len(pods.Items) > 0 {
+					stdout, stderr, _ := execCommandInPodWithName(f, cmd, pods.Items[0].Name, nvmeofContainerName, cephCSINamespace)
+					framework.Logf("CNI config on node: stdout=%s, stderr=%s", stdout, stderr)
+				}
+			})
+
 			ginkgo.By("create a PVC and delete it", func() {
 				pvc, err := loadPVC(pvcPath)
 				Expect(err).ShouldNot(HaveOccurred())
