@@ -234,6 +234,34 @@ var _ = ginkgo.Describe("nvmeof", func() {
 				validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
 			})
 
+			ginkgo.By("Check NVMe controller state before block test", func() {
+				cmd := `
+echo "=== Controller States ===" && \
+cat /sys/class/nvme/nvme*/state && \
+echo "=== Controller Addresses ===" && \
+cat /sys/class/nvme/nvme*/address && \
+echo "=== Namespace Paths ===" && \
+ls -d /sys/block/nvme*n* 2>/dev/null || echo "No namespaces found" && \
+echo "=== ANA States ===" && \
+cat /sys/block/nvme*n*/ana_state 2>/dev/null || echo "No ANA states found"
+`
+
+				opt := metav1.ListOptions{
+					LabelSelector: "app=" + nvmeofDaemonsetName,
+				}
+				pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
+				if err == nil && len(pods.Items) > 0 {
+					stdout, stderr, execErr := execCommandInPodWithName(
+						f, cmd,
+						pods.Items[0].Name,
+						nvmeofContainerName,
+						cephCSINamespace,
+					)
+					framework.Logf("NVMe controller state:\nstdout:\n%s\nstderr:\n%s\nerr: %v",
+						stdout, stderr, execErr)
+				}
+			})
+
 			ginkgo.By("Resize Block PVC and check Device size", func() {
 
 				// // Run nvme disconnect-all on the node
