@@ -188,7 +188,7 @@ MINIKUBE_WAIT_TIMEOUT=${MINIKUBE_WAIT_TIMEOUT:-"10m"}
 MINIKUBE_WAIT=${MINIKUBE_WAIT:-"all"}
 CPUS=${CPUS:-"$(nproc)"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
-CNI=${CNI:-"bridge"}
+CNI=${CNI:-"cilium"}
 NUM_DISKS=${NUM_DISKS:-"1"}
 DISK_SIZE=${DISK_SIZE:-"32g"}
 #configure image repo

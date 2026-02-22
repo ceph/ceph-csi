@@ -75,6 +75,8 @@ RUN make cephcsi
 #-- Final container
 FROM updated_base
 
+RUN dnf -y install tcpdump net-tools iproute && dnf clean all && rm -rf /var/cache/yum
+
 ARG SRC_DIR
 
 LABEL maintainers="Ceph-CSI Authors" \

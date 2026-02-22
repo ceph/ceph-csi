@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -156,225 +157,100 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 		pvcPath := nvmeofExamplePath + "pvc.yaml"
 		appPath := nvmeofExamplePath + "pod.yaml"
-		rawPvcPath := nvmeofExamplePath + "raw-block-pvc.yaml"
-		rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
+		// rawPvcPath := nvmeofExamplePath + "raw-block-pvc.yaml"
+		// rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
 
 		ginkgo.It("Test NVMe CSI", func() {
-			// 			ginkgo.By("Check Kubernetes setup details", func() {
-			// 				// Check nodes
-			// 				nodes, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-			// 				if err == nil && len(nodes.Items) > 0 {
-			// 					node := nodes.Items[0]
-			// 					framework.Logf("Node name: %s", node.Name)
-			// 					framework.Logf("Node labels: %v", node.Labels)
-			// 					framework.Logf("Node provider ID: %s", node.Spec.ProviderID)
-			// 				}
-
-			// 				// Check for network mode
-			// 				cmd := "ip route show && ip addr show"
-			// 				opt := metav1.ListOptions{
-			// 					LabelSelector: "app=" + nvmeofDaemonsetName,
-			// 				}
-			// 				pods, _ := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
-			// 				if len(pods.Items) > 0 {
-			// 					stdout, _, _ := execCommandInPodWithName(f, cmd, pods.Items[0].Name, nvmeofContainerName, cephCSINamespace)
-			// 					framework.Logf("Network routing info:\n%s", stdout)
-			// 				}
-			// 			})
-
-			// 			ginkgo.By("Check CNI configuration", func() {
-			// 				// Method 1: Check for CNI pods
-			// 				cniPods, err := f.ClientSet.CoreV1().Pods("kube-system").List(context.TODO(), metav1.ListOptions{})
-			// 				if err == nil {
-			// 					framework.Logf("kube-system pods:")
-			// 					for _, pod := range cniPods.Items {
-			// 						if strings.Contains(pod.Name, "calico") ||
-			// 							strings.Contains(pod.Name, "flannel") ||
-			// 							strings.Contains(pod.Name, "weave") ||
-			// 							strings.Contains(pod.Name, "cilium") ||
-			// 							strings.Contains(pod.Name, "kindnet") {
-			// 							framework.Logf("  CNI pod found: %s", pod.Name)
-			// 						}
-			// 					}
-			// 				}
-
-			// 				// Method 2: Check node for CNI config
-			// 				cmd := "ls -la /etc/cni/net.d/ && cat /etc/cni/net.d/* 2>/dev/null || echo 'No CNI config found'"
-
-			// 				opt := metav1.ListOptions{
-			// 					LabelSelector: "app=" + nvmeofDaemonsetName,
-			// 				}
-			// 				pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
-			// 				if err == nil && len(pods.Items) > 0 {
-			// 					stdout, stderr, _ := execCommandInPodWithName(f, cmd, pods.Items[0].Name, nvmeofContainerName, cephCSINamespace)
-			// 					framework.Logf("CNI config on node: stdout=%s, stderr=%s", stdout, stderr)
-			// 				}
-			// 			})
-
-			// 			ginkgo.By("create a PVC and delete it", func() {
-			// 				pvc, err := loadPVC(pvcPath)
-			// 				Expect(err).ShouldNot(HaveOccurred())
-
-			// 				pvc.Namespace = f.UniqueName
-			// 				pvc.Spec.StorageClassName = &nvmeofStorageClass
-
-			// 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-			// 				Expect(err).ShouldNot(HaveOccurred())
-
-			// 				validateRBDImageCount(f, 1, nvmeofPool)
-			// 				validateOmapCount(f, 1, rbdType, nvmeofPool, volumesType)
-
-			// 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-			// 				Expect(err).ShouldNot(HaveOccurred())
-
-			// 				// validate created backend rbd images
-			// 				validateRBDImageCount(f, 0, nvmeofPool)
-			// 				validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
-			// 			})
-
-			// 			ginkgo.By("Resize Filesystem PVC and check application directory size", func() {
-
-			// 				// GADI
-			// 				// Get gateway IP before test
-			// 				gwName, gwIP := getNVMeofGateway(f.ClientSet)
-			// 				framework.Logf("Gateway before filesystem test: %s at IP %s", gwName, gwIP)
-			// 				// end GADI
-
-			// 				pvc, err := loadPVC(pvcPath)
-			// 				Expect(err).ShouldNot(HaveOccurred())
-
-			// 				pvc.Namespace = f.UniqueName
-			// 				pvc.Spec.StorageClassName = &nvmeofStorageClass
-
-			// 				err = resizePVCAndValidateSize(pvc, appPath, f)
-			// 				Expect(err).ShouldNot(HaveOccurred())
-
-			// 				// GADI
-			// 				// Get gateway IP after test
-			// 				gwName, gwIP = getNVMeofGateway(f.ClientSet)
-			// 				framework.Logf("Gateway after filesystem test: %s at IP %s", gwName, gwIP)
-			// 				// end GADI
-
-			// 				// validate created backend rbd images
-			// 				validateRBDImageCount(f, 0, nvmeofPool)
-			// 				validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
-			// 			})
-
-			// 			ginkgo.By("Check NVMe controller state before block test", func() {
-			// 				cmd := `
-			// echo "=== Controller States ===" && \
-			// cat /sys/class/nvme/nvme*/state && \
-			// echo "=== Controller Addresses ===" && \
-			// cat /sys/class/nvme/nvme*/address && \
-			// echo "=== Namespace Paths ===" && \
-			// ls -d /sys/block/nvme*n* 2>/dev/null || echo "No namespaces found" && \
-			// echo "=== ANA States ===" && \
-			// cat /sys/block/nvme*n*/ana_state 2>/dev/null || echo "No ANA states found"
-			// `
-
-			// 				opt := metav1.ListOptions{
-			// 					LabelSelector: "app=" + nvmeofDaemonsetName,
-			// 				}
-			// 				pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
-			// 				if err == nil && len(pods.Items) > 0 {
-			// 					stdout, stderr, execErr := execCommandInPodWithName(
-			// 						f, cmd,
-			// 						pods.Items[0].Name,
-			// 						nvmeofContainerName,
-			// 						cephCSINamespace,
-			// 					)
-			// 					framework.Logf("NVMe controller state:\nstdout:\n%s\nstderr:\n%s\nerr: %v",
-			// 						stdout, stderr, execErr)
-			// 				}
-			// 			})
-
-			// 			ginkgo.By("Resize Block PVC and check Device size", func() {
-
-			// 				// // Run nvme disconnect-all on the node
-			// 				// cmd := "nvme disconnect-all"
-			// 				// // Get a pod running on the node (use your test pod or a daemonset pod)
-			// 				// opt := metav1.ListOptions{
-			// 				// 	LabelSelector: "app=" + nvmeofDaemonsetName, // "csi-nvmeofplugin"
-			// 				// }
-			// 				// pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
-			// 				// Expect(err).ShouldNot(HaveOccurred())
-			// 				// Expect(len(pods.Items)).Should(BeNumerically(">", 0))
-
-			// 				// podName := pods.Items[0].Name
-			// 				// containerName := pods.Items[0].Spec.Containers[0].Name
-
-			// 				// _, _, err = execCommandInPodWithName(f, cmd, podName, containerName, cephCSINamespace)
-			// 				// if err != nil {
-			// 				// 	framework.Logf("Warning: failed to disconnect NVMe devices: %v", err)
-			// 				// }
-
-			// 				// GADI
-			// 				// Get gateway IP before test
-			// 				gwName, gwIP := getNVMeofGateway(f.ClientSet)
-			// 				framework.Logf("Gateway before block test: %s at IP %s", gwName, gwIP)
-			// 				// end GADI
-
-			// 				pvc, err := loadPVC(rawPvcPath)
-			// 				Expect(err).ShouldNot(HaveOccurred())
-
-			// 				pvc.Namespace = f.UniqueName
-			// 				pvc.Spec.StorageClassName = &nvmeofStorageClass
-
-			// 				err = resizePVCAndValidateSize(pvc, rawAppPath, f)
-			// 				Expect(err).ShouldNot(HaveOccurred())
-
-			// 				// GADI
-			// 				// Get gateway IP after test
-			// 				gwName, gwIP = getNVMeofGateway(f.ClientSet)
-			// 				framework.Logf("Gateway after block test: %s at IP %s", gwName, gwIP)
-			// 				// end GADI
-
-			//		// validate created backend rbd images
-			//		validateRBDImageCount(f, 0, nvmeofPool)
-			//		validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
-			//	})
-			ginkgo.By("Test 1: create a PVC and delete it", func() {
-				err := createPVCAppAndDelete(pvcPath, appPath, nvmeofStorageClass, f)
+			ginkgo.By("Test 1: create PVC+Pod, delete Pod (keep PVC), recreate Pod", func() {
+				pvc, err := loadPVC(pvcPath)
 				Expect(err).ShouldNot(HaveOccurred())
-			})
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.StorageClassName = &nvmeofStorageClass
 
-			ginkgo.By("Test 2: create a PVC and delete it (filesystem)", func() {
-				err := createPVCAppAndDelete(pvcPath, appPath, nvmeofStorageClass, f)
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				Expect(err).ShouldNot(HaveOccurred())
-			})
 
-			ginkgo.By("Check NVMe controller state before block test", func() {
-				cmd := `
-echo "=== Controller States ===" && \
+				// Get node pod for tcpdump
+				opt := metav1.ListOptions{LabelSelector: "app=" + nvmeofDaemonsetName}
+				pods, _ := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
+				var nodePodName string
+				if len(pods.Items) > 0 {
+					nodePodName = pods.Items[0].Name
+				}
+
+				// Start tcpdump in background
+				if nodePodName != "" {
+					startTcpdump := "nohup tcpdump -i any port 4420 -tttt -n > /tmp/nvme-traffic.log 2>&1 &"
+					execCommandInPodWithName(f, startTcpdump, nodePodName, nvmeofContainerName, cephCSINamespace)
+					framework.Logf("Started tcpdump on node pod %s", nodePodName)
+				}
+
+				// First pod
+				app1, err := loadApp(appPath)
+				Expect(err).ShouldNot(HaveOccurred())
+				app1.Name = "test-pod-1"
+				app1.Namespace = f.UniqueName
+
+				err = createApp(f.ClientSet, app1, deployTimeout)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// CAPTURE STATE BEFORE DELETE
+				cmd := `echo "=== BEFORE POD DELETE ===" && \
+nvme list && \
 cat /sys/class/nvme/nvme*/state && \
-echo "=== Controller Addresses ===" && \
 cat /sys/class/nvme/nvme*/address && \
-echo "=== Namespace Paths ===" && \
-ls -d /sys/block/nvme*n* 2>/dev/null || echo "No namespaces found" && \
-echo "=== ANA States ===" && \
-cat /sys/block/nvme*n*/ana_state 2>/dev/null || echo "No ANA states found"
-`
+cat /proc/net/tcp | awk '{print $2, $3}' | grep ':1144' || echo "No TCP connections"`
 
-				opt := metav1.ListOptions{
-					LabelSelector: "app=" + nvmeofDaemonsetName,
+				if nodePodName != "" {
+					stdout, stderr, _ := execCommandInPodWithName(f, cmd, nodePodName, nvmeofContainerName, cephCSINamespace)
+					framework.Logf("State before pod delete:\n%s\nstderr: %s", stdout, stderr)
 				}
-				pods, err := f.ClientSet.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
-				if err == nil && len(pods.Items) > 0 {
-					stdout, stderr, execErr := execCommandInPodWithName(
-						f, cmd,
-						pods.Items[0].Name,
-						nvmeofContainerName,
-						cephCSINamespace,
-					)
-					framework.Logf("NVMe controller state:\nstdout:\n%s\nstderr:\n%s\nerr: %v",
-						stdout, stderr, execErr)
-				}
-			})
 
-			ginkgo.By("Test 3: create a PVC and delete it (block)", func() {
-				err := createPVCAppAndDelete(rawPvcPath, rawAppPath, nvmeofStorageClass, f)
+				// Delete first pod
+				framework.Logf("Deleting pod %s", app1.Name)
+				err = deletePod(app1.Name, app1.Namespace, f.ClientSet, deployTimeout)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// WAIT A BIT AND CAPTURE STATE AFTER DELETE
+				time.Sleep(60 * time.Second)
+
+				cmd = `echo "=== AFTER POD DELETE ===" && \
+nvme list && \
+cat /sys/class/nvme/nvme*/state 2>/dev/null || echo "No controllers" && \
+cat /sys/class/nvme/nvme*/address 2>/dev/null || echo "No addresses" && \
+cat /proc/net/tcp | awk '{print $2, $3}' | grep ':1144' || echo "No TCP connections" && \
+dmesg -T | tail -50`
+
+				if nodePodName != "" {
+					stdout, stderr, _ := execCommandInPodWithName(f, cmd, nodePodName, nvmeofContainerName, cephCSINamespace)
+					framework.Logf("State after pod delete:\n%s\nstderr: %s", stdout, stderr)
+				}
+
+				// Stop tcpdump and capture traffic
+				if nodePodName != "" {
+					stopCmd := "killall tcpdump 2>/dev/null; sleep 1; echo '=== TCPDUMP CAPTURE ===' && cat /tmp/nvme-traffic.log | tail -100"
+					stdout, _, _ := execCommandInPodWithName(f, stopCmd, nodePodName, nvmeofContainerName, cephCSINamespace)
+					framework.Logf("Network traffic during test:\n%s", stdout)
+				}
+
+				// Check network stats
+				if nodePodName != "" {
+					statsCmd := "echo '=== NETWORK STATS ===' && netstat -s | grep -A 10 -i 'tcp:' || cat /proc/net/netstat | grep -i tcp"
+					stdout, _, _ := execCommandInPodWithName(f, statsCmd, nodePodName, nvmeofContainerName, cephCSINamespace)
+					framework.Logf("Network statistics:\n%s", stdout)
+				}
+
+				// Try to create second pod
+				framework.Logf("Creating second pod")
+				app2, err := loadApp(appPath)
+				Expect(err).ShouldNot(HaveOccurred())
+				app2.Name = "test-pod-2"
+				app2.Namespace = f.UniqueName
+
+				err = createApp(f.ClientSet, app2, deployTimeout)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 		})
+
 	})
 })
