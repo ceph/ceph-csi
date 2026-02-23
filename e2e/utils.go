@@ -359,7 +359,9 @@ func getClusterID(f *framework.Framework) (string, error) {
 		return "", fmt.Errorf("error getting fsid: %s", stdErr)
 	}
 	// remove new line present in fsID
-	return strings.Trim(fsID, "\n"), nil
+	clusterID = strings.Trim(fsID, "\n")
+
+	return clusterID, nil
 }
 
 func getStorageClass(path string) (scv1.StorageClass, error) {
