@@ -162,10 +162,10 @@ func (kms secretsMetadataKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 
-// encryptedMetedataDEK contains the encrypted DEK and the Nonce that was used
+// encryptedMetadataDEK contains the encrypted DEK and the Nonce that was used
 // during encryption. This structure is stored (in JSON format) in the DEKStore
 // that is linked to this KMS provider.
-type encryptedMetedataDEK struct {
+type encryptedMetadataDEK struct {
 	// DEK is the encrypted data-encryption-key for the volume.
 	DEK []byte `json:"dek"`
 	// Nonce is a random byte slice to guarantee the uniqueness of the
@@ -189,7 +189,7 @@ func (kms secretsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK
 		return "", fmt.Errorf("failed to generate cipher: %w", err)
 	}
 
-	emd := encryptedMetedataDEK{}
+	emd := encryptedMetadataDEK{}
 	emd.Nonce, err = generateNonce(aead.NonceSize())
 	if err != nil {
 		return "", fmt.Errorf("failed to generated nonce: %w", err)
@@ -199,7 +199,7 @@ func (kms secretsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK
 	emdData, err := json.Marshal(&emd)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert "+
-			"encryptedMetedataDEK to JSON: %w", err)
+			"encryptedMetadataDEK to JSON: %w", err)
 	}
 
 	return string(emdData), nil
@@ -219,11 +219,11 @@ func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encrypte
 		return "", fmt.Errorf("failed to generate cipher: %w", err)
 	}
 
-	emd := encryptedMetedataDEK{}
+	emd := encryptedMetadataDEK{}
 	err = json.Unmarshal([]byte(encryptedDEK), &emd)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert data to "+
-			"encryptedMetedataDEK: %w", err)
+			"encryptedMetadataDEK: %w", err)
 	}
 
 	dek, err := aead.Open(nil, emd.Nonce, emd.DEK, nil)

@@ -186,7 +186,7 @@ func (kms *kmipKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string,
 	}
 	defer conn.Close() //nolint:errcheck // more important errors are returned
 
-	emd := encryptedMetedataDEK{}
+	emd := encryptedMetadataDEK{}
 	emd.Nonce, err = generateNonce(nonceSize)
 	if err != nil {
 		return "", fmt.Errorf("failed to generated nonce: %w", err)
@@ -228,7 +228,7 @@ func (kms *kmipKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string,
 	emdData, err := json.Marshal(&emd)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert "+
-			"encryptedMetedataDEK to JSON: %w", err)
+			"encryptedMetadataDEK to JSON: %w", err)
 	}
 
 	return string(emdData), nil
@@ -242,11 +242,11 @@ func (kms *kmipKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (str
 	}
 	defer conn.Close() //nolint:errcheck // more important errors are returned
 
-	emd := encryptedMetedataDEK{}
+	emd := encryptedMetadataDEK{}
 	err = json.Unmarshal([]byte(encryptedDEK), &emd)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert data to "+
-			"encryptedMetedataDEK: %w", err)
+			"encryptedMetadataDEK: %w", err)
 	}
 
 	respMsg, decoder, uniqueBatchItemID, err := kms.send(conn,
