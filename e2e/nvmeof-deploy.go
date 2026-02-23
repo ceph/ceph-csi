@@ -116,20 +116,13 @@ func deployNVMeoFPlugin(f *framework.Framework, deployTimeout int) {
 
 	createORDeleteNVMeoFResources(kubectlCreate)
 
-	err = waitForDeploymentComplete(
+	Expect(waitForCSI(
 		f.ClientSet,
 		nvmeofDeploymentName,
-		cephCSINamespace,
-		deployTimeout,
-	)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	err = waitForDaemonSets(
 		nvmeofDaemonsetName,
 		cephCSINamespace,
-		f.ClientSet,
-		deployTimeout)
-	Expect(err).ShouldNot(HaveOccurred())
+		deployTimeout,
+	)).ShouldNot(HaveOccurred())
 }
 
 func deleteNVMeoFPlugin() {

@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/api/core/v1"
@@ -185,6 +187,25 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 	}
 
 	return nil
+}
+
+// waitForCSI waits for a CSI deployment and daemonset to be ready
+// concurrently.
+func waitForCSI(
+	clientSet kubernetes.Interface,
+	deploymentName, daemonsetName, ns string,
+	timeout int,
+) error {
+	var eg errgroup.Group
+	eg.Go(func() error {
+		return waitForDeploymentComplete(
+			clientSet, deploymentName, ns, timeout)
+	})
+	eg.Go(func() error {
+		return waitForDaemonSets(
+			daemonsetName, ns, clientSet, timeout)
+	})
+	return eg.Wait()
 }
 
 // ResourceDeployer provides a generic interface for deploying different
