@@ -50,15 +50,88 @@ func TestGenerateNonce(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGenerateCipher(t *testing.T) {
+func TestGenerateKeyFromPassphrase(t *testing.T) {
 	t.Parallel()
-	//nolint:gosec // this passphrase is intentionally hardcoded
-	passphrase := "my-cool-luks-passphrase"
-	salt := "unique-id-for-the-volume"
 
-	aead, err := generateCipher(passphrase, salt)
-	require.NoError(t, err)
-	require.NotNil(t, aead)
+	tests := []struct {
+		name       string
+		passphrase string
+		salt       string
+		wantErr    bool
+	}{
+		{
+			name:       "basic valid inputs",
+			passphrase: "my-super-secret-passphrase",
+			salt:       "some-random-generated-salt",
+			wantErr:    false,
+		},
+		{
+			name:       "realistic volume ID as salt",
+			passphrase: "kubernetes-secret-passphrase",
+			salt:       "csi-vol-1b00f5f8-b1c1-11e9-8421-9243c1f659f0",
+			wantErr:    false,
+		},
+		{
+			name:       "empty passphrase",
+			passphrase: "",
+			salt:       "some-salt",
+			wantErr:    false,
+		},
+		{
+			name:       "empty salt",
+			passphrase: "some-passphrase",
+			salt:       "",
+			wantErr:    false,
+		},
+		{
+			name:       "both empty",
+			passphrase: "",
+			salt:       "",
+			wantErr:    false,
+		},
+		{
+			name:       "special characters in passphrase",
+			passphrase: "p@ssw0rd!#$%^&*()",
+			salt:       "salt",
+			wantErr:    false,
+		},
+		{
+			name:       "very long passphrase",
+			passphrase: "this-is-a-very-long-passphrase-that-goes-on-and-on-and-on-with-many-characters",
+			salt:       "short",
+			wantErr:    false,
+		},
+		{
+			name:       "very long salt",
+			passphrase: "short",
+			salt:       "this-is-a-very-long-salt-that-goes-on-and-on-and-on-with-many-characters",
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			key, err := generateKeyFromPassphrase(tt.passphrase, tt.salt)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Nil(t, key)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, key)
+			require.Len(t, key, 32, "key should be of 256 bits")
+
+			// We should get the same output for same input.
+			key2, err2 := generateKeyFromPassphrase(tt.passphrase, tt.salt)
+			require.NoError(t, err2)
+			require.Equal(t, key, key2, "same inputs should produce identical keys")
+		})
+	}
 }
 
 func TestInitSecretsMetadataKMS(t *testing.T) {

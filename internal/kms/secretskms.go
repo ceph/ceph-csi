@@ -18,8 +18,6 @@ package kms
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -184,17 +182,15 @@ func (kms secretsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK
 		return "", fmt.Errorf("failed to get passphrase: %w", err)
 	}
 
-	aead, err := generateCipher(passphrase, volumeID)
+	key, err := generateKeyFromPassphrase(passphrase, volumeID)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate cipher: %w", err)
+		return "", fmt.Errorf("failed to generate key for cipher: %w", err)
 	}
 
-	emd := encryptedMetadataDEK{}
-	emd.Nonce, err = generateNonce(aead.NonceSize())
+	emd, err := symmetricEncrypt(plainDEK, key)
 	if err != nil {
-		return "", fmt.Errorf("failed to generated nonce: %w", err)
+		return "", fmt.Errorf("failed to encrypt the plainDEK: %w", err)
 	}
-	emd.DEK = aead.Seal(nil, emd.Nonce, []byte(plainDEK), nil)
 
 	emdData, err := json.Marshal(&emd)
 	if err != nil {
@@ -214,9 +210,9 @@ func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encrypte
 		return "", fmt.Errorf("failed to get passphrase: %w", err)
 	}
 
-	aead, err := generateCipher(passphrase, volumeID)
+	key, err := generateKeyFromPassphrase(passphrase, volumeID)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate cipher: %w", err)
+		return "", fmt.Errorf("failed to generate key for cipher: %w", err)
 	}
 
 	emd := encryptedMetadataDEK{}
@@ -226,12 +222,12 @@ func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encrypte
 			"encryptedMetadataDEK: %w", err)
 	}
 
-	dek, err := aead.Open(nil, emd.Nonce, emd.DEK, nil)
+	val, err := symmetricDecrypt(&emd, key)
 	if err != nil {
 		return "", fmt.Errorf("failed to decrypt DEK: %w", err)
 	}
 
-	return string(dek), nil
+	return val, nil
 }
 
 func (kms secretsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
@@ -278,23 +274,15 @@ func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
 	return passphraseValue, nil
 }
 
-// generateCipher returns a AEAD cipher based on a passphrase and salt
-// (volumeID). The cipher can then be used to encrypt/decrypt the DEK.
-func generateCipher(passphrase, salt string) (cipher.AEAD, error) {
+// generateKeyFromPassphrase generates a 256bit key to be used for
+// crypto operations from the provided passphrase and salt.
+func generateKeyFromPassphrase(passphrase, salt string) ([]byte, error) {
 	key, err := scrypt.Key([]byte(passphrase), []byte(salt), 32768, 8, 1, 32)
 	if err != nil {
 		return nil, err
 	}
-	blockCipher, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	aead, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, err
-	}
 
-	return aead, nil
+	return key, nil
 }
 
 // generateNonce returns a byte slice with random contents.
