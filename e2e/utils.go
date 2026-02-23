@@ -99,6 +99,7 @@ var (
 	clusterID          string
 	nfsDriverName      string
 	operatorDeployment bool
+	monsCache          = make(map[string][]string)
 )
 
 type cephfsFilesystem struct {
@@ -307,6 +308,10 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 }
 
 func getMons(ns string, c kubernetes.Interface) ([]string, error) {
+	if mons, ok := monsCache[ns]; ok {
+		return mons, nil
+	}
+
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mon",
 	}
@@ -338,6 +343,8 @@ func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 			svcList.Items[i].Spec.Ports[0].Port)
 		services = append(services, s)
 	}
+
+	monsCache[ns] = services
 
 	return services, nil
 }
