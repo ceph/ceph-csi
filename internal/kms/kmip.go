@@ -330,7 +330,7 @@ func (kms *kmipKMS) connect() (*tls.Conn, error) {
 		}
 	}
 	if kms.writeTimeout != 0 {
-		err = conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(kms.writeTimeout)))
+		err = conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(kms.writeTimeout)))
 		if err != nil {
 			return nil, fmt.Errorf("failed to set write deadline: %w", err)
 		}
