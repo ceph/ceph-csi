@@ -91,7 +91,7 @@ spec:
             - --v=1
             - --kubelet-registration-path=/var/lib/kubelet/plugins/nvmeof.csi.ceph.com/csi.sock
             - --csi-address=unix:///csi/csi.sock
-          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.13.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.16.0
           imagePullPolicy: IfNotPresent
           name: driver-registrar
           resources: {}

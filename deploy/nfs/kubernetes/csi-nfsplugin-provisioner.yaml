@@ -125,7 +125,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.4.0
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.5.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
