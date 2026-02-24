@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -405,17 +406,13 @@ var _ = Describe("RBD", func() {
 		}
 		deployVault(f.ClientSet, deployTimeout)
 
-		// wait for provisioner deployment
-		err = waitForDeploymentComplete(f.ClientSet, rbdDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
-		if err != nil {
-			logAndFail("timeout waiting for deployment %s: %v", rbdDeployment.getDeploymentName(), err)
-		}
-
-		// wait for nodeplugin deamonset pods
-		err = waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
-		if err != nil {
-			logAndFail("timeout waiting for daemonset %s: %v", rbdDeployment.getDaemonsetName(), err)
-		}
+		// wait for provisioner and nodeplugin
+		Expect(waitForCSI(
+			f.ClientSet,
+			rbdDeployment.getDeploymentName(),
+			rbdDeployment.getDaemonsetName(),
+			cephCSINamespace, deployTimeout,
+		)).ShouldNot(HaveOccurred())
 
 		kernelRelease, err = getKernelVersionFromDaemonset(f, cephCSINamespace, rbdDeployment.getDaemonsetName(), rbdContainerName)
 		if err != nil {

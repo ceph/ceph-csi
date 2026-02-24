@@ -25,6 +25,7 @@ import (
 	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -330,18 +331,14 @@ var _ = Describe(cephfsType, func() {
 				logAndFail("failed getting cephFS metadata pool name: %v", getErr)
 			}
 
-			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(f.ClientSet, cephFSDeployment.getDeploymentName(), cephCSINamespace, deployTimeout)
-				if err != nil {
-					logAndFail("timeout waiting for deployment %s: %v", cephFSDeployment.getDeploymentName(), err)
-				}
-			})
-
-			By("checking nodeplugin daemonset pods are running", func() {
-				err := waitForDaemonSets(cephFSDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					logAndFail("timeout waiting for daemonset %s: %v", cephFSDeployment.getDaemonsetName(), err)
-				}
+			By("checking provisioner and nodeplugin are running", func() {
+				Expect(waitForCSI(
+					f.ClientSet,
+					cephFSDeployment.getDeploymentName(),
+					cephFSDeployment.getDaemonsetName(),
+					cephCSINamespace,
+					deployTimeout,
+				)).ShouldNot(HaveOccurred())
 			})
 
 			// test only if ceph-csi is deployed via helm
