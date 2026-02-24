@@ -49,12 +49,12 @@ type NodeServer struct {
 
 // ConnectionInfo holds NVMe-oF connection details.
 type NvmeConnectionInfo struct {
-	SubsystemNQN  string                  `json:"subsystemNQN"`
-	NamespaceID   uint32                  `json:"namespaceID"`
-	NamespaceUUID string                  `json:"namespaceUUID"`
-	Listeners     []nvmeof.GatewayAddress `json:"listeners"`
-	HostNQN       string                  `json:"hostNQN,omitempty"`
-	Transport     string                  `json:"transport"`
+	SubsystemNQN  string                   `json:"subsystemNQN"`
+	NamespaceID   uint32                   `json:"namespaceID"`
+	NamespaceUUID string                   `json:"namespaceUUID"`
+	Listeners     []nvmeof.ListenerDetails `json:"listeners"`
+	HostNQN       string                   `json:"hostNQN,omitempty"`
+	Transport     string                   `json:"transport"`
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed
@@ -566,7 +566,7 @@ func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string
 		return nil, errors.New("missing listeners in volume context")
 	}
 
-	var listeners []nvmeof.GatewayAddress
+	var listeners []nvmeof.ListenerDetails
 	if err := json.Unmarshal([]byte(listenersJSON), &listeners); err != nil {
 		return nil, fmt.Errorf("failed to parse listeners JSON: %w", err)
 	}
@@ -595,13 +595,19 @@ func (ns *NodeServer) connectToSubsystem(ctx context.Context, info *NvmeConnecti
 	// Create connect request
 	connectReq := &nvmeof.ConnectRequest{
 		SubsystemNQN: info.SubsystemNQN,
-		Listeners:    info.Listeners,
 		Transport:    info.Transport,
 		HostNQN:      info.HostNQN,
 	}
 
+	// Resolve listener IP addresses
+	validListeners, err := nvmeof.ResolveListeners(ctx, info.Listeners)
+	if err != nil {
+		return "", fmt.Errorf("failed to setup listeners: %w", err)
+	}
+
+	connectReq.Listeners = validListeners
 	// Connect to subsystem
-	_, err := ns.initiator.ConnectSubsystem(ctx, connectReq)
+	_, err = ns.initiator.ConnectSubsystem(ctx, connectReq)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to subsystem: %w", err)
 	}
