@@ -15,7 +15,12 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 provisioner: {{ .Values.driverName }}
 parameters:
+{{- if .Values.storageClass.clusterID }}
   clusterID: {{ .Values.storageClass.clusterID }}
+{{- end }}
+{{- if .Values.storageClass.clusterTopologyConfigMap }}
+  clusterTopologyConfigMap: {{ .Values.storageClass.clusterTopologyConfigMap }}
+{{- end }}
   imageFeatures: {{ .Values.storageClass.imageFeatures }}
 {{- if .Values.storageClass.pool }}  
   pool: {{ .Values.storageClass.pool }}

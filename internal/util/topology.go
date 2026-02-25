@@ -124,6 +124,17 @@ type TopologyConstrainedPool struct {
 	DomainSegments []topologySegment `json:"domainSegments"`
 }
 
+// ClusterTopology stores the cluster configuration for multi-cluster topology-aware provisioning.
+type ClusterTopology struct {
+	ClusterID string   `json:"clusterID"`
+	Monitors  string   `json:"monitors"`
+	Zones     []string `json:"zones"`
+	Pool      string   `json:"pool"`
+	DataPool  string   `json:"dataPool,omitempty"`
+	// SecretName is the name of the secret containing credentials for this cluster.
+	SecretName string `json:"secretName,omitempty"`
+}
+
 // GetTopologyFromRequest extracts TopologyConstrainedPools and passed in accessibility constraints
 // from a CSI CreateVolume request.
 func GetTopologyFromRequest(
@@ -153,6 +164,50 @@ func GetTopologyFromRequest(
 	}
 
 	return &topologyPools, accessibilityRequirements, nil
+}
+
+// GetClusterTopologiesFromRequest extracts ClusterTopologies from a ConfigMap specified in the request parameters.
+func GetClusterTopologiesFromRequest(
+	req *csi.CreateVolumeRequest,
+) (*[]ClusterTopology, *csi.TopologyRequirement, error) {
+	var clusterTopologies []ClusterTopology
+
+	clusterTopologyConfigMap := req.GetParameters()["clusterTopologyConfigMap"]
+	if clusterTopologyConfigMap == "" {
+		return nil, nil, nil
+	}
+
+	accessibilityRequirements := req.GetAccessibilityRequirements()
+	if accessibilityRequirements == nil {
+		return nil, nil, nil
+	}
+
+	namespace, err := GetPodNamespace()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get pod namespace: %w", err)
+	}
+	cm, err := k8s.GetConfigMap(namespace, clusterTopologyConfigMap)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get ConfigMap %s/%s: %w", namespace, clusterTopologyConfigMap, err)
+	}
+
+	configJSON, ok := cm.Data["config.json"]
+	if !ok {
+		return nil, nil, fmt.Errorf("config.json not found in ConfigMap %s/%s", namespace, clusterTopologyConfigMap)
+	}
+
+	var config struct {
+		ClusterTopology []ClusterTopology `json:"clusterTopology"`
+	}
+
+	err = json.Unmarshal([]byte(configJSON), &config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse config.json: %w", err)
+	}
+
+	clusterTopologies = config.ClusterTopology
+
+	return &clusterTopologies, accessibilityRequirements, nil
 }
 
 // MatchPoolAndTopology returns the topology map, if the passed in pool matches any
@@ -253,4 +308,50 @@ func extractDomainsFromlabels(topology *csi.Topology) map[string]string {
 	}
 
 	return domainMap
+}
+
+// FindClusterAndTopology finds the cluster that matches the topology requirements based on zones.
+func FindClusterAndTopology(clusterTopologies *[]ClusterTopology,
+	accessibilityRequirements *csi.TopologyRequirement,
+) (ClusterTopology, map[string]string, error) {
+	if clusterTopologies == nil || accessibilityRequirements == nil {
+		return ClusterTopology{}, nil, nil
+	}
+
+	preferred := accessibilityRequirements.GetPreferred()
+	if len(preferred) == 0 {
+		preferred = accessibilityRequirements.GetRequisite()
+	}
+
+	for _, topology := range preferred {
+		cluster := matchClusterToTopology(clusterTopologies, topology)
+		if cluster.ClusterID != "" {
+			return cluster, topology.GetSegments(), nil
+		}
+	}
+
+	requisite := accessibilityRequirements.GetRequisite()
+	for _, topology := range requisite {
+		cluster := matchClusterToTopology(clusterTopologies, topology)
+		if cluster.ClusterID != "" {
+			return cluster, topology.GetSegments(), nil
+		}
+	}
+
+	return ClusterTopology{}, nil, nil
+}
+
+// matchClusterToTopology finds the cluster that has the zone in its zones list.
+func matchClusterToTopology(clusterTopologies *[]ClusterTopology, topology *csi.Topology) ClusterTopology {
+	for _, segmentValue := range topology.GetSegments() {
+		for _, cluster := range *clusterTopologies {
+			for _, z := range cluster.Zones {
+				if z == segmentValue {
+					return cluster
+				}
+			}
+		}
+	}
+
+	return ClusterTopology{}
 }

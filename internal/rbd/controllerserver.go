@@ -81,14 +81,17 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	}
 	options := req.GetParameters()
 	if value, ok := options["clusterID"]; !ok || value == "" {
-		return status.Error(codes.InvalidArgument, "empty cluster ID to provision volume from")
+		if _, ok := options["clusterTopologyConfigMap"]; !ok {
+			return status.Error(codes.InvalidArgument, "empty cluster ID to provision volume from")
+		}
 	}
 	poolValue, poolOK := options["pool"]
 	topologyConstrainedPoolsValue, topologyOK := options["topologyConstrainedPools"]
+	_, clusterTopologyOK := options["clusterTopologyConfigMap"]
 	if !poolOK {
 		if topologyOK && topologyConstrainedPoolsValue == "" {
 			return status.Error(codes.InvalidArgument, "empty pool name or topologyConstrainedPools to provision volume")
-		} else if !topologyOK {
+		} else if !topologyOK && !clusterTopologyOK {
 			return status.Error(codes.InvalidArgument, "missing or empty pool name to provision volume from")
 		}
 	} else if poolValue == "" {
@@ -155,7 +158,6 @@ func validateStriping(parameters map[string]string) error {
 func (cs *ControllerServer) parseVolCreateRequest(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
-	cr *util.Credentials,
 ) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
@@ -230,17 +232,26 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// store cluster topology information from the request if present
+	var clusterTopologyRequirement *csi.TopologyRequirement
+	rbdVol.ClusterTopologies, clusterTopologyRequirement, err = util.GetClusterTopologiesFromRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	if rbdVol.TopologyRequirement == nil {
+		rbdVol.TopologyRequirement = clusterTopologyRequirement
+	}
+
 	// parse QOS parameters from mutable parameters
 	err = rbdVol.SetQOS(ctx, req.GetMutableParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	err = rbdVol.Connect(cr)
+	// Get QosParameters from SC if qos configuration existing in SC
+	err = rbdVol.SetQOS(ctx, req.GetParameters())
 	if err != nil {
-		log.ErrorLog(ctx, "failed to connect to volume %v: %v", rbdVol.RbdImageName, err)
-
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
@@ -276,6 +287,10 @@ func (rbdVol *rbdVolume) ToCSI(ctx context.Context) (*csi.Volume, error) {
 
 	if rbdVol.DataPool != "" {
 		vol.VolumeContext["dataPool"] = rbdVol.DataPool
+	}
+
+	if rbdVol.ClusterSecretName != "" {
+		vol.VolumeContext["clusterSecretName"] = rbdVol.ClusterSecretName
 	}
 
 	if rbdVol.Topology != nil {
@@ -362,19 +377,48 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
-	// TODO: create/get a connection from the ConnPool, and do not pass the
-	// credentials to any of the utility functions.
-
-	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	defer cr.DeleteCredentials()
-	rbdVol, err := cs.parseVolCreateRequest(ctx, req, cr)
+	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 	defer rbdVol.Destroy(ctx)
+
+	selectedCluster := util.ClusterTopology{}
+	if rbdVol.ClusterTopologies != nil {
+		selectedCluster, _, err = util.FindClusterAndTopology(rbdVol.ClusterTopologies, rbdVol.TopologyRequirement)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		if selectedCluster.ClusterID == "" {
+			return nil, status.Error(codes.InvalidArgument, "no matching cluster found for provided topology requirements")
+		}
+		// persist selected secret for volume context
+		rbdVol.ClusterSecretName = selectedCluster.SecretName
+	}
+
+	secrets := req.GetSecrets()
+	if len(secrets) == 0 && selectedCluster.SecretName != "" {
+		namespace, nsErr := util.GetPodNamespace()
+		if nsErr != nil {
+			return nil, status.Error(codes.InvalidArgument, nsErr.Error())
+		}
+		secrets, err = k8s.GetSecret(selectedCluster.SecretName, namespace)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+	if len(secrets) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "missing credentials for provisioning")
+	}
+
+	// TODO: create/get a connection from the ConnPool, and do not pass the
+	// credentials to any of the utility functions.
+
+	cr, err := util.NewUserCredentialsWithMigration(secrets)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
 	// Existence and conflict checks
 	if acquired := cs.VolumeLocks.TryAcquire(req.GetName()); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, req.GetName())
@@ -396,6 +440,13 @@ func (cs *ControllerServer) CreateVolume(
 
 	err = updateTopologyConstraints(rbdVol, rbdSnap)
 	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	err = rbdVol.Connect(cr)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to connect to volume %v: %v", rbdVol.RbdImageName, err)
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -868,8 +919,8 @@ func checkContentSource(
 			return nil, nil, status.Error(codes.NotFound, "volume cannot be empty")
 		}
 		volID := vol.GetVolumeId()
-		if err := util.ValidateVolumeID(volID, true); err != nil {
-			return nil, nil, status.Error(codes.InvalidArgument, err.Error())
+		if volID == "" {
+			return nil, nil, status.Errorf(codes.NotFound, "volume ID cannot be empty")
 		}
 		rbdvol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
@@ -957,8 +1008,8 @@ func (cs *ControllerServer) DeleteVolume(
 
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volumeID, true); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
 	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
@@ -1121,8 +1172,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	if err := util.ValidateVolumeID(req.GetVolumeId(), util.IsStaticVol(req.GetVolumeContext())); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
 	if len(req.GetVolumeCapabilities()) == 0 {
@@ -1595,8 +1646,8 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 
 	volID := req.GetVolumeId()
-	if err := util.ValidateVolumeID(volID, true); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if volID == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume ID cannot be empty")
 	}
 
 	capRange := req.GetCapacityRange()
@@ -1777,8 +1828,8 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	if !k8s.RunsOnKubernetes() {
 		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
-	if err := util.ValidateVolumeID(req.GetVolumeId(), true); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
 	}
 
 	volumeId := req.GetVolumeId()

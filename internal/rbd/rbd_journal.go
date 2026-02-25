@@ -472,6 +472,29 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 
 		return nil
 	}
+	if rbdVol.ClusterTopologies != nil {
+		cluster, topology, err := util.FindClusterAndTopology(rbdVol.ClusterTopologies, rbdVol.TopologyRequirement)
+		if err != nil {
+			return err
+		}
+		if cluster.ClusterID == "" {
+			return fmt.Errorf("no matching cluster found for provided topology requirements")
+		}
+		rbdVol.ClusterID = cluster.ClusterID
+		rbdVol.Monitors = cluster.Monitors
+		rbdVol.Pool = cluster.Pool
+		rbdVol.DataPool = cluster.DataPool
+		rbdVol.JournalPool = cluster.Pool
+		rbdVol.Topology = topology
+		rbdVol.ClusterSecretName = cluster.SecretName
+		rbdVol.RadosNamespace, err = util.GetRBDRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
 	// update request based on topology constrained parameters (if present)
 	poolName, dataPoolName, topology, err := util.FindPoolAndTopology(rbdVol.TopologyPools, rbdVol.TopologyRequirement)
 	if err != nil {
@@ -667,7 +690,7 @@ func RegenerateJournal(
 			}
 		}
 		// Update Metadata on reattach of the same old PV
-		parameters := k8s.PrepareVolumeMetadata(claimName, owner, requestName)
+		parameters := k8s.PrepareVolumeMetadata(claimName, owner, "")
 		err = rbdVol.setAllMetadata(parameters)
 		if err != nil {
 			return "", fmt.Errorf("failed to set volume metadata: %w", err)

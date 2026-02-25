@@ -183,6 +183,7 @@ type rbdVolume struct {
 	// VolName and MonValueFromSecret are retained from older plugin versions (<= 1.0.0)
 	// for backward compatibility reasons
 	TopologyPools       *[]util.TopologyConstrainedPool
+	ClusterTopologies   *[]util.ClusterTopology
 	TopologyRequirement *csi.TopologyRequirement
 	Topology            map[string]string
 	// DataPool is where the data for images in `Pool` are stored, this is used as the `--data-pool`
@@ -197,6 +198,7 @@ type rbdVolume struct {
 	LogStrategy        string
 	VolName            string
 	MonValueFromSecret string
+	ClusterSecretName  string
 	// Network namespace file path to execute nsenter command
 	NetNamespaceFilePath string
 	// RequestedVolSize has the size of the volume requested by the user and
@@ -1159,7 +1161,7 @@ func genSnapFromSnapID(
 	}()
 
 	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == crypto.EncryptionTypeBlock {
-		err = rbdSnap.configureBlockEncryption(imageAttributes.KmsID, secrets, nil)
+		err = rbdSnap.configureBlockEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdSnap, fmt.Errorf("failed to configure block encryption for "+
 				"%q: %w", rbdSnap, err)
@@ -1261,7 +1263,7 @@ func generateVolumeFromVolumeID(
 	rbdVol.Owner = imageAttributes.Owner
 
 	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == crypto.EncryptionTypeBlock {
-		err = rbdVol.configureBlockEncryption(imageAttributes.KmsID, secrets, nil)
+		err = rbdVol.configureBlockEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err
 		}
@@ -1440,7 +1442,9 @@ func genVolFromVolumeOptions(
 	rbdVol.Pool, ok = volOptions["pool"]
 	if !ok {
 		if _, ok = volOptions["topologyConstrainedPools"]; !ok {
-			return nil, errors.New("empty pool name or topologyConstrainedPools to provision volume")
+			if _, ok = volOptions["clusterTopologyConfigMap"]; !ok {
+				return nil, errors.New("empty pool name, topologyConstrainedPools, or clusterTopologyConfigMap to provision volume")
+			}
 		}
 	}
 
@@ -1451,18 +1455,24 @@ func genVolFromVolumeOptions(
 
 	clusterID, err := util.GetClusterID(volOptions)
 	if err != nil {
-		return nil, err
+		if _, ok := volOptions["clusterTopologyConfigMap"]; !ok {
+			return nil, err
+		}
 	}
 	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(ctx, clusterID, checkClusterIDMapping)
 	if err != nil {
-		log.ErrorLog(ctx, "failed getting mons (%s)", err)
+		if _, ok := volOptions["clusterTopologyConfigMap"]; !ok {
+			log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
-		return nil, err
+			return nil, err
+		}
 	}
 
 	rbdVol.RadosNamespace, err = util.GetRBDRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
-		return nil, err
+		if _, ok := volOptions["clusterTopologyConfigMap"]; !ok {
+			return nil, err
+		}
 	}
 	if rbdVol.Mounter, ok = volOptions["mounter"]; !ok {
 		rbdVol.Mounter = rbdDefaultMounter

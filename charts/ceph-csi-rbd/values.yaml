@@ -365,11 +365,17 @@ storageClass:
   #   storageclass.kubernetes.io/is-default-class: "true"
   annotations: {}
 
-  # (required) String representing a Ceph cluster to provision storage from.
-  # Should be unique across all Ceph clusters in use for provisioning,
-  # cannot be greater than 36 bytes in length, and should remain immutable for
-  # the lifetime of the StorageClass in use.
-  clusterID: <cluster-ID>
+  # (required unless clusterTopologyConfigMap is set) String representing a Ceph
+  # cluster to provision storage from. Should be unique across all Ceph clusters
+  # in use for provisioning, cannot be greater than 36 bytes in length, and
+  # should remain immutable for the lifetime of the StorageClass in use.
+  clusterID: ""
+
+  # (optional) ConfigMap name containing clusterTopology entries used for
+  # topology-based cluster selection. The ConfigMap must live in the same
+  # namespace as the Ceph-CSI pods and provide a config.json with
+  # `clusterTopology` entries.
+  clusterTopologyConfigMap: ""
 
   # (optional) If you want to use erasure coded pool with RBD, you need to
   # create two pools. one erasure coded and one replicated.

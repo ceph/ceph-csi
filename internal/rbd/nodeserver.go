@@ -352,7 +352,22 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	volID := req.GetVolumeId()
-	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
+	secrets := req.GetSecrets()
+	if len(secrets) == 0 {
+		clusterSecretName := req.GetVolumeContext()["clusterSecretName"]
+		if clusterSecretName != "" {
+			namespace, nsErr := util.GetPodNamespace()
+			if nsErr != nil {
+				return nil, status.Error(codes.InvalidArgument, nsErr.Error())
+			}
+			secrets, err = k8s.GetSecret(clusterSecretName, namespace)
+			if err != nil {
+				return nil, status.Error(codes.InvalidArgument, err.Error())
+			}
+		}
+	}
+
+	cr, err := util.NewUserCredentialsWithMigration(secrets)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
