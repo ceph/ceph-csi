@@ -93,7 +93,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 		nvmeofStorageClass = "e2e-" + f.UniqueName + "-sc"
 		createNVMeoFStorageClass(f, nvmeofStorageClass, options, params, policy)
-	})
+	}, ginkgo.OncePerOrdered)
 
 	ginkgo.AfterEach(func() {
 		if !deployNVMeoF {
@@ -115,9 +115,9 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		deleteNVMeoFPlugin()
 		deleteGateway(f)
 		deleteNVMeofStorageClass(f, nvmeofStorageClass)
-	})
+	}, ginkgo.OncePerOrdered)
 
-	ginkgo.Context("Test NVMe CSI", func() {
+	ginkgo.Context("Test NVMe CSI", ginkgo.Ordered, func() {
 
 		pvcPath := nvmeofExamplePath + "pvc.yaml"
 
