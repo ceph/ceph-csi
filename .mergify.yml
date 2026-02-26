@@ -97,6 +97,7 @@ merge_queue:
 pull_request_rules:
   - name: start CI jobs for PRs in the merge queue
     conditions:
+      - -closed
       - base~=^(devel)|(release-.+)$
       - label!=conflicts
       - label!=ci/skip/e2e
