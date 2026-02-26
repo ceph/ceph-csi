@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	cephfsstore "github.com/ceph/ceph-csi/internal/cephfs/store"
 	ctrl "github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -137,23 +138,44 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVolID, err := rbd.RegenerateJournal(
-		pv.Spec.CSI.VolumeAttributes,
-		pv.Spec.ClaimRef.Name,
-		volumeHandler,
-		requestName,
-		pvcNamespace,
-		r.config.ClusterName,
-		r.config.InstanceID,
-		r.config.SetMetadata,
-		cr)
-	if err != nil {
-		log.ErrorLogMsg("failed to regenerate journal %s", err)
+	// Determine PV type from volume attributes and dispatch accordingly.
+	// CephFS PVs always have "fsName" in their volume attributes (required
+	// StorageClass parameter), while RBD PVs do not.
+	_, isCephFS := pv.Spec.CSI.VolumeAttributes["fsName"]
+	if isCephFS {
+		err = cephfsstore.SetSubVolCSIMetadata(
+			ctx,
+			pv.Spec.CSI.VolumeAttributes,
+			volumeHandler,
+			requestName,
+			pv.Spec.ClaimRef.Name,
+			pvcNamespace,
+			r.config.ClusterName,
+			cr)
+		if err != nil {
+			log.ErrorLogMsg("failed to set CephFS subvolume metadata %s", err)
 
-		return err
-	}
-	if rbdVolID != volumeHandler {
-		log.DebugLog(ctx, "volumeHandler changed from %s to %s", volumeHandler, rbdVolID)
+			return err
+		}
+	} else {
+		rbdVolID, err := rbd.RegenerateJournal(
+			pv.Spec.CSI.VolumeAttributes,
+			pv.Spec.ClaimRef.Name,
+			volumeHandler,
+			requestName,
+			pvcNamespace,
+			r.config.ClusterName,
+			r.config.InstanceID,
+			r.config.SetMetadata,
+			cr)
+		if err != nil {
+			log.ErrorLogMsg("failed to regenerate journal %s", err)
+
+			return err
+		}
+		if rbdVolID != volumeHandler {
+			log.DebugLog(ctx, "volumeHandler changed from %s to %s", volumeHandler, rbdVolID)
+		}
 	}
 
 	return nil

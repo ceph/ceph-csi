@@ -28,6 +28,7 @@ import (
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 	"github.com/ceph/ceph-csi/pkg/util/crypto"
 )
@@ -470,4 +471,57 @@ func CheckSnapExists(
 		snapData.ImageAttributes.RequestName, volOptions.VolID, sid.FsSnapshotName)
 
 	return sid, nil
+}
+
+// SetSubVolCSIMetadata sets CSI metadata (PV/PVC info) on a CephFS subvolume.
+func SetSubVolCSIMetadata(
+	ctx context.Context,
+	volumeAttributes map[string]string,
+	volumeID,
+	pvName,
+	pvcName,
+	pvcNamespace,
+	clusterName string,
+	cr *util.Credentials,
+) error {
+	var vi util.CSIIdentifier
+	if err := vi.DecomposeCSIID(volumeID); err != nil {
+		return fmt.Errorf("%w: error decoding volume ID (%w) (%s)",
+			cerrors.ErrInvalidVolID, err, volumeID)
+	}
+
+	monitors, err := util.Mons(util.CsiConfigFile, vi.ClusterID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", vi.ClusterID, err)
+	}
+
+	subvolumeGroup, err := util.CephFSSubvolumeGroup(util.CsiConfigFile, vi.ClusterID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch subvolumegroup using clusterID (%s): %w", vi.ClusterID, err)
+	}
+
+	conn := &util.ClusterConnection{}
+	if err = conn.Connect(monitors, cr); err != nil {
+		return fmt.Errorf("failed to connect to cluster: %w", err)
+	}
+	defer conn.Destroy()
+
+	fsName := volumeAttributes["fsName"]
+	subvolName := volumeAttributes["subvolumeName"]
+
+	subVol := &core.SubVolume{
+		VolID:          subvolName,
+		FsName:         fsName,
+		SubvolumeGroup: subvolumeGroup,
+	}
+	volClient := core.NewSubVolume(conn, subVol, vi.ClusterID, clusterName, true)
+	parameters := k8s.PrepareVolumeMetadata(pvcName, pvcNamespace, pvName)
+	if err = volClient.SetAllMetadata(parameters); err != nil {
+		return fmt.Errorf("failed to set metadata on subvolume %s: %w", subvolName, err)
+	}
+
+	log.DebugLog(ctx, "cephfs: successfully set metadata on subvolume %s for PV %s",
+		subvolName, pvName)
+
+	return nil
 }

@@ -247,6 +247,10 @@ provisioner:
   # set metadata on volume
   setmetadata: true
 
+  # deployController to enable or disable the deployment of controller which
+  # sets the CSI metadata on CephFS subvolumes.
+  deployController: true
+
   # enable fencing
   fencing: false
 
