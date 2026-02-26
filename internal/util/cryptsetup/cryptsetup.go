@@ -39,6 +39,10 @@ const (
 	// Maximum time to wait for cryptsetup commands to complete.
 	ExecutionTimeout = 2*time.Minute + 30*time.Second
 
+	// Limit PBKDF parallel threads to 1 to reduce CPU contention
+	// when many cryptsetup processes run concurrently.
+	cryptsetupPBKDFParallelLimit = 1
+
 	// Limit memory used by Argon2i PBKDF to 32 MiB.
 	cryptsetupPBKDFMemoryLimit = 32 << 10 // 32768 KiB
 	luks2MetadataSize          = 32 << 7  // 4096 KiB
@@ -580,6 +584,8 @@ func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *Encry
 		strconv.Itoa(luks2KeySlotsSize)+"k",
 		"--pbkdf-memory",
 		strconv.Itoa(cryptsetupPBKDFMemoryLimit),
+		"--pbkdf-parallel",
+		strconv.Itoa(cryptsetupPBKDFParallelLimit),
 		devicePath,
 		"-d",
 		"-")
@@ -635,6 +641,10 @@ func (l *luksWrapper) AddKey(devicePath, passphrase, newPassphrase, slot string)
 		"--verbose",
 		"--key-file="+passFile.Name(),
 		"--key-slot="+slot,
+		"--pbkdf-memory",
+		strconv.Itoa(cryptsetupPBKDFMemoryLimit),
+		"--pbkdf-parallel",
+		strconv.Itoa(cryptsetupPBKDFParallelLimit),
 		"luksAddKey",
 		devicePath,
 		newPassFile.Name(),
@@ -720,14 +730,17 @@ func (l *luksWrapper) VerifyKey(devicePath, passphrase, slot string) (bool, erro
 	}
 	defer os.Remove(keyFile.Name()) //nolint:errcheck // failed to delete temp file :-(
 
+	// Use "open --test-passphrase" instead of "luksChangeKey" to avoid
+	// an unnecessary PBKDF write derivation. --test-passphrase only
+	// derives the key once (read-only) to verify it matches the slot.
 	_, stderr, err := l.execCryptsetupCommand(
 		nil,
 		"--verbose",
 		"--key-file="+keyFile.Name(),
 		"--key-slot="+slot,
-		"luksChangeKey",
+		"open",
+		"--test-passphrase",
 		devicePath,
-		keyFile.Name(),
 	)
 	if err != nil {
 		// If the passphrase doesn't match the key in given slot
