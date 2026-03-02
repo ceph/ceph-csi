@@ -168,7 +168,6 @@ func (r *rbdDriver) Run(conf *util.Config) {
 			log.FatalLogMsg("%v", err.Error())
 		}
 		r.ns = NewNodeServer(r.cd, conf.Vtype, nodeLabels, topology, crushLocationMap)
-		r.ns.SetMetadata = conf.SetMetadata
 		var attr string
 		attr, err = rbd.GetKrbdSupportedFeatures()
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -187,7 +186,6 @@ func (r *rbdDriver) Run(conf *util.Config) {
 	if conf.IsControllerServer {
 		r.cs = NewControllerServer(r.cd)
 		r.cs.ClusterName = conf.ClusterName
-		r.cs.SetMetadata = conf.SetMetadata
 	}
 
 	// configure CSI-Addons server and components

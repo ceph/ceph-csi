@@ -62,9 +62,6 @@ type ControllerServer struct {
 
 	// Cluster name
 	ClusterName string
-
-	// Set metadata on volume
-	SetMetadata bool
 }
 
 func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest) error {
@@ -193,8 +190,6 @@ func (cs *ControllerServer) parseVolCreateRequest(
 
 	// set cluster name on volume
 	rbdVol.ClusterName = cs.ClusterName
-	// set metadata on volume
-	rbdVol.EnableMetadata = cs.SetMetadata
 
 	// if the KMS is of type VaultToken, additional metadata is needed
 	// depending on the tenant, the KMS can be configured with other
@@ -1185,8 +1180,6 @@ func (cs *ControllerServer) CreateSnapshot(
 
 		return nil, err
 	}
-	rbdVol.EnableMetadata = cs.SetMetadata
-
 	// Check if source volume was created with required image features for snaps
 	if !rbdVol.hasSnapshotFeature() {
 		return nil, status.Errorf(
@@ -1845,16 +1838,12 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 //   - rbdVolume: The rbdVolume object representing the RBD image.
 //
 // Behavior:
-//   - If the '--setmetadata' flag is set to false in CSI driver configuration, does nothing.
 //   - Removes the user ID mapping metadata for the specified nodeId from the RBD image.
 func (cs *ControllerServer) removeUserIdMapping(
 	ctx context.Context,
 	nodeId string,
 	rv *rbdVolume,
 ) error {
-	if !cs.SetMetadata {
-		return nil
-	}
 	if nodeId == "" {
 		return errors.New("nodeId cannot be empty")
 	}

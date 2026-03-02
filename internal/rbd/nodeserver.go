@@ -55,9 +55,6 @@ type NodeServer struct {
 	ext4HasPrezeroedSupport featureFlag
 	// xfsHasReflinkSupport indicates whether the xfs filesystem has support for reflink.
 	xfsHasReflinkSupport featureFlag
-
-	// set metadata on volume
-	SetMetadata bool
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed
@@ -444,12 +441,11 @@ func (ns *NodeServer) NodeStageVolume(
 
 // setUserIdMapping sets the user ID mapping in the RBD image metadata.
 // The user ID is the ceph user used for mounting the RBD image.
-// If the '--setmetadata' flag is set to false in CSI driver configuration or if the volume is static
-// this function does nothing.
+// If the volume is static, this function does nothing.
 func (ns *NodeServer) setUserIdMapping(
 	ctx context.Context, cr *util.Credentials, rv *rbdVolume, isStaticVol bool,
 ) error {
-	if !ns.SetMetadata || isStaticVol {
+	if isStaticVol {
 		return nil
 	}
 

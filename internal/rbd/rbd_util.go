@@ -160,8 +160,6 @@ type rbdImage struct {
 	// an opened IOContext, call .openIoctx() before using
 	ioctx *rados.IOContext
 
-	// Set metadata on volume
-	EnableMetadata bool
 	// ParentInTrash indicates the parent image is in trash.
 	ParentInTrash bool
 
@@ -2291,10 +2289,6 @@ func genVolFromVolIDWithMigration(
 
 // setAllMetadata set all the metadata from arg parameters on RBD image.
 func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
-	if !rv.EnableMetadata {
-		return nil
-	}
-
 	for k, v := range parameters {
 		err := rv.SetMetadata(k, v)
 		if err != nil {
