@@ -47,7 +47,6 @@ type Config struct {
 	Namespace   string
 	ClusterName string
 	InstanceID  string
-	SetMetadata bool
 }
 
 // ControllerList holds the list of managers need to be started.

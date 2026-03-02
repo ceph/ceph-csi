@@ -69,7 +69,9 @@ func init() {
 	flag.StringVar(&conf.PluginPath, "pluginpath", defaultPluginPath, "plugin path")
 	flag.StringVar(&conf.StagingPath, "stagingpath", defaultStagingPath, "staging path")
 	flag.StringVar(&conf.ClusterName, "clustername", "", "name of the cluster")
-	flag.BoolVar(&conf.SetMetadata, "setmetadata", true, "set metadata on the volume")
+	flag.BoolVar(&conf.SetMetadata, "setmetadata", true,
+		"[DEPRECATED] this flag is deprecated and will be removed in a future release."+
+			" Metadata is now always set on volumes regardless of this flag's value")
 	flag.BoolVar(&conf.EnableFencing, "enable-fencing", false, "enable fencing of nodes during non-graceful shutdowns")
 	flag.StringVar(&conf.InstanceID, "instanceid", "default", "Unique ID distinguishing this instance of Ceph-CSI"+
 		" among other instances, when sharing Ceph clusters across CSI instances for provisioning")
@@ -206,6 +208,15 @@ func main() {
 	}
 	log.DefaultLog("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
 
+	// Log deprecation warning for --setmetadata flag if it was explicitly set
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "setmetadata" {
+			klog.Warning("--setmetadata flag is deprecated and has no effect. " +
+				"Metadata is always set on volumes. " +
+				"This flag will be removed in a future release")
+		}
+	})
+
 	if conf.Vtype == "" {
 		logAndExit("driver type not specified")
 	}
@@ -273,7 +284,6 @@ func main() {
 			Namespace:   conf.DriverNamespace,
 			ClusterName: conf.ClusterName,
 			InstanceID:  conf.InstanceID,
-			SetMetadata: conf.SetMetadata,
 		}
 		// initialize all controllers before starting.
 		initControllers()

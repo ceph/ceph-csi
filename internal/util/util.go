@@ -162,7 +162,7 @@ type Config struct {
 	// cephfs related flags
 	ForceKernelCephFS    bool   // force to use the ceph kernel client even if the kernel is < 4.17
 	RadosNamespaceCephFS string // RadosNamespace used to store CSI specific objects and keys
-	SetMetadata          bool   // set metadata on the volume
+	SetMetadata          bool   // Deprecated: has no effect, metadata is always set on volumes
 
 	// Read affinity related options
 	EnableReadAffinity  bool   // enable OSD read affinity.
