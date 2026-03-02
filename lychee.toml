@@ -9,6 +9,10 @@ exclude_path = [
     "vendor",
 ]
 
+exclude = [
+    '^https://kubernetes\.io', # often fails with GitHub network errors
+]
+
 # Output format
 format = "markdown"
 
