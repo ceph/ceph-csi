@@ -86,7 +86,6 @@ spec:
             - "--timeout=150s"
             - "--retry-interval-start=500ms"
             - "--leader-election=true"
-            - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
             # if fstype is not specified in storageclass, ext4 is default
             - "--default-fstype=ext4"

@@ -150,7 +150,6 @@ spec:
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
             - "--extra-create-metadata=true"
-            - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--automaxprocs=true"
             - "--prevent-volume-mode-conversion=true"
 {{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}

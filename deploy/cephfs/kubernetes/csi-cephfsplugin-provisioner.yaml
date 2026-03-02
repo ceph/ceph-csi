@@ -100,7 +100,6 @@ spec:
             - "--timeout=150s"
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
-            - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
             - "--extra-create-metadata=true"
             - "--http-endpoint=$(POD_IP):8090"
