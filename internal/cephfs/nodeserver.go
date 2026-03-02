@@ -53,9 +53,6 @@ type NodeServer struct {
 	kernelMountOptions string
 	fuseMountOptions   string
 	healthChecker      hc.Manager
-
-	// set metadata on volume
-	setMetadata bool
 }
 
 func getCredentialsForVolume(
@@ -92,7 +89,7 @@ func (ns *NodeServer) getVolumeOptions(
 	volContext,
 	volSecrets map[string]string,
 ) (*store.VolumeOptions, error) {
-	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, string(volID), volContext, volSecrets, "", false)
+	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, string(volID), volContext, volSecrets, "")
 	if err != nil {
 		if !errors.Is(err, cerrors.ErrInvalidVolID) {
 			return nil, status.Error(codes.Internal, err.Error())
@@ -354,17 +351,17 @@ func (ns *NodeServer) NodeStageVolume(
 // setUserIdMapping sets the user ID mapping in the CephFS subvolume metadata.
 // The user ID is the ceph user used for mounting the subvolume.
 // If the volume is a snapshot-backed, the user ID mapping is set on the backing snapshot metadata.
-// If the '--setmetadata' flag is set to false in CSI driver configuration or if the volume is static it does nothing.
+// If the volume is static it does nothing.
 func (ns *NodeServer) setUserIdMapping(
 	ctx context.Context, secrets map[string]string,
 	volumeId string, volOptions *store.VolumeOptions,
 ) error {
-	if !ns.setMetadata || !volOptions.ProvisionVolume {
+	if !volOptions.ProvisionVolume {
 		return nil
 	}
 
 	conn := volOptions.GetConnection()
-	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "", true)
+	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "")
 	metadataKey := core.GetUserIDMappingKey(volumeId, ns.Driver.GetNodeID())
 	params := map[string]string{metadataKey: conn.Creds.ID}
 
@@ -375,12 +372,12 @@ func (ns *NodeServer) setUserIdMapping(
 		}
 		defer cr.DeleteCredentials()
 
-		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, cr, secrets, "", true)
+		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, cr, secrets, "")
 		if err != nil {
 			return err
 		}
 		defer volOpt.Destroy()
-		snapClient := core.NewSnapshot(conn, sid.FsSnapshotName, volOpt.ClusterID, "", true, &volOpt.SubVolume)
+		snapClient := core.NewSnapshot(conn, sid.FsSnapshotName, volOpt.ClusterID, "", &volOpt.SubVolume)
 		if err = snapClient.SetAllSnapshotMetadata(params); err != nil {
 			return fmt.Errorf("failed to set user ID mapping metadata %s for subvolume snapshot %s: %w",
 				metadataKey, sid.FsSnapshotName, err)
@@ -441,12 +438,12 @@ func (ns *NodeServer) setClientAddress(
 		}
 		defer cr.DeleteCredentials()
 
-		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, cr, secrets, "", true)
+		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, cr, secrets, "")
 		if err != nil {
 			return err
 		}
 		defer volOpt.Destroy()
-		snapClient := core.NewSnapshot(conn, sid.FsSnapshotName, volOpt.ClusterID, "", true, &volOpt.SubVolume)
+		snapClient := core.NewSnapshot(conn, sid.FsSnapshotName, volOpt.ClusterID, "", &volOpt.SubVolume)
 		if err = snapClient.SetAllSnapshotMetadata(params); err != nil {
 			return fmt.Errorf("failed to set client address metadata %s for subvolume snapshot %s/%s: %w",
 				metadataKey, sid.FsSubvolName, sid.FsSnapshotName, err)
@@ -458,7 +455,7 @@ func (ns *NodeServer) setClientAddress(
 		return nil
 	}
 
-	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "", true)
+	subvolumeClient := core.NewSubVolume(conn, &volOptions.SubVolume, volOptions.ClusterID, "")
 	err = subvolumeClient.SetAllMetadata(params)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to set client address for subvolume %s: %v", volOptions.SubVolume.VolID, err)

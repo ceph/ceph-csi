@@ -85,7 +85,6 @@ func CheckVolExists(ctx context.Context,
 	sID *SnapshotIdentifier,
 	cr *util.Credentials,
 	clusterName string,
-	setMetadata bool,
 ) (*VolumeIdentifier, error) {
 	var vid VolumeIdentifier
 	j, err := VolJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
@@ -108,7 +107,7 @@ func CheckVolExists(ctx context.Context,
 	vid.FsSubvolName = imageData.ImageAttributes.ImageName
 	volOptions.VolID = vid.FsSubvolName
 
-	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID, clusterName, setMetadata)
+	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID, clusterName)
 	if (sID != nil || pvID != nil) && imageData.ImageAttributes.BackingSnapshotID == "" {
 		cloneState, cloneStateErr := vol.GetCloneState(ctx)
 		if cloneStateErr != nil {
@@ -407,7 +406,6 @@ func CheckSnapExists(
 	volOptions *VolumeOptions,
 	snap *SnapshotOption,
 	clusterName string,
-	setMetadata bool,
 	cr *util.Credentials,
 ) (*SnapshotIdentifier, error) {
 	j, err := SnapJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
@@ -431,7 +429,7 @@ func CheckSnapExists(
 	snapID := snapData.ImageAttributes.ImageName
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
 	snapClient := core.NewSnapshot(volOptions.conn, snapID,
-		volOptions.ClusterID, clusterName, setMetadata, &volOptions.SubVolume)
+		volOptions.ClusterID, clusterName, &volOptions.SubVolume)
 	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
 	if err != nil {
 		if errors.Is(err, cerrors.ErrSnapNotFound) {
@@ -514,7 +512,7 @@ func SetSubVolCSIMetadata(
 		FsName:         fsName,
 		SubvolumeGroup: subvolumeGroup,
 	}
-	volClient := core.NewSubVolume(conn, subVol, vi.ClusterID, clusterName, true)
+	volClient := core.NewSubVolume(conn, subVol, vi.ClusterID, clusterName)
 	parameters := k8s.PrepareVolumeMetadata(pvcName, pvcNamespace, pvName)
 	if err = volClient.SetAllMetadata(parameters); err != nil {
 		return fmt.Errorf("failed to set metadata on subvolume %s: %w", subvolName, err)

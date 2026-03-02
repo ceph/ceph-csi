@@ -531,7 +531,7 @@ func getFsNamesAndSubVolumeFromVolumeIDs(ctx context.Context,
 	for _, volID := range volIDs {
 		// Find the volume using the provided VolumeID
 		volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx,
-			volID, nil, secret, "", false)
+			volID, nil, secret, "")
 		if err != nil {
 			return nil, err
 		}

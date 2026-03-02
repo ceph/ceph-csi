@@ -267,7 +267,6 @@ func NewVolumeOptions(
 	ctx context.Context,
 	requestName,
 	clusterName string,
-	setMetadata bool,
 	req *csi.CreateVolumeRequest,
 	cr *util.Credentials,
 ) (*VolumeOptions, error) {
@@ -360,7 +359,7 @@ func NewVolumeOptions(
 
 		opts.BackingSnapshotID = req.GetVolumeContentSource().GetSnapshot().GetSnapshotId()
 
-		err = opts.populateVolumeOptionsFromBackingSnapshot(ctx, cr, req.GetSecrets(), clusterName, setMetadata)
+		err = opts.populateVolumeOptionsFromBackingSnapshot(ctx, cr, req.GetSecrets(), clusterName)
 		if err != nil {
 			return nil, err
 		}
@@ -400,7 +399,6 @@ func NewVolumeOptionsFromVolID(
 	volID string,
 	volOpt, secrets map[string]string,
 	clusterName string,
-	setMetadata bool,
 ) (*VolumeOptions, *VolumeIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
@@ -512,9 +510,9 @@ func NewVolumeOptionsFromVolID(
 	volOptions.SubVolume.VolID = vid.FsSubvolName
 
 	if volOptions.BackingSnapshot {
-		err = volOptions.populateVolumeOptionsFromBackingSnapshot(ctx, cr, secrets, clusterName, setMetadata)
+		err = volOptions.populateVolumeOptionsFromBackingSnapshot(ctx, cr, secrets, clusterName)
 	} else {
-		err = volOptions.populateVolumeOptionsFromSubvolume(ctx, clusterName, setMetadata)
+		err = volOptions.populateVolumeOptionsFromSubvolume(ctx, clusterName)
 	}
 
 	if volOpt == nil && imageAttributes.KmsID != "" && volOptions.Encryption == nil {
@@ -530,9 +528,8 @@ func NewVolumeOptionsFromVolID(
 func (vo *VolumeOptions) populateVolumeOptionsFromSubvolume(
 	ctx context.Context,
 	clusterName string,
-	setMetadata bool,
 ) error {
-	vol := core.NewSubVolume(vo.conn, &vo.SubVolume, vo.ClusterID, clusterName, setMetadata)
+	vol := core.NewSubVolume(vo.conn, &vo.SubVolume, vo.ClusterID, clusterName)
 
 	var info *core.Subvolume
 	info, err := vol.GetSubVolumeInfo(ctx)
@@ -554,7 +551,6 @@ func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 	cr *util.Credentials,
 	secrets map[string]string,
 	clusterName string,
-	setMetadata bool,
 ) error {
 	// As of CephFS snapshot v2 API, snapshots may be found in two locations:
 	//
@@ -577,7 +573,7 @@ func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 	}
 
 	parentBackingSnapVolOpts, _, snapID, err := NewSnapshotOptionsFromID(ctx,
-		vo.BackingSnapshotID, cr, secrets, clusterName, setMetadata)
+		vo.BackingSnapshotID, cr, secrets, clusterName)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve backing snapshot %s: %w", vo.BackingSnapshotID, err)
 	}
@@ -811,7 +807,6 @@ func NewSnapshotOptionsFromID(
 	cr *util.Credentials,
 	secrets map[string]string,
 	clusterName string,
-	setMetadata bool,
 ) (*VolumeOptions, *core.SnapshotInfo, *SnapshotIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
@@ -890,7 +885,7 @@ func NewSnapshotOptionsFromID(
 
 	volOptions.SubVolume.VolID = sid.FsSubvolName
 	volOptions.Owner = imageAttributes.Owner
-	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID, clusterName, setMetadata)
+	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID, clusterName)
 
 	if imageAttributes.KmsID != "" && volOptions.Encryption == nil {
 		err = volOptions.ConfigureEncryption(ctx, imageAttributes.KmsID, secrets)
@@ -907,7 +902,7 @@ func NewSnapshotOptionsFromID(
 	volOptions.Size = subvolInfo.BytesQuota
 	volOptions.RootPath = subvolInfo.Path
 	snap := core.NewSnapshot(volOptions.conn, sid.FsSnapshotName,
-		volOptions.ClusterID, clusterName, setMetadata, &volOptions.SubVolume)
+		volOptions.ClusterID, clusterName, &volOptions.SubVolume)
 	info, err := snap.GetSnapshotInfo(ctx)
 	if err != nil {
 		return &volOptions, nil, &sid, err

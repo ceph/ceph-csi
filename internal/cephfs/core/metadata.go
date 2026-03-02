@@ -133,10 +133,6 @@ func (s *subVolumeClient) listMetadata() (map[string]string, error) {
 
 // SetAllMetadata set all the metadata from arg parameters on Ssubvolume.
 func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
-	if !s.enableMetadata {
-		return nil
-	}
-
 	for k, v := range parameters {
 		err := s.setMetadata(k, v)
 		// If setMetadata is not supported return nil
@@ -165,10 +161,6 @@ func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
 
 // UnsetAllMetadata unset all the metadata from arg keys on subvolume.
 func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
-	if !s.enableMetadata {
-		return nil
-	}
-
 	for _, key := range keys {
 		err := s.removeMetadata(key)
 		// If setMetadata is not supported return nil
@@ -195,10 +187,6 @@ func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
 // ListMetadata returns all the metadata set on the subvolume in a volume.
 // It returns a map of key-value pairs.
 func (s *subVolumeClient) ListMetadata() (map[string]string, error) {
-	if !s.enableMetadata {
-		return nil, nil
-	}
-
 	metadata, err := s.listMetadata()
 	// If listMetadata is not supported return nil
 	if errors.Is(err, ErrSubVolMetadataNotSupported) {

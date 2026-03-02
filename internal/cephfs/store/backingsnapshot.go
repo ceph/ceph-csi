@@ -33,7 +33,6 @@ func AddSnapshotBackedVolumeRef(
 	ctx context.Context,
 	volOptions *VolumeOptions,
 	clusterName string,
-	setMetadata bool,
 	secrets map[string]string,
 ) error {
 	ioctx, err := volOptions.conn.GetIoctx(volOptions.MetadataPool)
@@ -97,7 +96,7 @@ func AddSnapshotBackedVolumeRef(
 	// deleting the backing snapshot. Make sure the snapshot still exists by
 	// trying to retrieve it again.
 	_, _, _, err = NewSnapshotOptionsFromID(ctx,
-		volOptions.BackingSnapshotID, volOptions.conn.Creds, secrets, clusterName, setMetadata)
+		volOptions.BackingSnapshotID, volOptions.conn.Creds, secrets, clusterName)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get backing snapshot %s: %v", volOptions.BackingSnapshotID, err)
 	}

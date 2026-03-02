@@ -171,13 +171,11 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 			conf.KernelMountOptions, conf.FuseMountOptions,
 			nodeLabels, topology, crushLocationMap,
 		)
-		fs.ns.setMetadata = true
 	}
 
 	if conf.IsControllerServer {
 		fs.cs = NewControllerServer(fs.cd)
 		fs.cs.ClusterName = conf.ClusterName
-		fs.cs.SetMetadata = conf.SetMetadata
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)

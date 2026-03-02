@@ -53,11 +53,10 @@ type SnapshotClient interface {
 
 // snapshotClient is the implementation of SnapshotClient interface.
 type snapshotClient struct {
-	*Snapshot                              // Embedded snapshot struct.
-	clusterID      string                  // Cluster ID.
-	clusterName    string                  // Cluster Name.
-	enableMetadata bool                    // Set metadata on volume
-	conn           *util.ClusterConnection // Cluster connection.
+	*Snapshot                           // Embedded snapshot struct.
+	clusterID   string                  // Cluster ID.
+	clusterName string                  // Cluster Name.
+	conn        *util.ClusterConnection // Cluster connection.
 }
 
 // Snapshot represents a subvolume snapshot and its cluster information.
@@ -72,7 +71,6 @@ func NewSnapshot(
 	snapshotID,
 	clusterID,
 	clusterName string,
-	setMetadata bool,
 	vol *SubVolume,
 ) SnapshotClient {
 	return &snapshotClient{
@@ -80,10 +78,9 @@ func NewSnapshot(
 			SnapshotID: snapshotID,
 			SubVolume:  vol,
 		},
-		clusterID:      clusterID,
-		clusterName:    clusterName,
-		enableMetadata: setMetadata,
-		conn:           conn,
+		clusterID:   clusterID,
+		clusterName: clusterName,
+		conn:        conn,
 	}
 }
 

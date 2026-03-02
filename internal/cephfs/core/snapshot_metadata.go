@@ -107,10 +107,6 @@ func (s *snapshotClient) listSnapshotMetadata() (map[string]string, error) {
 // SetAllSnapshotMetadata set all the metadata from arg parameters on
 // subvolume snapshot.
 func (s *snapshotClient) SetAllSnapshotMetadata(parameters map[string]string) error {
-	if !s.enableMetadata {
-		return nil
-	}
-
 	for k, v := range parameters {
 		err := s.setSnapshotMetadata(k, v)
 		if err != nil {
@@ -133,10 +129,6 @@ func (s *snapshotClient) SetAllSnapshotMetadata(parameters map[string]string) er
 // UnsetAllSnapshotMetadata unset all the metadata from arg keys on subvolume
 // snapshot.
 func (s *snapshotClient) UnsetAllSnapshotMetadata(keys []string) error {
-	if !s.enableMetadata {
-		return nil
-	}
-
 	for _, key := range keys {
 		err := s.removeSnapshotMetadata(key)
 		if err != nil && !errors.Is(err, libcephfs.ErrNotExist) {
@@ -156,10 +148,6 @@ func (s *snapshotClient) UnsetAllSnapshotMetadata(keys []string) error {
 
 // ListSnapshotMetadata lists all the metadata on subvolume snapshot.
 func (s *snapshotClient) ListSnapshotMetadata() (map[string]string, error) {
-	if !s.enableMetadata {
-		return nil, nil
-	}
-
 	metadata, err := s.listSnapshotMetadata()
 	// If listSnapshotMetadata is not supported return nil
 	if errors.Is(err, ErrSubVolSnapMetadataNotSupported) {
