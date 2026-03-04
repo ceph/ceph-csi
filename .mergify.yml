@@ -92,6 +92,26 @@ merge_queue:
   max_parallel_checks: 1
 
 pull_request_rules:
+  - name: start CI jobs for PRs in the merge queue
+    conditions:
+      - -closed
+      - base~=^(devel)|(release-.+)$
+      - label!=conflicts
+      - label!=ci/skip/e2e
+      - label!=ci/in-progress/e2e
+      - not:
+          check-pending~=^ci/centos
+      - not:
+          status-success~=^ci/centos
+      - or:
+          - "check-pending=Queue: Embarked in merge queue"
+          - author=mergify[bot]
+    actions:
+      label:
+        add:
+          - ok-to-test
+          - ci/in-progress/e2e
+
   - name: remove outdated approvals
     conditions:
       - base~=^(devel)|(release-.+)$
