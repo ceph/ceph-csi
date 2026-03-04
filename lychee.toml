@@ -9,12 +9,8 @@ exclude_path = [
     "vendor",
 ]
 
-exclude = [
-    '^https://kubernetes\.io', # often fails with GitHub network errors
-]
+# Only check local/offline links (no network requests).
+offline = true
 
 # Output format
 format = "markdown"
-
-# Maximum number of concurrent network requests
-max_concurrency = 14
