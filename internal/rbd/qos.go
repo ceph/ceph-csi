@@ -102,7 +102,7 @@ func HasQoSParams(params map[string]string) bool {
 }
 
 func parseQosParams(
-	scParams map[string]string,
+	mutableParameters map[string]string,
 ) map[string]*qosSpec {
 	rbdQosParameters := map[string]*qosSpec{
 		baseIops:      {iopsLimit, "", iopsPerGiB, "", maxIops, "", false},
@@ -112,14 +112,14 @@ func parseQosParams(
 		baseReadBps:   {readBpsLimit, "", readBpsPerGiB, "", maxReadBps, "", false},
 		baseWriteBps:  {writeBpsLimit, "", writeBpsPerGiB, "", maxWriteBps, "", false},
 	}
-	for k, v := range scParams {
+	for k, v := range mutableParameters {
 		if qos, ok := rbdQosParameters[k]; ok && v != "" {
 			qos.baseLimit = v
 			qos.present = true
-			if perGiBLimit, ok := scParams[qos.perGiBLimitType]; ok && perGiBLimit != "" {
+			if perGiBLimit, ok := mutableParameters[qos.perGiBLimitType]; ok && perGiBLimit != "" {
 				qos.perGiBLimit = perGiBLimit
 			}
-			if maxLimit, ok := scParams[qos.maxLimitType]; ok && maxLimit != "" {
+			if maxLimit, ok := mutableParameters[qos.maxLimitType]; ok && maxLimit != "" {
 				qos.maxLimit = maxLimit
 			}
 		}
@@ -130,14 +130,14 @@ func parseQosParams(
 
 func (rv *rbdVolume) SetQOS(
 	ctx context.Context,
-	scParams map[string]string,
+	mutableParameters map[string]string,
 ) error {
 	rv.BaseVolSize = ""
-	if v, ok := scParams[baseVolSizeBytes]; ok && v != "" {
+	if v, ok := mutableParameters[baseVolSizeBytes]; ok && v != "" {
 		rv.BaseVolSize = v
 	}
 
-	rbdQosParameters := parseQosParams(scParams)
+	rbdQosParameters := parseQosParams(mutableParameters)
 	for _, qos := range rbdQosParameters {
 		if qos.present {
 			err := rv.calcQosBasedOnCapacity(ctx, qos)
@@ -232,7 +232,7 @@ func (rv *rbdVolume) calcQosBasedOnCapacity(
 
 func (rv *rbdVolume) SaveQOS(
 	ctx context.Context,
-	scParams map[string]string,
+	mutableParameters map[string]string,
 ) error {
 	needSaveQosParameters := map[string]string{
 		baseIops:         baseQosIopsLimit,
@@ -255,7 +255,7 @@ func (rv *rbdVolume) SaveQOS(
 		writeBpsPerGiB:   writeBpsPerGiBLimit,
 		baseVolSizeBytes: baseQosVolSize,
 	}
-	for k, v := range scParams {
+	for k, v := range mutableParameters {
 		if param, ok := needSaveQosParameters[k]; ok && v != "" {
 			err := rv.SetMetadata(param, v)
 			if err != nil {

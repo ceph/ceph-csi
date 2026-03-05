@@ -1,0 +1,14 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: flex
+driverName: rbd.csi.ceph.com
+parameters:
+  baseIops: "1800"
+  maxIops: "10000"
+  baseBps: "104857600"
+  maxBps: "188743680"
+  iopsPerGiB: "12"
+  bpsPerGiB: "209715"
+  baseVolSizeBytes: "21474836480"

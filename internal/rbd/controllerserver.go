@@ -234,8 +234,8 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Get QosParameters from SC if qos configuration existing in SC
-	err = rbdVol.SetQOS(ctx, req.GetParameters())
+	// parse QOS parameters from mutable parameters
+	err = rbdVol.SetQOS(ctx, req.GetMutableParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -435,7 +435,7 @@ func (cs *ControllerServer) CreateVolume(
 		}
 	}()
 
-	err = cs.createBackingImage(ctx, cr, req.GetSecrets(), rbdVol, parentVol, rbdSnap, req.GetParameters())
+	err = cs.createBackingImage(ctx, cr, req.GetSecrets(), rbdVol, parentVol, rbdSnap, req.GetMutableParameters())
 	if err != nil {
 		if errors.Is(err, rbderrors.ErrFlattenInProgress) {
 			return nil, status.Error(codes.Aborted, err.Error())
@@ -765,7 +765,7 @@ func (cs *ControllerServer) createBackingImage(
 	secrets map[string]string,
 	rbdVol, parentVol *rbdVolume,
 	rbdSnap *rbdSnapshot,
-	scParams map[string]string,
+	mutableParameters map[string]string,
 ) error {
 	var err error
 
@@ -827,8 +827,8 @@ func (cs *ControllerServer) createBackingImage(
 
 		return status.Error(codes.Internal, err.Error())
 	}
-	// Save Qos parameters from SC in Image metadata, we will use it while resize volume.
-	err = rbdVol.SaveQOS(ctx, scParams)
+	// Save Qos parameters from mutable parameters in Image metadata, we will use it while resize volume.
+	err = rbdVol.SaveQOS(ctx, mutableParameters)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to save QOS for rbd image: %s with error: %v", rbdVol, err)
 
