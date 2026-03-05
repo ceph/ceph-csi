@@ -1963,3 +1963,86 @@ func (cs *ControllerServer) fenceNode(
 
 	return nil
 }
+
+// ControllerModifyVolume modify the QoS of rbd based on of ControllerModifyVolumeRequest.
+//
+// Parameters:
+//   - csi.ControllerModifyVolumeRequest: Passing a list of mutable parameters from csi-resizer.
+//
+// Return an error if any step in the ControllerModifyVolume process fails.
+func (cs *ControllerServer) ControllerModifyVolume(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+) (*csi.ControllerModifyVolumeResponse, error) {
+	err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_MODIFY_VOLUME)
+	if err != nil {
+		log.ErrorLog(ctx, "invalid modify volume req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
+	volID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	mutableParameters := req.GetMutableParameters()
+	if mutableParameters == nil {
+		log.ErrorLog(ctx, "invalid modify volume req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, status.Error(codes.InvalidArgument, "mutable parameters cannot be empty")
+	}
+
+	// lock out parallel requests against the same volume ID
+	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer cs.VolumeLocks.Release(volID)
+
+	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+	rbdVol, err := genVolFromVolIDWithMigration(ctx, volID, cr, req.GetSecrets())
+	if err != nil {
+		switch {
+		case errors.Is(err, rbderrors.ErrImageNotFound):
+			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
+		case errors.Is(err, util.ErrPoolNotFound):
+			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", volID, err)
+			err = status.Error(codes.NotFound, err.Error())
+		case errors.Is(err, rbderrors.ErrInvalidVolID):
+			// likely a static provisioned volume
+			// InvalidArgument indicates that the CO has specified capabilities not supported by the volume
+			err = status.Errorf(codes.InvalidArgument, "volume ID %s does not support modify", volID)
+		default:
+			err = status.Error(codes.Internal, err.Error())
+		}
+
+		return nil, err
+	}
+	defer rbdVol.Destroy(ctx)
+
+	// lock out volumeID for create, clone, expand and delete operation
+	if err = cs.OperationLocks.GetModifyLock(volID); err != nil {
+		log.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+	defer cs.OperationLocks.ReleaseModifyLock(volID)
+
+	// set RequestedVolSize, because calcQosBasedOnCapacity use it.
+	rbdVol.RequestedVolSize = rbdVol.VolSize
+
+	err = rbdVol.modifyVolumeAttributes(ctx, mutableParameters)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to modify volume: %s with error: %v", rbdVol, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.ControllerModifyVolumeResponse{}, nil
+}

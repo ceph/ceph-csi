@@ -2427,3 +2427,31 @@ func (rv *rbdVolume) getUsedBytes(ctx context.Context) (uint64, error) {
 
 	return usedBytes, nil
 }
+
+func (rv *rbdVolume) modifyVolumeAttributes(
+	ctx context.Context,
+	newMutableParameters map[string]string,
+) error {
+	image, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close() //nolint:errcheck // not a critical failure
+
+	err = rv.SetQOS(ctx, newMutableParameters)
+	if err != nil {
+		return err
+	}
+
+	err = rv.ApplyQOS(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = rv.SaveQOS(ctx, newMutableParameters)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

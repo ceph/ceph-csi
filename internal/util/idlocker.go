@@ -79,6 +79,7 @@ const (
 	cloneOpt  operation = "clone"
 	restoreOp operation = "restore"
 	expandOp  operation = "expand"
+	modifyOp  operation = "modify"
 )
 
 // OperationLock implements a map with atomic operations.
@@ -106,6 +107,7 @@ func NewOperationLock() *OperationLock {
 	lock[cloneOpt] = make(map[string]int)
 	lock[restoreOp] = make(map[string]int)
 	lock[expandOp] = make(map[string]int)
+	lock[modifyOp] = make(map[string]int)
 
 	return &OperationLock{
 		locks: lock,
@@ -140,6 +142,10 @@ func (ol *OperationLock) GetExpandLock(volumeID string) error {
 	return ol.tryAcquire(expandOp, volumeID)
 }
 
+func (ol *OperationLock) GetModifyLock(volumeID string) error {
+	return ol.tryAcquire(modifyOp, volumeID)
+}
+
 // ReleaseSnapshotCreateLock releases the create lock on given volumeID.
 func (ol *OperationLock) ReleaseSnapshotCreateLock(volumeID string) {
 	ol.release(createOp, volumeID)
@@ -165,6 +171,10 @@ func (ol *OperationLock) ReleaseExpandLock(volumeID string) {
 	ol.release(expandOp, volumeID)
 }
 
+func (ol *OperationLock) ReleaseModifyLock(volumeID string) {
+	ol.release(modifyOp, volumeID)
+}
+
 // tryAcquire tries to acquire the lock for operating on volumeID and returns true if successful.
 // If another operation is already using volumeID, returns false.
 func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
@@ -188,6 +198,9 @@ func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
 		if _, ok := ol.locks[expandOp][volumeID]; ok {
 			return fmt.Errorf("an Expand operation with given id %s already exists", volumeID)
 		}
+		if _, ok := ol.locks[modifyOp][volumeID]; ok {
+			return fmt.Errorf("an Modify operation with given id %s already exists", volumeID)
+		}
 		// increment the counter for clone operation
 		val := ol.locks[cloneOpt][volumeID]
 		ol.locks[cloneOpt][volumeID] = val + 1
@@ -200,6 +213,9 @@ func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
 		// check any restore operation is going on for given volume ID
 		if _, ok := ol.locks[restoreOp][volumeID]; ok {
 			return fmt.Errorf("a Restore operation with given id %s already exists", volumeID)
+		}
+		if _, ok := ol.locks[modifyOp][volumeID]; ok {
+			return fmt.Errorf("an Modify operation with given id %s already exists", volumeID)
 		}
 		ol.locks[deleteOp][volumeID] = 1
 	case restoreOp:
@@ -226,8 +242,23 @@ func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
 		if _, ok := ol.locks[createOp][volumeID]; ok {
 			return fmt.Errorf("a Create operation with given id %s already exists", volumeID)
 		}
+		if _, ok := ol.locks[modifyOp][volumeID]; ok {
+			return fmt.Errorf("a Modify operation with given id %s already exists", volumeID)
+		}
 
 		ol.locks[expandOp][volumeID] = 1
+	case modifyOp:
+		if _, ok := ol.locks[deleteOp][volumeID]; ok {
+			return fmt.Errorf("a Delete operation with given id %s already exists", volumeID)
+		}
+		if _, ok := ol.locks[cloneOpt][volumeID]; ok {
+			return fmt.Errorf("a Clone operation with given id %s already exists", volumeID)
+		}
+		if _, ok := ol.locks[createOp][volumeID]; ok {
+			return fmt.Errorf("a Create operation with given id %s already exists", volumeID)
+		}
+
+		ol.locks[modifyOp][volumeID] = 1
 	default:
 		return fmt.Errorf("%v operation not supported", op)
 	}
@@ -240,7 +271,7 @@ func (ol *OperationLock) release(op operation, volumeID string) {
 	ol.mux.Lock()
 	defer ol.mux.Unlock()
 	switch op {
-	case cloneOpt, createOp, expandOp, restoreOp, deleteOp:
+	case cloneOpt, createOp, expandOp, restoreOp, deleteOp, modifyOp:
 		if val, ok := ol.locks[op][volumeID]; ok {
 			// decrement the counter for operation
 			ol.locks[op][volumeID] = val - 1
