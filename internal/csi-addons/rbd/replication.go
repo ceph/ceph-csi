@@ -372,7 +372,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	log.UsefulLog(ctx, "mirror state is %s", info.GetState())
+	log.UsefulLog(ctx, "mirror state is %q, is primary %v, force %v", info.GetState(), info.IsPrimary(), force)
 	switch info.GetState() {
 	// image is already in disabled state
 	case librbd.MirrorImageDisabled.String():

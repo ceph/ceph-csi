@@ -46,39 +46,59 @@ func (rv *rbdVolume) RepairResyncedImageID(ctx context.Context, ready bool) erro
 	return rv.repairImageID(ctx, j, true)
 }
 
+// checkSecondaryForDisable validates whether mirroring can be disabled on a
+// secondary image. It returns nil when the secondary is in a safe state:
+//   - up+replaying: remote has promoted, local is actively replaying.
+//   - up+unknown on both local and remote: final sync is done, no promotion yet.
+//
+// Mirroring on a secondary is auto-disabled when the primary disables it,
+// so returning success here enables garbage collection of Kubernetes
+// volume replication artifacts after a failback operation.
+func checkSecondaryForDisable(ctx context.Context, mirror types.Mirror) error {
+	sts, err := mirror.GetGlobalMirroringStatus(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get global state: %w", err)
+	}
+
+	localStatus, err := sts.GetLocalSiteStatus()
+	if err != nil {
+		return fmt.Errorf("failed to get local state: %w", rbderrors.ErrInvalidArgument)
+	}
+
+	localUp := localStatus.IsUP()
+	localState := localStatus.GetState()
+
+	// Remote cluster has already promoted the image.
+	// The local secondary is in up+replaying state, actively receiving
+	// data from the new primary.
+	if localUp && localState == librbd.MirrorImageStatusStateReplaying.String() {
+		return nil
+	}
+
+	// Remote cluster has not yet promoted the image.
+	// Both local and remote are in up+unknown state because the final
+	// sync has completed but no promotion has happened yet.
+	if localUp && localState == librbd.MirrorImageStatusStateUnknown.String() {
+		rmStatus, err := sts.GetRemoteSiteStatus(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get remote state: %w", err)
+		}
+		if rmStatus.IsUP() && rmStatus.GetState() == librbd.MirrorImageStatusStateUnknown.String() {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%w: secondary image status is up=%t and state=%s",
+		rbderrors.ErrInvalidArgument, localUp, localState)
+}
+
 func DisableVolumeReplication(mirror types.Mirror,
 	ctx context.Context,
 	primary,
 	force bool,
 ) error {
 	if !primary {
-		// Return success if the below condition is met
-		// Local image is secondary
-		// Local image is in up+replaying state
-
-		// If the image is in a secondary and its state is  up+replaying means
-		// its a healthy secondary and the image is primary somewhere in the
-		// remote cluster and the local image is getting replayed. Return
-		// success for the Disabling mirroring as we cannot disable mirroring
-		// on the secondary image, when the image on the primary site gets
-		// disabled the image on all the remote (secondary) clusters will get
-		// auto-deleted. This helps in garbage collecting the volume
-		// replication Kubernetes artifacts after failback operation.
-		sts, rErr := mirror.GetGlobalMirroringStatus(ctx)
-		if rErr != nil {
-			return fmt.Errorf("failed to get global state: %w", rErr)
-		}
-
-		localStatus, err := sts.GetLocalSiteStatus()
-		if err != nil {
-			return fmt.Errorf("failed to get local state: %w", rbderrors.ErrInvalidArgument)
-		}
-		if localStatus.IsUP() && localStatus.GetState() == librbd.MirrorImageStatusStateReplaying.String() {
-			return nil
-		}
-
-		return fmt.Errorf("%w: secondary image status is up=%t and state=%s",
-			rbderrors.ErrInvalidArgument, localStatus.IsUP(), localStatus.GetState())
+		return checkSecondaryForDisable(ctx, mirror)
 	}
 	err := mirror.DisableMirroring(ctx, force)
 	if err != nil {
