@@ -5776,7 +5776,13 @@ var _ = Describe("RBD", func() {
 			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 		})
 
-		It("validate rbd image qos", func() {
+		It("validate rbd image qos by volumeattributesclass", func() {
+			if !k8sVersionGreaterEquals(c, 1, 34) {
+				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34")
+
+				return
+			}
+
 			var (
 				baseIops         = "3000"
 				maxIops          = "15000"
@@ -5797,45 +5803,43 @@ var _ = Describe("RBD", func() {
 				readBpsPerGiB    = "2097152"
 				writeBpsPerGiB   = "1048576"
 				baseVolSizeBytes = "21474836480"
+
+				qosSilverVACName = "silver"
+				qosGoldVACName   = "gold"
+				qosFlexVACName   = "flex" // Capacity-based QoS
 			)
+
+			// define silver vac parameters
 			qosParameters := map[string]string{
 				"baseReadIops":  baseReadIops,
 				"baseWriteIops": baseWriteIops,
 				"baseReadBps":   baseReadBps,
 				"baseWriteBps":  baseWriteBps,
 			}
-			err := deleteResource(rbdExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete storageclass: %v", err)
-			}
 
-			err = createRBDStorageClass(
+			// create silver vac
+			err := createRBDVolumeAttributesClass(
 				f.ClientSet,
 				f,
-				defaultSCName,
-				nil,
-				qosParameters,
-				deletePolicy)
+				qosSilverVACName,
+				qosParameters)
 			if err != nil {
-				logAndFail("failed to create storageclass: %v", err)
+				logAndFail("failed to create volumeattributesclass: %v", err)
 			}
 			defer func() {
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, qosSilverVACName)
 				if err != nil {
-					logAndFail("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					logAndFail("failed to create storageclass: %v", err)
+					logAndFail("failed to delete volumeattributesclass: %v", err)
 				}
 			}()
 
-			// 1.1 create PVC
+			// create pvc with vac
 			pvc, err := loadPVC(pvcPath)
 			if err != nil {
 				logAndFail("failed to load PVC: %v", err)
 			}
 			pvc.Namespace = f.UniqueName
+			pvc.Spec.VolumeAttributesClassName = &qosSilverVACName
 			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
 				logAndFail("failed to create PVC and application: %v", err)
@@ -5844,7 +5848,7 @@ var _ = Describe("RBD", func() {
 			validateRBDImageCount(f, 1, defaultRBDPool)
 			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
-			// 1.2 validate rbd image qos
+			// validate rbd image qos
 			wants := map[string]string{
 				"rbd_qos_read_iops_limit":  baseReadIops,
 				"rbd_qos_write_iops_limit": baseWriteIops,
@@ -5856,209 +5860,56 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to validate qos: %v", err)
 			}
 
-			// 1.3 delete pvc
-			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-			if err != nil {
-				logAndFail("failed to delete PVC: %v", err)
-			}
-
+			// define gold vac parameters
 			qosParameters = map[string]string{
-				"baseReadIops":     baseReadIops,
-				"baseWriteIops":    baseWriteIops,
-				"baseReadBps":      baseReadBps,
-				"baseWriteBps":     baseWriteBps,
-				"readIopsPerGiB":   readIopsPerGiB,
-				"writeIopsPerGiB":  writeIopsPerGiB,
-				"readBpsPerGiB":    readBpsPerGiB,
-				"writeBpsPerGiB":   writeBpsPerGiB,
-				"baseVolSizeBytes": baseVolSizeBytes,
+				"baseReadIops":  "4000",
+				"baseWriteIops": "2000",
+				"baseReadBps":   "419430400",
+				"baseWriteBps":  "209715200",
 			}
-			err = deleteResource(rbdExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete storageclass: %v", err)
-			}
-
-			err = createRBDStorageClass(
+			// create gold vac
+			err = createRBDVolumeAttributesClass(
 				f.ClientSet,
 				f,
-				defaultSCName,
-				nil,
-				qosParameters,
-				deletePolicy)
+				qosGoldVACName,
+				qosParameters)
 			if err != nil {
-				logAndFail("failed to create storageclass: %v", err)
+				logAndFail("failed to create volumeattributesclass: %v", err)
+			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, qosGoldVACName)
+				if err != nil {
+					logAndFail("failed to delete volumeattributesclass: %v", err)
+				}
+			}()
+			// modify vac to gold
+			err = modifyPVCVolumeAttributesClass(
+				f.ClientSet,
+				pvc,
+				qosGoldVACName)
+			if err != nil {
+				logAndFail("failed to modify volumeattributesclass: %v", err)
 			}
 
-			// 2.1 create PVC
-			pvc, err = loadPVC(pvcPath)
-			if err != nil {
-				logAndFail("failed to load PVC: %v", err)
-			}
-			pvc.Namespace = f.UniqueName
-			pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("100Gi")
-			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-			if err != nil {
-				logAndFail("failed to create PVC and application: %v", err)
-			}
-			// validate created backend rbd images
-			validateRBDImageCount(f, 1, defaultRBDPool)
-			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-
-			// 2.2 validate rbd image qos
+			// validate rbd image qos
 			wants = map[string]string{
-				"rbd_qos_read_iops_limit":  "3600",
-				"rbd_qos_write_iops_limit": "1800",
-				"rbd_qos_read_bps_limit":   "377487360",
-				"rbd_qos_write_bps_limit":  "188743680",
+				"rbd_qos_read_iops_limit":  "4000",
+				"rbd_qos_write_iops_limit": "2000",
+				"rbd_qos_read_bps_limit":   "419430400",
+				"rbd_qos_write_bps_limit":  "209715200",
 			}
 			err = validateQOS(f, pvc, wants)
 			if err != nil {
 				logAndFail("failed to validate qos: %v", err)
 			}
 
-			// 3.1 create snapshot
-			err = createRBDSnapshotClass(f)
-			if err != nil {
-				logAndFail("failed to create storageclass: %v", err)
-			}
-			defer func() {
-				err = deleteRBDSnapshotClass()
-				if err != nil {
-					logAndFail("failed to delete VolumeSnapshotClass: %v", err)
-				}
-			}()
-
-			snap := getSnapshot(snapshotPath)
-			snap.Namespace = f.UniqueName
-			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
-			err = createSnapshot(&snap, deployTimeout)
-			if err != nil {
-				logAndFail("failed to create snapshot: %v", err)
-			}
-			// validate created backend rbd images
-			// parent PVC + snapshot
-			totalImages := 2
-			validateRBDImageCount(f, totalImages, defaultRBDPool)
-			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-			validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
-
-			// 3.2 create pvc from snapshot
-			pvcClone, err := loadPVC(pvcClonePath)
-			if err != nil {
-				logAndFail("failed to load PVC: %v", err)
-			}
-			pvcClone.Namespace = f.UniqueName
-			pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("100Gi")
-			err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to create PVC: %v", err)
-			}
-			// validate created backend rbd images
-			// parent pvc + snapshot + clone
-			totalImages = 3
-			validateRBDImageCount(f, totalImages, defaultRBDPool)
-			validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
-			validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
-
-			// 3.3 validate rbd image qos
-			err = validateQOS(f, pvcClone, wants)
-			if err != nil {
-				logAndFail("failed to validate qos: %v", err)
-			}
-
-			// 3.4 delete clone pvc
-			err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to delete PVC: %v", err)
-			}
-
-			// 3.5 validate create pvc from snapshot, but pvc size greater than parent
-			pvcClone, err = loadPVC(pvcClonePath)
-			if err != nil {
-				logAndFail("failed to load PVC: %v", err)
-			}
-			pvcClone.Namespace = f.UniqueName
-			pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
-			err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to create PVC: %v", err)
-			}
-			wants2 := map[string]string{
-				"rbd_qos_read_iops_limit":  "5600",
-				"rbd_qos_write_iops_limit": "2800",
-				"rbd_qos_read_bps_limit":   "587202560",
-				"rbd_qos_write_bps_limit":  "293601280",
-			}
-			err = validateQOS(f, pvcClone, wants2)
-			if err != nil {
-				logAndFail("failed to validate qos: %v", err)
-			}
-
-			// 3.6 delete snapshot and clone pvc
-			err = deleteSnapshot(&snap, deployTimeout)
-			if err != nil {
-				logAndFail("failed to delete snapshot: %v", err)
-			}
-			err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to delete PVC: %v", err)
-			}
-
-			// 4.1 create pvc from pvc
-			pvcSmartClone, err := loadPVC(pvcSmartClonePath)
-			if err != nil {
-				logAndFail("failed to load pvcSmartClone: %v", err)
-			}
-			pvcSmartClone.Namespace = f.UniqueName
-			pvcSmartClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("100Gi")
-			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to create pvc: %v", err)
-			}
-			// validate created backend rbd images
-			// parent pvc + temp clone + clone
-			totalImages = 3
-			validateRBDImageCount(f, totalImages, defaultRBDPool)
-			validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
-
-			// 4.2 validate rbd image qos
-			err = validateQOS(f, pvcSmartClone, wants)
-			if err != nil {
-				logAndFail("failed to validate qos: %v", err)
-			}
-
-			// 4.3 delete clone pvc
-			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to delete PVC: %v", err)
-			}
-
-			// 4.4 create pvc from pvc, but pvc size greater than parent
-			pvcSmartClone, err = loadPVC(pvcSmartClonePath)
-			if err != nil {
-				logAndFail("failed to load pvcSmartClone: %v", err)
-			}
-			pvcSmartClone.Namespace = f.UniqueName
-			pvcSmartClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
-			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to create pvc: %v", err)
-			}
-			err = validateQOS(f, pvcSmartClone, wants2)
-			if err != nil {
-				logAndFail("failed to validate qos: %v", err)
-			}
-
-			// 4.5 delete parent pvc and clone pvc
+			// delete pvc
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete PVC: %v", err)
 			}
-			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
-			if err != nil {
-				logAndFail("failed to delete PVC: %v", err)
-			}
 
+			// define flex vac parameters
 			qosParameters = map[string]string{
 				"baseIops":         baseIops,
 				"maxIops":          maxIops,
@@ -6080,25 +5931,30 @@ var _ = Describe("RBD", func() {
 				"writeBpsPerGiB":   writeBpsPerGiB,
 				"baseVolSizeBytes": baseVolSizeBytes,
 			}
-			err = deleteResource(rbdExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete storageclass: %v", err)
-			}
-			err = createRBDStorageClass(
+
+			// create flex vac
+			err = createRBDVolumeAttributesClass(
 				f.ClientSet,
 				f,
-				defaultSCName,
-				nil,
-				qosParameters,
-				deletePolicy)
+				qosFlexVACName,
+				qosParameters)
 			if err != nil {
-				logAndFail("failed to create storageclass: %v", err)
+				logAndFail("failed to create volumeattributesclass: %v", err)
 			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, qosFlexVACName)
+				if err != nil {
+					logAndFail("failed to delete volumeattributesclass: %v", err)
+				}
+			}()
+
+			// create pvc with vac
 			pvc, err = loadPVC(pvcPath)
 			if err != nil {
 				logAndFail("failed to load PVC: %v", err)
 			}
 			pvc.Namespace = f.UniqueName
+			pvc.Spec.VolumeAttributesClassName = &qosFlexVACName
 			pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
 			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
@@ -6108,7 +5964,8 @@ var _ = Describe("RBD", func() {
 			validateRBDImageCount(f, 1, defaultRBDPool)
 			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
-			wants3 := map[string]string{
+			// validate rbd image qos
+			wants = map[string]string{
 				"rbd_qos_iops_limit":       "8400",
 				"rbd_qos_read_iops_limit":  "5600",
 				"rbd_qos_write_iops_limit": "2800",
@@ -6116,31 +5973,81 @@ var _ = Describe("RBD", func() {
 				"rbd_qos_read_bps_limit":   "587202560",
 				"rbd_qos_write_bps_limit":  "293601280",
 			}
-			err = validateQOS(f, pvc, wants3)
+			err = validateQOS(f, pvc, wants)
 			if err != nil {
 				logAndFail("failed to validate qos: %v", err)
 			}
 
-			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			// create snapshot class
+			err = createRBDSnapshotClass(f)
 			if err != nil {
-				framework.Failf("failed to delete PVC: %v", err)
+				logAndFail("failed to create storageclass: %v", err)
 			}
-
-			pvc, err = loadPVC(pvcPath)
+			defer func() {
+				err = deleteRBDSnapshotClass()
+				if err != nil {
+					logAndFail("failed to delete VolumeSnapshotClass: %v", err)
+				}
+			}()
+			// create snapshot
+			snap := getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+			err = createSnapshot(&snap, deployTimeout)
 			if err != nil {
-				framework.Failf("failed to load PVC: %v", err)
-			}
-			pvc.Namespace = f.UniqueName
-			pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("600Gi")
-			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-			if err != nil {
-				framework.Failf("failed to create PVC and application: %v", err)
+				logAndFail("failed to create snapshot: %v", err)
 			}
 			// validate created backend rbd images
-			validateRBDImageCount(f, 1, defaultRBDPool)
+			// parent PVC + snapshot
+			totalImages := 2
+			validateRBDImageCount(f, totalImages, defaultRBDPool)
 			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+			validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
-			wants4 := map[string]string{
+			// create pvc from snapshot
+			pvcClone, err := loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvcClone.Namespace = f.UniqueName
+			pvcClone.Spec.VolumeAttributesClassName = &qosFlexVACName
+			pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
+			err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+			// validate created backend rbd images
+			// parent pvc + snapshot + clone
+			totalImages = 3
+			validateRBDImageCount(f, totalImages, defaultRBDPool)
+			validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+			validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
+
+			// validate clone image qos
+			err = validateQOS(f, pvcClone, wants)
+			if err != nil {
+				logAndFail("failed to validate qos: %v", err)
+			}
+
+			// delete clone pvc
+			err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+
+			// validate create pvc from snapshot, and pvc size greater than parent
+			pvcClone, err = loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvcClone.Namespace = f.UniqueName
+			pvcClone.Spec.VolumeAttributesClassName = &qosFlexVACName
+			pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("600Gi")
+			err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+			wants2 := map[string]string{
 				"rbd_qos_iops_limit":       "15000",
 				"rbd_qos_read_iops_limit":  "10000",
 				"rbd_qos_write_iops_limit": "5000",
@@ -6148,14 +6055,76 @@ var _ = Describe("RBD", func() {
 				"rbd_qos_read_bps_limit":   "1048576000",
 				"rbd_qos_write_bps_limit":  "524288000",
 			}
-			err = validateQOS(f, pvc, wants4)
+			err = validateQOS(f, pvcClone, wants2)
 			if err != nil {
 				logAndFail("failed to validate qos: %v", err)
 			}
 
+			// delete snapshot and clone pvc
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+
+			// create pvc from pvc
+			pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load pvcSmartClone: %v", err)
+			}
+			pvcSmartClone.Namespace = f.UniqueName
+			pvcSmartClone.Spec.VolumeAttributesClassName = &qosFlexVACName
+			pvcSmartClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
+			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create pvc: %v", err)
+			}
+			// validate created backend rbd images
+			// parent pvc + temp clone + clone
+			totalImages = 3
+			validateRBDImageCount(f, totalImages, defaultRBDPool)
+			validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+
+			// validate rbd image qos
+			err = validateQOS(f, pvcSmartClone, wants)
+			if err != nil {
+				logAndFail("failed to validate qos: %v", err)
+			}
+
+			// delete clone pvc
+			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+
+			// create pvc from pvc, and pvc size greater than parent
+			pvcSmartClone, err = loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load pvcSmartClone: %v", err)
+			}
+			pvcSmartClone.Namespace = f.UniqueName
+			pvcSmartClone.Spec.VolumeAttributesClassName = &qosFlexVACName
+			pvcSmartClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("600Gi")
+			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create pvc: %v", err)
+			}
+			err = validateQOS(f, pvcSmartClone, wants2)
+			if err != nil {
+				logAndFail("failed to validate qos: %v", err)
+			}
+
+			// delete parent pvc and clone pvc
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
-				framework.Failf("failed to delete PVC: %v", err)
+				logAndFail("failed to delete PVC: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
 			}
 
 			// END: validate created backend rbd images

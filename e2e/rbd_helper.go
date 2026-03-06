@@ -28,8 +28,10 @@ import (
 
 	"github.com/google/uuid"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
+	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -144,6 +146,11 @@ func createRBDStorageClass(
 
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
+
+	if k8sVersionGreaterEquals(c, 1, 34) {
+		sc.Parameters["csi.storage.k8s.io/controller-modify-secret-namespace"] = cephCSINamespace
+		sc.Parameters["csi.storage.k8s.io/controller-modify-secret-name"] = rbdProvisionerSecretName
+	}
 
 	fsID, err := getClusterID(f)
 	if err != nil {
@@ -1651,4 +1658,121 @@ func validateServiceAccountVolumeRestriction(
 	}
 
 	return nil
+}
+
+func createRBDVolumeAttributesClass(
+	c kubernetes.Interface,
+	f *framework.Framework,
+	name string,
+	params map[string]string,
+) error {
+	vacPath := fmt.Sprintf("%s/%s", rbdExamplePath, "volumeattributesclass.yaml")
+	vac, err := getVolumeAttributesClass(vacPath)
+	if err != nil {
+		return fmt.Errorf("failed to get vac: %w", err)
+	}
+	if name != "" {
+		vac.Name = name
+	}
+
+	// overload any parameters that were passed
+	if params == nil {
+		// create an empty params, so that params["clusterID"] below
+		// does not panic
+		params = map[string]string{}
+	}
+	for param, value := range params {
+		vac.Parameters[param] = value
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err = c.StorageV1().VolumeAttributesClasses().Create(ctx, &vac, metav1.CreateOptions{})
+		if err != nil {
+			framework.Logf("error creating VolumeAttributesClass %q: %v", vac.Name, err)
+			if apierrs.IsAlreadyExists(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to create VolumeAttributesClass %q: %w", vac.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
+func deleteRBDVolumeAttributesClass(
+	c kubernetes.Interface,
+	f *framework.Framework,
+	name string,
+) error {
+	vacPath := fmt.Sprintf("%s/%s", rbdExamplePath, "volumeattributesclass.yaml")
+	vac, err := getVolumeAttributesClass(vacPath)
+	if err != nil {
+		return err
+	}
+	if name != "" {
+		vac.Name = name
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		err = c.StorageV1().VolumeAttributesClasses().Delete(ctx, vac.Name, metav1.DeleteOptions{})
+		if err != nil {
+			framework.Logf("error deleting VolumeAttributesClass %q: %v", vac.Name, err)
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to delete VolumeAttributesClass %q: %w", vac.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
+func modifyPVCVolumeAttributesClass(
+	c kubernetes.Interface,
+	pvc *v1.PersistentVolumeClaim,
+	vacName string,
+) error {
+	ctx := context.TODO()
+	pvcName := pvc.Name
+	pvcNamespace := pvc.Namespace
+	updatedPVC, err := getPersistentVolumeClaim(c, pvcNamespace, pvcName)
+	if err != nil {
+		return fmt.Errorf("error fetching pvc %q with %w", pvcName, err)
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+	updatedPVC.Spec.VolumeAttributesClassName = &vacName
+	_, err = c.CoreV1().
+		PersistentVolumeClaims(updatedPVC.Namespace).
+		Update(ctx, updatedPVC, metav1.UpdateOptions{})
+	Expect(err).ShouldNot(HaveOccurred())
+
+	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
+		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(pvcNamespace).Get(ctx, pvcName, metav1.GetOptions{})
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to get pvc: %w", err)
+		}
+
+		if *updatedPVC.Status.CurrentVolumeAttributesClassName != vacName {
+			return false, nil
+		}
+
+		return true, nil
+	})
 }
