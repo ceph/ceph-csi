@@ -421,7 +421,6 @@ func (ns *NodeServer) NodeExpandVolume(
 	log.DebugLog(ctx, "nvmeof: resizing filesystem on device %s at mount path %s", devicePath, mountPath)
 
 	resizer := mount.NewResizeFs(utilexec.New())
-	var ok bool
 	ok, err := resizer.Resize(devicePath, mountPath)
 	if !ok {
 		return nil, status.Errorf(codes.Internal,
@@ -493,6 +492,10 @@ func (ns *NodeServer) stageTransaction(
 	return transaction, nil
 }
 
+// undoStagingTransaction rolls back a staging transaction based on the state of the transaction.
+// It attempts to unmount the staging path if it was mounted,
+// remove the staging path if it was created, and disconnect the NVMe device if it was connected
+// and it was the last mount for that device.
 func (ns *NodeServer) undoStagingTransaction(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
@@ -505,8 +508,7 @@ func (ns *NodeServer) undoStagingTransaction(
 		err = ns.Mounter.Unmount(stagingTargetPath)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to unmount stagingtargetPath: %s with error: %v", stagingTargetPath, err)
-
-			return
+			// Continue anyway - try to clean up what we can
 		}
 	}
 
@@ -516,6 +518,18 @@ func (ns *NodeServer) undoStagingTransaction(
 		if err != nil {
 			log.ErrorLog(ctx, "failed to remove stagingtargetPath: %s with error: %v", stagingTargetPath, err)
 			// continue on failure to disconnect the image
+		}
+	}
+	// disconnect if we connected
+	if transaction.devicePath != "" {
+		mountedDevices, err := getNVMeMountedDevices(ctx)
+		if err != nil {
+			log.WarningLog(ctx, "failed to get mounted devices during rollback: %v (skipping disconnect)", err)
+		} else {
+			if err := ns.initiator.DisconnectIfLastMount(ctx, transaction.devicePath, mountedDevices); err != nil {
+				log.WarningLog(ctx, "failed to disconnect during rollback for device %s: %v",
+					transaction.devicePath, err)
+			}
 		}
 	}
 }
