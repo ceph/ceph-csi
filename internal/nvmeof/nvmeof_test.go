@@ -263,6 +263,7 @@ func TestHasLivePathToGateway(t *testing.T) {
 			Subsystems: []struct {
 				NQN   string `json:"NQN"`
 				Paths []struct {
+					Name    string          `json:"Name"`
 					Address nvmePathAddress `json:"Address"`
 					State   string          `json:"State"`
 				} `json:"Paths"`
@@ -270,6 +271,7 @@ func TestHasLivePathToGateway(t *testing.T) {
 				{
 					NQN: "nqn.2016-06.io.ceph:subsystem.test",
 					Paths: []struct {
+						Name    string          `json:"Name"`
 						Address nvmePathAddress `json:"Address"`
 						State   string          `json:"State"`
 					}{
