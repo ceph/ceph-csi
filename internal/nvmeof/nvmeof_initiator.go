@@ -125,20 +125,27 @@ func NewNVMeInitiator() NVMeInitiator {
 
 // LoadKernelModules ensures required kernel modules are loaded.
 func (ni *nvmeInitiator) LoadKernelModules(ctx context.Context) error {
-	modules := []string{
-		"nvme_tcp",
-		"nvme_fabrics",
-	}
-	log.DebugLog(ctx, "Loading NVMe-oF kernel modules: %s, and %s", modules[0], modules[1])
+	module := "nvme_tcp"
+	log.DebugLog(ctx, "Loading NVMe-oF kernel module: %s", module)
 
-	for _, module := range modules {
-		err := kmod.Modprobe(ctx, module)
-		if err != nil {
-			return fmt.Errorf("failed to load kernel module %q: %w", module, err)
+	err := kmod.Modprobe(ctx, module)
+	if err != nil {
+		return fmt.Errorf("failed to load kernel module %q: %w", module, err)
+	}
+	log.DebugLog(ctx, "NVMe-oF kernel module: %s, is loaded successfully", module)
+	// verify nvme_fabrics is functional by checking its device node.
+	// On immutable Operating Systems like Talos Linux (CONFIG_NVME_FABRICS=y), the module
+	// is baked into the kernel and /sys/module/nvme_fabrics may not exist,
+	// but /dev/nvme-fabrics is always created by the kernel on init if the
+	// fabrics framework is operational.
+	if _, err := os.Stat("/dev/nvme-fabrics"); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("nvme_fabrics is not functional, /dev/nvme-fabrics not found: %w", err)
 		}
-	}
 
-	log.DebugLog(ctx, "All NVMe-oF kernel modules: %s, and %s, loaded successfully", modules[0], modules[1])
+		return fmt.Errorf("nvme_fabrics is not functional, failed to stat /dev/nvme-fabrics: %w", err)
+	}
+	log.DebugLog(ctx, "NVMe-oF fabrics framework is functional with /dev/nvme-fabrics present")
 
 	return nil
 }
