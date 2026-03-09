@@ -197,58 +197,6 @@ parameters:
    # stripeCount: <>
    # (optional) The object size in bytes.
    # objectSize: <>
-
-   # rbd volume QoS.
-   # QoS provides settings for rbd volume read/write iops
-   # and read/write bandwidth. There are 4 base qos parameters
-   # among them, when users apply for a volume capacity equal
-   # to or less than BaseVolSizebytes, use base qos limit.
-   # For the portion of capacity exceeding BaseVolSizebytes,
-   # QoS will be increased in steps set per GiB. If the step
-   # size parameter per GiB is not provided, only base QoS limit
-   # will be used and not associated with capacity size.
-   #
-   # note: currently supports rbd-nbd mounter.
-   #
-   # For more details
-   # (optional) the base limit of operations per second.
-   # baseIops: <>
-   # (optional) the max limit of operations per second.
-   # maxIops: <>
-   # (optional) the base limit of read operations per second.
-   # baseReadIops: <>
-   # (optional) the max limit of read operations per second.
-   # maxReadIops: <>
-   # (optional) the base limit of write operations per second.
-   # baseWriteIops: <>
-   # (optional) the max limit of write operations per second.
-   # maxWriteIops: <>
-   # (optional) the base limit of bytes per second.
-   # baseBps: <>
-   # (optional) the max limit of bytes per second.
-   # maxBps: <>
-   # (optional) the base limit of read bytes per second.
-   # baseReadBps: <>
-   # (optional) the max limit of read bytes per second.
-   # maxReadBps: <>
-   # (optional) the base limit of write bytes per second.
-   # baseWriteBps: <>
-   # (optional) the max limit of write bytes per second.
-   # maxWriteBps: <>
-   # (optional) the limit of operations per GiB.
-   # iopsPerGiB: <>
-   # (optional) the limit of read operations per GiB.
-   # readIopsPerGiB: <>
-   # (optional) the limit of write operations per GiB.
-   # writeIopsPerGiB: <>
-   # (optional) the limit of bytes per GiB.
-   # bpsPerGiB: <>
-   # (optional) the limit of read bytes per GiB.
-   # readBpsPerGiB: <>
-   # (optional) the limit of write bytes per GiB.
-   # writeBpsPerGiB: <>
-   # (optional) min size of volume what use to calc qos beased on capacity.
-   # baseVolSizeBytes:<>
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 
