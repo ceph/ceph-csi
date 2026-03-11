@@ -38,7 +38,7 @@ replace (
 
 exclude k8s.io/client-go v12.0.0+incompatible
 
-require golang.org/x/sync v0.19.0
+require golang.org/x/sync v0.20.0
 
 require (
 	cel.dev/expr v0.25.1 // indirect
