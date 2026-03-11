@@ -99,6 +99,7 @@ for its support details.
 |         | Volume/PV Metrics of File Mode Volume                     | GA             | >= v1.2.0          | >= v1.1.0        | Pacific (>=v16.2.0)  | >= v1.15.0         |
 |         | Volume/PV Metrics of Block Mode Volume                    | GA             | >= v1.2.0          | >= v1.1.0        | Pacific (>=v16.2.0)  | >= v1.21.0         |
 |         | Topology Aware Provisioning Support                       | Alpha          | >= v2.1.0          | >= v1.1.0        | Pacific (>=v16.2.0)  | >= v1.14.0         |
+|         | RBD-NBD QoS by VolumeAttributesClass                      | Alpha          | >= v3.17.0         | >= v1.12.0       | Pacific (>=v16.2.0)  | >= v1.34.0         |
 | CephFS  | Dynamically provision, de-provision File mode RWO volume  | GA             | >= v1.1.0          | >= v1.0.0        | Pacific (>=v16.2.0)  | >= v1.14.0         |
 |         | Dynamically provision, de-provision File mode RWX volume  | GA             | >= v1.1.0          | >= v1.0.0        | Pacific (>=v16.2.0)  | >= v1.14.0         |
 |         | Dynamically provision, de-provision File mode ROX volume  | Alpha          | >= v3.0.0          | >= v1.0.0        | Pacific (>=v16.2.0)  | >= v1.14.0         |
