@@ -90,6 +90,9 @@ parameters:
    csi.storage.k8s.io/controller-publish-secret-namespace: default
    csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
    csi.storage.k8s.io/node-stage-secret-namespace: default
+   # controller-modify-secret
+   csi.storage.k8s.io/controller-modify-secret-name: csi-rbd-secret
+   csi.storage.k8s.io/controller-modify-secret-namespace: default
 
    # (optional) Specify the filesystem type of the volume. If not specified,
    # csi-provisioner will set default as `ext4`.
