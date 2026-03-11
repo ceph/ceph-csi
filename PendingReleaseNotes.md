@@ -21,5 +21,6 @@
 - nvmeof: add Kubernetes ServiceAccount based volume access restriction
 - cephfs: add Kubernetes ServiceAccount based volume access restriction
 - nfs: add Kubernetes ServiceAccount based volume access restriction
+- rbd-nbd: use VolumeAttributesClass feature implement rbd volume qos [PR](https://github.com/ceph/ceph-csi/pull/6160)
 
 ## NOTE
