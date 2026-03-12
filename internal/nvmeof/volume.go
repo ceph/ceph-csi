@@ -30,3 +30,17 @@ type NVMeoFSecurityConfig struct {
 	DhchapMode          string
 	AuthenticationKMSID string
 }
+
+// SetListenersWithDefaults applies default values to the existing ListenerInfo.
+// If port is 0, it defaults to 4420.
+// If address is empty, it defaults to 0.0.0.0.
+func (v *NVMeoFVolumeData) SetListenersWithDefaults() {
+	for i := range v.ListenerInfo {
+		if v.ListenerInfo[i].Port == 0 {
+			v.ListenerInfo[i].Port = 4420
+		}
+		if v.ListenerInfo[i].Address == "" {
+			v.ListenerInfo[i].Address = "0.0.0.0"
+		}
+	}
+}

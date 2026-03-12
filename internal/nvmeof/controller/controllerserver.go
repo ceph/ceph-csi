@@ -785,10 +785,13 @@ func (cs *Server) createNVMeoFResources(
 	}
 
 	// setup listeners (if provided, otherwise it will be set by gateway based on network mask)
-	err = setupDefaultListenersValues(params["listeners"], nvmeofData)
+	listeners, err := parseListeners(params["listeners"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse listeners: %w", err)
 	}
+	nvmeofData.ListenerInfo = listeners
+	// If listener port or address is empty, it will be set to default.
+	nvmeofData.SetListenersWithDefaults()
 
 	// If dhchapMode was explicitly provided and is not "none", and authenticationKMSID is empty,
 	// use a default KMS ID - RBD metadata KMS.
@@ -1329,30 +1332,4 @@ func connectGateway(ctx context.Context, config *nvmeof.GatewayConfig) (*nvmeof.
 	log.DebugLog(ctx, "Connected to the gateway %s", config)
 
 	return gateway, nil
-}
-
-// setupDefaultListeners validates and sets up default values for NVMe-oF listeners.
-// if listeners are provided, it ensures they are fully populated with
-// default values if needed (port and address).
-func setupDefaultListenersValues(listenersJSON string, info *nvmeof.NVMeoFVolumeData) error {
-	// Parse listeners from JSON
-	listeners, err := parseListeners(listenersJSON)
-	if err != nil {
-		return fmt.Errorf("failed to parse listeners: %w", err)
-	}
-
-	// ensure listeners are fully populated with default values if needed (port and address)
-	// before storing in metadata and creating subsystem/listeners
-	for i := range listeners {
-		if listeners[i].Port == 0 {
-			listeners[i].Port = 4420
-		}
-		// if address is empty, set it to default 0.0.0.0
-		if listeners[i].Address == "" {
-			listeners[i].Address = "0.0.0.0"
-		}
-	}
-	info.ListenerInfo = listeners
-
-	return nil
 }
