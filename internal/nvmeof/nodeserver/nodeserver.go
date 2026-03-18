@@ -34,6 +34,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/nvmeof"
 	nvmeutil "github.com/ceph/ceph-csi/internal/nvmeof/util"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/lock"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -57,6 +58,13 @@ type NodeServer struct {
 	// when it's safe to disconnect a device.
 	// it is initialized on startup and updated on each stage/unstage operation.
 	mountCache nvmeutil.MountCache
+
+	// stageUnstageLock is a GroupLock that ensures mutual exclusion
+	// between staging and unstaging operations.
+	// This allows multiple staging operations to run concurrently,
+	// and multiple unstaging operations to run concurrently,
+	// but prevents staging and unstaging from running at the same time.
+	stageUnstageLock *lock.GroupLock
 }
 
 // ConnectionInfo holds NVMe-oF connection details.
@@ -108,6 +116,7 @@ func NewNodeServer(
 		securityKeys:      nil, // Initialize lazily when needed
 		nodeID:            nodeID,
 		mountCache:        nvmeutil.NewMountCache(),
+		stageUnstageLock:  lock.NewGroupLock(),
 	}
 
 	// Load nvme kernel modules
@@ -173,6 +182,15 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer ns.volumeLocks.Release(volumeID)
+
+	// Acquire GroupLock - wrap the mounting + connection logic in a GroupLock
+	// to prevent staging and unstaging from happening at the same time,
+	//  as they can interfere with each other.
+	// This allows multiple staging operations to run concurrently,
+	// and multiple unstaging operations to run concurrently,
+	// but prevents staging and unstaging from running at the same time.
+	ns.stageUnstageLock.AcquireGroupA()
+	defer ns.stageUnstageLock.ReleaseGroupA()
 
 	volumeContext := req.GetVolumeContext()
 	stagingTargetPath := getStagingTargetPath(req)
@@ -337,6 +355,10 @@ func (ns *NodeServer) NodeUnstageVolume(
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer ns.volumeLocks.Release(volumeID)
+
+	// Acquire GroupLock - wrap the unstaging logic (unmounting + nvme disconnect) in a GroupLock
+	ns.stageUnstageLock.AcquireGroupB()
+	defer ns.stageUnstageLock.ReleaseGroupB()
 
 	stagingTargetPath := getStagingTargetPath(req)
 
