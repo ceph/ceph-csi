@@ -67,6 +67,9 @@ var (
 	ErrGroupNotConnected = fmt.Errorf("%w: RBD group is not connected", librados.ErrNotConnected)
 	// ErrGroupNotFound is returned when group is not found in the cluster on the given pool and/or namespace.
 	ErrGroupNotFound = fmt.Errorf("%w: RBD group not found", librbd.ErrNotFound)
+	// ErrMounterUnknown is returned when the mounter type for a volume is not stored in metadata.
+	// This can happen for volumes created before mounter metadata tracking was added.
+	ErrMounterUnknown = errors.New("mounter type unknown")
 )
 
 // ErrorCode is an interface that defines a method to return an error code.
