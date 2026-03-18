@@ -2023,6 +2023,25 @@ func (cs *ControllerServer) ControllerModifyVolume(
 	}
 	defer cs.OperationLocks.ReleaseModifyLock(volID)
 
+	// QoS parameters only work with rbd-nbd mounter
+	usesNBD, err := rbdVol.UsesNBDMounter(ctx)
+	switch {
+	case errors.Is(err, rbderrors.ErrMounterUnknown):
+		// Volume created before mounter tracking - proceed with warning
+		log.WarningLog(ctx, "volume %s has unknown mounter type (created before mounter tracking), "+
+			"proceeding with modification but QoS may not work if volume does not use rbd-nbd", volID)
+	case err != nil:
+		log.ErrorLog(ctx, "failed to check mounter type for volume %s: %v", volID, err)
+
+		return nil, status.Errorf(codes.Internal, "failed to determine volume mounter type: %v", err)
+	case !usesNBD:
+		log.ErrorLog(ctx, "volume %s uses mounter %q, QoS modification requires %q",
+			volID, rbdVol.Mounter, rbdNbdMounter)
+
+		return nil, status.Errorf(codes.InvalidArgument,
+			"volume modification requires rbd-nbd mounter, volume uses %q", rbdVol.Mounter)
+	}
+
 	// set RequestedVolSize, because calcQosBasedOnCapacity use it.
 	rbdVol.RequestedVolSize = rbdVol.VolSize
 
