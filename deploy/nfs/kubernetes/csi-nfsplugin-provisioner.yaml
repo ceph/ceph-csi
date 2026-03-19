@@ -73,7 +73,7 @@ spec:
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
         - name: csi-provisioner
-          image: gcr.io/k8s-staging-sig-storage/csi-provisioner:canary
+          image: registry.k8s.io/sig-storage/csi-provisioner:v6.2.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
@@ -121,7 +121,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-resizer
-          image: gcr.io/k8s-staging-sig-storage/csi-resizer:canary
+          image: registry.k8s.io/sig-storage/csi-resizer:v2.1.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
