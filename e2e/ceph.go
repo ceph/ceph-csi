@@ -25,10 +25,10 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-const (
-	CephMajorSquid    = 19
-	CephMajorTentacle = 20
-	CephMajorUmbrella = 21
+var (
+	CephVersionSquid    = &cephVersion{major: 19}
+	CephVersionTentacle = &cephVersion{major: 20}
+	CephVersionUmbrella = &cephVersion{major: 21}
 )
 
 // cephVersion is a helper type that converts the standard Ceph version string
@@ -116,6 +116,21 @@ func (cv *cephVersion) GetBuild() string {
 
 func (cv *cephVersion) GetRelease() string {
 	return cv.release
+}
+
+func (cv *cephVersion) GreaterEquals(req *cephVersion) bool {
+	// If major not equal, check if >
+	if cv.major != req.major {
+		return cv.major > req.major
+	}
+	// If minor not equal, check if >
+	if cv.minor != req.minor {
+		return cv.minor > req.minor
+	}
+
+	// At this point, major and minor are already equal.
+	// Check if patch is >=
+	return cv.patch >= req.patch
 }
 
 func getCephVersion(f *framework.Framework) (*cephVersion, error) {

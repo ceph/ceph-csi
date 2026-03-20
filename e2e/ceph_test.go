@@ -112,3 +112,91 @@ func TestCephVersionUnmarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestCephVersionGreaterEquals(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		version  cephVersion
+		required cephVersion
+		expected bool
+	}{
+		{
+			name:     "equal versions",
+			version:  cephVersion{major: 19, minor: 2, patch: 1},
+			required: cephVersion{major: 19, minor: 2, patch: 1},
+			expected: true,
+		},
+		{
+			name:     "greater major version",
+			version:  cephVersion{major: 20, minor: 0, patch: 0},
+			required: cephVersion{major: 19, minor: 2, patch: 1},
+			expected: true,
+		},
+		{
+			name:     "lesser major version",
+			version:  cephVersion{major: 18, minor: 5, patch: 9},
+			required: cephVersion{major: 19, minor: 0, patch: 0},
+			expected: false,
+		},
+		{
+			name:     "equal major, greater minor",
+			version:  cephVersion{major: 19, minor: 3, patch: 0},
+			required: cephVersion{major: 19, minor: 2, patch: 1},
+			expected: true,
+		},
+		{
+			name:     "equal major, lesser minor",
+			version:  cephVersion{major: 19, minor: 1, patch: 5},
+			required: cephVersion{major: 19, minor: 2, patch: 0},
+			expected: false,
+		},
+		{
+			name:     "equal major and minor, greater patch",
+			version:  cephVersion{major: 19, minor: 2, patch: 5},
+			required: cephVersion{major: 19, minor: 2, patch: 1},
+			expected: true,
+		},
+		{
+			name:     "equal major and minor, lesser patch",
+			version:  cephVersion{major: 19, minor: 2, patch: 0},
+			required: cephVersion{major: 19, minor: 2, patch: 1},
+			expected: false,
+		},
+		{
+			name:     "zero version comparison",
+			version:  cephVersion{major: 1, minor: 0, patch: 0},
+			required: cephVersion{major: 0, minor: 0, patch: 0},
+			expected: true,
+		},
+		{
+			name:     "comparing to zero version",
+			version:  cephVersion{major: 0, minor: 0, patch: 0},
+			required: cephVersion{major: 1, minor: 0, patch: 0},
+			expected: false,
+		},
+		{
+			name:     "Squid version >= Reef",
+			version:  cephVersion{major: 19, minor: 2, patch: 1},
+			required: cephVersion{major: 18, minor: 2, patch: 0},
+			expected: true,
+		},
+		{
+			name:     "Reef version >= Squid",
+			version:  cephVersion{major: 18, minor: 2, patch: 4},
+			required: cephVersion{major: 19, minor: 0, patch: 0},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := tt.version.GreaterEquals(&tt.required)
+			if result != tt.expected {
+				t.Errorf("GreaterEquals(%s) = %v, expected %v (version: %s)",
+					tt.required.String(), result, tt.expected, tt.version.String())
+			}
+		})
+	}
+}

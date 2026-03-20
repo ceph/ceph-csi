@@ -61,9 +61,9 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		if err != nil {
 			logAndFail("failed to get Ceph cluster version: %v", err)
 		}
-		if version.GetMajor() < CephMajorTentacle {
+		if !version.GreaterEquals(CephVersionTentacle) {
 			deployNVMeoF = false
-			ginkgo.Skip("Skipping NVMe-oF E2E, requires Ceph 20 (Tentacle):" + version.String())
+			ginkgo.Skip("Skipping NVMe-oF E2E, requires Ceph v20 (Tentacle): " + version.String())
 		}
 
 		framework.Logf("NVMe-oF testing supported, Ceph version: %s", version)
