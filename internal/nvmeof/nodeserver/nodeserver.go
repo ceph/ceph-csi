@@ -802,6 +802,6 @@ func getDeviceFromStagingPath(ctx context.Context, stagingTargetPath string) str
 }
 
 // getNVMeMountedDevices returns a map of all currently mounted NVMe devices.
-func getNVMeMountedDevices(ctx context.Context) (map[string]bool, error) {
+func getNVMeMountedDevices(ctx context.Context) (map[string]string, error) {
 	return nvmeutil.GetAllNVMeMountedDevices(ctx)
 }

@@ -105,10 +105,11 @@ func GetDeviceFromMountpoint(ctx context.Context, mountpoint string) (string, er
 	return device, nil
 }
 
-// GetAllNVMeMountedDevices returns a map of all currently mounted NVMe devices.
-// Only checks staging paths to avoid counting the same device multiple times
-// (staging, publish, and pod paths all point to the same device).
-func GetAllNVMeMountedDevices(ctx context.Context) (map[string]bool, error) {
+// The map keys are NVMe device paths (for example, /dev/nvme0n1), and the values
+// are their corresponding CSI staging mount targets. Only staging paths are
+// checked to avoid counting the same device multiple times (staging, publish,
+// and pod paths all point to the same device).
+func GetAllNVMeMountedDevices(ctx context.Context) (map[string]string, error) {
 	stdout, _, err := util.ExecCommandWithTimeout(ctx, 5*time.Second,
 		"findmnt", "-J", "--list", "--output", "SOURCE,TARGET")
 	if err != nil {
@@ -120,7 +121,7 @@ func GetAllNVMeMountedDevices(ctx context.Context) (map[string]bool, error) {
 		return nil, fmt.Errorf("failed to parse findmnt output: %w", err)
 	}
 
-	mountedDevices := make(map[string]bool)
+	mountedDevices := make(map[string]string)
 	for _, fs := range result.Filesystems {
 		// Only check NVMe CSI staging paths
 		isNVMeOFStagingFS := strings.Contains(fs.Target, "nvmeof.csi.ceph.com") &&
@@ -136,7 +137,7 @@ func GetAllNVMeMountedDevices(ctx context.Context) (map[string]bool, error) {
 		device := fs.Source.String()
 		// Only consider valid NVMe devices
 		if device != "" && strings.HasPrefix(device, "/dev/nvme") {
-			mountedDevices[device] = true
+			mountedDevices[device] = fs.Target
 			log.DebugLog(ctx, "Found mounted NVMe device: %s at %s", device, fs.Target)
 		}
 	}

@@ -61,7 +61,7 @@ type NVMeInitiator interface {
 	//
 	// Example: If device /dev/nvme0n1 is connected via controllers nvme0 and nvme1,
 	// and both controllers have no other mounted namespaces, both will be disconnected.
-	DisconnectIfLastMount(ctx context.Context, devPath string, mountedDevices map[string]bool) error
+	DisconnectIfLastMount(ctx context.Context, devPath string, mountedDevices map[string]string) error
 }
 
 // ConnectRequest represents a subsystem connection request.
@@ -282,7 +282,7 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 //   - Controller nvme1 has namespaces: [nvme0n1 (being unstaged)]
 //   - Decision: No other namespaces using the controllers -> Disconnect BOTH controllers
 func (ni *nvmeInitiator) DisconnectIfLastMount(ctx context.Context, devPath string,
-	mountedDevices map[string]bool,
+	mountedDevices map[string]string,
 ) error {
 	controllers, err := getControllersForDevice(ctx, devPath)
 	if err != nil {
@@ -495,7 +495,7 @@ func getControllersForDevice(ctx context.Context, devPath string) ([]string, err
 // hasOtherMountedNamespaces checks if a controller has any mounted
 // namespaces OTHER than the one we're about to unstage.
 func hasOtherMountedNamespaces(ctx context.Context, controllerName, currentDevPath string,
-	mountedDevices map[string]bool,
+	mountedDevices map[string]string,
 ) (bool, error) {
 	// Get all namespaces on this controller
 	nsids, err := getNamespacesForController(ctx, controllerName)
@@ -513,7 +513,7 @@ func hasOtherMountedNamespaces(ctx context.Context, controllerName, currentDevPa
 		}
 
 		// If any other namespace is mounted, return true
-		if mountedDevices[nsDevice] {
+		if _, ok := mountedDevices[nsDevice]; ok {
 			log.DebugLog(ctx, "Found other mounted namespace %s on controller %s", nsDevice, controllerName)
 
 			return true, nil
