@@ -52,6 +52,11 @@ type NodeServer struct {
 
 	// node ID of this node server
 	nodeID string
+
+	// mountedDevices is a cache of currently mounted NVMe devices, used to determine
+	// when it's safe to disconnect a device.
+	// it is initialized on startup and updated on each stage/unstage operation.
+	mountCache nvmeutil.MountCache
 }
 
 // ConnectionInfo holds NVMe-oF connection details.
@@ -102,11 +107,19 @@ func NewNodeServer(
 		volumeLocks:       util.NewIDLocker(),
 		securityKeys:      nil, // Initialize lazily when needed
 		nodeID:            nodeID,
+		mountCache:        nvmeutil.NewMountCache(),
 	}
 
 	// Load nvme kernel modules
 	if err := nvmeInitiator.LoadKernelModules(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to load NVMe kernel modules: %w", err)
+	}
+
+	// Initialize mounted devices cache on startup to ensure we have an accurate view.
+	// Failing to initialize this cache can lead to incorrect disconnect decisions, so
+	// treat initialization failures as fatal and fail NodeServer construction.
+	if err := ns.initNVMeMountedDevices(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to initialize mounted devices cache on startup: %w", err)
 	}
 
 	return ns, nil
@@ -327,7 +340,15 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	stagingTargetPath := getStagingTargetPath(req)
 
-	devPath := getDeviceFromStagingPath(ctx, stagingTargetPath)
+	devPath, exists := ns.mountCache.GetDevice(stagingTargetPath)
+	if !exists {
+		log.WarningLog(ctx, "device not in cache for %s, querying system", stagingTargetPath)
+		// Fallback to findmnt if not in cache
+		devPath, err = nvmeutil.GetDeviceFromMountpoint(ctx, stagingTargetPath)
+		if err != nil {
+			log.WarningLog(ctx, "failed to get device from mountpoint for %s: %v", stagingTargetPath, err)
+		}
+	}
 
 	isMnt, err := ns.Mounter.IsMountPoint(stagingTargetPath)
 	if err != nil {
@@ -365,13 +386,13 @@ func (ns *NodeServer) NodeUnstageVolume(
 	// Non-fatal - a failed disconnect just means the connection lingers until the
 	// kernel's ctrl_loss_tmo expires or the next reconnect cycle.
 	if devPath != "" {
-		mountedDevices, err := getNVMeMountedDevices(ctx)
-		if err != nil {
-			log.WarningLog(ctx, "failed to get mounted devices: %v (skipping disconnect)", err)
-		} else {
-			if err := ns.initiator.DisconnectIfLastMount(ctx, devPath, mountedDevices); err != nil {
-				log.WarningLog(ctx, "failed to disconnect controller for device %s: %v", devPath, err)
-			}
+		// Remove from cache
+		ns.mountCache.RemoveByDevice(devPath)
+
+		// Get remaining devices
+		remainingDevices := ns.mountCache.GetCopyAllDevices()
+		if err := ns.initiator.DisconnectIfLastMount(ctx, devPath, remainingDevices); err != nil {
+			log.WarningLog(ctx, "failed to disconnect controller for device %s: %v", devPath, err)
 		}
 	}
 
@@ -489,6 +510,16 @@ func (ns *NodeServer) stageTransaction(
 	}
 	transaction.isMounted = true
 
+	// Resolve real device and update cache
+	realDevice, err := nvmeutil.GetDeviceFromMountpoint(ctx, stagingTargetPath)
+	if err != nil {
+		log.WarningLog(ctx, "failed to resolve device: %v", err)
+		// Fallback - try to continue
+		realDevice = devicePath
+	}
+
+	ns.mountCache.Add(realDevice, stagingTargetPath)
+
 	return transaction, nil
 }
 
@@ -520,16 +551,17 @@ func (ns *NodeServer) undoStagingTransaction(
 			// continue on failure to disconnect the image
 		}
 	}
-	// disconnect if we connected
+
+	// try to remove from cache if we created the staging path - idempotent.
+	ns.mountCache.RemoveByMountPoint(stagingTargetPath)
+
+	// if devicePath is not empty, it means we connected to the subsystem,
+	// so we should try to disconnect if this was the last mount
 	if transaction.devicePath != "" {
-		mountedDevices, err := getNVMeMountedDevices(ctx)
-		if err != nil {
-			log.WarningLog(ctx, "failed to get mounted devices during rollback: %v (skipping disconnect)", err)
-		} else {
-			if err := ns.initiator.DisconnectIfLastMount(ctx, transaction.devicePath, mountedDevices); err != nil {
-				log.WarningLog(ctx, "failed to disconnect during rollback for device %s: %v",
-					transaction.devicePath, err)
-			}
+		mountedDevices := ns.mountCache.GetCopyAllDevices()
+		if err := ns.initiator.DisconnectIfLastMount(ctx, transaction.devicePath, mountedDevices); err != nil {
+			log.WarningLog(ctx, "failed to disconnect during rollback for device %s: %v",
+				transaction.devicePath, err)
 		}
 	}
 }
@@ -776,6 +808,21 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	return err
 }
 
+// initNVMeMountedDevices initializes the mount cache with currently mounted NVMe devices on startup.
+func (ns *NodeServer) initNVMeMountedDevices(ctx context.Context) error {
+	mountedDevices, err := nvmeutil.GetAllNVMeMountedDevices(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Add mounted devices to cache
+	for device, mountPoint := range mountedDevices {
+		ns.mountCache.Add(device, mountPoint)
+	}
+
+	return nil
+}
+
 // getStagingTargetPath concats either NodeStageVolumeRequest's or
 // NodeUnstageVolumeRequest's target path with the volumeID.
 func getStagingTargetPath(req interface{}) string {
@@ -799,9 +846,4 @@ func getDeviceFromStagingPath(ctx context.Context, stagingTargetPath string) str
 	}
 
 	return device
-}
-
-// getNVMeMountedDevices returns a map of all currently mounted NVMe devices.
-func getNVMeMountedDevices(ctx context.Context) (map[string]string, error) {
-	return nvmeutil.GetAllNVMeMountedDevices(ctx)
 }
