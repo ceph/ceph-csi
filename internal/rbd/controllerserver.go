@@ -1391,9 +1391,10 @@ func (cs *ControllerServer) doSnapshotClone(
 	// generate cloned volume details from snapshot
 	cloneRbd := rbdSnap.toVolume()
 	defer cloneRbd.Destroy(ctx)
-	// add image feature for cloneRbd
+	// Use the parent volume's image features and ensure that layering and
+	// deep-flatten are always enabled for the snapshot backing image.
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
-	cloneRbd.ImageFeatureSet = librbd.FeatureSetFromNames(f)
+	cloneRbd.ImageFeatureSet = parentVol.ImageFeatureSet | librbd.FeatureSetFromNames(f)
 
 	err := cloneRbd.Connect(cr)
 	if err != nil {
