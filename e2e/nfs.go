@@ -1249,6 +1249,471 @@ var _ = Describe("nfs", func() {
 			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 		})
 
+		It("checking snapshot-backed volume", func() {
+			err := createNFSSnapshotClass(f)
+			if err != nil {
+				logAndFail("failed to create NFS snapshotclass: %v", err)
+			}
+			defer func() {
+				err = deleteNFSSnapshotClass()
+				if err != nil {
+					logAndFail("failed to delete VolumeSnapshotClass: %v", err)
+				}
+			}()
+
+			err = createNFSStorageClass(f.ClientSet, f, false, nil)
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+			if err != nil {
+				logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
+			}
+
+			app, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+			appLabels := map[string]string{
+				appKey: appLabel,
+			}
+			app.Labels = appLabels
+			optApp := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s", appKey, appLabels[appKey]),
+			}
+			err = writeDataInPod(app, &optApp, f)
+			if err != nil {
+				logAndFail("failed to write data: %v", err)
+			}
+
+			appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+			snap := getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+			err = createSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot: %v", err)
+			}
+			validateCephFSSnapshotCount(f, 1, defaultSubvolumegroup, pv)
+
+			err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
+			if err != nil {
+				logAndFail("failed to append data: %v", err)
+			}
+
+			parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
+			if err != nil {
+				logAndFail("failed to get SHA512 sum for file: %v", err)
+			}
+
+			pvcClone, err := loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			// Snapshot-backed volumes support read-only access modes only.
+			pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+			appClone, err := loadApp(appClonePath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			appCloneLabels := map[string]string{
+				appKey: appCloneLabel,
+			}
+			appClone.Labels = appCloneLabels
+			optAppClone := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s", appKey, appCloneLabels[appKey]),
+			}
+			pvcClone.Namespace = f.UniqueName
+			appClone.Namespace = f.UniqueName
+			err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC and app: %v", err)
+			}
+
+			// Snapshot-backed volume shouldn't contribute to total subvolume count.
+			validateSubvolumeCount(f, 1, fileSystemName, defaultSubvolumegroup)
+
+			// Deleting snapshot before deleting pvcClone should succeed. It will be
+			// deleted once all volumes that are backed by this snapshot are gone.
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+
+			appCloneTestFilePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+			snapFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
+			if err != nil {
+				logAndFail("failed to get SHA512 sum for file: %v", err)
+			}
+
+			if parentFileSum == snapFileSum {
+				logAndFail("SHA512 sums of files in parent subvol and snapshot should differ")
+			}
+
+			err = deletePVCAndApp("", f, pvcClone, appClone)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+
+			validateCephFSSnapshotCount(f, 0, defaultSubvolumegroup, pv)
+
+			err = deletePVCAndApp("", f, pvc, app)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+
+			err = deleteResource(nfsExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete NFS storageclass: %v", err)
+			}
+
+			err = createNFSStorageClass(f.ClientSet, f, false, nil)
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+		})
+
+		It("checking snapshot-backed volume by backing snapshot as false", func() {
+			err := createNFSStorageClass(f.ClientSet, f, false, nil)
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+			if err != nil {
+				logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
+			}
+
+			app, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+			appLabels := map[string]string{
+				appKey: appLabel,
+			}
+			app.Labels = appLabels
+			optApp := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s", appKey, appLabels[appKey]),
+			}
+			err = writeDataInPod(app, &optApp, f)
+			if err != nil {
+				logAndFail("failed to write data: %v", err)
+			}
+
+			appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+			err = createNFSSnapshotClass(f)
+			if err != nil {
+				logAndFail("failed to create NFS snapshotclass: %v", err)
+			}
+			defer func() {
+				err = deleteNFSSnapshotClass()
+				if err != nil {
+					logAndFail("failed to delete VolumeSnapshotClass: %v", err)
+				}
+			}()
+
+			snap := getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+			err = createSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot: %v", err)
+			}
+			validateCephFSSnapshotCount(f, 1, defaultSubvolumegroup, pv)
+
+			err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
+			if err != nil {
+				logAndFail("failed to append data: %v", err)
+			}
+
+			parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
+			if err != nil {
+				logAndFail("failed to get SHA512 sum for file: %v", err)
+			}
+
+			err = deleteResource(nfsExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete NFS storageclass: %v", err)
+			}
+
+			err = createNFSStorageClass(f.ClientSet, f, false, map[string]string{
+				"backingSnapshot": "false",
+			})
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+
+			pvcClone, err := loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			// Snapshot-backed volumes support read-only access modes only.
+			pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+			appClone, err := loadApp(appClonePath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			appCloneLabels := map[string]string{
+				appKey: appCloneLabel,
+			}
+			appClone.Labels = appCloneLabels
+			optAppClone := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s", appKey, appCloneLabels[appKey]),
+			}
+			pvcClone.Namespace = f.UniqueName
+			appClone.Namespace = f.UniqueName
+			err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC and app: %v", err)
+			}
+
+			validateSubvolumeCount(f, 2, fileSystemName, defaultSubvolumegroup)
+
+			// Deleting snapshot before deleting pvcClone should succeed. It will be
+			// deleted once all volumes that are backed by this snapshot are gone.
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+			validateCephFSSnapshotCount(f, 0, defaultSubvolumegroup, pv)
+
+			appCloneTestFilePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+			snapFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
+			if err != nil {
+				logAndFail("failed to get SHA512 sum for file: %v", err)
+			}
+
+			if parentFileSum == snapFileSum {
+				logAndFail("SHA512 sums of files in parent subvol and snapshot should differ")
+			}
+
+			err = deletePVCAndApp("", f, pvcClone, appClone)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+
+			err = deletePVCAndApp("", f, pvc, app)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+
+			err = deleteResource(nfsExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete NFS storageclass: %v", err)
+			}
+
+			err = createNFSStorageClass(f.ClientSet, f, false, nil)
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+		})
+
+		It("create RWX clone from ROX PVC", func() {
+			err := createNFSStorageClass(f.ClientSet, f, false, nil)
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+			if err != nil {
+				logAndFail("failed to get PV object for %s: %v", pvc.Name, err)
+			}
+
+			app, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+			appLabels := map[string]string{
+				appKey: appLabel,
+			}
+			app.Labels = appLabels
+			optApp := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s", appKey, appLabels[appKey]),
+			}
+			err = writeDataInPod(app, &optApp, f)
+			if err != nil {
+				logAndFail("failed to write data: %v", err)
+			}
+
+			appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+			err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
+			if err != nil {
+				logAndFail("failed to append data: %v", err)
+			}
+
+			parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
+			if err != nil {
+				logAndFail("failed to get SHA512 sum for file: %v", err)
+			}
+
+			err = createNFSSnapshotClass(f)
+			if err != nil {
+				logAndFail("failed to create NFS snapshotclass: %v", err)
+			}
+			defer func() {
+				err = deleteNFSSnapshotClass()
+				if err != nil {
+					logAndFail("failed to delete VolumeSnapshotClass: %v", err)
+				}
+			}()
+
+			snap := getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+			err = createSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot: %v", err)
+			}
+			validateCephFSSnapshotCount(f, 1, defaultSubvolumegroup, pv)
+
+			pvcClone, err := loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			// Snapshot-backed volumes support read-only access modes only.
+			pvcClone.Spec.DataSource.Name = snap.Name
+			pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+
+			pvcClone.Namespace = f.UniqueName
+			err = createPVCAndvalidatePV(c, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			validateSubvolumeCount(f, 1, fileSystemName, defaultSubvolumegroup)
+
+			// create RWX clone from ROX PVC
+			pvcRWXClone, err := loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvcRWXClone.Spec.DataSource.Name = pvcClone.Name
+			pvcRWXClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteMany}
+			pvcRWXClone.Namespace = f.UniqueName
+
+			appClone, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			appCloneLabels := map[string]string{
+				appKey: appCloneLabel,
+			}
+			appClone.Name = f.UniqueName + "-app"
+			appClone.Namespace = f.UniqueName
+			appClone.Labels = appCloneLabels
+			appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcRWXClone.Name
+			optAppClone := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s", appKey, appCloneLabels[appKey]),
+			}
+
+			err = createPVCAndApp("", f, pvcRWXClone, appClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC and app: %v", err)
+			}
+			// 2 subvolumes should be created 1 for parent PVC and 1 for
+			// RWX clone PVC.
+			validateSubvolumeCount(f, 2, fileSystemName, defaultSubvolumegroup)
+
+			appCloneTestFilePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+			cloneFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
+			if err != nil {
+				logAndFail("failed to get SHA512 sum for file: %v", err)
+			}
+
+			if parentFileSum != cloneFileSum {
+				logAndFail(
+					"SHA512 sums of files in parent and ROX should not differ. parentFileSum: %s cloneFileSum: %s",
+					parentFileSum,
+					cloneFileSum)
+			}
+
+			// Now try to write to the PVC as its a RWX PVC
+			err = appendToFileInContainer(f, app, appCloneTestFilePath, "testing", &optApp)
+			if err != nil {
+				logAndFail("failed to append data: %v", err)
+			}
+
+			// Deleting snapshot before deleting pvcClone should succeed. It will be
+			// deleted once all volumes that are backed by this snapshot are gone.
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+
+			// delete parent pvc and app
+			err = deletePVCAndApp("", f, pvc, app)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+
+			// delete ROX clone PVC
+			err = deletePVCAndValidatePV(c, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+			// delete RWX clone PVC and app
+			err = deletePVCAndApp("", f, pvcRWXClone, appClone)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+
+			validateSubvolumeCount(f, 0, fileSystemName, defaultSubvolumegroup)
+			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+			err = deleteResource(nfsExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete NFS storageclass: %v", err)
+			}
+
+			err = createNFSStorageClass(f.ClientSet, f, false, nil)
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+		})
+
 		It("delete NFS provisioner and plugin secret", func() {
 			// delete nfs provisioner secret
 			err := deleteCephUser(f, keyringCephFSProvisionerUsername)

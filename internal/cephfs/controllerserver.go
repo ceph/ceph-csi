@@ -272,6 +272,9 @@ func buildCreateVolumeResponse(
 	volumeContext := util.GetVolumeContext(req.GetParameters())
 	volumeContext["subvolumeName"] = vID.FsSubvolName
 	volumeContext["subvolumePath"] = volOptions.RootPath
+	if volOptions.BackingSnapshot {
+		volumeContext["backingSnapshotRoot"] = volOptions.BackingSnapshotRoot
+	}
 	volume := &csi.Volume{
 		VolumeId:      vID.VolumeID,
 		CapacityBytes: volOptions.Size,
