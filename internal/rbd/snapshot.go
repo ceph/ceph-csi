@@ -292,9 +292,10 @@ func (rv *rbdVolume) NewSnapshotByID(
 		return nil, err
 	}
 
-	// set the features for the clone image.
+	// Use the parent volume's image features and ensure that layering and
+	// deep-flatten are always enabled for the snapshot backing image.
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
-	rv.ImageFeatureSet = librbd.FeatureSetFromNames(f)
+	rv.ImageFeatureSet |= librbd.FeatureSetFromNames(f)
 
 	options, err := rv.constructImageOptions(ctx)
 	if err != nil {
