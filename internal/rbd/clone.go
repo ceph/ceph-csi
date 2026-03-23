@@ -109,9 +109,11 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	tempClone := rbdVolume{}
 	tempClone.conn = rv.conn.Copy()
-	// The temp clone image need to have deep flatten feature
+	// Use the parent volume's image features (from StorageClass) and ensure
+	// that layering and deep-flatten are always enabled, as these are
+	// required for the flatten operation on the temporary clone.
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
-	tempClone.ImageFeatureSet = librbd.FeatureSetFromNames(f)
+	tempClone.ImageFeatureSet = rv.ImageFeatureSet | librbd.FeatureSetFromNames(f)
 	tempClone.ClusterID = rv.ClusterID
 	tempClone.Monitors = rv.Monitors
 	tempClone.Pool = rv.Pool
