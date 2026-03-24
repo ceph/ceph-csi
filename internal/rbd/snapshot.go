@@ -438,10 +438,16 @@ func (rbdSnap *rbdSnapshot) getRBDSnapID(ctx context.Context) (uint64, error) {
 		}
 	}()
 
-	parentInfo, err := image.GetParent()
+	snapInfos, err := image.GetSnapshotNames()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to list snapshots on image %q: %w", vol.RbdImageName, err)
 	}
 
-	return parentInfo.Snap.ID, nil
+	for _, snap := range snapInfos {
+		if snap.Name == rbdSnap.RbdSnapName {
+			return snap.ID, nil
+		}
+	}
+
+	return 0, fmt.Errorf("snapshot %q not found on image %q", rbdSnap.RbdSnapName, vol.RbdImageName)
 }
