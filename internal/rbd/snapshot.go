@@ -445,7 +445,7 @@ func (rbdSnap *rbdSnapshot) getRBDSnapID(ctx context.Context) (uint64, error) {
 
 	for _, snap := range snapInfos {
 		if snap.Name == rbdSnap.RbdSnapName {
-			return snap.ID, nil
+			return snap.Id, nil
 		}
 	}
 
