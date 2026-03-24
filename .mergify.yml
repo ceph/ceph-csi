@@ -26,8 +26,8 @@ queue_rules:
           - "approved-reviews-by=@ceph/ceph-csi-maintainers"
           - "status-success=DCO"
           - or:
-              # requirements for non ci/centos branches
               - and:
+                  # requirements for non ci/centos branches
                   - base!=ci/centos
                   - "status-success=codespell"
                   - "status-success=go-test"
@@ -40,14 +40,14 @@ queue_rules:
                       # dependabot has an invalid signed-off-by
                       - author=dependabot[bot]
                       - "status-success=commitlint"
-              # requirements for ci/centos branch
-              - and:
-                  - base=ci/centos
-                  - "status-success=ci/centos/job-validation"
-                  - "status-success=ci/centos/jjb-validate"
+              # exclude the ci/centos branch from above status checks
+              - base=ci/centos
           - or:
               # requirenents per branch
-              - label=ci/skip/e2e
+              - and:
+                  # ci/skip/e2e label has no meaning on ci/centos
+                  - base!=ci/centos
+                  - label=ci/skip/e2e
               - and:
                   - base~=^(release-.+)$
                   - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
@@ -87,6 +87,11 @@ queue_rules:
                   - "status-success=ci/centos/mini-e2e/k8s-1.35"
                   - "status-success=ci/centos/upgrade-tests-cephfs"
                   - "status-success=ci/centos/upgrade-tests-rbd"
+              - and:
+                  # requirements for ci/centos branch
+                  - base=ci/centos
+                  - "status-success=ci/centos/job-validation"
+                  - "status-success=ci/centos/jjb-validate"
 
 merge_queue:
   max_parallel_checks: 1
