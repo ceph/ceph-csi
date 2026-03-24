@@ -42,9 +42,16 @@ func (rbdSnap *rbdSnapshot) ProcessMetadata(
 ) error {
 	var fromSnapID uint64
 
-	image, err := rbdSnap.open()
+	// Open the snapshot (clone) image, not the source volume.
+	// The snapshot image contains the data and has snapshots
+	// whose IDs correspond to what getRBDSnapID() returns.
+	vol := rbdSnap.toVolume()
+	vol.conn = rbdSnap.conn.Copy()
+	defer vol.Destroy(ctx)
+
+	image, err := vol.open()
 	if err != nil {
-		return fmt.Errorf("failed to open image %q: %w", rbdSnap, err)
+		return fmt.Errorf("failed to open image %q: %w", vol, err)
 	}
 	defer func() {
 		cErr := image.Close()
