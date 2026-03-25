@@ -138,9 +138,19 @@ func maybeUnlockFileEncryption(
 		return nil
 	}
 
-	// Define Mutex Lock variables
+	// Extract the ObjectUUID from the volume ID to use as the RADOS lock name.
+	// Using the full ID would exceed Ceph's default osd_max_attr_name_len i.e. 100bytes.
+	// Ceph also prefixes "lock." (5 bytes) internally to every lock name.
 	volIDStr := string(volID)
-	lockName := volIDStr + "-mutexLock"
+	var csiID util.CSIIdentifier
+	if err := csiID.DecomposeCSIID(volIDStr); err != nil {
+		log.ErrorLog(ctx, "failed to decompose volume ID %s: %v", volID, err)
+
+		return err
+	}
+	objectUUID := csiID.ObjectUUID
+	// 5(lock.) + 36(uuid) + 10(suffix) = 51 bytes < 100 bytes limit.
+	lockName := objectUUID + "-mutexLock"
 	lockDesc := "Lock for " + volIDStr
 	lockDuration := 150 * time.Second
 	// Generate a consistent lock cookie for the client using hostname and process ID
@@ -156,7 +166,7 @@ func maybeUnlockFileEncryption(
 	}
 	defer ioctx.Destroy()
 
-	lock := iolock.NewLock(ioctx, volIDStr, lockName, lockCookie, lockDesc, lockDuration)
+	lock := iolock.NewLock(ioctx, objectUUID, lockName, lockCookie, lockDesc, lockDuration)
 	err = lock.LockExclusive(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create lock for volume ID %s: %v", volID, err)

@@ -549,10 +549,18 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 		return fmt.Errorf("failed to open ioctx, err: %w", err)
 	}
 
-	// Lock params
-	lockName := rv.VolID + "-mutexlock"
+	// Extract the ObjectUUID from the volume ID to use as the RADOS lock name.
+	// Using the full ID would exceed Ceph's default osd_max_attr_name_len i.e. 100bytes.
+	// Ceph also prefixes "lock." (5 bytes) internally to every lock name.
+	var csiID util.CSIIdentifier
+	if err = csiID.DecomposeCSIID(rv.VolID); err != nil {
+		return fmt.Errorf("failed to decompose volume ID %s: %w", rv.VolID, err)
+	}
+	objectUUID := csiID.ObjectUUID
+	// 5(lock.) + 36(uuid) + 10(suffix) = 51 bytes < 100 bytes limit.
+	lockName := objectUUID + "-mutexLock"
 	lockDesc := "Key rotation mutex lock for " + rv.VolID
-	lockCookie := rv.VolID + "-enc-key-rotate"
+	lockCookie := objectUUID + "-enc-key-rotate"
 
 	// Keep this a little more than ExecutionTimeout to have some buffer
 	// for cleanup. If this lock is a part of some gRPC call, the client
@@ -562,7 +570,7 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 	defer cancel()
 
 	// Acquire the exclusive lock based on vol id
-	lck := lock.NewLock(rv.ioctx, rv.VolID, lockName, lockCookie, lockDesc, lockDuration)
+	lck := lock.NewLock(rv.ioctx, objectUUID, lockName, lockCookie, lockDesc, lockDuration)
 	err = lck.LockExclusive(ctx)
 	if err != nil {
 		return err
