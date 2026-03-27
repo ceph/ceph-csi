@@ -671,6 +671,7 @@ func ensureSubsystem(
 	subsystemNQN,
 	networkMask string,
 	listeners []nvmeof.ListenerDetails,
+	allowAnyHost bool,
 ) error {
 	exists, err := gateway.SubsystemExists(ctx, subsystemNQN)
 	if err != nil {
@@ -681,6 +682,14 @@ func ensureSubsystem(
 		err = gateway.CreateSubsystem(ctx, subsystemNQN, networkMask)
 		if err != nil {
 			return err
+		}
+
+		// If allowAnyHost is enabled, configure subsystem to allow any host
+		if allowAnyHost {
+			err = gateway.AllowAnyHost(ctx, subsystemNQN)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	// if the subsystem exists, we need to ensure the listeners are created. (if exists, it is OK)
@@ -769,6 +778,16 @@ func (cs *Server) createNVMeoFResources(
 	if err != nil {
 		return nil, fmt.Errorf("invalid nvmeofGatewayPort %s: %w", nvmeofGatewayPortStr, err)
 	}
+
+	// Parse allowAnyHost parameter (defaults to false if not provided)
+	allowAnyHost := false
+	if allowAnyHostStr := params["allowAnyHost"]; allowAnyHostStr != "" {
+		allowAnyHost, err = strconv.ParseBool(allowAnyHostStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid allowAnyHost value %s: %w", allowAnyHostStr, err)
+		}
+	}
+
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
 		SubsystemNQN:  params["subsystemNQN"],
 		NamespaceID:   0,   // will be set after namespace creation,
@@ -837,7 +856,8 @@ func (cs *Server) createNVMeoFResources(
 	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 
 	// Step 3: Ensure subsystem exists (and listener)
-	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask, nvmeofData.ListenerInfo); err != nil {
+	err = ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask, nvmeofData.ListenerInfo, allowAnyHost)
+	if err != nil {
 		return nvmeofData, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 

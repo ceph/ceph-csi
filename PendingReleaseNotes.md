@@ -21,5 +21,7 @@
 - nvmeof: add Kubernetes ServiceAccount based volume access restriction
 - cephfs: add Kubernetes ServiceAccount based volume access restriction
 - nfs: add Kubernetes ServiceAccount based volume access restriction
+- nvmeof: the new `allowAnyHost` StorageClass option makes it possible to
+  expose created volumes to external clients
 
 ## NOTE

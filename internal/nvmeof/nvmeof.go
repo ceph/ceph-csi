@@ -389,6 +389,19 @@ func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN s
 	return fmt.Errorf("gateway AddHost returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
 }
 
+// AllowAnyHost configures the subsystem to allow any host to connect by adding a wildcard host ("*").
+// This bypasses per-host access control.
+func (gw *GatewayRpcClient) AllowAnyHost(ctx context.Context, subsystemNQN string) error {
+	log.DebugLog(ctx, "Configuring subsystem %s to allow any host", subsystemNQN)
+
+	emptyDhchapKeys := DHCHAPKeys{}
+	if err := gw.AddHost(ctx, subsystemNQN, "*", emptyDhchapKeys); err != nil {
+		return fmt.Errorf("failed to add wildcard host to subsystem %s: %w", subsystemNQN, err)
+	}
+
+	return nil
+}
+
 func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN string, listenerInfo ListenerDetails,
 ) error {
 	log.DebugLog(ctx, "Adding listener %s to subsystem %s", listenerInfo.Address, subsystemNQN)

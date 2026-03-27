@@ -28,6 +28,10 @@ parameters:
   # subsystemNQN is the NQN of the subsystem where all volumes belong to
   subsystemNQN: "nqn.2025-08.io.ceph:k8s-ceph-csi"
 
+  # allowAnyHost allows any host to connect to the subsystem. When enabled,
+  # explicit per-host access control is bypassed
+  # allowAnyHost: "true"
+
   # connection details for the gateway (management API)
   nvmeofGatewayAddress: 10.242.64.32
   nvmeofGatewayPort: "5500"
