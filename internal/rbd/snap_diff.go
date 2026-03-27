@@ -98,7 +98,7 @@ func (rbdSnap *rbdSnapshot) ProcessMetadata(
 	)
 	diffIterateByIDConfig := librbd.DiffIterateByIDConfig{
 		Offset:   uint64(startingOffset),
-		Length:   uint64(rbdSnap.VolSize),
+		Length:   uint64(rbdSnap.VolSize) - uint64(startingOffset),
 		Callback: cb,
 	}
 	if baseSnap != nil {
