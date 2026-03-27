@@ -92,7 +92,7 @@ endif
 
 all: cephcsi
 
-.PHONY: go-test static-check mod-check go-lint lint-extras commitlint link-check codespell
+.PHONY: go-test static-check mod-check go-lint go-lint-fix lint-extras commitlint link-check codespell
 ifeq ($(CONTAINERIZED),no)
 # include mod-check in non-containerized runs
 test: go-test static-check mod-check
@@ -126,6 +126,9 @@ scripts/golangci.yml: scripts/golangci.yml.in
 
 go-lint: scripts/golangci.yml
 	./scripts/lint-go.sh
+
+go-lint-fix: scripts/golangci.yml
+	./scripts/lint-go.sh --fix
 
 lint-extras:
 	./scripts/lint-extras.sh lint-all
