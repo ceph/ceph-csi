@@ -2094,6 +2094,247 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create PVC with layering,deep-flatten image-features and bind it to an app", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{
+						"imageFeatures": "layering,deep-flatten",
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+				// set up PVC
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+				if kernel.CheckKernelSupport(kernelRelease, deepFlattenSupport) {
+					app, aErr := loadApp(appPath)
+					if aErr != nil {
+						logAndFail("failed to load application: %v", aErr)
+					}
+					app.Namespace = f.UniqueName
+					err = createApp(f.ClientSet, app, deployTimeout)
+					if err != nil {
+						logAndFail("failed to create application: %v", err)
+					}
+					// delete pod as we should not create snapshot for in-use pvc
+					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						logAndFail("failed to delete application: %v", err)
+					}
+
+				}
+				// clean up after ourselves
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
+			By("verify temp clone and snapshot backing images inherit StorageClass image features", func() {
+				if !kernel.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+					Skip("kernel does not support fast-diff, skipping image features inheritance test")
+				}
+
+				imageFeatures := "layering,exclusive-lock,object-map,fast-diff,deep-flatten"
+				expectedFeatures := []string{
+					"layering", "exclusive-lock", "object-map", "fast-diff", "deep-flatten",
+				}
+
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{
+						"imageFeatures": imageFeatures,
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+				defer func() {
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						logAndFail("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						logAndFail("failed to create storageclass: %v", err)
+					}
+				}()
+
+				// create source PVC
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC: %v", err)
+				}
+
+				// create a snapshot and verify the backing image (csi-snap-*)
+				// inherits StorageClass image features
+				err = createRBDSnapshotClass(f)
+				if err != nil {
+					logAndFail("failed to create snapshotclass: %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
+					if err != nil {
+						logAndFail("failed to delete snapshotclass: %v", err)
+					}
+				}()
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create snapshot: %v", err)
+				}
+
+				snapImageName, err := getSnapName(snap.Namespace, snap.Name)
+				if err != nil {
+					logAndFail("failed to get snapshot image name: %v", err)
+				}
+				err = validateImageFeatures(f, snapImageName, defaultRBDPool, expectedFeatures)
+				if err != nil {
+					logAndFail("snapshot backing image %s features validation failed: %v",
+						snapImageName, err)
+				}
+
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete snapshot: %v", err)
+				}
+
+				// create a PVC-PVC clone and verify the temp clone image
+				// (csi-vol-*-temp) inherits StorageClass image features
+				pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvcSmartClone.Namespace = f.UniqueName
+				pvcSmartClone.Spec.DataSource.Name = pvc.Name
+				err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create cloned PVC: %v", err)
+				}
+
+				// the temp clone image name is the clone image name + "-temp"
+				imageData, err := getImageInfoFromPVC(pvcSmartClone.Namespace, pvcSmartClone.Name, f)
+				if err != nil {
+					logAndFail("failed to get image info from source PVC: %v", err)
+				}
+				tempCloneImageName := imageData.imageName + "-temp"
+				err = validateImageFeatures(f, tempCloneImageName, defaultRBDPool, expectedFeatures)
+				if err != nil {
+					logAndFail("temp clone image %s features validation failed: %v",
+						tempCloneImageName, err)
+				}
+
+				// clean up clone and source
+				err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete cloned PVC: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete source PVC: %v", err)
+				}
+
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
+			By("create PVC without layering,deep-flatten image-features and bind it to an app", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{
+						"imageFeatures": "",
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+				// set up PVC
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+				// checking the minimal kernel version for fast-diff as its
+				// higher kernel version than other default image features.
+				if kernel.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+					app, aErr := loadApp(appPath)
+					if aErr != nil {
+						logAndFail("failed to load application: %v", aErr)
+					}
+					app.Namespace = f.UniqueName
+					err = createApp(f.ClientSet, app, deployTimeout)
+					if err != nil {
+						logAndFail("failed to create application: %v", err)
+					}
+					// delete pod as we should not create snapshot for in-use pvc
+					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						logAndFail("failed to delete application: %v", err)
+					}
+
+				}
+				// clean up after ourselves
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
 			ByFileAndBlockEncryption("create a PVC and bind it to an app using rbd-nbd mounter with encryption", func(
 				validator encryptionValidateFunc, _ validateFunc, encType crypto.EncryptionType,
 			) {
