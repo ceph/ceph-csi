@@ -1230,11 +1230,12 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 
 // imageInfo strongly typed JSON spec for image info.
 type imageInfo struct {
-	Name        string `json:"name"`
-	StripeUnit  int    `json:"stripe_unit"`
-	StripeCount int    `json:"stripe_count"`
-	ObjectSize  int    `json:"object_size"`
-	DataPool    string `json:"data_pool"`
+	Name        string   `json:"name"`
+	StripeUnit  int      `json:"stripe_unit"`
+	StripeCount int      `json:"stripe_count"`
+	ObjectSize  int      `json:"object_size"`
+	DataPool    string   `json:"data_pool"`
+	Features    []string `json:"features"`
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -1308,6 +1309,40 @@ func validateStripe(f *framework.Framework,
 
 	if imgInfo.StripeCount != stripeCount {
 		return fmt.Errorf("stripeCount %d does not match expected %d", imgInfo.StripeCount, stripeCount)
+	}
+
+	return nil
+}
+
+// validateImageFeatures checks that the given RBD image has all the expected
+// image features enabled.
+func validateImageFeatures(
+	f *framework.Framework,
+	imageName, pool string,
+	expectedFeatures []string,
+) error {
+	var imgInfo imageInfo
+
+	imgInfoStr, err := getImageInfo(f, imageName, pool)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal([]byte(imgInfoStr), &imgInfo)
+	if err != nil {
+		return fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, imgInfoStr)
+	}
+
+	actualSet := make(map[string]bool, len(imgInfo.Features))
+	for _, feat := range imgInfo.Features {
+		actualSet[feat] = true
+	}
+
+	for _, want := range expectedFeatures {
+		if !actualSet[want] {
+			return fmt.Errorf("image %s missing expected feature %q, got features: %v",
+				imageName, want, imgInfo.Features)
+		}
 	}
 
 	return nil
