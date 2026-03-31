@@ -56,6 +56,10 @@ function deploy_rook() {
 		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
 	fi
 
+	curl -o "${TEMP_DIR}/nvmeof-test.yaml" "${ROOK_URL}/nvmeof-test.yaml"
+	sed -i 's|pool: nvmeof|pool: replicapool|g' "${TEMP_DIR}/nvmeof-test.yaml"
+	kubectl_retry create -f "${TEMP_DIR}/nvmeof-test.yaml"
+
 	rm -rf "${TEMP_DIR}"
 
 	kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
@@ -69,8 +73,8 @@ function deploy_rook() {
 		check_ceph_cluster_health
 	fi
 
-	# Make sure Ceph Mgr is running
-	check_ceph_mgr
+	# Make sure the Ceph NVMe-oF gateway is running
+	check_nvmeof_gw
 
 	# Check if CephFileSystem is empty
 	if ! kubectl_retry -n rook-ceph get cephfilesystems -oyaml | grep 'items: \[\]' &>/dev/null; then
@@ -85,6 +89,7 @@ function deploy_rook() {
 
 function teardown_rook() {
 	create_or_delete_subvolumegroup "delete"
+	kubectl delete -f "${ROOK_URL}/nvmeof-test.yaml"
 	kubectl delete -f "${ROOK_URL}/pool-test.yaml"
 	kubectl delete -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl delete -f "${ROOK_URL}/toolbox.yaml"
@@ -242,6 +247,21 @@ function check_rbd_stat() {
 
 	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
 		echo "[Timeout] Failed to get RBD pool stats"
+		return 1
+	fi
+	echo ""
+}
+
+function check_nvmeof_gw() {
+	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
+		echo "Waiting for Ceph NVMe-oF gateway... ${retry}s" && sleep 5
+
+		NVMEOF_GW_STATUS=$(kubectl_retry -n rook-ceph get cephnvmeofgateway.ceph.rook.io -o jsonpath='{.items[0].status.phase}')
+		[[ "$NVMEOF_GW_STATUS" = "Ready" ]] && break
+	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[Timeout] Ceph NVMe-oF gateway is not running (timeout)"
 		return 1
 	fi
 	echo ""
