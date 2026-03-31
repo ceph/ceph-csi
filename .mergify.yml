@@ -104,12 +104,10 @@ pull_request_rules:
       - label!=conflicts
       - label!=ci/skip/e2e
       - label!=ci/in-progress/e2e
-      - not:
-          check-pending~=^ci/centos
-      - not:
-          status-success~=^ci/centos
+      - not: check-pending~=^ci/centos
+      - not: status-success~=^ci/centos
       - or:
-          - "check-pending=Queue: Embarked in merge queue"
+          - queue-position >= 0
           - author=mergify[bot]
     actions:
       label:
