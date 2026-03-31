@@ -21,10 +21,14 @@ existing RBD image or CephFS volume.
 
 > [!warning]
 > static PVC can be created, deleted, mounted and unmounted but
-currently ceph-csi doesn't support other operations like snapshot,clone,
-resize, etc for static PVC
+currently ceph-csi doesn't support other operations like snapshot, clone,
+resize, encryption etc for static PVC
 
 ## RBD static PVC
+
+> [!warning]
+> Features that require ceph-csi to manage the volume lifecycle are not
+supported for static RBD PVC
 
 RBD images created manually can be mounted and unmounted to an app, below step
 shows how to create a RBD image, static PV, static PVC
@@ -199,6 +203,10 @@ pod "rbd-static-pvc-test" deleted
 manually delete the RBD image if required
 
 ## CephFS static PVC
+
+> [!warning]
+> Features that require ceph-csi to manage the volume lifecycle are not
+supported for static CephFS PVC
 
 CephFS subvolume or volume created manually can be mounted and unmounted
 to an app, below steps show how to create a CephFS subvolume or volume,
