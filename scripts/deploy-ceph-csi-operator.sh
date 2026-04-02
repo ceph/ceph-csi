@@ -72,7 +72,7 @@ function generate_operator_config() {
     generate_encryption_configmap
 
     cat <<EOF >"${TEMP_DIR}/operatorconfig.yaml"
-apiVersion: csi.ceph.io/v1alpha1
+apiVersion: csi.ceph.io/v1
 kind: OperatorConfig
 metadata:
     name: ceph-csi-operator-config
@@ -100,7 +100,7 @@ EOF
 function generate_driver() {
     local driver_name=$1
     cat <<EOF >"${TEMP_DIR}/${driver_name}.yaml"
-apiVersion: csi.ceph.io/v1alpha1
+apiVersion: csi.ceph.io/v1
 kind: Driver
 metadata:
   name: ${driver_name}
