@@ -9,3 +9,8 @@ parameters:
   # "server" can be an alternative NFS-server that should be used when the
   # volume is attached the next time to a node.
   server: to-be-deployed.example.net
+
+  # "clients" can be used to update the list of hostnames, networks or IP
+  # addresses that are allowed to access the NFS export. The <client-list>
+  # is a comma delimited string, for example: "192.168.0.10,192.168.1.0/8"
+  # clients: <client-list>

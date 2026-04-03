@@ -40,6 +40,11 @@ const (
 	// ParameterServer is set in the parameters on volume creation and in
 	// the VolumeContext.
 	ParameterServer = "server"
+
+	// ParameterClients is set in the parameters on volume creation and
+	// configured for the export in the NFS-server. It is not stored in
+	// the VolumeContext.
+	ParameterClients = "clients"
 )
 
 // NFSVolume presents the API for consumption by the CSI-controller to create,
@@ -249,6 +254,48 @@ func (nv *NFSVolume) SetServer(server string) error {
 // GetServer fetches the NFS-server name from the CephFS journal.
 func (nv *NFSVolume) GetServer() (string, error) {
 	return nv.getAttribute(ParameterServer)
+}
+
+// SetClients updates the NFS-clients list in the NFS export.
+func (nv *NFSVolume) SetClients(clients string) error {
+	if !nv.connected {
+		return fmt.Errorf("can not set clients for %q: %w", nv, ErrNotConnected)
+	}
+
+	nfsCluster, err := nv.getNFSCluster()
+	if err != nil {
+		return fmt.Errorf("failed to identify NFS cluster: %w", err)
+	}
+
+	nfsa, err := nv.conn.GetNFSAdmin()
+	if err != nil {
+		return fmt.Errorf("failed to get NFSAdmin: %w", err)
+	}
+
+	// Fetch current export info
+	exportInfo, err := nfsa.ExportInfo(nfsCluster, nv.GetExportPath())
+	if err != nil {
+		return fmt.Errorf("failed to get export info for %q: %w", nv.GetExportPath(), err)
+	}
+
+	// Update the export with new clients list
+	if clients != "" {
+		clientAddrs := strings.Split(clients, ",")
+		exportInfo.Clients = []nfs.ClientInfo{
+			{
+				Addresses:  clientAddrs,
+				AccessType: "rw",
+				Squash:     nfs.NoneSquash,
+			},
+		}
+	}
+
+	err = nfsa.ApplyExportInfo(nfsCluster, exportInfo)
+	if err != nil {
+		return fmt.Errorf("failed to update export %q with new clients: %w", nv.GetExportPath(), err)
+	}
+
+	return nil
 }
 
 // createExportCommand returns the "ceph nfs export create ..." command

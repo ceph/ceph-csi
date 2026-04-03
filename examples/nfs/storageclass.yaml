@@ -60,6 +60,8 @@ parameters:
   # access to the export to the set of hostnames, networks or ip addresses
   # specified.  The <client-list> is a comma delimited string,
   # for example: "192.168.0.10,192.168.1.0/8"
+  # This parameter can be updated after volume creation using a
+  # VolumeAttributesClass (see volumeattributesclass.yaml example).
   # clients: <client-list>
 
 reclaimPolicy: Delete
