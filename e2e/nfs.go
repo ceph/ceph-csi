@@ -38,6 +38,9 @@ import (
 )
 
 var (
+	// nfsWithSlowTests enables negative testing (pod creation expected to fail)
+	nfsWithSlowTests = false
+
 	nfsProvisioner     = "csi-nfsplugin-provisioner.yaml"
 	nfsProvisionerRBAC = "csi-provisioner-rbac.yaml"
 	nfsNodePlugin      = "csi-nfsplugin.yaml"
@@ -1259,6 +1262,108 @@ var _ = Describe("nfs", func() {
 			err = snapshotter.TestVolumeGroupSnapshot()
 			if err != nil {
 				logAndFail("failed to test volumeGroupSnapshot: %v", err)
+			}
+		})
+
+		It("create a storageclass with clients restriction and modify it with VolumeAttributesClass", func() {
+			if !k8sVersionGreaterEquals(c, 1, 34) {
+				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34")
+
+				return
+			}
+
+			// Initial clients list - restrictive (Cloudflare DNS, should fail to mount)
+			initialClients := "1.1.1.1"
+			// Updated clients list - permissive (allow all clients)
+			updatedClients := "*"
+
+			err := createNFSStorageClass(f.ClientSet, f, false, map[string]string{
+				"csi.storage.k8s.io/controller-modify-secret-namespace": cephCSINamespace,
+				"csi.storage.k8s.io/controller-modify-secret-name":      cephFSProvisionerSecretName,
+				"clients": initialClients,
+			})
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+			err = createNFSVolumeAttributesClass(f.ClientSet, f, map[string]string{
+				"server": "rook-ceph-nfs-my-nfs-a." + rookNamespace + ".svc.cluster.local",
+				"clients": updatedClients,
+			})
+			if err != nil {
+				logAndFail("failed to create NFS volumeattributesclass: %v", err)
+			}
+
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("Could not load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+
+			By("creating PVC first without VolumeAttributesClass")
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			By("verifying initial restrictive clients parameter")
+			if !checkExports(f, "my-nfs", initialClients) {
+				logAndFail("failed to verify initial clients in exports")
+			}
+
+			app, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+
+			if nfsWithSlowTests {
+				By("trying to create app with restrictive clients - should fail to reach running state")
+				err = createApp(f.ClientSet, app, deployTimeout)
+				if err == nil {
+					logAndFail("app should have failed to start with restrictive clients, but succeeded")
+				}
+				framework.Logf("app correctly failed to start with restrictive clients: %v", err)
+
+				By("deleting the failed app")
+				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete app: %v", err)
+				}
+			}
+
+			By("applying VolumeAttributesClass to PVC to update clients")
+			vacName := "updated-parameters"
+			patchData := []byte(fmt.Sprintf(`{"spec":{"volumeAttributesClassName":"%s"}}`, vacName))
+			_, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(
+				context.TODO(), pvc.Name, "application/strategic-merge-patch+json", patchData, metav1.PatchOptions{})
+			if err != nil {
+				logAndFail("failed to patch PVC with VolumeAttributesClass: %v", err)
+			}
+
+			By("verifying updated clients parameter")
+			if !checkExports(f, "my-nfs", updatedClients) {
+				logAndFail("failed to verify updated clients in exports")
+			}
+
+			By("creating app with PVC that has updated clients")
+			err = createApp(f.ClientSet, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create application with updated clients: %v", err)
+			}
+
+			By("deleting PVC and app")
+			err = deletePVCAndApp("", f, pvc, app)
+			if err != nil {
+				logAndFail("failed to delete PVC or application: %v", err)
+			}
+			err = deleteResource(nfsExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete NFS storageclass: %v", err)
+			}
+			err = deleteNFSVolumeAttributesClass(f.ClientSet, f)
+			if err != nil {
+				logAndFail("failed to delete NFS volumeattributesclass: %v", err)
 			}
 		})
 
