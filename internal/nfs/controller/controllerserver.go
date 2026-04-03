@@ -303,5 +303,12 @@ func (cs *nfsControllerServer) ControllerModifyVolume(
 		}
 	}
 
+	if clients, ok := req.GetMutableParameters()[nfs.ParameterClients]; ok {
+		err := nfsVolume.SetClients(clients)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	return &csi.ControllerModifyVolumeResponse{}, nil
 }
