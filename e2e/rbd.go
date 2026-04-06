@@ -450,6 +450,11 @@ var _ = Describe("RBD", func() {
 		if err != nil {
 			logAndFail("failed to set cluster name: %v", err)
 		}
+
+		err = rbdDeployment.setEnableFencing(true)
+		if err != nil {
+			logAndFail("failed to set enableFencing as true: %v", err)
+		}
 	}, OncePerOrdered)
 
 	AfterEach(func() {

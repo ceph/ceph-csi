@@ -112,6 +112,7 @@ type DeploymentMethod interface {
 	getDaemonsetName() string
 	getPodSelector() string
 	setClusterName(clusterName string) error
+	setEnableFencing(value bool) error
 }
 type RBDDeploymentMethod interface {
 	DeploymentMethod
@@ -120,6 +121,7 @@ type RBDDeploymentMethod interface {
 }
 type CephFSDeploymentMethod interface {
 	DeploymentMethod
+
 }
 
 type NFSDeploymentMethod interface {
@@ -155,6 +157,10 @@ func (d *DriverInfo) setClusterName(clusterName string) error {
 		return fmt.Errorf("timeout waiting for clustername arg update %s/%s: %v", cephCSINamespace, d.deploymentName, err)
 	}
 
+	return nil
+}
+
+func (d *DriverInfo) setEnableFencing(value bool) error {
 	return nil
 }
 
