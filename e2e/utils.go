@@ -118,7 +118,6 @@ type DeploymentMethod interface {
 type RBDDeploymentMethod interface {
 	DeploymentMethod
 	setDomainLabels(labels []string) error
-	setEnableMetadata(value bool) error
 }
 type CephFSDeploymentMethod interface {
 	DeploymentMethod
