@@ -22,6 +22,7 @@ function log_errors() {
 	kubectl -n rook-ceph get events
 	kubectl -n rook-ceph describe pods
 	kubectl -n rook-ceph logs -l app=rook-ceph-operator --tail=-1
+	kubectl -n rook-ceph logs -l app=rook-ceph-osd-prepare
 	kubectl -n rook-ceph get CephClusters -oyaml
 	kubectl -n rook-ceph get CephFilesystems -oyaml
 	kubectl -n rook-ceph get CephBlockPools -oyaml
@@ -40,6 +41,9 @@ function deploy_rook() {
 	sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
 	sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
 	sed -i 's|ROOK_USE_CSI_OPERATOR: "true"|ROOK_USE_CSI_OPERATOR: "false"|g' "${TEMP_DIR}/operator.yaml"
+
+	# enable more verbose logging
+	sed -i 's|ROOK_LOG_LEVEL: "INFO"|ROOK_LOG_LEVEL: "DEBUG"|g' "${TEMP_DIR}/operator.yaml"
 
 	kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
 	# Override the ceph version which rook installs by default.
@@ -182,6 +186,39 @@ function check_ceph_mgr() {
 
 function check_mds_stat() {
 	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
+		if [ -n "${CEPH_DEBUG}" ]; then
+			echo "Configuring MDS and OSD logging to 20/20... ${retry}s"
+		else
+			echo "Checking MDS stats... ${retry}s"
+		fi
+
+		TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
+		TOOLBOX_POD_STATUS=$(kubectl_retry -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
+		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] &&
+			{
+				echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"
+				sleep 5
+				continue
+			}
+
+		if [ -n "${CEPH_DEBUG}" ]; then
+			if kubectl_retry exec -n rook-ceph "$TOOLBOX_POD" -it -- ceph config set mds debug_mds 20/20 &>/dev/null; then
+				echo "Ceph MDS loglevel successfully configured..."
+			else
+				echo "Failed to configure Ceph MDS loglevel..."
+				sleep 5
+				continue
+			fi
+
+			if kubectl_retry exec -n rook-ceph "$TOOLBOX_POD" -it -- ceph config set osd debug_osd 20/20 &>/dev/null; then
+				echo "Ceph OSD loglevel successfully configured..."
+			else
+				echo "Failed to configure Ceph OSD loglevel..."
+				sleep 5
+				continue
+			fi
+		fi
+
 		FS_NAME=$(kubectl_retry -n rook-ceph get cephfilesystems.ceph.rook.io -ojsonpath='{.items[0].metadata.name}')
 		echo "Checking MDS ($FS_NAME) stats... ${retry}s" && sleep 5
 
