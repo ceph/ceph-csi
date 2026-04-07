@@ -24,3 +24,7 @@
 - rbd-nbd: use VolumeAttributesClass feature implement rbd volume qos [PR](https://github.com/ceph/ceph-csi/pull/6160)
 
 ## NOTE
+
+- The `--setmetadata` flag has been deprecated and has no effect. Metadata is
+  now always set on RBD images and CephFS subvolumes. The flag will be removed
+  in a future release.
