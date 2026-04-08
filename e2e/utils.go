@@ -2106,7 +2106,7 @@ func checkExports(f *framework.Framework, clusterID, clientString string) bool {
 	}
 
 	if !found {
-		framework.Logf("Could not find the configured clients in the list of exports")
+		framework.Logf("Could not find the configured clients (%s) in the list of exports (%+v)", clientString, exportList)
 
 		return false
 	}
