@@ -116,6 +116,13 @@ func rbdOptions(pool string) string {
 	return "--pool=" + pool
 }
 
+// supportsVolumeAttributesClass returns true when both the Kubernetes cluster
+// (>= 1.34) and the deployed ceph-csi (>= 3.17) support VolumeAttributesClass.
+func supportsVolumeAttributesClass(c kubernetes.Interface, f *framework.Framework) bool {
+	return k8sVersionGreaterEquals(c, 1, 34) &&
+		cephcsiVersionGreaterEquals(f, rbdDaemonsetName, rbdContainerName, 3, 17)
+}
+
 func createRBDStorageClass(
 	c kubernetes.Interface,
 	f *framework.Framework,
@@ -146,11 +153,6 @@ func createRBDStorageClass(
 
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
-
-	if k8sVersionGreaterEquals(c, 1, 34) {
-		sc.Parameters["csi.storage.k8s.io/controller-modify-secret-namespace"] = cephCSINamespace
-		sc.Parameters["csi.storage.k8s.io/controller-modify-secret-name"] = rbdProvisionerSecretName
-	}
 
 	fsID, err := getClusterID(f)
 	if err != nil {

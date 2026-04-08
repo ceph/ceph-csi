@@ -5777,11 +5777,36 @@ var _ = Describe("RBD", func() {
 		})
 
 		It("validate rbd image qos by volumeattributesclass", func() {
-			if !k8sVersionGreaterEquals(c, 1, 34) {
-				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34")
+			if !supportsVolumeAttributesClass(c, f) {
+				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34 and ceph-csi >= 3.17")
 
 				return
 			}
+
+			// Recreate the StorageClass with the controller-modify-secret so
+			// that the provisioner can authenticate ControllerModifyVolume
+			// calls needed for VAC modifications.
+			err := deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete storageclass: %v", err)
+			}
+			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, map[string]string{
+				"csi.storage.k8s.io/controller-modify-secret-namespace": cephCSINamespace,
+				"csi.storage.k8s.io/controller-modify-secret-name":      rbdProvisionerSecretName,
+			}, deletePolicy)
+			if err != nil {
+				logAndFail("failed to create storageclass with controller-modify-secret: %v", err)
+			}
+			defer func() {
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+			}()
 
 			var (
 				baseIops         = "3000"
@@ -5818,7 +5843,7 @@ var _ = Describe("RBD", func() {
 			}
 
 			// create silver vac
-			err := createRBDVolumeAttributesClass(
+			err = createRBDVolumeAttributesClass(
 				f.ClientSet,
 				f,
 				qosSilverVACName,
