@@ -119,6 +119,19 @@ jobs:
       github.event.pull_request.merged != true)
 
     steps:
+      - name: add ci/in-progress/e2e label before removing ok-to-test
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["ci/in-progress/e2e"]
+            })
+
       - name: remove ok-to-test-label after commenting
         # yamllint disable-line rule:line-length
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0

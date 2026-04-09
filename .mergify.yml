@@ -113,7 +113,6 @@ pull_request_rules:
       label:
         add:
           - ok-to-test
-          - ci/in-progress/e2e
 
   - name: remove outdated approvals
     conditions:
@@ -122,6 +121,9 @@ pull_request_rules:
       dismiss_reviews:
         approved: true
         changes_requested: false
+      label:
+        remove:
+          - ci/in-progress/e2e
 
   - name: ask to resolve conflict
     conditions:
