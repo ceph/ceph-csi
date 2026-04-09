@@ -26,6 +26,7 @@ ENCRYPTION_CONFIGMAP_NAME="ceph-csi-encryption-kms-config"
 RBD_DRIVER_NAME="rbd.csi.ceph.com"
 CEPHFS_DRIVER_NAME="cephfs.csi.ceph.com"
 NFS_DRIVER_NAME="nfs.csi.ceph.com"
+NVMEOF_DRIVER_NAME="nvmeof.csi.ceph.com"
 
 # k8s csi sidecar image
 K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"registry.k8s.io/sig-storage"}
@@ -114,6 +115,7 @@ function deploy_operator() {
     generate_driver "${RBD_DRIVER_NAME}"
     generate_driver "${CEPHFS_DRIVER_NAME}"
     generate_driver "${NFS_DRIVER_NAME}"
+    generate_driver "${NVMEOF_DRIVER_NAME}"
 
     # Display the contents of the generated files for debugging
     for file in "${TEMP_DIR}"/*; do
@@ -129,6 +131,7 @@ function cleanup() {
     generate_driver "${RBD_DRIVER_NAME}"
     generate_driver "${CEPHFS_DRIVER_NAME}"
     generate_driver "${NFS_DRIVER_NAME}"
+    generate_driver "${NVMEOF_DRIVER_NAME}"
     generate_operator_config
 
     # Delete all the generated files at once
