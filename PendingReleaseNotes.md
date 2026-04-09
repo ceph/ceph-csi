@@ -21,5 +21,6 @@
 - nvmeof: add Kubernetes ServiceAccount based volume access restriction
 - cephfs: add Kubernetes ServiceAccount based volume access restriction
 - nfs: add Kubernetes ServiceAccount based volume access restriction
+- nfs: add snapshot-backed (shallow) read-only volume support
 
 ## NOTE

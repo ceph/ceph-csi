@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"path"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -78,14 +79,20 @@ func (cs *Server) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 ) (*csi.CreateVolumeResponse, error) {
-	// nfs does not supports shallow snapshots
-	req.Parameters["backingSnapshot"] = "false"
 	res, err := cs.backendServer.CreateVolume(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
 	backend := res.GetVolume()
+
+	// For snapshot-backed volumes, adjust the subvolumePath to include
+	// the backing snapshot root, so the NFS export points directly to
+	// the snapshot data directory.
+	if bsr := backend.GetVolumeContext()["backingSnapshotRoot"]; bsr != "" {
+		backend.VolumeContext["subvolumePath"] = path.Join(
+			backend.GetVolumeContext()["subvolumePath"], bsr)
+	}
 
 	log.DebugLog(ctx, "CephFS volume created: %s", backend.GetVolumeId())
 
