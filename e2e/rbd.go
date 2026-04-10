@@ -5781,6 +5781,7 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to delete storageclass: %v", err)
 			}
 			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, map[string]string{
+				"mounter": "rbd-nbd",
 				"csi.storage.k8s.io/controller-modify-secret-namespace": cephCSINamespace,
 				"csi.storage.k8s.io/controller-modify-secret-name":      rbdProvisionerSecretName,
 			}, deletePolicy)
