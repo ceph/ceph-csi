@@ -24,6 +24,13 @@ FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
 GATEWAY_ADDRESS=${GATEWAY_ADDRESS:-""}
 LISTENERS=${LISTENERS:-""}
 SHORT_HOSTNAME=${SHORT_HOSTNAME:-""}
+# FIXME: Only pass "hostname" in the LISTENERS, no "address" and "port".
+# POD_ADDRESS is needed as the nvmeof-gw is deployed in rook-ceph, and ceph-csi
+# in a dedicated testing namespace. Resolving the short-hostname of the gateway
+# is not possible from outside the rook-ceph namespace. The gateway is
+# configured with a host-id as the short-hostname, which needs to match what is
+# passed in the LISTENERS.
+POD_ADDRESS=${POD_ADDRESS:-""}
 
 # Auto-detect gateway address and listeners from rook-ceph-nvmeof service if not set
 if [ -z "${GATEWAY_ADDRESS}" ]; then
@@ -34,9 +41,13 @@ if [ -z "${SHORT_HOSTNAME}" ]; then
 	SHORT_HOSTNAME=$(kubectl -n rook-ceph get service -l app=rook-ceph-nvmeof -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 fi
 
-if [ -z "${LISTENERS}" ] && [ -n "${GATEWAY_ADDRESS}" ]; then
-	# Create a simple listener config with the gateway service IP address and hostname
-	LISTENERS='[{"address": "'"${GATEWAY_ADDRESS}"'", "port": 4420, "hostname": "'"${SHORT_HOSTNAME}"'"}]'
+if [ -z "${POD_ADDRESS}" ]; then
+	POD_ADDRESS=$(kubectl -n rook-ceph get pod -l app=rook-ceph-nvmeof -o=jsonpath='{.items[0].status.podIP}' 2>/dev/null || echo "")
+fi
+
+if [ -z "${LISTENERS}" ] && [ -n "${POD_ADDRESS}" ] && [ -n "${SHORT_HOSTNAME}" ]; then
+	# Create a simple listener config with the gateway pod IP address and hostname
+	LISTENERS='[{"address": "'"${POD_ADDRESS}"'", "port": 4420, "hostname": "'"${SHORT_HOSTNAME}"'"}]'
 fi
 
 for sc in "${WORKDIR}"/sc-*.yaml.in
@@ -48,6 +59,11 @@ do
 	if echo "${sc}" | grep -q "nvmeof"; then
 		if [ -z "${GATEWAY_ADDRESS}" ]; then
 			echo "Warning: GATEWAY_ADDRESS not set and could not auto-detect rook-ceph-nvmeof service"
+			echo "Skipping ${sc}"
+			continue
+		fi
+		if [ -z "${LISTENERS}" ]; then
+			echo "Warning: LISTENERS not set and could not auto-detect rook-ceph-nvmeof hostnames"
 			echo "Skipping ${sc}"
 			continue
 		fi
