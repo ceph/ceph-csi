@@ -122,42 +122,53 @@ func TestGetGatewayConfigFromRequest(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
+		name       string
 		params     map[string]string
 		shouldFail bool
+		expectPort uint32
 	}{
 		{
+			name:       "nil params",
 			params:     nil,
 			shouldFail: true,
 		},
 		{
+			name: "address only, port defaults to 0 (NewGatewayRpcClient applies default)",
 			params: map[string]string{
 				"nvmeofGatewayAddress": "127.0.0.1",
 			},
-			shouldFail: true,
+			expectPort: 0,
 		},
 		{
+			name: "port only, address missing",
 			params: map[string]string{
 				"nvmeofGatewayPort": "5500",
 			},
 			shouldFail: true,
 		},
 		{
+			name: "address and port",
 			params: map[string]string{
 				"nvmeofGatewayAddress": "127.0.0.1",
 				"nvmeofGatewayPort":    "5500",
 			},
+			expectPort: 5500,
 		},
 	}
 
 	for _, test := range tests {
-		config, err := getGatewayConfigFromRequest(test.params)
-		if test.shouldFail {
-			require.Error(t, err)
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			config, err := getGatewayConfigFromRequest(test.params)
+			if test.shouldFail {
+				require.Error(t, err)
 
-			continue
-		}
+				return
+			}
 
-		require.NoError(t, err)
-		require.NotNil(t, config)
+			require.NoError(t, err)
+			require.NotNil(t, config)
+			require.Equal(t, test.expectPort, config.Port)
+		})
 	}
 }
