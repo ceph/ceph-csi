@@ -69,10 +69,16 @@ type GatewayRpcClient struct {
 const (
 	MaxAllowedSubsystemSerialNumber = 99999999999999
 	RandomNumberOffset              = 2 // skip reserved identifiers 0 and 1
+
+	// defaultGatewayPort is the default port for the NVMe-oF gateway management API.
+	defaultGatewayPort uint32 = 5500
 )
 
 // NewGatewayRpcClient creates a new gateway client.
 func NewGatewayRpcClient(config *GatewayConfig) (*GatewayRpcClient, error) {
+	if config.Port == 0 {
+		config.Port = defaultGatewayPort
+	}
 	client := &GatewayRpcClient{
 		config:    config,
 		maxSerial: big.NewInt(MaxAllowedSubsystemSerialNumber - RandomNumberOffset),

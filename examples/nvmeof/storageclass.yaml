@@ -30,7 +30,8 @@ parameters:
 
   # connection details for the gateway (management API)
   nvmeofGatewayAddress: 10.242.64.32
-  nvmeofGatewayPort: "5500"
+  # nvmeofGatewayPort is optional, defaults to 5500
+  # nvmeofGatewayPort: "5500"
 
   # connection details for the listeners (NVMe-oF data protocol)
   listeners: |

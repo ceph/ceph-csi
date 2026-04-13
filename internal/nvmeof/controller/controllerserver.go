@@ -423,7 +423,7 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	// Validate required parameters
 	params := req.GetParameters()
 	requiredParams := []string{
-		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
+		"subsystemNQN", "nvmeofGatewayAddress",
 	}
 	for _, param := range requiredParams {
 		if params[param] == "" {
@@ -476,7 +476,7 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 func validatePublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
 	volumeContext := req.GetVolumeContext()
 	requiredParams := []string{
-		"subsystemNQN", "nvmeofGatewayAddress", "nvmeofGatewayPort",
+		"subsystemNQN", "nvmeofGatewayAddress",
 	}
 	for _, param := range requiredParams {
 		if volumeContext[param] == "" {
@@ -764,11 +764,6 @@ func (cs *Server) createNVMeoFResources(
 	params := req.GetParameters()
 
 	networkMask := params["networkMask"]
-	nvmeofGatewayPortStr := params["nvmeofGatewayPort"]
-	nvmeofGatewayPort, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid nvmeofGatewayPort %s: %w", nvmeofGatewayPortStr, err)
-	}
 	nvmeofData := &nvmeof.NVMeoFVolumeData{
 		SubsystemNQN:  params["subsystemNQN"],
 		NamespaceID:   0,   // will be set after namespace creation,
@@ -776,12 +771,18 @@ func (cs *Server) createNVMeoFResources(
 		ListenerInfo:  nil, // will be set after listener creation or retrieval
 		GatewayManagementInfo: nvmeof.GatewayConfig{
 			Address: params["nvmeofGatewayAddress"],
-			Port:    uint32(nvmeofGatewayPort),
 		},
 		Security: nvmeof.NVMeoFSecurityConfig{
 			DhchapMode:          params["dhchapMode"],
 			AuthenticationKMSID: params["authenticationKMSID"],
 		},
+	}
+	if nvmeofGatewayPortStr := params["nvmeofGatewayPort"]; nvmeofGatewayPortStr != "" {
+		parsed, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid nvmeofGatewayPort %s: %w", nvmeofGatewayPortStr, err)
+		}
+		nvmeofData.GatewayManagementInfo.Port = uint32(parsed)
 	}
 
 	// setup listeners (if provided, otherwise it will be set by gateway based on network mask)
@@ -1302,22 +1303,18 @@ func getGatewayConfigFromRequest(params map[string]string) (*nvmeof.GatewayConfi
 		return nil, errors.New("nvmeofGatewayAddress parameter is required")
 	}
 
-	portStr := params["nvmeofGatewayPort"]
-
-	if portStr == "" {
-		return nil, errors.New("nvmeofGatewayPort parameter is required")
-	}
-
-	// Convert string to proper port type
-	port, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		return nil, fmt.Errorf("invalid port %s: %w", portStr, err)
-	}
-
-	return &nvmeof.GatewayConfig{
+	config := &nvmeof.GatewayConfig{
 		Address: address,
-		Port:    uint32(port),
-	}, nil
+	}
+	if portStr := params["nvmeofGatewayPort"]; portStr != "" {
+		parsed, err := strconv.ParseUint(portStr, 10, 16)
+		if err != nil {
+			return nil, fmt.Errorf("invalid port %s: %w", portStr, err)
+		}
+		config.Port = uint32(parsed)
+	}
+
+	return config, nil
 }
 
 // connectGateway creates and connects a gateway client for this operation.
