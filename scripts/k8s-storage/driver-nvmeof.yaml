@@ -75,7 +75,7 @@ DriverInfo:
     snapshotDataSource: true
 
     # Support populated data from PVC
-    pvcDataSource: true
+    pvcDataSource: false
 
     # multiple pods on a node can use the same volume concurrently
     multipods: true
