@@ -186,6 +186,106 @@ func (gw *GatewayRpcClient) DeleteNamespace(ctx context.Context, subsystemNQN st
 	}
 }
 
+// NamespaceAddHost adds a host to a namespace (makes it accessible to the host).
+func (gw *GatewayRpcClient) NamespaceAddHost(
+	ctx context.Context,
+	subsystemNQN, hostNQN string,
+	namespaceID uint32,
+) error {
+	log.DebugLog(ctx, "Adding host %s access to namespace %d in subsystem %s", hostNQN, namespaceID, subsystemNQN)
+
+	req := &pb.NamespaceAddHostReq{
+		SubsystemNqn: subsystemNQN,
+		HostNqn:      hostNQN,
+		Nsid:         namespaceID,
+	}
+
+	status, err := gw.client.NamespaceAddHost(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to add host %s access to namespace %d: %w", hostNQN, namespaceID, err)
+	}
+	if status.GetStatus() != 0 {
+		return fmt.Errorf("gateway NamespaceAddHost returned error for host %s and namespace %d (status=%d): %s",
+			hostNQN, namespaceID, status.GetStatus(), status.GetErrorMessage())
+	}
+	log.DebugLog(ctx, "Host %s access added successfully to namespace %d", hostNQN, namespaceID)
+
+	return nil
+}
+
+// NamespaceRemoveHost removes a host from a namespace (makes it inaccessible to the host).
+func (gw *GatewayRpcClient) NamespaceRemoveHost(
+	ctx context.Context,
+	subsystemNQN, hostNQN string,
+	namespaceID uint32,
+) error {
+	log.DebugLog(ctx, "Removing host %s access to namespace %d in subsystem %s", hostNQN, namespaceID, subsystemNQN)
+
+	req := &pb.NamespaceDeleteHostReq{
+		SubsystemNqn: subsystemNQN,
+		HostNqn:      hostNQN,
+		Nsid:         namespaceID,
+	}
+
+	status, err := gw.client.NamespaceDeleteHost(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to remove host access to namespace %d: %w", namespaceID, err)
+	}
+	if status.GetStatus() != 0 {
+		// If the host access does not exist, the gateway returns ENODEV.
+		// We can treat this as success because the desired state is that the host
+		// does not have access to the namespace.
+		if status.GetStatus() == int32(syscall.ENODEV) {
+			log.DebugLog(ctx, "Host access for host %s to namespace %d is already absent", hostNQN, namespaceID)
+
+			return nil
+		}
+
+		return fmt.Errorf("gateway NamespaceDeleteHost returned error (status=%d): %s",
+			status.GetStatus(), status.GetErrorMessage())
+	}
+	log.DebugLog(ctx, "Host access removed successfully from namespace %d", namespaceID)
+
+	return nil
+}
+
+// NamespaceChangeAutoVisibility changes the auto visibility setting of a namespace.
+// If this setting is true, the namespace will be automatically visible to
+// all hosts that have access to the subsystem where it resides.
+// If this setting is false, the namespace will not be visible to any host until it is manually made visible
+// via NamespaceAddHost.
+//
+// (prerequisite: the host also needs to be added to the subsystem OR the subsystem open to any host).
+func (gw *GatewayRpcClient) NamespaceChangeAutoVisibility(
+	ctx context.Context,
+	subsystemNQN string,
+	namespaceID uint32,
+	autoVisibility bool,
+) error {
+	log.DebugLog(ctx, "Changing auto visibility of namespace %d in subsystem %s to %t",
+		namespaceID, subsystemNQN, autoVisibility)
+
+	req := &pb.NamespaceChangeVisibilityReq{
+		SubsystemNqn: subsystemNQN,
+		Nsid:         namespaceID,
+		AutoVisible:  autoVisibility,
+	}
+
+	status, err := gw.client.NamespaceChangeVisibility(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to change auto visibility of namespace %d in subsystem %s to %t: %w",
+			namespaceID, subsystemNQN, autoVisibility, err)
+	}
+	if status.GetStatus() != 0 {
+		return fmt.Errorf("gateway NamespaceChangeVisibility returned error"+
+			" for namespace %d in subsystem %s with autoVisibility=%t (status=%d): %s",
+			namespaceID, subsystemNQN, autoVisibility, status.GetStatus(), status.GetErrorMessage())
+	}
+	log.DebugLog(ctx, "Auto visibility changed successfully for namespace %d in subsystem %s", namespaceID, subsystemNQN)
+
+	return nil
+}
+
 // SetQoSLimitsForNamespace sets QoS limits on a namespace.
 func (gw *GatewayRpcClient) SetQoSLimitsForNamespace(
 	ctx context.Context,
