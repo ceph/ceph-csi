@@ -748,43 +748,10 @@ func (cs *Server) createNVMeoFResources(
 	params := req.GetParameters()
 
 	networkMask := params["networkMask"]
-	nvmeofData := &nvmeof.NVMeoFVolumeData{
-		SubsystemNQN:  params["subsystemNQN"],
-		NamespaceID:   0,   // will be set after namespace creation,
-		NamespaceUUID: "",  // will be set after namespace creation
-		ListenerInfo:  nil, // will be set after listener creation or retrieval
-		GatewayManagementInfo: nvmeof.GatewayConfig{
-			Address: params["nvmeofGatewayAddress"],
-		},
-		Security: nvmeof.NVMeoFSecurityConfig{
-			DhchapMode:          params["dhchapMode"],
-			AuthenticationKMSID: params["authenticationKMSID"],
-		},
-	}
-	if nvmeofGatewayPortStr := params["nvmeofGatewayPort"]; nvmeofGatewayPortStr != "" {
-		parsed, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("invalid nvmeofGatewayPort %s: %w", nvmeofGatewayPortStr, err)
-		}
-		nvmeofData.GatewayManagementInfo.Port = uint32(parsed)
-	}
+	nvmeofData := &nvmeof.NVMeoFVolumeData{}
 
-	// setup listeners (if provided, otherwise it will be set by gateway based on network mask)
-	listeners, err := nvmeof.SetUpListeners(params["listeners"])
-	if err != nil {
-		return nil, fmt.Errorf("failed to set up listeners: %w", err)
-	}
-	nvmeofData.ListenerInfo = listeners
-	// If listener port or address is empty, it will be set to default.
-	nvmeofData.SetListenersWithDefaults()
-
-	// If dhchapMode was explicitly provided and is not "none", and authenticationKMSID is empty,
-	// use a default KMS ID - RBD metadata KMS.
-	// In production, users should always provide a KMS ID when using DH-CHAP.
-	if nvmeofData.Security.DhchapMode != nvmeof.DHCHAPEmpty &&
-		nvmeofData.Security.DhchapMode != nvmeof.DHCHAPModeNone &&
-		nvmeofData.Security.AuthenticationKMSID == "" {
-		nvmeofData.Security.AuthenticationKMSID = "metadata"
+	if err := nvmeofData.SetFromParameters(params); err != nil {
+		return nil, fmt.Errorf("failed to set NVMe-oF volume data: %w", err)
 	}
 
 	// extract Qos parameters if any

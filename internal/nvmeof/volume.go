@@ -79,3 +79,47 @@ func SetupListeners(listenersJSON string) ([]ListenerDetails, error) {
 
 	return listeners, nil
 }
+
+// SetFromParameters populates the NVMeoFVolumeData fields based on the provided parameters map.
+// It extracts the subsystem NQN, gateway management info, security config, and
+// listener info from the parameters.
+// It also applies default values to listeners if necessary.
+func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string) error {
+	// set subsystem NQN
+	v.SubsystemNQN = parameters["subsystemNQN"]
+
+	// set gw management info
+	if nvmeofGatewayPortStr := parameters["nvmeofGatewayPort"]; nvmeofGatewayPortStr != "" {
+		parsed, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid nvmeofGatewayPort %s: %w", nvmeofGatewayPortStr, err)
+		}
+		v.GatewayManagementInfo.Port = uint32(parsed)
+	}
+	v.GatewayManagementInfo.Address = parameters["nvmeofGatewayAddress"]
+
+	// set security config
+	v.Security.DhchapMode = parameters["dhchapMode"]
+	v.Security.AuthenticationKMSID = parameters["authenticationKMSID"]
+
+	// If dhchapMode was explicitly provided and is not "none", and authenticationKMSID is empty,
+	// use a default KMS ID - RBD metadata KMS.
+	// In production, users should always provide a KMS ID when using DH-CHAP.
+	if v.Security.DhchapMode != DHCHAPEmpty &&
+		v.Security.DhchapMode != DHCHAPModeNone &&
+		v.Security.AuthenticationKMSID == "" {
+		v.Security.AuthenticationKMSID = "metadata"
+	}
+
+	// set listeners
+	listeners, err := SetupListeners(parameters["listeners"])
+	if err != nil {
+		return fmt.Errorf("failed to set up listeners: %w", err)
+	}
+	v.ListenerInfo = listeners
+
+	// Apply default values to listeners if necessary
+	v.SetListenersWithDefaults()
+
+	return nil
+}
