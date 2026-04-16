@@ -221,7 +221,12 @@ func createNFSStorageClass(
 		if err != nil {
 			framework.Logf("error creating StorageClass %q: %v", sc.Name, err)
 			if apierrs.IsAlreadyExists(err) {
-				return true, nil
+				err = deleteResource(nfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete NFS storageclass: %v", err)
+				}
+
+				return false, nil
 			}
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -229,6 +234,8 @@ func createNFSStorageClass(
 
 			return false, fmt.Errorf("failed to create StorageClass %q: %w", sc.Name, err)
 		}
+
+		framework.Logf("created StorageClass %q", sc.Name)
 
 		return true, nil
 	})
@@ -507,11 +514,6 @@ var _ = Describe("nfs", func() {
 			if err != nil {
 				logAndFail("failed to verify mount options: %v", err)
 			}
-
-			err = deleteResource(nfsExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete NFS storageclass: %v", err)
-			}
 		})
 
 		It("verify RWOP volume support", func() {
@@ -553,10 +555,6 @@ var _ = Describe("nfs", func() {
 				logAndFail("failed to validate RWOP pod creation: %v", err)
 			}
 			validateSubvolumeCount(f, 0, fileSystemName, defaultSubvolumegroup)
-			err = deleteResource(nfsExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete NFS storageclass: %v", err)
-			}
 		})
 
 		It("create a storageclass with pool and a PVC then bind it to an app", func() {
@@ -567,10 +565,6 @@ var _ = Describe("nfs", func() {
 			err = validatePVCAndAppBinding(pvcPath, appPath, f)
 			if err != nil {
 				logAndFail("failed to validate NFS pvc and application binding: %v", err)
-			}
-			err = deleteResource(nfsExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete NFS storageclass: %v", err)
 			}
 		})
 
@@ -618,10 +612,6 @@ var _ = Describe("nfs", func() {
 			if err != nil {
 				logAndFail("failed to delete PVC or application: %v", err)
 			}
-			err = deleteResource(nfsExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete NFS storageclass: %v", err)
-			}
 			err = deleteNFSVolumeAttributesClass(f.ClientSet, f)
 			if err != nil {
 				logAndFail("failed to delete NFS voluemattributesclass: %v", err)
@@ -638,10 +628,6 @@ var _ = Describe("nfs", func() {
 			err = validatePVCAndAppBinding(pvcPath, appPath, f)
 			if err != nil {
 				logAndFail("failed to validate NFS pvc and application binding: %v", err)
-			}
-			err = deleteResource(nfsExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete NFS storageclass: %v", err)
 			}
 		})
 
@@ -670,10 +656,6 @@ var _ = Describe("nfs", func() {
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete PVC: %v", err)
-			}
-			err = deleteResource(nfsExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete NFS storageclass: %v", err)
 			}
 		})
 
@@ -1356,10 +1338,6 @@ var _ = Describe("nfs", func() {
 			err = deletePVCAndApp("", f, pvc, app)
 			if err != nil {
 				logAndFail("failed to delete PVC or application: %v", err)
-			}
-			err = deleteResource(nfsExamplePath + "storageclass.yaml")
-			if err != nil {
-				logAndFail("failed to delete NFS storageclass: %v", err)
 			}
 			err = deleteNFSVolumeAttributesClass(f.ClientSet, f)
 			if err != nil {
