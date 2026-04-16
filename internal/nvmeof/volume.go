@@ -16,6 +16,13 @@ limitations under the License.
 
 package nvmeof
 
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
+)
+
 // NVMeoFVolumeData holds the data required for an NVMe-oF volume.
 type NVMeoFVolumeData struct {
 	SubsystemNQN          string
@@ -43,4 +50,32 @@ func (v *NVMeoFVolumeData) SetListenersWithDefaults() {
 			v.ListenerInfo[i].Address = "0.0.0.0"
 		}
 	}
+}
+
+// SetupListeners parses the listeners JSON and validates the required fields.
+// It returns a slice of ListenerDetails or an error if the JSON is invalid
+// or if required fields are missing.
+func SetupListeners(listenersJSON string) ([]ListenerDetails, error) {
+	if listenersJSON == "" { // No "listeners" entry was provided
+		return []ListenerDetails{}, nil
+	}
+	var listeners []ListenerDetails
+	if err := json.Unmarshal([]byte(listenersJSON), &listeners); err != nil {
+		return nil, fmt.Errorf("failed to parse listeners JSON: %w", err)
+	}
+
+	if len(listeners) == 0 { // At least one listener is required
+		return nil, errors.New("at least one listener must be specified")
+	}
+
+	// Validate each listener
+	// Listener address can be empty. It will be set later to the default 0.0.0.0.
+	// Port can be empty (it will be set later to the default 4420).
+	for i, listener := range listeners {
+		if listener.Hostname == "" {
+			return nil, fmt.Errorf("listener %d: missing required fields (hostname)", i)
+		}
+	}
+
+	return listeners, nil
 }
