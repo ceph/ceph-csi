@@ -18,6 +18,7 @@ jobs:
   codespell:
     name: multi-arch-build
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     steps:
       - name: delay a minute to have labels added
         run: sleep 1m
