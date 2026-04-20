@@ -1514,7 +1514,7 @@ var defaultVersionedKubernetesFeatureGates = map[featuregate.Feature]featuregate
 
 	MaxUnavailableStatefulSet: {
 		{Version: version.MustParse("1.24"), Default: false, PreRelease: featuregate.Alpha},
-		{Version: version.MustParse("1.35"), Default: true, PreRelease: featuregate.Beta},
+		{Version: version.MustParse("1.35"), Default: false, PreRelease: featuregate.Beta},
 	},
 
 	MemoryManager: {
