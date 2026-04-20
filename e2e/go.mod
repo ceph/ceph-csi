@@ -16,24 +16,24 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	// when updating k8s.io modules, update the 'replace' section below too
-	k8s.io/api v0.35.3
-	k8s.io/apimachinery v0.35.3
-	k8s.io/client-go v0.35.3
-	k8s.io/cloud-provider v0.35.3
-	k8s.io/kubernetes v1.35.3
-	k8s.io/pod-security-admission v0.35.3
+	k8s.io/api v0.35.4
+	k8s.io/apimachinery v0.35.4
+	k8s.io/client-go v0.35.4
+	k8s.io/cloud-provider v0.35.4
+	k8s.io/kubernetes v1.35.4
+	k8s.io/pod-security-admission v0.35.4
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.35.3
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.35.3
-	k8s.io/client-go => k8s.io/client-go v0.35.3
-	k8s.io/cri-client => k8s.io/cri-client v0.35.3
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.35.3
-	k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.35.3
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.35.3
-	k8s.io/kubectl => k8s.io/kubectl v0.35.3
-	k8s.io/kubelet => k8s.io/kubelet v0.35.3
+	k8s.io/api => k8s.io/api v0.35.4
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.35.4
+	k8s.io/client-go => k8s.io/client-go v0.35.4
+	k8s.io/cri-client => k8s.io/cri-client v0.35.4
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.35.4
+	k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.35.4
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.35.4
+	k8s.io/kubectl => k8s.io/kubectl v0.35.4
+	k8s.io/kubelet => k8s.io/kubelet v0.35.4
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible
@@ -119,10 +119,10 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.35.3 // indirect
-	k8s.io/apiserver v0.35.3 // indirect
-	k8s.io/component-base v0.35.3 // indirect
-	k8s.io/component-helpers v0.35.3 // indirect
-	k8s.io/controller-manager v0.35.3 // indirect
+	k8s.io/apiserver v0.35.4 // indirect
+	k8s.io/component-base v0.35.4 // indirect
+	k8s.io/component-helpers v0.35.4 // indirect
+	k8s.io/controller-manager v0.35.4 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	k8s.io/kubectl v0.0.0 // indirect
