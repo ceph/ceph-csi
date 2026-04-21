@@ -8,14 +8,15 @@ defaults:
     merge:
       merge_bot_account: ceph-csi-bot
 
+merge_protections_settings:
+  auto_merge: true
+
 queue_rules:
   - name: default
     update_bot_account: ceph-csi-bot
     merge_method: rebase
     update_method: rebase
     batch_size: 1
-    autoqueue: true
-    # only queue PRs that have completely been tested and reviewed
     queue_conditions:
       - and:
           # requirements for any branch
