@@ -10,6 +10,7 @@ defaults:
 
 merge_protections_settings:
   auto_merge: true
+  reporting_method: check-runs
 
 queue_rules:
   - name: default
