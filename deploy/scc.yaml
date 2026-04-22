@@ -52,3 +52,6 @@ users:
   - "system:serviceaccount:ceph-csi:csi-cephfs-provisioner-sa"
   - "system:serviceaccount:ceph-csi:csi-nfs-plugin-sa"
   - "system:serviceaccount:ceph-csi:csi-nfs-provisioner-sa"
+  - "system:serviceaccount:ceph-csi:csi-nvmeof-plugin-sa"
+  # yamllint disable-line rule:line-length
+  - "system:serviceaccount:ceph-csi:csi-nvmeof-provisioner-sa"
