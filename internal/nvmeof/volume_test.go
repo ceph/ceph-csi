@@ -206,10 +206,30 @@ func TestSetFromParameters(t *testing.T) {
 			expected:    NVMeoFVolumeData{},
 			expectError: true,
 		},
+		{
+			name: "missing subsystem NQN (should use default)",
+			params: map[string]string{
+				"nvmeofGatewayAddress": "10.241.1.9",
+				"nvmeofGatewayPort":    "5500",
+				"listeners":            `[{"hostname": "nvmeof-gw-a", "port": 4420, "address": "10.92.3.12"}]`,
+			},
+			expected: NVMeoFVolumeData{
+				SubsystemNQN: "nqn.2016-06.io.ceph:subsystem.test-volume-id",
+				GatewayManagementInfo: GatewayConfig{
+					Address: "10.241.1.9",
+					Port:    5500,
+				},
+				ListenerInfo: []ListenerDetails{
+					{Hostname: "nvmeof-gw-a", GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.12"}},
+				},
+			},
+			expectError: false,
+		},
 	}
 	for _, test := range tests {
 		vol := &NVMeoFVolumeData{}
-		err := vol.SetFromParameters(test.params)
+		volID := "test-volume-id"
+		err := vol.SetFromParameters(test.params, volID)
 		if test.expectError {
 			require.Error(t, err)
 		} else {

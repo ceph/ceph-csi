@@ -84,10 +84,12 @@ func SetupListeners(listenersJSON string) ([]ListenerDetails, error) {
 // It extracts the subsystem NQN, gateway management info, security config, and
 // listener info from the parameters.
 // It also applies default values to listeners if necessary.
-func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string) error {
+func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string, volumeID string) error {
 	// set subsystem NQN
 	v.SubsystemNQN = parameters["subsystemNQN"]
-
+	if v.SubsystemNQN == "" {
+		v.SubsystemNQN = "nqn.2016-06.io.ceph:subsystem." + volumeID
+	}
 	// set gw management info
 	if nvmeofGatewayPortStr := parameters["nvmeofGatewayPort"]; nvmeofGatewayPortStr != "" {
 		parsed, err := strconv.ParseUint(nvmeofGatewayPortStr, 10, 32)
