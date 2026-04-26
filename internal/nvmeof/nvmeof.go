@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"slices"
 	"syscall"
 
 	pb "github.com/ceph/ceph-nvmeof/lib/go/nvmeof"
@@ -603,6 +604,74 @@ func (gw *GatewayRpcClient) RemoveHost(ctx context.Context, subsystemNQN, hostNQ
 	default:
 		return fmt.Errorf("gateway RemoveHost returned error (status=%d): %s", resp.GetStatus(), resp.GetErrorMessage())
 	}
+}
+
+// ListHosts lists all hosts in a subsystem.
+// Returns a slice of host NQNs that have access to the subsystem.
+func (gw *GatewayRpcClient) ListHosts(ctx context.Context, subsystemNQN string) ([]string, error) {
+	log.DebugLog(ctx, "Listing hosts in subsystem %s", subsystemNQN)
+
+	req := &pb.ListHostsReq{
+		Subsystem: subsystemNQN,
+	}
+
+	resp, err := gw.client.ListHosts(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list hosts in subsystem %s: %w", subsystemNQN, err)
+	}
+	if resp.GetStatus() != 0 {
+		return nil, fmt.Errorf("gateway ListHosts returned error (status=%d): %s",
+			resp.GetStatus(), resp.GetErrorMessage())
+	}
+
+	// Extract host NQNs from response
+	hosts := make([]string, 0, len(resp.GetHosts()))
+	for _, host := range resp.GetHosts() {
+		hosts = append(hosts, host.GetNqn())
+	}
+
+	log.DebugLog(ctx, "Listed %d hosts in subsystem %s", len(hosts), subsystemNQN)
+
+	return hosts, nil
+}
+
+// UpdateHostsForSubsystem reconciles the hosts in a subsystem to match the desired list.
+// It lists current hosts, then adds/removes hosts to ensure the subsystem has exactly
+// the hosts specified in desiredHosts.
+func (gw *GatewayRpcClient) UpdateHostsForSubsystem(
+	ctx context.Context,
+	subsystemNQN string,
+	desiredHosts []string,
+) error {
+	currentHosts, err := gw.ListHosts(ctx, subsystemNQN)
+	if err != nil {
+		return fmt.Errorf("failed to list current hosts: %w", err)
+	}
+
+	log.DebugLog(ctx, "Host reconciliation for subsystem %s: current=%v, desired=%v",
+		subsystemNQN, currentHosts, desiredHosts)
+
+	for _, host := range currentHosts {
+		if !slices.Contains(desiredHosts, host) {
+			log.DebugLog(ctx, "Removing host %s from subsystem %s", host, subsystemNQN)
+			if err := gw.RemoveHost(ctx, subsystemNQN, host); err != nil {
+				return fmt.Errorf("failed to remove host %s: %w", host, err)
+			}
+		}
+	}
+
+	for _, host := range desiredHosts {
+		if !slices.Contains(currentHosts, host) {
+			log.DebugLog(ctx, "Adding host %s to subsystem %s", host, subsystemNQN)
+			// Note: AddHost requires DHCHAPKeys, but for now we pass empty keys
+			// TODO: Support DH-CHAP keys if needed for host updates
+			if err := gw.AddHost(ctx, subsystemNQN, host, DHCHAPKeys{}); err != nil {
+				return fmt.Errorf("failed to add host %s: %w", host, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // List namespaces in a subsystem.
