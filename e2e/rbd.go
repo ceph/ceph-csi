@@ -2621,6 +2621,155 @@ var _ = Describe("RBD", func() {
 			}
 		})
 
+		It("perform IO on rbd-nbd Block volume after nodeplugin restart", func() {
+			if !testNBD {
+				framework.Logf("skipping NBD test")
+
+				return
+			}
+
+			err := deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete storageclass: %v", err)
+			}
+			// Storage class with rbd-nbd mounter
+			err = createRBDStorageClass(
+				f.ClientSet,
+				f,
+				defaultSCName,
+				nil,
+				map[string]string{
+					"mounter":         "rbd-nbd",
+					"mapOptions":      nbdMapOptions,
+					"cephLogStrategy": e2eDefaultCephLogStrategy,
+				},
+				deletePolicy)
+			if err != nil {
+				logAndFail("failed to create storageclass: %v", err)
+			}
+			pvc, err := loadPVC(rawPvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+
+			app, err := loadApp(rawAppPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			label := map[string]string{
+				"app": app.Name,
+			}
+			app.Labels = label
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+			err = createPVCAndApp("", f, pvc, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC and application: %v", err)
+			}
+
+			appOpt := metav1.ListOptions{
+				LabelSelector: "app=" + app.Name,
+			}
+			devPath := app.Spec.Containers[0].VolumeDevices[0].DevicePath
+			// validate that IO works before nodeplugin restart
+			_, stdErr, err := execCommandInPod(
+				f,
+				fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath),
+				app.Namespace,
+				&appOpt)
+			if err != nil || stdErr != "" {
+				logAndFail("failed to write IO before restart, err: %v, stdErr: %v", err, stdErr)
+			}
+
+			// validate created backend rbd images
+			validateRBDImageCount(f, 1, defaultRBDPool)
+			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+			selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDeployment.getDaemonsetName())
+			if err != nil {
+				logAndFail("failed to get the labels: %v", err)
+			}
+			// delete rbd nodeplugin pods
+			err = deletePodWithLabel(selector, cephCSINamespace, false)
+			if err != nil {
+				logAndFail("fail to delete pod: %v", err)
+			}
+
+			// wait for nodeplugin pods to come up
+			err = waitForDaemonSets(rbdDeployment.getDaemonsetName(), cephCSINamespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("timeout waiting for daemonset pods: %v", err)
+			}
+
+			opt := metav1.ListOptions{
+				LabelSelector: selector,
+			}
+			timeout := time.Duration(deployTimeout) * time.Minute
+			var reason string
+			err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
+				var runningAttachCmd string
+				runningAttachCmd, stdErr, err = execCommandInContainer(
+					f,
+					"pstree --arguments | grep [r]bd-nbd",
+					cephCSINamespace,
+					"csi-rbdplugin",
+					&opt)
+				// if the rbd-nbd process is not running the 'grep' command
+				// will return with exit code 1
+				if err != nil {
+					if strings.Contains(err.Error(), "command terminated with exit code 1") {
+						reason = fmt.Sprintf("rbd-nbd process is not running yet: %v", err)
+					} else if stdErr != "" {
+						reason = fmt.Sprintf("failed to run ps cmd : %v, stdErr: %v", err, stdErr)
+					}
+					framework.Logf("%s", reason)
+
+					return false, nil
+				}
+				framework.Logf("attach command running after restart, runningAttachCmd: %v", runningAttachCmd)
+
+				return true, nil
+			})
+
+			if wait.Interrupted(err) {
+				logAndFail("timed out waiting for the rbd-nbd process: %s", reason)
+			}
+			if err != nil {
+				logAndFail("failed to poll: %v", err)
+			}
+
+			// validate that IO works after nodeplugin restart
+			if kernel.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
+				_, stdErr, err = execCommandInPod(
+					f,
+					fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath),
+					app.Namespace,
+					&appOpt)
+				if err != nil || stdErr != "" {
+					logAndFail("failed to write IO after restart, err: %v, stdErr: %v", err, stdErr)
+				}
+			} else {
+				framework.Logf("kernel %q does not meet recommendation, skipping IO test", kernelRelease)
+			}
+
+			err = deletePVCAndApp("", f, pvc, app)
+			if err != nil {
+				logAndFail("failed to delete PVC and application: %v", err)
+			}
+			// validate created backend rbd images
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete storageclass: %v", err)
+			}
+			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+			if err != nil {
+				logAndFail("failed to create storageclass: %v", err)
+			}
+		})
+
 		ItFileAndBlockEncryption("create a PVC and bind it to an app using rbd-nbd mounter with encryption", func(
 			validator encryptionValidateFunc, _ validateFunc, encType crypto.EncryptionType,
 		) {
