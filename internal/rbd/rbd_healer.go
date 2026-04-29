@@ -32,10 +32,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
-const (
-	fsTypeBlockName = "block"
-)
-
 // accessModeStrToInt convert access mode type string to int32.
 // Make sure to update this function as and when there are new modes introduced.
 func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability_AccessMode_Mode {
@@ -72,7 +68,19 @@ func getSecret(ns, name string) (map[string]string, error) {
 // formatStagingTargetPath returns the path where the volume is expected to be
 // mounted (or the block-device is attached/mapped). Different Kubernetes
 // version use different paths.
+//
+// For block volumes, Kubernetes uses:
+//   - /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/staging/<pv-name>
+//
+// For filesystem volumes, Kubernetes 1.24+ uses:
+//   - /var/lib/kubelet/plugins/kubernetes.io/csi/<driver>/<sha256-of-volumeHandle>/globalmount
 func formatStagingTargetPath(pv *v1.PersistentVolume, stagingPath string) string {
+	// Block volumes use a different path layout regardless of Kubernetes version.
+	// Kubernetes uses the PV name (not PVC name) as the staging subdirectory.
+	if pv.Spec.VolumeMode != nil && *pv.Spec.VolumeMode == v1.PersistentVolumeBlock {
+		return filepath.Join(stagingPath, "volumeDevices", "staging", pv.Name)
+	}
+
 	// Kubernetes 1.24+ uses a hash of the volume-id in the path name
 	unique := sha256.Sum256([]byte(pv.Spec.CSI.VolumeHandle))
 	targetPath := filepath.Join(stagingPath, pv.Spec.CSI.Driver, hex.EncodeToString(unique[:]), "globalmount")
@@ -113,7 +121,7 @@ func (ns *NodeServer) callNodeStageVolume(pv *v1.PersistentVolume, stagingPath s
 		Secrets:       deviceSecret,
 		VolumeContext: volumeContext,
 	}
-	if pv.Spec.PersistentVolumeSource.CSI.FSType == fsTypeBlockName {
+	if pv.Spec.VolumeMode != nil && *pv.Spec.VolumeMode == v1.PersistentVolumeBlock {
 		req.VolumeCapability.AccessType = &csi.VolumeCapability_Block{
 			Block: &csi.VolumeCapability_BlockVolume{},
 		}
