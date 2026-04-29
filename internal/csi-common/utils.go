@@ -127,10 +127,10 @@ func NewMiddlewareServerOption(config MiddlewareServerOptionConfig) grpc.ServerO
 	if config.LogSlowOpInterval > 0 {
 		middleWare = append(middleWare, func(
 			ctx context.Context,
-			req interface{},
+			req any,
 			info *grpc.UnaryServerInfo,
 			handler grpc.UnaryHandler,
-		) (interface{}, error) {
+		) (any, error) {
 			return logSlowGRPC(
 				config.LogSlowOpInterval, ctx, req, info, handler,
 			)
@@ -149,7 +149,7 @@ func NewMiddlewareStreamServerOption() grpc.ServerOption {
 }
 
 // GetIDFromReplication returns the volumeID for Replication.
-func GetIDFromReplication(req interface{}) string {
+func GetIDFromReplication(req any) string {
 	getID := func(r interface {
 		GetVolumeId() string
 		GetReplicationSource() *replication.ReplicationSource
@@ -191,7 +191,7 @@ func GetIDFromReplication(req interface{}) string {
 }
 
 //nolint:gocyclo,cyclop // TODO: reduce complexity
-func getReqID(req interface{}) string {
+func getReqID(req any) string {
 	// if req is nil empty string will be returned
 	reqID := ""
 	switch r := req.(type) {
@@ -264,10 +264,10 @@ var id uint64
 
 func contextIDInjector(
 	ctx context.Context,
-	req interface{},
+	req any,
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
-) (interface{}, error) {
+) (any, error) {
 	atomic.AddUint64(&id, 1)
 	ctx = context.WithValue(ctx, log.CtxKey, id)
 	if reqID := getReqID(req); reqID != "" {
@@ -292,7 +292,7 @@ func (s *wrapperServerStream) Context() context.Context {
 
 // RecvMsg wraps around grpc.ServerStream.RecvMsg to inject
 // ReqID and log request details.
-func (s *wrapperServerStream) RecvMsg(req interface{}) error {
+func (s *wrapperServerStream) RecvMsg(req any) error {
 	err := s.ServerStream.RecvMsg(req)
 
 	// reqID is intentionally extracted after .RecvMsg(req) as the req
@@ -343,10 +343,10 @@ func streamInterceptor(
 
 func logGRPC(
 	ctx context.Context,
-	req interface{},
+	req any,
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
-) (interface{}, error) {
+) (any, error) {
 	log.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
 	log.TraceLog(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
 
@@ -363,10 +363,10 @@ func logGRPC(
 func logSlowGRPC(
 	logInterval time.Duration,
 	ctx context.Context,
-	req interface{},
+	req any,
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
-) (interface{}, error) {
+) (any, error) {
 	handlerFinished := make(chan struct{})
 	callStartTime := time.Now()
 
@@ -410,10 +410,10 @@ func logSlowGRPC(
 //nolint:nonamedreturns // named return used to send recovered panic error.
 func panicHandler(
 	ctx context.Context,
-	req interface{},
+	req any,
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
-) (resp interface{}, err error) {
+) (resp any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			klog.Errorf("panic occurred: %v", r)

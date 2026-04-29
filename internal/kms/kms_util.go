@@ -25,7 +25,7 @@ import "fmt"
 // errConfigOptionMissing is returned.
 // In case the value is available, but can not be converted to a string,
 // errConfigOptionInvalid is returned.
-func setConfigInt(option *int, config map[string]interface{}, key string) error {
+func setConfigInt(option *int, config map[string]any, key string) error {
 	value, ok := config[key]
 	if !ok {
 		return fmt.Errorf("%w: %s", errConfigOptionMissing, key)

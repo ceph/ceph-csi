@@ -82,7 +82,7 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 	}
 
 	// kmsConfig can have additional sub-sections
-	kmsConfig, ok := section.(map[string]interface{})
+	kmsConfig, ok := section.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("failed to convert KMS configuration "+
 			"section: %s", kmsID)
@@ -94,8 +94,8 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 // getKMSConfiguration reads the configuration file from the filesystem, or if
 // that fails the ConfigMap directly. The returned map contains all the KMS
 // configuration sections, each keyed by its own kmsID.
-func getKMSConfiguration() (map[string]interface{}, error) {
-	var config map[string]interface{}
+func getKMSConfiguration() (map[string]any, error) {
+	var config map[string]any
 	// #nosec
 	content, err := os.ReadFile(kmsConfigPath)
 	if err == nil {
@@ -150,7 +150,7 @@ func getKMSConfigMapName() string {
 // getKMSConfigMap returns the contents of the ConfigMap.
 //
 // FIXME: Ceph-CSI should not talk to Kubernetes directly.
-func getKMSConfigMap() (map[string]interface{}, error) {
+func getKMSConfigMap() (map[string]any, error) {
 	ns, err := getPodNamespace()
 	if err != nil {
 		return nil, err
@@ -163,9 +163,9 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 	}
 
 	// convert cm.Data from map[string]interface{}
-	kmsConfig := make(map[string]interface{})
+	kmsConfig := make(map[string]any)
 	for kmsID, data := range cm.Data {
-		section := make(map[string]interface{})
+		section := make(map[string]any)
 		err = json.Unmarshal([]byte(data), &section)
 		if err != nil {
 			return nil, fmt.Errorf("could not convert contents "+
@@ -180,7 +180,7 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 // getProvider inspects the configuration and tries to identify what
 // Provider is expected to be used with it. This returns the
 // Provider.UniqueID.
-func getProvider(config map[string]interface{}) (string, error) {
+func getProvider(config map[string]any) (string, error) {
 	var name string
 
 	providerName, ok := config[kmsTypeKey]
@@ -213,7 +213,7 @@ func getProvider(config map[string]interface{}) (string, error) {
 // Provider is initialized.
 type ProviderInitArgs struct {
 	Tenant  string
-	Config  map[string]interface{}
+	Config  map[string]any
 	Secrets map[string]string
 	// Namespace contains the Kubernetes Namespace where the Ceph-CSI Pods
 	// are running. This is an optional option, and might be unset when the
@@ -265,7 +265,7 @@ func RegisterProvider(provider Provider) bool {
 // Provider to instantiate.
 func (kf *kmsProviderList) buildKMS(
 	tenant string,
-	config map[string]interface{},
+	config map[string]any,
 	secrets map[string]string,
 ) (EncryptionKMS, error) {
 	providerName, err := getProvider(config)
@@ -385,7 +385,7 @@ func (i integratedDEK) GetSecret(ctx context.Context, volumeID string) (string, 
 
 // getKeys takes a map that uses strings for keys and returns a slice with the
 // keys.
-func getKeys(m map[string]interface{}) []string {
+func getKeys(m map[string]any) []string {
 	keys := make([]string, len(m))
 
 	i := 0

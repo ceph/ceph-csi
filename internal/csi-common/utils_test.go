@@ -32,7 +32,7 @@ var fakeID = "fake-id"
 
 func TestGetReqID(t *testing.T) {
 	t.Parallel()
-	req := []interface{}{
+	req := []any{
 		&csi.CreateVolumeRequest{
 			Name: fakeID,
 		},

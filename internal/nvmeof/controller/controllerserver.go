@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"strconv"
 
@@ -1069,9 +1070,7 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) er
 // populatePublishContext creates a publish context for the volume.
 func populatePublishContext(req *csi.ControllerPublishVolumeRequest, hostNqn string) map[string]string {
 	publishContext := make(map[string]string)
-	for key, value := range req.GetVolumeContext() {
-		publishContext[key] = value
-	}
+	maps.Copy(publishContext, req.GetVolumeContext())
 	publishContext[vcHostNQN] = hostNqn
 
 	return publishContext

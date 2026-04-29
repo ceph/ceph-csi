@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sync"
 
@@ -62,9 +63,7 @@ func getSecret(ns, name string) (map[string]string, error) {
 		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", ns, name, err)
 	}
 
-	for k, v := range secretData {
-		deviceSecret[k] = v
-	}
+	maps.Copy(deviceSecret, secretData)
 
 	return deviceSecret, nil
 }

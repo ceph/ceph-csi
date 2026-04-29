@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -1043,11 +1044,11 @@ func (ns *NodeServer) setMountOptions(
 		mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 		switch mnt.(type) {
 		case *mounter.FuseMounter:
-			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
+			if !slices.Contains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
 				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
 			}
 		case mounter.KernelMounter:
-			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
+			if !slices.Contains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
 				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
 			}
 		}

@@ -46,7 +46,7 @@ func TestDetectAuthMountPath(t *testing.T) {
 func TestSetConfigString(t *testing.T) {
 	t.Parallel()
 	const defaultValue = "default-value"
-	options := make(map[string]interface{})
+	options := make(map[string]any)
 
 	// noSuchOption: no default value, option unavailable
 	noSuchOption := ""
@@ -88,7 +88,7 @@ func TestDefaultVaultDestroyKeys(t *testing.T) {
 	t.Parallel()
 
 	vc := &vaultConnection{}
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 	config["vaultAddress"] = "https://vault.test.example.com"
 	err := vc.initConnection(config)
 	require.NoError(t, err)

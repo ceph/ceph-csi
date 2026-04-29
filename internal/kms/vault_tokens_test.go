@@ -32,7 +32,7 @@ func TestParseConfig(t *testing.T) {
 	t.Parallel()
 	vtc := vaultTenantConnection{}
 
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 
 	// empty config map
 	err := vtc.parseConfig(config)
@@ -56,7 +56,7 @@ func TestParseConfig(t *testing.T) {
 	}
 
 	// tenant "bob" uses a different kms.ConfigName
-	bob := make(map[string]interface{})
+	bob := make(map[string]any)
 	bob["tenantConfigName"] = "the-config-from-bob"
 	bob["vaultNamespace"] = "bobs-place"
 	err = vtc.parseConfig(bob)
@@ -87,7 +87,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 
 	args := ProviderInitArgs{
 		Tenant:  "bob",
-		Config:  make(map[string]interface{}),
+		Config:  make(map[string]any),
 		Secrets: nil,
 	}
 
@@ -107,7 +107,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	}
 
 	// fill tenants
-	tenants := make(map[string]interface{})
+	tenants := make(map[string]any)
 	args.Config["tenants"] = tenants
 
 	// empty tenants list
@@ -117,10 +117,10 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	}
 
 	// add tenant "bob"
-	bob := make(map[string]interface{})
+	bob := make(map[string]any)
 	bob["vaultAddress"] = "https://vault.bob.example.org"
 	//nolint:forcetypeassert,errcheck // as its a test we dont need to check assertion here.
-	args.Config["tenants"].(map[string]interface{})["bob"] = bob
+	args.Config["tenants"].(map[string]any)["bob"] = bob
 
 	_, err = initVaultTokensKMS(args)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
@@ -188,7 +188,7 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 
 func TestTransformConfig(t *testing.T) {
 	t.Parallel()
-	cm := make(map[string]interface{})
+	cm := make(map[string]any)
 	cm["KMS_PROVIDER"] = "vaulttokens"
 	cm["VAULT_ADDR"] = "https://vault.example.com"
 	cm["VAULT_BACKEND"] = "kv-v2"
@@ -220,7 +220,7 @@ func TestTransformConfig(t *testing.T) {
 
 func TestTransformConfigDefaults(t *testing.T) {
 	t.Parallel()
-	cm := make(map[string]interface{})
+	cm := make(map[string]any)
 	cm["KMS_PROVIDER"] = kmsTypeVaultTokens
 
 	config, err := transformConfig(cm)
@@ -248,11 +248,11 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 		kms.keyContext = map[string]string{
 			loss.KeyVaultNamespace: "global",
 		}
-		kms.vaultConfig = map[string]interface{}{
+		kms.vaultConfig = map[string]any{
 			api.EnvVaultNamespace: "global",
 		}
 
-		config := map[string]interface{}{
+		config := map[string]any{
 			"vaultNamespace": vaultNamespace,
 		}
 
@@ -270,11 +270,11 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 		kms.keyContext = map[string]string{
 			loss.KeyVaultNamespace: vaultAuthNamespace,
 		}
-		kms.vaultConfig = map[string]interface{}{
+		kms.vaultConfig = map[string]any{
 			api.EnvVaultNamespace: "global",
 		}
 
-		config := map[string]interface{}{
+		config := map[string]any{
 			"vaultNamespace": vaultNamespace,
 		}
 
@@ -292,11 +292,11 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 		kms.keyContext = map[string]string{
 			// no vaultAuthNamespace configured
 		}
-		kms.vaultConfig = map[string]interface{}{
+		kms.vaultConfig = map[string]any{
 			api.EnvVaultNamespace: "global",
 		}
 
-		config := map[string]interface{}{
+		config := map[string]any{
 			"vaultNamespace": vaultNamespace,
 		}
 
@@ -315,11 +315,11 @@ func TestSetTenantAuthNamespace(t *testing.T) {
 		kms.keyContext = map[string]string{
 			// no vaultAuthNamespace configured
 		}
-		kms.vaultConfig = map[string]interface{}{
+		kms.vaultConfig = map[string]any{
 			// no vaultNamespace configured
 		}
 
-		config := map[string]interface{}{
+		config := map[string]any{
 			// no tenant namespaces configured
 		}
 

@@ -182,13 +182,13 @@ func (kms *azureKMS) getService() (*azsecrets.Client, error) {
 	return azClient, nil
 }
 
-func (kms *azureKMS) getSecrets() (map[string]interface{}, error) {
+func (kms *azureKMS) getSecrets() (map[string]any, error) {
 	secretData, err := k8s.GetSecret(kms.secretName, kms.namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
 	}
 
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 	for k, v := range secretData {
 		switch k {
 		case azureClientCertificate:

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -76,7 +77,7 @@ Example JSON structure in the KMS config is,
 
 type vaultConnection struct {
 	secrets     loss.Secrets
-	vaultConfig map[string]interface{}
+	vaultConfig map[string]any
 	keyContext  map[string]string
 
 	// vaultDestroyKeys will by default set to `true`, and causes secrets
@@ -105,7 +106,7 @@ type vaultKMS struct {
 // errConfigOptionMissing is returned.
 // In case the value is available, but can not be converted to a string,
 // errConfigOptionInvalid is returned.
-func setConfigString(option *string, config map[string]interface{}, key string) error {
+func setConfigString(option *string, config map[string]any, key string) error {
 	value, ok := config[key]
 	if !ok {
 		return fmt.Errorf("%w: %s", errConfigOptionMissing, key)
@@ -170,8 +171,8 @@ func (vc *vaultConnection) Destroy() {
 // vc.connectVault().
 //
 //nolint:gocyclo,cyclop // iterating through many config options, not complex at all.
-func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
-	vaultConfig := make(map[string]interface{})
+func (vc *vaultConnection) initConnection(config map[string]any) error {
+	vaultConfig := make(map[string]any)
 	keyContext := make(map[string]string)
 
 	firstInit := (vc.vaultConfig == nil)
@@ -279,16 +280,12 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 
 	// update the existing config only if no config is available yet
 	if vc.keyContext != nil {
-		for key, value := range keyContext {
-			vc.keyContext[key] = value
-		}
+		maps.Copy(vc.keyContext, keyContext)
 	} else {
 		vc.keyContext = keyContext
 	}
 	if vc.vaultConfig != nil {
-		for key, value := range vaultConfig {
-			vc.vaultConfig[key] = value
-		}
+		maps.Copy(vc.vaultConfig, vaultConfig)
 	} else {
 		vc.vaultConfig = vaultConfig
 	}
@@ -299,8 +296,8 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 // initCertificates sets VAULT_* environment variables in the vc.vaultConfig map,
 // these settings will be used when connecting to the Vault service with
 // vc.connectVault().
-func (vc *vaultConnection) initCertificates(config map[string]interface{}, secrets map[string]string) error {
-	vaultConfig := make(map[string]interface{})
+func (vc *vaultConnection) initCertificates(config map[string]any, secrets map[string]string) error {
+	vaultConfig := make(map[string]any)
 
 	vaultCAFromSecret := "" // optional
 	err := setConfigString(&vaultCAFromSecret, config, "vaultCAFromSecret")
@@ -321,9 +318,7 @@ func (vc *vaultConnection) initCertificates(config map[string]interface{}, secre
 		vaultConfig[api.EnvVaultCACert] = tf.Name()
 
 		// update the existing config
-		for key, value := range vaultConfig {
-			vc.vaultConfig[key] = value
-		}
+		maps.Copy(vc.vaultConfig, vaultConfig)
 	}
 
 	return nil
@@ -350,9 +345,7 @@ func (vc *vaultConnection) connectVault() error {
 // RemoveDEK() calls.
 func (vc *vaultConnection) getDeleteKeyContext() map[string]string {
 	keyContext := map[string]string{}
-	for k, v := range vc.keyContext {
-		keyContext[k] = v
-	}
+	maps.Copy(keyContext, vc.keyContext)
 	if vc.vaultDestroyKeys {
 		keyContext[loss.DestroySecret] = vaultDefaultDestroyKeys
 	}
@@ -401,8 +394,8 @@ func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	err = setConfigString(&vaultPassphraseRoot, args.Config, "vaultPassphraseRoot")
 	if err == nil {
 		// the old example did have "/v1/secret/", convert that format
-		if strings.HasPrefix(vaultPassphraseRoot, "/v1/") {
-			kms.vaultConfig[vault.VaultBackendPathKey] = strings.TrimPrefix(vaultPassphraseRoot, "/v1/")
+		if after, ok := strings.CutPrefix(vaultPassphraseRoot, "/v1/"); ok {
+			kms.vaultConfig[vault.VaultBackendPathKey] = after
 		} else {
 			kms.vaultConfig[vault.VaultBackendPathKey] = vaultPassphraseRoot
 		}
@@ -437,7 +430,7 @@ func (kms *vaultKMS) FetchDEK(ctx context.Context, key string) (string, error) {
 		return "", err
 	}
 
-	data, ok := s["data"].(map[string]interface{})
+	data, ok := s["data"].(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("failed parsing data for get passphrase request for %q", key)
 	}
@@ -451,7 +444,7 @@ func (kms *vaultKMS) FetchDEK(ctx context.Context, key string) (string, error) {
 
 // StoreDEK saves new passphrase in Vault.
 func (kms *vaultKMS) StoreDEK(ctx context.Context, key, value string) error {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"data": map[string]string{
 			"passphrase": value,
 		},
@@ -490,8 +483,8 @@ func detectAuthMountPath(path string) (string, error) {
 
 	// add all components between "login" and "auth" to authMountPath
 	match := false
-	parts := strings.Split(path, "/")
-	for _, part := range parts {
+	parts := strings.SplitSeq(path, "/")
+	for part := range parts {
 		if part == "auth" {
 			match = true
 

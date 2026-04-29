@@ -158,7 +158,7 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 
 	if secTypes != "" {
 		export.SecType = []nfs.SecType{}
-		for _, secType := range strings.Split(secTypes, ",") {
+		for secType := range strings.SplitSeq(secTypes, ",") {
 			export.SecType = append(export.SecType, nfs.SecType(secType))
 		}
 	}

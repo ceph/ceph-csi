@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
@@ -113,12 +114,8 @@ func New(volOptions *store.VolumeOptions) (VolumeMounter, error) {
 
 	var chosenMounter string
 
-	for _, availMounter := range availableMounters {
-		if availMounter == wantMounter {
-			chosenMounter = wantMounter
-
-			break
-		}
+	if slices.Contains(availableMounters, wantMounter) {
+		chosenMounter = wantMounter
 	}
 
 	if chosenMounter == "" {

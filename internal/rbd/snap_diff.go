@@ -167,7 +167,7 @@ func createDiffIterateByIDCB(
 	luksHeaderPadding uint64,
 	sendResponse types.MetadataCallback,
 ) librbd.DiffIterateCallback {
-	return func(offset, sizeBytes uint64, _ int, _ interface{}) int {
+	return func(offset, sizeBytes uint64, _ int, _ any) int {
 		select {
 		case <-ctx.Done():
 			return int(codes.Canceled)

@@ -237,7 +237,7 @@ func (kms secretsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (s
 
 // fetchEncryptionPassphrase fetches encryptionPassphrase from user provided secret.
 func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
-	config map[string]interface{},
+	config map[string]any,
 	defaultNamespace string,
 ) (string, error) {
 	var (

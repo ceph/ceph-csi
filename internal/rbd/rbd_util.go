@@ -2421,7 +2421,7 @@ func (rv *rbdVolume) getUsedBytes(ctx context.Context) (uint64, error) {
 			Length:        uint64(rv.VolSize),
 			IncludeParent: librbd.IncludeParent,
 			WholeObject:   librbd.EnableWholeObject,
-			Callback: func(o, l uint64, _ int, _ interface{}) int {
+			Callback: func(o, l uint64, _ int, _ any) int {
 				usedBytes += l
 
 				return 0

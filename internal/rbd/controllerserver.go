@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 
 	osdAdmin "github.com/ceph/go-ceph/common/admin/osd"
@@ -303,9 +304,7 @@ func buildCreateVolumeResponse(
 
 	volume.ContentSource = req.GetVolumeContentSource()
 
-	for param, value := range util.GetVolumeContext(req.GetParameters()) {
-		volume.VolumeContext[param] = value
-	}
+	maps.Copy(volume.GetVolumeContext(), util.GetVolumeContext(req.GetParameters()))
 
 	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }

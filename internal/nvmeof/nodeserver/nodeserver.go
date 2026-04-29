@@ -847,7 +847,7 @@ func (ns *NodeServer) initNVMeMountedDevices(ctx context.Context) error {
 
 // getStagingTargetPath concats either NodeStageVolumeRequest's or
 // NodeUnstageVolumeRequest's target path with the volumeID.
-func getStagingTargetPath(req interface{}) string {
+func getStagingTargetPath(req any) string {
 	switch vr := req.(type) {
 	case *csi.NodeStageVolumeRequest:
 		return vr.GetStagingTargetPath() + "/" + vr.GetVolumeId()

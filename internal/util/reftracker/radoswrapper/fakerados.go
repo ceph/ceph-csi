@@ -18,6 +18,7 @@ package radoswrapper
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/ceph/go-ceph/rados"
 	"golang.org/x/sys/unix"
@@ -333,9 +334,7 @@ func (e *fakeWriteOpSetOmapExecutor) operate(w *FakeWriteOp) error {
 		return err
 	}
 
-	for k, v := range e.pairs {
-		obj.Omap[k] = v
-	}
+	maps.Copy(obj.Omap, e.pairs)
 
 	return nil
 }
@@ -419,10 +418,7 @@ func (e *fakeReadOpReadExecutor) operate(r *FakeReadOp) error {
 		return nil
 	}
 
-	end := e.offset + len(e.buffer)
-	if end > len(obj.Data) {
-		end = len(obj.Data)
-	}
+	end := min(e.offset+len(e.buffer), len(obj.Data))
 
 	nbytes := end - e.offset
 	e.step.BytesRead = int64(nbytes)

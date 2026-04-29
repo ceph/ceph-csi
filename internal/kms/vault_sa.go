@@ -159,7 +159,7 @@ func (kms *vaultTenantSA) Destroy() {
 	kms.vaultTenantConnection.Destroy()
 }
 
-func (kms *vaultTenantSA) configureTenant(config map[string]interface{}, tenant string) error {
+func (kms *vaultTenantSA) configureTenant(config map[string]any, tenant string) error {
 	kms.Tenant = tenant
 	tenantConfig, found := fetchTenantConfig(config, tenant)
 	if found {
@@ -189,7 +189,7 @@ func (kms *vaultTenantSA) configureTenant(config map[string]interface{}, tenant 
 // multiple times, for the different nested configuration layers.
 // parseTenantConfig() calls this as well, with a reduced set of options,
 // filtered by isTenantConfigOption().
-func (kms *vaultTenantSA) parseConfig(config map[string]interface{}) error {
+func (kms *vaultTenantSA) parseConfig(config map[string]any) error {
 	err := kms.vaultTenantConnection.parseConfig(config)
 	if err != nil {
 		return err
@@ -249,7 +249,7 @@ func isTenantSAConfigOption(opt string) bool {
 
 // setServiceAccountName stores the name of the ServiceAccount in the
 // configuration if it has been set in the options.
-func (kms *vaultTenantSA) setServiceAccountName(config map[string]interface{}) error {
+func (kms *vaultTenantSA) setServiceAccountName(config map[string]any) error {
 	err := setConfigString(&kms.tenantSAName, config, "tenantSAName")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err

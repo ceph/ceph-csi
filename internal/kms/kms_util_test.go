@@ -27,7 +27,7 @@ func TestSetConfigInt(t *testing.T) {
 	t.Parallel()
 	type args struct {
 		option *int
-		config map[string]interface{}
+		config map[string]any
 		key    string
 	}
 	option := 1
@@ -41,7 +41,7 @@ func TestSetConfigInt(t *testing.T) {
 			name: "valid value",
 			args: args{
 				option: &option,
-				config: map[string]interface{}{
+				config: map[string]any{
 					"a": 1.0,
 				},
 				key: "a",
@@ -53,7 +53,7 @@ func TestSetConfigInt(t *testing.T) {
 			name: "invalid value",
 			args: args{
 				option: &option,
-				config: map[string]interface{}{
+				config: map[string]any{
 					"a": "abc",
 				},
 				key: "a",
@@ -65,7 +65,7 @@ func TestSetConfigInt(t *testing.T) {
 			name: "missing value",
 			args: args{
 				option: &option,
-				config: map[string]interface{}{},
+				config: map[string]any{},
 				key:    "a",
 			},
 			err:   errConfigOptionMissing,

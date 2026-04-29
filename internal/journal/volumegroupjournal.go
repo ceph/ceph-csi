@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -450,9 +451,7 @@ func (vgjc *volumeGroupJournalConnection) GetVolumeGroupAttributes(
 	delete(values, cj.csiImageKey)
 	delete(values, cj.csiCreationTimeKey)
 	groupAttributes.VolumeMap = map[string]string{}
-	for k, v := range values {
-		groupAttributes.VolumeMap[k] = v
-	}
+	maps.Copy(groupAttributes.VolumeMap, values)
 
 	return groupAttributes, nil
 }

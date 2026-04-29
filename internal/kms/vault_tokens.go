@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strconv"
 
@@ -116,7 +117,7 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 // map[string]interface{} configuration.
 //
 // FIXME: this can surely be simplified?!
-func transformConfig(svMap map[string]interface{}) (map[string]interface{}, error) {
+func transformConfig(svMap map[string]any) (map[string]any, error) {
 	// convert the map to JSON
 	data, err := json.Marshal(svMap)
 	if err != nil {
@@ -145,7 +146,7 @@ func transformConfig(svMap map[string]interface{}) (map[string]interface{}, erro
 	}
 
 	// convert the vaultTokenConf struct to a map[string]interface{}
-	jsonMap := make(map[string]interface{})
+	jsonMap := make(map[string]any)
 	err = json.Unmarshal(data, &jsonMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to Unmarshal the CSI vault configuration: %w", err)
@@ -286,7 +287,7 @@ func (vtc *vaultTenantConnection) FetchDEK(ctx context.Context, key string) (str
 		return "", err
 	}
 
-	data, ok := s["data"].(map[string]interface{})
+	data, ok := s["data"].(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("failed parsing data for get passphrase request for %s", key)
 	}
@@ -300,7 +301,7 @@ func (vtc *vaultTenantConnection) FetchDEK(ctx context.Context, key string) (str
 
 // StoreDEK saves new passphrase in Vault.
 func (vtc *vaultTenantConnection) StoreDEK(ctx context.Context, key, value string) error {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"data": map[string]string{
 			"passphrase": value,
 		},
@@ -325,7 +326,7 @@ func (vtc *vaultTenantConnection) RemoveDEK(ctx context.Context, key string) err
 	return nil
 }
 
-func (kms *vaultTokensKMS) configureTenant(config map[string]interface{}, tenant string) error {
+func (kms *vaultTokensKMS) configureTenant(config map[string]any, tenant string) error {
 	kms.Tenant = tenant
 	tenantConfig, found := fetchTenantConfig(config, tenant)
 	if found {
@@ -370,7 +371,7 @@ func (vtc *vaultTenantConnection) init() {
 // parseConfig updates the kms.vaultConfig with the options from config and
 // secrets. This method can be called multiple times, i.e. to override
 // configuration options from tenants.
-func (vtc *vaultTenantConnection) parseConfig(config map[string]interface{}) error {
+func (vtc *vaultTenantConnection) parseConfig(config map[string]any) error {
 	err := vtc.initConnection(config)
 	if err != nil {
 		return err
@@ -387,7 +388,7 @@ func (vtc *vaultTenantConnection) parseConfig(config map[string]interface{}) err
 // setTokenName updates the kms.TokenName with the options from config. This
 // method can be called multiple times, i.e. to override configuration options
 // from tenants.
-func (kms *vaultTokensKMS) setTokenName(config map[string]interface{}) error {
+func (kms *vaultTokensKMS) setTokenName(config map[string]any) error {
 	err := setConfigString(&kms.TokenName, config, "tenantTokenName")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
@@ -400,8 +401,8 @@ func (kms *vaultTokensKMS) setTokenName(config map[string]interface{}) error {
 // it calls the kubernetes secrets and get the required data.
 
 //nolint:gocyclo,cyclop // iterating through many config options, not complex at all.
-func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}) error {
-	vaultConfig := make(map[string]interface{})
+func (vtc *vaultTenantConnection) initCertificates(config map[string]any) error {
+	vaultConfig := make(map[string]any)
 
 	csiNamespace := os.Getenv("POD_NAMESPACE")
 	vaultCAFromSecret := "" // optional
@@ -486,9 +487,7 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 		vaultConfig[api.EnvVaultClientKey] = ckey.Name()
 	}
 
-	for key, value := range vaultConfig {
-		vtc.vaultConfig[key] = value
-	}
+	maps.Copy(vtc.vaultConfig, vaultConfig)
 
 	return nil
 }
@@ -544,7 +543,7 @@ func isTenantConfigOption(opt string) bool {
 // parseTenantConfig gets the optional ConfigMap from the Tenants namespace,
 // and applies the allowable options (see isTenantConfigOption) to the KMS
 // configuration.
-func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]interface{}, error) {
+func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]any, error) {
 	if vtc.Tenant == "" || vtc.ConfigName == "" {
 		return nil, nil
 	}
@@ -561,7 +560,7 @@ func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]interface{}, e
 
 	// create a new map with config options, but only include the options
 	// that a tenant may (re)configure
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 	for k, v := range cm.Data {
 		if vtc.tenantConfigOptionFilter(k) {
 			config[k] = v
@@ -582,7 +581,7 @@ func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]interface{}, e
 // even if the tenant has vaultNamespace configured. Users expect to have the
 // vaultAuthNamespace updated when they configure vaultNamespace, if
 // vaultAuthNamespace was not explicitly set in the global configuration.
-func (vtc *vaultTenantConnection) setTenantAuthNamespace(tenantConfig map[string]interface{}) {
+func (vtc *vaultTenantConnection) setTenantAuthNamespace(tenantConfig map[string]any) {
 	vaultAuthNamespace, ok := vtc.keyContext[loss.KeyVaultNamespace]
 	if !ok {
 		// nothing to do, global connection config does not have the
@@ -630,13 +629,13 @@ func (vtc *vaultTenantConnection) setTenantAuthNamespace(tenantConfig map[string
 }
 
 // fetchTenantConfig fetches the configuration for the tenant if it exists.
-func fetchTenantConfig(config map[string]interface{}, tenant string) (map[string]interface{}, bool) {
+func fetchTenantConfig(config map[string]any, tenant string) (map[string]any, bool) {
 	tenantsMap, ok := config["tenants"]
 	if !ok {
 		return nil, false
 	}
 	// tenants is a map per tenant, containing key/values
-	tenants, ok := tenantsMap.(map[string]map[string]interface{})
+	tenants, ok := tenantsMap.(map[string]map[string]any)
 	if !ok {
 		return nil, false
 	}

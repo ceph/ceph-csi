@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/csi-addons/spec/lib/go/volumegroup"
@@ -247,9 +248,7 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 			err.Error())
 	}
 
-	for key, value := range req.GetParameters() {
-		csiVG.VolumeGroupContext[key] = value
-	}
+	maps.Copy(csiVG.GetVolumeGroupContext(), req.GetParameters())
 
 	return &volumegroup.CreateVolumeGroupResponse{
 		VolumeGroup: csiVG,

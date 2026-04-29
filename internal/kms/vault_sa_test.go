@@ -33,7 +33,7 @@ func TestTenantSAParseConfig(t *testing.T) {
 	t.Parallel()
 	vts := vaultTenantSA{}
 
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 
 	// empty config map
 	err := vts.parseConfig(config)
@@ -55,7 +55,7 @@ func TestTenantSAParseConfig(t *testing.T) {
 	}
 
 	// tenant "bob" uses a different auth mount path
-	bob := make(map[string]interface{})
+	bob := make(map[string]any)
 	bob["vaultAuthPath"] = "/v1/auth/bobs-cluster/login"
 	err = vts.parseConfig(bob)
 	switch {

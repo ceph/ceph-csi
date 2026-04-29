@@ -282,7 +282,7 @@ func SetRbdNbdToolFeatures() {
 // returns mounter specific options.
 func parseMapOptions(mapOptions string) (string, string, error) {
 	var krbdMapOptions, nbdMapOptions string
-	for _, item := range strings.Split(mapOptions, ";") {
+	for item := range strings.SplitSeq(mapOptions, ";") {
 		var mounter, options string
 		if item == "" {
 			continue
@@ -420,8 +420,8 @@ func appendRbdNbdCliOptions(cmdArgs []string, userOptions, cookie string) []stri
 		cmdArgs = append(cmdArgs, "--cookie="+cookie)
 	}
 	if userOptions != "" {
-		options := strings.Split(userOptions, ",")
-		for _, opt := range options {
+		options := strings.SplitSeq(userOptions, ",")
+		for opt := range options {
 			cmdArgs = append(cmdArgs, "--"+opt)
 		}
 	}

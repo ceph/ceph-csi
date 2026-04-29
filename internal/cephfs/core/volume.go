@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 
@@ -320,11 +321,5 @@ func (s *subVolumeClient) PurgeVolume(ctx context.Context, force bool) error {
 func checkSubvolumeHasFeature(feature string, subVolFeatures []string) bool {
 	// The subvolume "features" are based on the internal version of the subvolume.
 	// Verify if subvolume supports the required feature.
-	for _, subvolFeature := range subVolFeatures {
-		if subvolFeature == feature {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(subVolFeatures, feature)
 }

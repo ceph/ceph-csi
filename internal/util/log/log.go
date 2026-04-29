@@ -54,37 +54,37 @@ func Log(ctx context.Context, format string) string {
 }
 
 // FatalLog helps in logging fatal errors.
-func FatalLogMsg(message string, args ...interface{}) {
+func FatalLogMsg(message string, args ...any) {
 	logMessage := fmt.Sprintf(message, args...)
 	klog.FatalDepth(1, logMessage)
 }
 
 // ErrorLogMsg helps in logging errors with message.
-func ErrorLogMsg(message string, args ...interface{}) {
+func ErrorLogMsg(message string, args ...any) {
 	logMessage := fmt.Sprintf(message, args...)
 	klog.ErrorDepth(1, logMessage)
 }
 
 // ErrorLog helps in logging errors with context.
-func ErrorLog(ctx context.Context, message string, args ...interface{}) {
+func ErrorLog(ctx context.Context, message string, args ...any) {
 	logMessage := fmt.Sprintf(Log(ctx, message), args...)
 	klog.ErrorDepth(1, logMessage)
 }
 
 // WarningLogMsg helps in logging warnings with message.
-func WarningLogMsg(message string, args ...interface{}) {
+func WarningLogMsg(message string, args ...any) {
 	logMessage := fmt.Sprintf(message, args...)
 	klog.WarningDepth(1, logMessage)
 }
 
 // WarningLog helps in logging warnings with context.
-func WarningLog(ctx context.Context, message string, args ...interface{}) {
+func WarningLog(ctx context.Context, message string, args ...any) {
 	logMessage := fmt.Sprintf(Log(ctx, message), args...)
 	klog.WarningDepth(1, logMessage)
 }
 
 // DefaultLog helps in logging with klog.level 1.
-func DefaultLog(message string, args ...interface{}) {
+func DefaultLog(message string, args ...any) {
 	logMessage := fmt.Sprintf(message, args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Default).Enabled() {
@@ -93,7 +93,7 @@ func DefaultLog(message string, args ...interface{}) {
 }
 
 // UsefulLog helps in logging with klog.level 2.
-func UsefulLog(ctx context.Context, message string, args ...interface{}) {
+func UsefulLog(ctx context.Context, message string, args ...any) {
 	logMessage := fmt.Sprintf(Log(ctx, message), args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Useful).Enabled() {
@@ -102,7 +102,7 @@ func UsefulLog(ctx context.Context, message string, args ...interface{}) {
 }
 
 // ExtendedLogMsg helps in logging a message with klog.level 3.
-func ExtendedLogMsg(message string, args ...interface{}) {
+func ExtendedLogMsg(message string, args ...any) {
 	logMessage := fmt.Sprintf(message, args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Extended).Enabled() {
@@ -111,7 +111,7 @@ func ExtendedLogMsg(message string, args ...interface{}) {
 }
 
 // ExtendedLog helps in logging with klog.level 3.
-func ExtendedLog(ctx context.Context, message string, args ...interface{}) {
+func ExtendedLog(ctx context.Context, message string, args ...any) {
 	logMessage := fmt.Sprintf(Log(ctx, message), args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Extended).Enabled() {
@@ -120,7 +120,7 @@ func ExtendedLog(ctx context.Context, message string, args ...interface{}) {
 }
 
 // DebugLogMsg helps in logging a message with klog.level 4.
-func DebugLogMsg(message string, args ...interface{}) {
+func DebugLogMsg(message string, args ...any) {
 	logMessage := fmt.Sprintf(message, args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Debug).Enabled() {
@@ -129,7 +129,7 @@ func DebugLogMsg(message string, args ...interface{}) {
 }
 
 // DebugLog helps in logging with klog.level 4.
-func DebugLog(ctx context.Context, message string, args ...interface{}) {
+func DebugLog(ctx context.Context, message string, args ...any) {
 	logMessage := fmt.Sprintf(Log(ctx, message), args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Debug).Enabled() {
@@ -138,7 +138,7 @@ func DebugLog(ctx context.Context, message string, args ...interface{}) {
 }
 
 // TraceLogMsg helps in logging a message with klog.level 5.
-func TraceLogMsg(message string, args ...interface{}) {
+func TraceLogMsg(message string, args ...any) {
 	logMessage := fmt.Sprintf(message, args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Trace).Enabled() {
@@ -147,7 +147,7 @@ func TraceLogMsg(message string, args ...interface{}) {
 }
 
 // TraceLog helps in logging with klog.level 5.
-func TraceLog(ctx context.Context, message string, args ...interface{}) {
+func TraceLog(ctx context.Context, message string, args ...any) {
 	logMessage := fmt.Sprintf(Log(ctx, message), args...)
 	// If logging is disabled, don't evaluate the arguments
 	if klog.V(Trace).Enabled() {
