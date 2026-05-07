@@ -148,44 +148,11 @@ Below are the configurations that will be supported
 |  MaxReadBytesPerSecond     |  Max read bytes per second     |
 |  MaxWriteBytesPerSecond     |  Max write bytes per second     |
 
-## Different approaches
+## Implementation Approach
 
-The above solution can be implemented using 3 different approaches.
+The solution uses VolumeAttributeClass to configure QoS parameters.
 
-### 1. QoS using new parameters in RBD StorageClass
-
-```yaml
----
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-   name: csi-rbd-sc
-provisioner: rbd.csi.ceph.com
-parameters:
-  MaxReadIOPS: ""
-  MaxWriteIOPS: ""
-  MaxReadBytesPerSecond: ""
-  MaxWriteBytesPerSecond: ""
-```
-
-#### Implementation for StorageClass QoS
-
-1. Create new storageClass with new parameters for QoS
-1. Modify CSIDriver object to pass pod details to the NodePublishVolume CSI
-   procedure
-1. During NodePublishVolume CSI procedure
-   * Retrieve the QoS configuration from the volumeContext in NodePublishRequest
-   * Identify the rbd device using the NodeStageVolumePath
-   * Get the pod UUID from the NodeStageVolume
-   * Set io.max file in all the containers in the pod
-
-#### Drawbacks of StorageClass QoS
-
-1. No way to update the QoS at runtime
-1. Need to take a backup and restore to New QoS StorageClass
-1. Delete and Recreate the PV object
-
-### 2. QoS using parameters in VolumeAttributeClass
+### QoS using VolumeAttributeClass with NodePublish Secret
 
 ```yaml
 apiVersion: storage.k8s.io/v1alpha1
@@ -206,55 +173,122 @@ This new VolumeAttributeClass is designed to keep storage that supports setting
 QoS at the storage level which means setting some configuration at the storage
 (like QoS for nbd)
 
-#### Implementation of VolumeAttributeClass QoS
+#### Implementation Steps
 
-1. Modify CSIDriver object to pass pod details to the NodePublishVolume CSI
-   procedure
-1. Add support in Ceph-CSI to expose ModifyVolume CSI procedure
-1. Ceph-CSI will store QoS in the rbd image metadata
-1. During NodeStage operation retrieve the image metadata and store it in
-   stagingPath
-1. Whenever a new pod comes in apply the QoS
-
-#### Drawbacks of VolumeAttributeClass QoS
-
-One problem with above is all application need to be scaled downed and scaled
-up to get the new QoS value even though its changed in the PVC object, this is
-sometime impossible as it will have downtime.
-
-### 3. QoS using parameters in VolumeAttributeClass with NodePublish Secret
-
-1. Modify CSIDriver object to pass pod details to the NodePublishVolume CSI
-   procedure
+1. Modify CSIDriver object to pass pod details to the NodePublishVolume
+   CSI procedure
 1. Add support in Ceph-CSI to expose ModifyVolume CSI procedure
 1. Ceph-CSI will store QoS in the rbd image metadata
 1. During NodePublishVolume operation retrieve the QoS from image metadata
 1. Whenever a new pod comes in apply the QoS
 
-This solution addresses the aforementioned issue, but it requires a secret to
-communicate with the ceph cluster. Therefore, we must create a new
-PublishSecret for the storageClass, which may be beneficial when Kubernetes
-eventually enables Node operations.
+#### Container Discovery and QoS Application
 
-Both options 2 and 3 are contingent upon changes to the CSI spec and Kubernetes
-support. Additionally,
-[VolumeAttributeClass](https://github.com/kubernetes/enhancements/blob/master/keps/sig-storage/3751-volume-attributes-class/README.md)
-is currently being developed within the Kubernetes realm and will initially be
-in the Alpha stage. Consequently, it will be disabled by default.
+When kubelet invokes the NodePublishVolume RPC call, it provides the pod UUID
+as part of the request. Ceph-CSI will use this pod UUID to locate the correct
+cgroup hierarchy path, following the same approach demonstrated in the manual
+steps above.
 
-#### Advantages of QoS using VolumeAttributeClass
+Since Ceph-CSI cannot determine which specific container within the pod the
+RBD volume is being mounted to, the QoS limits (io.max) must be applied to
+**all containers** found in the pod's cgroup directory. This ensures that the
+QoS limits are enforced regardless of which container is using the volume.
 
-1. No Restore/Clone operation is required to change the QoS
-1. Easily QoS can be changed for existing PVC only with second approach not
-   with third as it needs new secret.
+The container discovery process follows these steps:
 
-### Hybrid Approach
+1. Kubelet provides pod UUID in NodePublishVolume request (via pod info in
+   volume context)
+1. Ceph-CSI identifies the pod's QoS class (BestEffort, Burstable, or
+   Guaranteed) from the cgroup hierarchy
+1. Navigate to the appropriate kubepods slice based on QoS class:
+   * `kubepods-besteffort.slice` for BestEffort
+   * `kubepods-burstable.slice` for Burstable
+   * `kubepods.slice` for Guaranteed
+1. Locate the pod-specific slice using the pod UUID:
+   `kubepods-<qos>-pod<uuid>.slice/`
+1. Enumerate all container scopes (e.g., `crio-<container-id>.scope/`) within
+   the pod slice
+1. Apply io.max limits to each container's cgroup by writing to
+   `<container-scope>/io.max`
 
-Considering the advantages and drawbacks, we can use StorageClass and
-VolumeAttributeClass to support QoS, with VolumeAttributeClass taking
-precedence over StorageClass. This approach offers a flexible solution that
-accounts for dynamic changes while addressing the challenges of existing
-approaches.
+Example path construction:
+`/sys/fs/cgroup/kubepods-besteffort.slice/kubepods-besteffort-podcdf7b785_4eb7_44f7_99cc_ef53890f4dfd.slice/crio-77e57fbbc0f0630f41f9f154f4b5fe368b6dcf7bef7dcd75a9c4b56676f10bc9.scope/io.max`
+
+This approach ensures QoS enforcement across all containers in the pod,
+addressing the limitation that the specific target container is not known at
+NodePublishVolume time.
+
+#### Secret Management
+
+This solution requires a secret to communicate with the ceph cluster during
+NodePublishVolume to retrieve the latest QoS settings from the image metadata.
+
+**StorageClass Configuration:**
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-rbd-sc
+provisioner: rbd.csi.ceph.com
+parameters:
+  clusterID: <cluster-id>
+  pool: <pool-name>
+  csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+  csi.storage.k8s.io/node-publish-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: default
+```
+
+**Fallback to CSI ConfigMap:**
+
+If the NodePublishVolumeSecret is not specified in the StorageClass, Ceph-CSI
+will fall back to the default secret configured in the CSI ConfigMap. This
+provides flexibility for existing deployments without requiring StorageClass
+updates.
+
+**CSI ConfigMap Configuration:**
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-config
+data:
+  config.json: |-
+    [
+      {
+        "clusterID": "<cluster-id>",
+        "monitors": ["<mon1>", "<mon2>", "<mon3>"],
+        "rbd": {
+          "nodePublishSecretRef": {
+            "name": "csi-rbd-secret",
+            "namespace": "default"
+          }
+        }
+      }
+    ]
+```
+
+The secret lookup order:
+
+1. Check PV for `csi.storage.k8s.io/node-publish-secret-name` (from
+   StorageClass)
+1. If not found, use the `rbd.nodePublishSecretRef` from CSI ConfigMap for
+   the corresponding clusterID
+1. If neither is available, fail the NodePublishVolume operation with a
+   clear error message (if QOS is specified).
+
+#### Advantages of this Approach
+
+1. **No Restore/Clone operation required** - QoS can be changed on existing
+   PVCs via VolumeAttributesClass.
+1. **Flexible secret management** - Supports both StorageClass-level and
+   cluster-level default secrets.
 
 ### References
 
