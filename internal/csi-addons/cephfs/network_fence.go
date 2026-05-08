@@ -114,7 +114,7 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = nwFence.RemoveClientEviction(ctx)
+	err = nwFence.RemoveNetworkFence(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unfence CIDR block %q: %s", nwFence.Cidr, err.Error())
 	}

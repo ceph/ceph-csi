@@ -58,13 +58,6 @@ type activeClient struct {
 	Inst string `json:"inst"`
 }
 
-// IPWithNonce represents the structure of an IP with nonce
-// as listed by Ceph OSD blocklist.
-type IPWithNonce struct {
-	IP    string `json:"ip"`
-	Nonce string `json:"nonce"`
-}
-
 // NewNetworkFence returns a networkFence struct object from the Network fence/unfence request.
 func NewNetworkFence(
 	ctx context.Context,
@@ -177,36 +170,6 @@ func (nf *NetworkFence) RemoveNetworkFence(ctx context.Context) error {
 			// it is same as telling ceph to remove just the IP
 			// without specifying any port or nonce with it.
 			err := nf.removeCephBlocklist(ctx, host, "0", false)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (nf *NetworkFence) RemoveClientEviction(ctx context.Context) error {
-	// Remove the CIDR block first
-	err := nf.RemoveNetworkFence(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Get the ceph blocklist
-	blocklist, err := nf.getCephBlocklist(ctx)
-	if err != nil {
-		return err
-	}
-
-	// For each CIDR block, remove the IPs in the blocklist
-	// that fall under the CIDR with nonce
-	for _, cidr := range nf.Cidr {
-		hosts := nf.parseBlocklistForCIDR(ctx, blocklist, cidr)
-		log.DebugLog(ctx, "parsed blocklist for CIDR %s: %+v", cidr, hosts)
-
-		for _, host := range hosts {
-			err := nf.removeCephBlocklist(ctx, host.IP, host.Nonce, false)
 			if err != nil {
 				return err
 			}
@@ -388,76 +351,6 @@ func GetCIDR(cidrs Cidrs) ([]string, error) {
 // the value of nonce is ignored if useRange is true.
 func (nf *NetworkFence) removeCephBlocklist(ctx context.Context, ip, nonce string, useRange bool) error {
 	return util.RemoveCephBlocklist(ctx, nf.Monitors, nf.cr, ip, nonce, useRange)
-}
-
-// getCephBlocklist fetches the ceph blocklist and returns it as a string.
-func (nf *NetworkFence) getCephBlocklist(ctx context.Context) (string, error) {
-	arg := []string{
-		"--id", nf.cr.ID,
-		"--keyfile=" + nf.cr.KeyFile,
-		"-m", nf.Monitors,
-	}
-	// FIXME: replace the ceph command with go-ceph API in future
-	cmd := []string{"osd", "blocklist", "ls"}
-	cmd = append(cmd, arg...)
-	stdout, stdErr, err := util.ExecCommandWithTimeout(ctx, 2*time.Minute, "ceph", cmd...)
-	if err != nil {
-		return "", fmt.Errorf("failed to get the ceph blocklist: %w, stderr: %q", err, stdErr)
-	}
-
-	return stdout, nil
-}
-
-// parseBlocklistEntry parses a single entry from the ceph blocklist
-// and returns the IPWithNonce.
-func (nf *NetworkFence) parseBlocklistEntry(entry string) IPWithNonce {
-	parts := strings.Fields(entry)
-	if len(parts) == 0 {
-		return IPWithNonce{}
-	}
-
-	ipPortNonce := strings.SplitN(parts[0], "/", 2)
-	if len(ipPortNonce) != 2 {
-		return IPWithNonce{}
-	}
-
-	ipPort := ipPortNonce[0]
-	nonce := ipPortNonce[1]
-
-	lastColonIndex := strings.LastIndex(ipPortNonce[0], ":")
-	if lastColonIndex == -1 {
-		return IPWithNonce{}
-	}
-
-	if len(ipPort) <= lastColonIndex {
-		return IPWithNonce{}
-	}
-	ip := ipPort[:lastColonIndex]
-
-	return IPWithNonce{IP: ip, Nonce: nonce}
-}
-
-// parseBlocklistForCIDR scans the blocklist for the given CIDR and returns
-// the list of IPs that lie within the CIDR along with their nonce.
-func (nf *NetworkFence) parseBlocklistForCIDR(ctx context.Context, blocklist, cidr string) []IPWithNonce {
-	blocklistEntries := strings.Split(blocklist, "\n")
-
-	matchingHosts := make([]IPWithNonce, 0)
-	for _, entry := range blocklistEntries {
-		entry = strings.TrimSpace(entry)
-
-		// Skip unrelated ranged blocks and invalid entries
-		if strings.Contains(entry, "cidr") || !strings.Contains(entry, "/") {
-			continue
-		}
-
-		blockedHost := nf.parseBlocklistEntry(entry)
-		if isIPInCIDR(ctx, blockedHost.IP, cidr) {
-			matchingHosts = append(matchingHosts, blockedHost)
-		}
-	}
-
-	return matchingHosts
 }
 
 // GetFenceClients fetches the ceph cluster ID and the client address that need to be fenced
