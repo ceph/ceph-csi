@@ -25,10 +25,43 @@ import (
 	"strconv"
 	"strings"
 
+	librbd "github.com/ceph/go-ceph/rbd"
+
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
+// QoSHandler defines the interface for different QoS implementations.
+// This abstraction allows clean separation between:
+//   - Traditional NBD QoS (applied via librbd to rbd-nbd device)
+//   - Cgroup v2 QoS (applied via cgroup io.max to krbd device)
+type QoSHandler interface {
+	// HasParams checks if this QoS type has parameters in the request.
+	HasParams(params map[string]string) bool
+
+	// Validate validates the QoS parameters.
+	Validate(params map[string]string) error
+
+	// Apply saves QoS parameters and applies them to the volume.
+	// For cgroup QoS: stores metadata to be applied later during NodePublishVolume.
+	// For NBD QoS: applies immediately to the rbd-nbd device configuration.
+	Apply(ctx context.Context, params map[string]string) error
+
+	// Clear removes all QoS settings for this type.
+	Clear(ctx context.Context) error
+}
+
 const (
+
+	// qosMetadataKeyPrefix is the prefix for QoS metadata keys stored in RBD image.
+	// Keys starting with `.` are not copied to cloned or snapshotted volumes.
+	qosMetadataKeyPrefix = ".rbd.csi.ceph.com/"
+
+	// RBD image metadata keys for cgroup QoS parameters.
+	// Prefixed to prevent propagation during clone/snapshot operations.
+	qosMetadataMaxReadIops  = qosMetadataKeyPrefix + "cgroup_qos_max_read_iops"
+	qosMetadataMaxWriteIops = qosMetadataKeyPrefix + "cgroup_qos_max_write_iops"
+	qosMetadataMaxReadBps   = qosMetadataKeyPrefix + "cgroup_qos_max_read_bps"
+	qosMetadataMaxWriteBps  = qosMetadataKeyPrefix + "cgroup_qos_max_write_bps"
 
 	// cgroup v2 base path.
 	cgroupV2BasePath = "/sys/fs/cgroup"
@@ -53,6 +86,63 @@ var qosClassInfo = [...]struct {
 	{"Guaranteed", kubepodsGuaranteedSlice, "kubepods-pod"},
 	{"Burstable", kubepodsBurstableSlice, "kubepods-burstable-pod"},
 	{"BestEffort", kubepodsBestEffortSlice, "kubepods-besteffort-pod"},
+}
+
+// qosParamToMetadataKey maps VolumeAttributesClass parameter keys to RBD image metadata keys.
+// Metadata keys are prefixed with `.rbd.csi.ceph.com/` to prevent copying during clone/snapshot.
+var qosParamToMetadataKey = map[string]string{
+	maxReadIops:  qosMetadataMaxReadIops,
+	maxWriteIops: qosMetadataMaxWriteIops,
+	maxReadBps:   qosMetadataMaxReadBps,
+	maxWriteBps:  qosMetadataMaxWriteBps,
+}
+
+// qosMetadataToParamKey is the reverse mapping: RBD image metadata keys to parameter keys.
+var qosMetadataToParamKey = func() map[string]string {
+	m := make(map[string]string, len(qosParamToMetadataKey))
+	for k, v := range qosParamToMetadataKey {
+		m[v] = k
+	}
+
+	return m
+}()
+
+// cgroupQoSHandler implements QoSHandler for cgroup v2 QoS (krbd mounter).
+type cgroupQoSHandler struct {
+	volume *rbdVolume
+}
+
+// newCgroupQoSHandler creates a new cgroup QoS handler.
+func newCgroupQoSHandler(volume *rbdVolume) QoSHandler {
+	return &cgroupQoSHandler{volume: volume}
+}
+
+// HasParams checks if cgroup v2 QoS parameters are present in the request.
+// Cgroup QoS only applies to krbd-mounted volumes; rbd-nbd volumes use the
+// NBD QoS handler even though the parameter names overlap.
+func (h *cgroupQoSHandler) HasParams(params map[string]string) bool {
+	if h.volume.Mounter == rbdNbdMounter {
+		return false
+	}
+
+	return hasCgroupQoSParams(params)
+}
+
+// Validate validates cgroup v2 QoS parameters.
+func (h *cgroupQoSHandler) Validate(params map[string]string) error {
+	return validateCgroupQoSParams(params)
+}
+
+// Apply saves cgroup v2 QoS parameters to RBD image metadata.
+// The actual QoS is applied during NodePublishVolume via cgroup io.max.
+func (h *cgroupQoSHandler) Apply(ctx context.Context, params map[string]string) error {
+	return h.volume.saveCgroupQoS(ctx, params)
+}
+
+// Clear removes all cgroup v2 QoS metadata from the RBD image.
+func (h *cgroupQoSHandler) Clear(ctx context.Context) error {
+	// Pass empty params to trigger removal of all cgroup QoS metadata.
+	return h.volume.saveCgroupQoS(ctx, map[string]string{})
 }
 
 // cgroupQoS holds cgroup v2 QoS parameters.
@@ -261,14 +351,77 @@ func (qos *cgroupQoS) applyCgroupQoS(ctx context.Context, podUID string) error {
 
 // validateCgroupQoSParams validates cgroup QoS parameters.
 func validateCgroupQoSParams(params map[string]string) error {
-	cgroupParams := []string{maxReadIops, maxWriteIops, maxReadBps, maxWriteBps}
-	for _, key := range cgroupParams {
+	for key := range qosParamToMetadataKey {
 		if val, ok := params[key]; ok && val != "" {
-			if _, err := strconv.ParseInt(val, 10, 64); err != nil {
+			parsed, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
 				return fmt.Errorf("invalid value for %s: %s, must be a positive integer", key, val)
+			}
+			if parsed <= 0 {
+				return fmt.Errorf("invalid value for %s: %s, must be greater than 0", key, val)
 			}
 		}
 	}
 
 	return nil
+}
+
+// saveCgroupQoS saves cgroup v2 QoS parameters to RBD image metadata.
+// If params is empty or contains no cgroup QoS keys, existing QoS metadata is removed.
+func (rv *rbdVolume) saveCgroupQoS(ctx context.Context, params map[string]string) error {
+	// Check if we need to remove existing QoS (when VAC is removed or keys not present).
+	if !hasCgroupQoSParams(params) {
+		// Remove all cgroup QoS metadata.
+		for _, metadataKey := range qosParamToMetadataKey {
+			err := rv.RemoveMetadata(metadataKey)
+			if err != nil && !errors.Is(err, librbd.ErrNotExist) {
+				return fmt.Errorf("failed to remove cgroup QoS metadata %s: %w", metadataKey, err)
+			}
+			log.DebugLog(ctx, "removed cgroup QoS metadata %s", metadataKey)
+		}
+
+		return nil
+	}
+
+	err := validateCgroupQoSParams(params)
+	if err != nil {
+		return err
+	}
+
+	// Save or update cgroup QoS parameters.
+	for param, metadataKey := range qosParamToMetadataKey {
+		if val, ok := params[param]; ok && val != "" {
+			err := rv.SetMetadata(metadataKey, val)
+			if err != nil {
+				return fmt.Errorf("failed to save cgroup QoS %s: %s, %w", param, val, err)
+			}
+			log.DebugLog(ctx, "saved cgroup QoS metadata %s: %s", metadataKey, val)
+		} else {
+			// Remove metadata if parameter not provided (allows partial updates).
+			err := rv.RemoveMetadata(metadataKey)
+			if err != nil && !errors.Is(err, librbd.ErrNotExist) {
+				return fmt.Errorf("failed to remove cgroup QoS metadata %s: %w", metadataKey, err)
+			}
+			log.DebugLog(ctx, "removed cgroup QoS metadata %s (not in request)", metadataKey)
+		}
+	}
+
+	return nil
+}
+
+// getCgroupQoS retrieves cgroup v2 QoS parameters from RBD image metadata.
+func (rv *rbdVolume) getCgroupQoS(ctx context.Context) (map[string]string, error) {
+	qosParams := make(map[string]string)
+	for metadataKey, param := range qosMetadataToParamKey {
+		val, err := rv.GetMetadata(metadataKey)
+		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+			return nil, fmt.Errorf("failed to get metadata %s: %w", metadataKey, err)
+		}
+		if val != "" {
+			qosParams[param] = val
+			log.DebugLog(ctx, "retrieved cgroup QoS metadata %s: %s", metadataKey, val)
+		}
+	}
+
+	return qosParams, nil
 }
