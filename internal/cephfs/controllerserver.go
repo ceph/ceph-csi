@@ -1247,6 +1247,14 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 
 	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil, secrets, cs.ClusterName)
 	if err != nil {
+		if errors.Is(err, util.ErrPoolNotFound) ||
+			errors.Is(err, util.ErrKeyNotFound) ||
+			errors.Is(err, cerrors.ErrVolumeNotFound) {
+			log.WarningLog(ctx, "failed to get backend volume for %s: %v", volumeId, err)
+
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+
 		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v", volumeId, err)
 	}
 	defer volOptions.Destroy()
