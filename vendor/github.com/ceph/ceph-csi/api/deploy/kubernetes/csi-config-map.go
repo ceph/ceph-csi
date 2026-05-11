@@ -60,6 +60,9 @@ type RBD struct {
 	// ControllerPublishSecretRef contains the secret reference for controller
 	// publish operations.
 	ControllerPublishSecretRef corev1.SecretReference `json:"controllerPublishSecretRef"`
+	// NodePublishSecretRef contains the secret reference for node publish
+	// operations. Used for retrieving QoS metadata during NodePublishVolume.
+	NodePublishSecretRef corev1.SecretReference `json:"nodePublishSecretRef"`
 }
 
 type NFS struct {
