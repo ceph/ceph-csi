@@ -65,9 +65,22 @@ fetch updated parameters when the Volume is _staged_ or _published_. The
 secrets for staging and publishing can not (easily) be updated after the fact,
 these are part of the fixed parameters in the PersistentVolume.
 
-## Use VolumeAttributesClass for rbd-nbd volume qos
+## RBD Volume QoS with VolumeAttributesClass
 
-### Create a VolumeAttributesClass
+Ceph-CSI supports two types of QoS for RBD volumes:
+
+1. **Traditional QoS** (for rbd-nbd mounter only)
+1. **Cgroup v2 QoS** (for krbd/kernel mounter, requires cgroup v2)
+
+**Note**: You cannot mix traditional QoS parameters and cgroup v2 QoS parameters
+in the same VolumeAttributesClass.
+
+### Traditional QoS for rbd-nbd
+
+Traditional QoS is applied at the RBD device level using rbd-nbd's built-in
+QoS capabilities. This approach only works with the rbd-nbd mounter.
+
+#### Create a VolumeAttributesClass for rbd-nbd QoS
 
 - Define a VolumeAttributesClass
 
@@ -183,3 +196,127 @@ $ kubectl get pvc
 NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      VOLUMEATTRIBUTESCLASS   AGE
 rbd-pvc-vac   Bound    pvc-8b2fcb47-233a-4bcf-bb94-f94e9aa1150a   30Gi       RWO            csi-rbd-sc        gold                    2m
 ```
+
+### Cgroup v2 QoS for krbd
+
+Cgroup v2 QoS applies io.max limits at the container cgroup level, providing
+QoS for volumes mapped using the krbd (kernel RBD) mounter. This approach works
+on systems with cgroup v2 enabled.
+
+#### Prerequisites for Cgroup v2 QoS
+
+- Cgroup v2 must be enabled on all Kubernetes nodes
+- `podInfoOnMount` must be enabled in the CSIDriver spec (enabled by default)
+- NodePublishVolume secret must be configured in StorageClass parameters
+  (`csi.storage.k8s.io/node-publish-secret-name`) or CSI ConfigMap
+  (`rbd.nodePublishSecretRef`)
+
+#### Create a VolumeAttributesClass for Cgroup v2 QoS
+
+- Define a VolumeAttributesClass
+
+```console
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: cgroup-qos
+driverName: rbd.csi.ceph.com
+parameters:
+  # Cgroup v2 QoS parameters
+  maxReadIops: "1000"         # 1000 read IOPS
+  maxWriteIops: "2000"        # 2000 write IOPS
+  maxReadBps: "104857600"     # 100 MiB/s
+  maxWriteBps: "209715200"    # 200 MiB/s
+```
+
+```console
+kubectl create -f volumeattributesclass-cgroup.yaml
+```
+
+- Verify VolumeAttributesClass has been created
+
+```console
+$ kubectl get vac
+NAME          DRIVERNAME                   AGE
+cgroup-qos    rbd.csi.ceph.com             2s
+```
+
+#### Configure NodePublishVolume Secret
+
+##### Option 1: StorageClass Parameters (Recommended)
+
+Add the following parameters to your StorageClass:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-rbd-sc
+provisioner: rbd.csi.ceph.com
+parameters:
+  clusterID: <cluster-id>
+  pool: <rbd-pool-name>
+  # ... other parameters ...
+  csi.storage.k8s.io/node-publish-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: default
+```
+
+##### Option 2: CSI ConfigMap Fallback
+
+Alternatively, configure the default secret in the CSI ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-config
+data:
+  config.json: |-
+    [
+      {
+        "clusterID": "<cluster-id>",
+        "monitors": ["<mon1>", "<mon2>", "<mon3>"],
+        "rbd": {
+          "nodePublishSecretRef": {
+            "name": "csi-rbd-secret",
+            "namespace": "default"
+          }
+        }
+      }
+    ]
+```
+
+#### Create PVC with Cgroup v2 QoS
+
+```console
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rbd-pvc-cgroup-qos
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: csi-rbd-sc
+  volumeMode: Block
+  volumeAttributesClassName: cgroup-qos
+```
+
+```console
+$ kubectl create -f pvc.yaml
+persistentvolumeclaim/rbd-pvc-cgroup-qos created
+```
+
+#### How Cgroup v2 QoS Works
+
+1. QoS parameters are stored in RBD image metadata during
+  `CreateVolume` or `ControllerModifyVolume`.
+1. During `NodePublishVolume`, Ceph-CSI retrieves the QoS metadata
+1. The device major:minor number is determined from the mapped RBD device
+1. io.max limits are applied to the pod's cgroup
+1. QoS limits can be dynamically modified by updating the VolumeAttributesClass
+1. Pod need to be restart to get the new QoS limits applied.
