@@ -101,6 +101,49 @@ func HasQoSParams(params map[string]string) bool {
 	return false
 }
 
+// nbdQoSHandler implements QoSHandler for traditional NBD QoS (rbd-nbd mounter).
+type nbdQoSHandler struct {
+	volume *rbdVolume
+}
+
+// newNBDQoSHandler creates a new NBD QoS handler.
+func newNBDQoSHandler(volume *rbdVolume) QoSHandler {
+	return &nbdQoSHandler{volume: volume}
+}
+
+// HasParams checks if traditional NBD QoS parameters are present in the request.
+func (h *nbdQoSHandler) HasParams(params map[string]string) bool {
+	return HasQoSParams(params)
+}
+
+// Validate validates traditional NBD QoS parameters.
+// Currently returns nil as NBD QoS validation is done during SetQOS.
+func (h *nbdQoSHandler) Validate(params map[string]string) error {
+	// NBD QoS validation is performed in SetQOS via calcQosBasedOnCapacity.
+	return nil
+}
+
+// Apply sets and applies traditional NBD QoS to the rbd-nbd device.
+func (h *nbdQoSHandler) Apply(ctx context.Context, params map[string]string) error {
+	if err := h.volume.SetQOS(ctx, params); err != nil {
+		return err
+	}
+
+	if err := h.volume.ApplyQOS(ctx); err != nil {
+		return err
+	}
+
+	return h.volume.SaveQOS(ctx, params)
+}
+
+// Clear removes all traditional NBD QoS settings.
+func (h *nbdQoSHandler) Clear(ctx context.Context) error {
+	// Pass empty params to clear QoS settings.
+	emptyParams := map[string]string{}
+
+	return h.Apply(ctx, emptyParams)
+}
+
 func parseQosParams(
 	mutableParameters map[string]string,
 ) map[string]*qosSpec {

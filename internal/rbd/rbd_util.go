@@ -2500,19 +2500,39 @@ func (rv *rbdVolume) modifyVolumeAttributes(
 	}
 	defer image.Close() //nolint:errcheck // not a critical failure
 
-	err = rv.SetQOS(ctx, newMutableParameters)
-	if err != nil {
-		return err
+	// QoS handlers implement different QoS strategies:
+	// - cgroupQoSHandler: cgroup v2 QoS for krbd mounter
+	// - nbdQoSHandler: traditional NBD QoS for rbd-nbd mounter
+	//
+	// Note: ControllerModifyVolume validates that only one type is set at a time.
+	handlers := []QoSHandler{
+		newCgroupQoSHandler(rv),
+		newNBDQoSHandler(rv),
 	}
 
-	err = rv.ApplyQOS(ctx)
-	if err != nil {
-		return err
+	// Find and apply the QoS type present in the request.
+	for _, handler := range handlers {
+		if handler.HasParams(newMutableParameters) {
+			// Validate parameters before applying.
+			if err := handler.Validate(newMutableParameters); err != nil {
+				return err
+			}
+
+			// Apply the QoS settings.
+			return handler.Apply(ctx, newMutableParameters)
+		}
 	}
 
-	err = rv.SaveQOS(ctx, newMutableParameters)
-	if err != nil {
-		return err
+	// No QoS parameters provided - clear any existing QoS of all types.
+	// This happens when VolumeAttributesClass is removed from the PVC.
+	log.DebugLog(ctx, "no QoS parameters in request, clearing existing QoS for volume %s", rv.VolID)
+
+	for _, handler := range handlers {
+		if err := handler.Clear(ctx); err != nil {
+			log.ErrorLog(ctx, "failed to clear QoS for volume %s: %v", rv.VolID, err)
+
+			return err
+		}
 	}
 
 	return nil
