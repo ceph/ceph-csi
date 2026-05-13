@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -168,7 +170,13 @@ func createNVMeoFStorageClass(
 		}
 	}
 
-	sc.Parameters["subsystemNQN"] = "nqn.2025-08.io.ceph:" + f.UniqueName
+	// Only set subsystemNQN if not explicitly disabled via skipSubsystemNQN parameter
+	// For external clients using allowHostNQNs, subsystemNQN should not be set
+	if _, skipSubsystemNQN := parameters["skipSubsystemNQN"]; !skipSubsystemNQN {
+		sc.Parameters["subsystemNQN"] = "nqn.2025-08.io.ceph:" + f.UniqueName
+	}
+	// Remove the skipSubsystemNQN marker from parameters as it's not a real SC parameter
+	delete(sc.Parameters, "skipSubsystemNQN")
 
 	gwHost, gwIP := getNVMeofGateway(f.ClientSet)
 	framework.Logf("configuring StorageClass for gateway %q at %s", gwHost, gwIP)
@@ -241,4 +249,74 @@ func createNVMeoFCredentials(f *framework.Framework) {
 
 	err = createRBDSecret(f, nvmeofNodePluginSecretName, nvmeofKeyringNodePluginUsername, key)
 	Expect(err).ShouldNot(HaveOccurred())
+}
+
+func createNVMeOFVolumeAttributesClass(
+	c kubernetes.Interface,
+	name string,
+	params map[string]string,
+) error {
+	vac, err := getVolumeAttributesClass(nvmeofExamplePath + "volumeattributesclass.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to get vac: %w", err)
+	}
+	if name != "" {
+		vac.Name = name
+	}
+
+	// overload any parameters that were passed
+	if params == nil {
+		// create an empty params, so that params["clusterID"] below
+		// does not panic
+		params = map[string]string{}
+	}
+	maps.Copy(vac.Parameters, params)
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err = c.StorageV1().VolumeAttributesClasses().Create(ctx, &vac, metav1.CreateOptions{})
+		if err != nil {
+			if apierrs.IsAlreadyExists(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			framework.Logf("error creating VolumeAttributesClass %q: %v", vac.Name, err)
+
+			return false, fmt.Errorf("failed to create VolumeAttributesClass %q: %w", vac.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
+func deleteNVMeOFVolumeAttributesClass(c kubernetes.Interface, name string) error {
+	vac, err := getVolumeAttributesClass(nvmeofExamplePath + "volumeattributesclass.yaml")
+	if err != nil {
+		return err
+	}
+	if name != "" {
+		vac.Name = name
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		err = c.StorageV1().VolumeAttributesClasses().Delete(ctx, vac.Name, metav1.DeleteOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			framework.Logf("error deleting VolumeAttributesClass %q: %v", vac.Name, err)
+
+			return false, fmt.Errorf("failed to delete VolumeAttributesClass %q: %w", vac.Name, err)
+		}
+
+		return true, nil
+	})
 }

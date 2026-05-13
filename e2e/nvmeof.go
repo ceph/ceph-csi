@@ -311,5 +311,126 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			framework.Logf("GroupLock Pods-only test passed: %d Pods created and deleted with rapid Group A/B switching",
 				totalCount)
 		})
+
+		ginkgo.It("create a PVC with VAC containing allowHostNQNs, apply new VAC then delete the PVC", func() {
+
+			// Vac test requires Kubernetes 1.34+ for VolumeAttributesClass support
+			if !k8sVersionGreaterEquals(f.ClientSet, 1, 34) {
+				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34")
+
+				return
+			}
+
+			// This test validates VolumeAttributesClass (VAC) support for NVMe-oF volumes
+			// with host access control via the allowHostNQNs parameter.
+			//
+			// Test flow:
+			// 1. Create a StorageClass for external clients (without subsystemNQN) - deleted in the end.
+			// 2. Create 2 VACs with allowHostNQNs parameter containing lists of allowed host NQNs
+			// 3. Create a PVC that references the VAC via spec.volumeAttributesClassName
+			// 4. Verify the volume is created and the host access control is applied
+			// 5. Update the PVC to reference a different VAC and verify the update is applied
+			// 6. Delete the PVC and verify cleanup
+			//
+			// This tests the ControllerModifyVolume functionality in the NVMe-oF driver,
+			// ensuring that host access lists can be configured via VAC at volume creation time.
+			// For external clients using allowHostNQNs, the StorageClass should not have subsystemNQN.
+
+			// Step 1: Create a separate StorageClass for external clients (without subsystemNQN)
+			externalClientSC := "e2e-" + f.UniqueName + "-sc-external"
+			options := map[string]string{}
+			params := map[string]string{
+				"pool":             nvmeofPool,
+				"skipSubsystemNQN": "true", // Signal to skip subsystemNQN for external clients
+			}
+			policy := v1.PersistentVolumeReclaimDelete
+
+			ginkgo.By("Creating StorageClass for external clients (without subsystemNQN)")
+			createNVMeoFStorageClass(f, externalClientSC, options, params, policy)
+			defer deleteNVMeofStorageClass(f, externalClientSC)
+
+			// Step 2: Create 2 VACs with allowHostNQNs parameter
+			vacName1 := "e2e-" + f.UniqueName + "-vac1"
+			vacName2 := "e2e-" + f.UniqueName + "-vac2"
+			hostListParam := map[string]string{
+				"allowHostNQNs": `- nqn.2014-08.org.nvmexpress:test-host-1
+- nqn.2014-08.org.nvmexpress:test-host-2
+- nqn.2014-08.org.nvmexpress:test-host-3`,
+			}
+			hostListParam2 := map[string]string{
+				"allowHostNQNs": `- nqn.2014-08.org.nvmexpress:test-host-1
+- nqn.2014-08.org.nvmexpress:test-host-5`,
+			}
+			ginkgo.By("Creating VolumeAttributesClass with allowHostNQNs")
+			err := createNVMeOFVolumeAttributesClass(f.ClientSet, vacName1, hostListParam)
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				err = deleteNVMeOFVolumeAttributesClass(f.ClientSet, vacName1)
+				if err != nil {
+					logAndFail("failed to delete volumeattributesclass: %v", err)
+				}
+			}()
+
+			ginkgo.By("Creating second VolumeAttributesClass with different allowHostNQNs")
+			err = createNVMeOFVolumeAttributesClass(f.ClientSet, vacName2, hostListParam2)
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				err = deleteNVMeOFVolumeAttributesClass(f.ClientSet, vacName2)
+				if err != nil {
+					logAndFail("failed to delete volumeattributesclass: %v", err)
+				}
+			}()
+
+			// Step 3: Create PVC with reference to the VAC1 and external client StorageClass
+			pvc, err := loadPVC(pvcPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			pvc.Namespace = f.UniqueName
+			pvc.Spec.StorageClassName = &externalClientSC // Use external client SC without subsystemNQN
+			pvc.Spec.VolumeAttributesClassName = &vacName1
+
+			ginkgo.By("Creating PVC with VolumeAttributesClass reference for external clients")
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			pv, err := getBoundPV(f.ClientSet, pvc)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(pv.Spec.VolumeAttributesClassName).NotTo(BeNil())
+			Expect(*pv.Spec.VolumeAttributesClassName).To(Equal(vacName1))
+
+			validateRBDImageCount(f, 1, nvmeofPool)
+			validateOmapCount(f, 1, rbdType, nvmeofPool, volumesType)
+
+			// Step 4: Verify allowHostNQNs by testing connection with allowed and disallowed hosts
+			ginkgo.By("Verifying allowHostNQNs configuration via nvme connect-all")
+			_, gatewayIP := getNVMeofGateway(f.ClientSet)
+			err = verifyAllowHostNQNsViaConnect(f, gatewayIP, hostListParam["allowHostNQNs"])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Step 5: Update PVC to reference VAC2 and verify the update is applied
+			ginkgo.By("Updating PVC to reference a different VolumeAttributesClass")
+
+			err = modifyPVCVolumeAttributesClass(
+				f.ClientSet,
+				pvc,
+				vacName2)
+			if err != nil {
+				logAndFail("failed to modify volumeattributesclass: %v", err)
+			}
+
+			// Step 6: Verify new allowHostNQNs after update
+			ginkgo.By("Verifying updated allowHostNQNs configuration")
+			err = verifyAllowHostNQNsViaConnect(f, gatewayIP, hostListParam2["allowHostNQNs"])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Step 7: Delete PVC
+			ginkgo.By("Deleting PVC with VAC")
+			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// validate created backend rbd images are deleted
+			validateRBDImageCount(f, 0, nvmeofPool)
+			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+		})
 	})
 })

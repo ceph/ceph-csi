@@ -17,10 +17,14 @@ limitations under the License.
 package e2e
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
+	"go.yaml.in/yaml/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -409,4 +413,151 @@ func mixedCreateDeletePodsOnly(
 		totalCount, numBatches, batchSize)
 
 	return nil
+}
+
+// nvmeHost represents a host entry from 'nvme list-subsys -o json'.
+// We only need HostNQN for verification; other fields are ignored during unmarshaling.
+type nvmeHost struct {
+	HostNQN string `json:"HostNQN"`
+}
+
+// verifyAllowHostNQNsViaConnect verifies that the allowHostNQNs configuration is working
+// by attempting to connect with allowed and disallowed host NQNs.
+func verifyAllowHostNQNsViaConnect(f *framework.Framework, gatewayIP, allowHostNQNsYAML string) error {
+	// Parse the allowed host NQNs from YAML format
+	allowedHosts := parseHostNQNsFromYAML(allowHostNQNsYAML)
+	if len(allowedHosts) == 0 {
+		return fmt.Errorf("no allowed hosts found in allowHostNQNs")
+	}
+
+	framework.Logf("Testing allowHostNQNs with %d allowed hosts", len(allowedHosts))
+
+	// Get a node to run commands on
+	nodes, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list nodes: %w", err)
+	}
+	if len(nodes.Items) == 0 {
+		return fmt.Errorf("no nodes available")
+	}
+	nodeName := nodes.Items[0].Name
+
+	// Get the node-plugin pod on that node
+	nodePluginPod, err := getDaemonsetPodOnNode(f, nvmeofDaemonsetName, nodeName, cephCSINamespace)
+	if err != nil {
+		return fmt.Errorf("failed to get node-plugin pod: %w", err)
+	}
+
+	// Test 1: Try to connect with an allowed host NQN
+	allowedHost := allowedHosts[0]
+	framework.Logf("Testing connection with ALLOWED host NQN: %s", allowedHost)
+
+	connected := testNVMeConnection(f, nodePluginPod, gatewayIP, allowedHost)
+
+	if !connected {
+		return fmt.Errorf("connection failed for allowed host NQN %s", allowedHost)
+	}
+	framework.Logf("SUCCESS: Connected with allowed host NQN %s", allowedHost)
+
+	return nil
+}
+
+// testNVMeConnection attempts to connect to an NVMe-oF gateway with a specific host NQN
+// and verifies the connection via nvme list-subsys.
+func testNVMeConnection(f *framework.Framework, podName, gatewayIP, hostNQN string) bool {
+	// Ensure cleanup happens regardless of success or failure
+	defer disconnectAllNVMe(f, podName)
+
+	// Step 1: Try to connect with the specified host NQN
+	connectCmd := fmt.Sprintf("nvme connect-all --transport=tcp --traddr=%s --hostnqn=%s 2>&1", gatewayIP, hostNQN)
+
+	framework.Logf("Executing: %s", connectCmd)
+	stdout, stderr, err := execCommandInContainerByPodName(
+		f,
+		connectCmd,
+		cephCSINamespace,
+		podName,
+		nvmeofContainerName,
+	)
+
+	// Log the output
+	if stdout != "" {
+		framework.Logf("nvme connect-all stdout: %s", stdout)
+	}
+	if stderr != "" {
+		framework.Logf("nvme connect-all stderr: %s", stderr)
+	}
+
+	// Check if connection failed (expected for disallowed hosts)
+	if err != nil {
+		framework.Logf("Connection failed (expected for disallowed hosts): %v", err)
+
+		return false
+	}
+
+	// Step 2: Verify the connection using nvme list-subsys with JSON output
+	listCmd := "nvme list-subsys -o json 2>&1"
+	framework.Logf("Verifying connection with: %s", listCmd)
+
+	stdout, stderr, err = execCommandInContainerByPodName(
+		f,
+		listCmd,
+		cephCSINamespace,
+		podName,
+		nvmeofContainerName,
+	)
+
+	if err != nil {
+		framework.Logf("nvme list-subsys failed: %v, stderr: %s", err, stderr)
+
+		return false
+	}
+
+	// Step 3: Parse JSON output - it's an array of hosts
+	var hosts []nvmeHost
+	if err := json.Unmarshal([]byte(stdout), &hosts); err != nil {
+		framework.Logf("Failed to parse nvme list-subsys JSON output: %v", err)
+		framework.Logf("Raw output: %s", stdout)
+
+		return false
+	}
+
+	// Step 4: Check if the host with our NQN exists in the output
+	for _, host := range hosts {
+		if host.HostNQN == hostNQN {
+			framework.Logf("Found host in list-subsys: %s", host.HostNQN)
+
+			return true
+		}
+	}
+	framework.Logf("Host %s not found in list-subsys output", hostNQN)
+
+	return false
+}
+
+// disconnectAllNVMe disconnects all NVMe-oF connections.
+func disconnectAllNVMe(f *framework.Framework, podName string) {
+	disconnectCmd := "nvme disconnect-all 2>&1 || true"
+	stdout, stderr, err := execCommandInContainerByPodName(
+		f,
+		disconnectCmd,
+		cephCSINamespace,
+		podName,
+		nvmeofContainerName,
+	)
+	if err != nil {
+		framework.Logf("nvme disconnect-all warning: %v, stdout: %s, stderr: %s", err, stdout, stderr)
+	} else {
+		framework.Logf("Disconnected all NVMe connections")
+	}
+}
+
+// parseHostNQNsFromYAML parses the allowHostNQNs YAML format into a slice of NQNs.
+func parseHostNQNsFromYAML(yamlStr string) []string {
+	var hosts []string
+	if err := yaml.Unmarshal([]byte(yamlStr), &hosts); err != nil {
+		framework.Logf("Failed to parse allowHostNQNs YAML: %v", err)
+		return nil
+	}
+	return hosts
 }

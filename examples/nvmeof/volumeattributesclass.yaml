@@ -1,0 +1,48 @@
+---
+# VolumeAttributesClass for NVMe-oF volumes
+# This example demonstrates optional mutable parameters for NVMe-oF
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: nvmeof-vac
+driverName: nvmeof.csi.ceph.com
+parameters:
+  # Host access control: YAML list of host NQNs allowed to access this volume
+  # Format: nqn.<date>.<reverse-domain>:<user-part>
+  # For Ceph-CSI managed hosts: nqn.2014-08.org.nvmexpress:<nodeID>
+  allowHostNQNs: |
+    - nqn.2014-08.org.nvmexpress:host1
+    - nqn.2014-08.org.nvmexpress:host2
+    - nqn.2014-08.org.nvmexpress:node-123
+
+  # Alternative: Allow any host to access the volume
+  # allowHostNQNs: |
+  #   - "*"
+
+  # Alternative: Empty list denies all hosts
+  # allowHostNQNs: |
+
+  # Optional QoS parameters (uint64 values):
+
+  # Limit read/write IOPS (operations per second for both read and write)
+  # nvmeofRWIOsPerSecond: "10000"
+
+  # Limit read/write throughput in MB/s (for both read and write)
+  # nvmeofRWMegabytesPerSecond: "100"
+
+  # Limit read-only IOPS (operations per second for read only)
+  # nvmeofRIOsPerSecond: "5000"
+
+  # Limit write-only IOPS (operations per second for write only)
+  # nvmeofWIOsPerSecond: "5000"
+
+  # Limit read-only throughput in MB/s
+  # nvmeofRMegabytesPerSecond: "50"
+
+  # Limit write-only throughput in MB/s
+  # nvmeofWMegabytesPerSecond: "50"
+
+# Notes:
+# - Cannot mix RBD QoS parameters with NVMe-oF QoS parameters
+# - VolumeAttributesClass can be modified at runtime using kubectl
+# - Changes are applied dynamically via ControllerModifyVolume
