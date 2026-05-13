@@ -1,0 +1,30 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: cgroup-qos-vac
+driverName: rbd.csi.ceph.com
+parameters:
+  # Cgroup v2 QoS for krbd (kernel RBD) mounter.
+  # This QoS type applies io.max limits at the container cgroup level,
+  # providing QoS for krbd-mapped volumes.
+  #
+  # Cgroup v2 io.max parameters:
+  # Format for each parameter is a positive integer representing
+  # the limit value.
+  #
+  # (optional) Max read IOPS per second for the device.
+  # Example: "1000" allows up to 1000 read operations per second.
+  maxReadIops: "1000"
+  #
+  # (optional) Max write IOPS per second for the device.
+  # Example: "2000" allows up to 2000 write operations per second.
+  maxWriteIops: "2000"
+  #
+  # (optional) Max read bytes per second for the device.
+  # Example: "104857600" = 100 MiB/s (100 * 1024 * 1024 bytes)
+  maxReadBps: "104857600"
+  #
+  # (optional) Max write bytes per second for the device.
+  # Example: "209715200" = 200 MiB/s (200 * 1024 * 1024 bytes)
+  maxWriteBps: "209715200"
