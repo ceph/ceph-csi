@@ -379,6 +379,28 @@ func TestPodCgroupPathConstruction(t *testing.T) {
 			expectedSlice:    kubepodsBestEffortSlice,
 			expectedPodSlice: "kubepods-besteffort-podpod_best_effort.slice",
 		},
+		// Real-world examples from actual Kubernetes cluster cgroup paths
+		{
+			name:             "real besteffort pod",
+			podUID:           "d9fd4536-e68d-46a1-954b-2f05da70bd7d",
+			qosClass:         "BestEffort",
+			expectedSlice:    kubepodsBestEffortSlice,
+			expectedPodSlice: "kubepods-besteffort-podd9fd4536_e68d_46a1_954b_2f05da70bd7d.slice",
+		},
+		{
+			name:             "real guaranteed pod",
+			podUID:           "4d237886-32e9-4888-91da-ed1c0f1d4b89",
+			qosClass:         "Guaranteed",
+			expectedSlice:    kubepodsGuaranteedSlice,
+			expectedPodSlice: "kubepods-pod4d237886_32e9_4888_91da_ed1c0f1d4b89.slice",
+		},
+		{
+			name:             "real burstable pod",
+			podUID:           "bd7148ac-95e7-44b7-a285-bb13e225b4f1",
+			qosClass:         "Burstable",
+			expectedSlice:    kubepodsBurstableSlice,
+			expectedPodSlice: "kubepods-burstable-podbd7148ac_95e7_44b7_a285_bb13e225b4f1.slice",
+		},
 	}
 
 	for _, tt := range tests {

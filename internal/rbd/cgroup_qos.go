@@ -67,8 +67,9 @@ const (
 	cgroupV2BasePath = "/sys/fs/cgroup"
 
 	// Kubernetes cgroup slices based on QoS class.
-	kubepodsBestEffortSlice = "kubepods-besteffort.slice"
-	kubepodsBurstableSlice  = "kubepods-burstable.slice"
+	// BestEffort and Burstable are nested under kubepods.slice parent.
+	kubepodsBestEffortSlice = "kubepods.slice/kubepods-besteffort.slice"
+	kubepodsBurstableSlice  = "kubepods.slice/kubepods-burstable.slice"
 	kubepodsGuaranteedSlice = "kubepods.slice"
 
 	// io.max file for cgroup v2.
@@ -272,38 +273,8 @@ func findPodCgroupPath(ctx context.Context, podUID string) (string, error) {
 	return "", fmt.Errorf("pod cgroup path not found for pod UID: %s", podUID)
 }
 
-// findContainerCgroups finds all container cgroup directories within a pod's cgroup.
-func findContainerCgroups(ctx context.Context, podCgroupPath string) ([]string, error) {
-	entries, err := os.ReadDir(podCgroupPath)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to read pod cgroup directory %s: %v", podCgroupPath, err)
-
-		return nil, err
-	}
-
-	var containerPaths []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		// Container scopes follow pattern: crio-<container-id>.scope or containerd-<container-id>.scope.
-		if strings.HasPrefix(name, "crio-") || strings.HasPrefix(name, "containerd-") {
-			containerPath := filepath.Join(podCgroupPath, name)
-			containerPaths = append(containerPaths, containerPath)
-			log.DebugLog(ctx, "found container cgroup: %s", containerPath)
-		}
-	}
-
-	if len(containerPaths) == 0 {
-		return nil, fmt.Errorf("no container cgroups found in pod path: %s", podCgroupPath)
-	}
-
-	return containerPaths, nil
-}
-
-// applyCgroupQoS applies QoS limits to all containers in a pod.
+// applyCgroupQoS applies QoS limits at the pod cgroup level.
+// QoS is applied to the pod's io.max file, which automatically applies to all containers.
 func (qos *cgroupQoS) applyCgroupQoS(ctx context.Context, podUID string) error {
 	if qos.deviceID == "" {
 		return errors.New("device ID is not set for cgroup QoS")
@@ -315,36 +286,21 @@ func (qos *cgroupQoS) applyCgroupQoS(ctx context.Context, podUID string) error {
 		return fmt.Errorf("failed to find pod cgroup path for pod %s: %w", podUID, err)
 	}
 
-	// Find all container cgroups within the pod.
-	containerPaths, err := findContainerCgroups(ctx, podCgroupPath)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to find container cgroups for pod %s: %v", podUID, err)
-
-		return err
-	}
-
-	// Apply io.max to each container.
+	// Apply io.max at the pod level.
 	// Per cgroup v2 conventions, writing a single device line is atomic —
 	// the kernel merges it with existing entries for other devices.
+	ioMaxPath := filepath.Join(podCgroupPath, ioMaxFile)
 	ioMaxValue := qos.formatIOMax()
-	for _, containerPath := range containerPaths {
-		ioMaxPath := filepath.Join(containerPath, ioMaxFile)
-		log.DebugLog(ctx, "applying QoS to container: %s, io.max: %s", containerPath, ioMaxValue)
+	log.DebugLog(ctx, "applying QoS to pod cgroup: %s, io.max: %s", podCgroupPath, ioMaxValue)
 
-		err = writeIOMax(ioMaxPath, ioMaxValue)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to write io.max for device %s at %s: %v",
-				qos.deviceID, ioMaxPath, err)
-
-			return err
-		}
-
-		log.DebugLog(ctx, "successfully applied QoS to container: %s for device %s",
-			containerPath, qos.deviceID)
+	err = writeIOMax(ioMaxPath, ioMaxValue)
+	if err != nil {
+		return fmt.Errorf("failed to write io.max for device %s at %s: %w",
+			qos.deviceID, ioMaxPath, err)
 	}
 
-	log.UsefulLog(ctx, "successfully applied cgroup QoS to %d containers in pod %s",
-		len(containerPaths), podUID)
+	log.UsefulLog(ctx, "successfully applied cgroup QoS to pod %s at %s",
+		podUID, ioMaxPath)
 
 	return nil
 }
@@ -424,4 +380,46 @@ func (rv *rbdVolume) getCgroupQoS(ctx context.Context) (map[string]string, error
 	}
 
 	return qosParams, nil
+}
+
+// applyCgroupQoSForVolume applies cgroup v2 QoS limits to the pod mounting this volume.
+func (rv *rbdVolume) applyCgroupQoSForVolume(ctx context.Context, devicePath, podUID string) error {
+	if podUID == "" {
+		log.DebugLog(ctx, "pod UID not available, skipping cgroup QoS (podInfoOnMount may not be enabled)")
+
+		return nil
+	}
+
+	// Retrieve cgroup QoS parameters from image metadata.
+	qosParams, err := rv.getCgroupQoS(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve cgroup QoS for volume %s: %w", rv.VolID, err)
+	}
+
+	// If no QoS parameters configured, nothing to do.
+	if len(qosParams) == 0 {
+		log.DebugLog(ctx, "no cgroup QoS configured for volume %s", rv.VolID)
+
+		return nil
+	}
+
+	// Get device ID (major:minor).
+	qos := parseCgroupQoSParams(qosParams)
+	qos.deviceID, err = getDeviceID(ctx, devicePath)
+	if err != nil {
+		return fmt.Errorf("failed to get device ID for %s: %w", devicePath, err)
+	}
+
+	log.UsefulLog(ctx, "applying cgroup QoS for volume %s on device %s to pod %s",
+		rv.VolID, qos.deviceID, podUID)
+
+	// Apply QoS to all containers in the pod.
+	err = qos.applyCgroupQoS(ctx, podUID)
+	if err != nil {
+		return fmt.Errorf("failed to apply cgroup QoS for volume %s: %w", rv.VolID, err)
+	}
+
+	log.UsefulLog(ctx, "successfully applied cgroup QoS for volume %s", rv.VolID)
+
+	return nil
 }

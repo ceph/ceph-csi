@@ -853,36 +853,178 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 	defer ns.VolumeLocks.Release(targetPath)
 
+	// A single pod can have multiple volumes, each triggering a separate
+	// NodePublishVolume RPC. Serialize operations per pod to prevent
+	// concurrent calls from racing on the pod's cgroup io.max file
+	// during QoS application.
+	podUID := req.GetVolumeContext()[util.VolumeContextPodUIDKey]
+	if podUID != "" {
+		if acquired := ns.VolumeLocks.TryAcquire(podUID); !acquired {
+			log.ErrorLog(ctx, util.PodOperationAlreadyExistsFmt, podUID)
+
+			return nil, status.Errorf(codes.Aborted, util.PodOperationAlreadyExistsFmt, podUID)
+		}
+		defer ns.VolumeLocks.Release(podUID)
+	}
+
 	// Check if that target path exists properly
 	isMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if isMnt {
-		return &csi.NodePublishVolumeResponse{}, nil
-	}
-
-	fileEncrypted, err := IsFileEncrypted(ctx, req.GetVolumeContext())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if fileEncrypted {
-		stagingPath = fscrypt.AppendEncyptedSubdirectory(stagingPath)
-		if err = fscrypt.IsDirectoryUnlocked(stagingPath, req.GetVolumeCapability().GetMount().GetFsType()); err != nil {
+	if !isMnt {
+		fileEncrypted, err := IsFileEncrypted(ctx, req.GetVolumeContext())
+		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+		if fileEncrypted {
+			stagingPath = fscrypt.AppendEncyptedSubdirectory(stagingPath)
+			if err = fscrypt.IsDirectoryUnlocked(stagingPath, req.GetVolumeCapability().GetMount().GetFsType()); err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+
+		// Publish Path
+		err = ns.mountVolume(ctx, stagingPath, req)
+		if err != nil {
+			return nil, err
+		}
+
+		log.DebugLog(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s", stagingPath, targetPath)
 	}
 
-	// Publish Path
-	err = ns.mountVolume(ctx, stagingPath, req)
+	// Apply cgroup v2 QoS if configured.
+	// This runs even when the volume is already mounted (isMnt == true) to
+	// handle the case where the node server restarted after mounting but
+	// before QoS was applied.
+	err = ns.applyCgroupQoSIfConfigured(ctx, req)
 	if err != nil {
-		return nil, err
+		log.ErrorLog(ctx, "failed to apply cgroup QoS for volume %s: %v", volID, err)
 	}
-
-	log.DebugLog(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s", stagingPath, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+func (ns *NodeServer) applyCgroupQoSIfConfigured(
+	ctx context.Context,
+	req *csi.NodePublishVolumeRequest,
+) error {
+	// Get pod UID from volume context (requires podInfoOnMount enabled).
+	podUID := req.GetVolumeContext()[util.VolumeContextPodUIDKey]
+	if podUID == "" {
+		log.DebugLog(ctx, "pod UID not available, skipping cgroup QoS")
+
+		return nil
+	}
+
+	volID := req.GetVolumeId()
+
+	// Get device path from staging metadata.
+	// The stash is created at the staging target path (without volumeID) during NodeStageVolume.
+	imgInfo, err := lookupRBDImageMetadataStash(req.GetStagingTargetPath())
+	if err != nil {
+		log.ErrorLog(ctx, "failed to lookup image metadata for cgroup QoS: %v", err)
+
+		return err
+	}
+
+	devicePath := imgInfo.DevicePath
+	if devicePath == "" {
+		log.WarningLog(ctx, "device path not found in metadata, skipping cgroup QoS")
+
+		return nil
+	}
+
+	// Get credentials to access the volume metadata.
+	cr, err := ns.getNodePublishCredentials(ctx, req)
+	if err != nil {
+		log.WarningLog(ctx, "failed to get NodePublish credentials for cgroup QoS, skipping: %v", err)
+
+		return nil
+	}
+
+	// Backward compatibility: QoS requires credentials to read RBD image metadata.
+	// If credentials are not configured, gracefully skip QoS to avoid breaking
+	// existing PVCs that don't have NodePublish secrets configured.
+	if cr == nil {
+		log.WarningLog(ctx, "NodePublish secret not configured, skipping cgroup QoS for volume %s", volID)
+
+		return nil
+	}
+	defer cr.DeleteCredentials()
+
+	// Initialize volume to access metadata.
+	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
+	var rv *rbdVolume
+	if isStaticVol {
+		rv, err = initStaticVol(ctx, volID, req.GetVolumeContext(), false)
+	} else {
+		rv, err = initDynamicVol(ctx, volID, cr, req.GetSecrets(), req.GetVolumeContext())
+	}
+	if err != nil {
+		log.WarningLog(ctx, "failed to initialize volume for cgroup QoS, skipping: %v", err)
+		// Backward compatibility: If volume initialization fails, skip QoS
+		// rather than failing the mount. This ensures existing volumes continue
+		// to work even if there are issues accessing metadata.
+		return nil
+	}
+	defer rv.Destroy(ctx)
+
+	// Apply cgroup QoS.
+	err = rv.applyCgroupQoSForVolume(ctx, devicePath, podUID)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to apply cgroup QoS for volume %s: %v", volID, err)
+
+		return err
+	}
+
+	log.DebugLog(ctx, "successfully applied cgroup QoS for volume %s", volID)
+
+	return nil
+}
+
+// getNodePublishCredentials retrieves credentials for NodePublishVolume operation.
+// This is required for cgroup QoS to access RBD image metadata.
+// Returns (nil, nil) if no secret is configured to maintain backward compatibility.
+func (ns *NodeServer) getNodePublishCredentials(
+	ctx context.Context,
+	req *csi.NodePublishVolumeRequest,
+) (*util.Credentials, error) {
+	// Try to get secret from req.GetSecrets() first (passed from StorageClass).
+	secrets := req.GetSecrets()
+	if len(secrets) > 0 {
+		return util.NewUserCredentialsWithMigration(secrets)
+	}
+
+	// Fall back to getting secret from CSI ConfigMap (rbd.nodePublishSecretRef).
+	volCtx := req.GetVolumeContext()
+	clusterID, err := util.GetClusterID(volCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cluster ID: %w", err)
+	}
+
+	secretName, secretNamespace, err := util.GetRBDNodePublishSecretRef(util.CsiConfigFile, clusterID)
+	if err != nil {
+		log.ErrorLog(ctx, "error retrieving NodePublish secret config for cluster %s: %v", clusterID, err)
+
+		return nil, nil
+	}
+
+	if secretName == "" || secretNamespace == "" {
+		log.DebugLog(ctx, "NodePublish secret not configured for cluster %s", clusterID)
+		// Backward compatibility: Return nil credentials to indicate no secret.
+		return nil, nil
+	}
+
+	// Get secret from Kubernetes.
+	secretData, err := k8s.GetSecret(secretName, secretNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get NodePublish secret %s/%s: %w",
+			secretNamespace, secretName, err)
+	}
+
+	return util.NewUserCredentialsWithMigration(secretData)
 }
 
 func (ns *NodeServer) mountVolumeToStagePath(
