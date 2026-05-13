@@ -72,6 +72,10 @@ data:
            "netNamespaceFilePath": "<kubeletRootPath>/plugins/rbd.csi.ceph.com/net",
            "radosNamespace": "<rados-namespace>",
            "mirrorDaemonCount": 1,
+           "nodePublishSecretRef": {
+             "name": "<secret-name>",
+             "namespace": "<secret-namespace>"
+           }
         },
         "monitors": [
           "<MONValue1>",
