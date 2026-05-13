@@ -49,10 +49,10 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 	Expect(err).ShouldNot(HaveOccurred())
 
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Resized state", pvc)
+	framework.Logf("Waiting up to %v to be in Resized state", updatedPVC)
 
 	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
-		framework.Logf("waiting for PVC %s (%d seconds elapsed)", pvcName, int(time.Since(start).Seconds()))
+		framework.Logf("waiting for PVC %s to be resized (%d seconds elapsed)", pvcName, int(time.Since(start).Seconds()))
 		updatedPVC, err = c.CoreV1().
 			PersistentVolumeClaims(pvcNamespace).
 			Get(ctx, pvcName, metav1.GetOptions{})
@@ -66,6 +66,9 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 		}
 		pvcConditions := updatedPVC.Status.Conditions
 		if len(pvcConditions) > 0 {
+			for _, con := range pvcConditions {
+				framework.Logf("pvc %s condition %v", pvcName, con)
+			}
 			framework.Logf("pvc state %v", pvcConditions[0].Type)
 			if pvcConditions[0].Type == v1.PersistentVolumeClaimResizing ||
 				pvcConditions[0].Type == v1.PersistentVolumeClaimFileSystemResizePending {

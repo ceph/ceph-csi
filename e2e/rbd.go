@@ -5836,7 +5836,6 @@ var _ = Describe("RBD", func() {
 			// create silver vac
 			err = createRBDVolumeAttributesClass(
 				f.ClientSet,
-				f,
 				qosSilverVACName,
 				qosParameters)
 			if err != nil {
@@ -5886,7 +5885,6 @@ var _ = Describe("RBD", func() {
 			// create gold vac
 			err = createRBDVolumeAttributesClass(
 				f.ClientSet,
-				f,
 				qosGoldVACName,
 				qosParameters)
 			if err != nil {
@@ -5951,7 +5949,6 @@ var _ = Describe("RBD", func() {
 			// create flex vac
 			err = createRBDVolumeAttributesClass(
 				f.ClientSet,
-				f,
 				qosFlexVACName,
 				qosParameters)
 			if err != nil {
@@ -6146,6 +6143,786 @@ var _ = Describe("RBD", func() {
 			// END: validate created backend rbd images
 			validateRBDImageCount(f, 0, defaultRBDPool)
 			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+		})
+
+		It("validate cgroup v2 qos by volumeattributesclass", func() {
+			if !supportsVolumeAttributesClass(c, f) {
+				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34 and ceph-csi >= 3.17")
+
+				return
+			}
+
+			// Recreate the StorageClass with krbd mounter and controller-modify-secret
+			// for VAC modifications.
+			err := deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete storageclass: %v", err)
+			}
+			err = createKRBDStorageClassWithModifySecret(f, defaultSCName)
+			if err != nil {
+				logAndFail("failed to create storageclass with krbd mounter: %v", err)
+			}
+			defer func() {
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+			}()
+
+			var (
+				cgroupLowVACName    = "cgroup-qos-low"
+				cgroupMediumVACName = "cgroup-qos-medium"
+				cgroupHighVACName   = "cgroup-qos-high"
+			)
+
+			// Create low-tier VAC
+			lowQosParams := map[string]string{
+				"maxReadIops":            "500",
+				"maxWriteIops":           "500",
+				"maxReadBps":  "52428800", // 50 MB/s
+				"maxWriteBps": "52428800",
+			}
+			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupLowVACName, lowQosParams)
+			if err != nil {
+				logAndFail("failed to create cgroup-qos-low volumeattributesclass: %v", err)
+			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, cgroupLowVACName)
+				if err != nil {
+					logAndFail("failed to delete cgroup-qos-low volumeattributesclass: %v", err)
+				}
+			}()
+
+			// Create medium-tier VAC
+			mediumQosParams := map[string]string{
+				"maxReadIops":            "1000",
+				"maxWriteIops":           "1000",
+				"maxReadBps":  "104857600", // 100 MB/s
+				"maxWriteBps": "104857600",
+			}
+			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupMediumVACName, mediumQosParams)
+			if err != nil {
+				logAndFail("failed to create cgroup-qos-medium volumeattributesclass: %v", err)
+			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, cgroupMediumVACName)
+				if err != nil {
+					logAndFail("failed to delete cgroup-qos-medium volumeattributesclass: %v", err)
+				}
+			}()
+
+			// Create high-tier VAC
+			highQosParams := map[string]string{
+				"maxReadIops":            "2000",
+				"maxWriteIops":           "2000",
+				"maxReadBps":  "209715200", // 200 MB/s
+				"maxWriteBps": "209715200",
+			}
+			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupHighVACName, highQosParams)
+			if err != nil {
+				logAndFail("failed to create cgroup-qos-high volumeattributesclass: %v", err)
+			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, cgroupHighVACName)
+				if err != nil {
+					logAndFail("failed to delete cgroup-qos-high volumeattributesclass: %v", err)
+				}
+			}()
+
+			// Scenario 1: RWO Filesystem with cgroup QoS
+			By("testing basic RWO filesystem volume with cgroup QoS")
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			pvc.Spec.VolumeAttributesClassName = &cgroupMediumVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+			// Validate metadata
+			wantsMedium := map[string]string{
+				"maxReadIops":            "1000",
+				"maxWriteIops":           "1000",
+				"maxReadBps":  "104857600",
+				"maxWriteBps": "104857600",
+			}
+			err = validateCgroupQoS(f, pvc, wantsMedium)
+			if err != nil {
+				logAndFail("failed to validate cgroup QoS metadata: %v", err)
+			}
+
+			app, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+			err = createApp(f.ClientSet, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create app: %v", err)
+			}
+			err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete app: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 2: RWO Block with cgroup QoS + I/O enforcement
+			By("testing RWO block volume with cgroup QoS")
+			pvcBlock, err := loadPVC(rawPvcPath)
+			if err != nil {
+				logAndFail("failed to load raw PVC: %v", err)
+			}
+			pvcBlock.Namespace = f.UniqueName
+			pvcBlock.Spec.VolumeAttributesClassName = &cgroupLowVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcBlock, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create raw PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			wantsLow := map[string]string{
+				"maxReadIops":            "500",
+				"maxWriteIops":           "500",
+				"maxReadBps":  "52428800",
+				"maxWriteBps": "52428800",
+			}
+			err = validateCgroupQoS(f, pvcBlock, wantsLow)
+			if err != nil {
+				logAndFail("failed to validate cgroup QoS metadata for block volume: %v", err)
+			}
+
+			appBlock, err := loadApp(rawAppPath)
+			if err != nil {
+				logAndFail("failed to load raw app: %v", err)
+			}
+			appBlock.Namespace = f.UniqueName
+			appBlock.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcBlock.Name
+			err = createApp(f.ClientSet, appBlock, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create raw app: %v", err)
+			}
+
+			// Test I/O enforcement
+			err = testIOEnforcement(f, appBlock, "/dev/xvda", true, wantsLow)
+			if err != nil {
+				framework.Logf("I/O enforcement test: %v (best-effort, continuing)", err)
+			}
+
+			err = deletePod(appBlock.Name, appBlock.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete raw app: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcBlock, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete raw PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 3: RWOP with cgroup QoS
+			By("testing RWOP volume with cgroup QoS")
+			pvcRWOP, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC for RWOP: %v", err)
+			}
+			pvcRWOP.Namespace = f.UniqueName
+			rwopMode := v1.PersistentVolumeAccessMode("ReadWriteOncePod")
+			pvcRWOP.Spec.AccessModes = []v1.PersistentVolumeAccessMode{rwopMode}
+			pvcRWOP.Spec.VolumeAttributesClassName = &cgroupHighVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcRWOP, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create RWOP PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			wantsHigh := map[string]string{
+				"maxReadIops":            "2000",
+				"maxWriteIops":           "2000",
+				"maxReadBps":  "209715200",
+				"maxWriteBps": "209715200",
+			}
+			err = validateCgroupQoS(f, pvcRWOP, wantsHigh)
+			if err != nil {
+				logAndFail("failed to validate cgroup QoS for RWOP: %v", err)
+			}
+
+			appRWOP, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app for RWOP: %v", err)
+			}
+			appRWOP.Namespace = f.UniqueName
+			appRWOP.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcRWOP.Name
+			err = createApp(f.ClientSet, appRWOP, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create RWOP app: %v", err)
+			}
+			err = deletePod(appRWOP.Name, appRWOP.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete RWOP app: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcRWOP, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete RWOP PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 6: Multi-PVC Pod (CRITICAL - tests updateIOMaxForDevice)
+			By("testing multi-PVC pod (critical for updateIOMaxForDevice)")
+			pvc0, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC-0: %v", err)
+			}
+			pvc0.Name = "rbd-pvc-0"
+			pvc0.Namespace = f.UniqueName
+			pvc0.Spec.VolumeAttributesClassName = &cgroupLowVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc0, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC-0: %v", err)
+			}
+
+			pvc1, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC-1: %v", err)
+			}
+			pvc1.Name = "rbd-pvc-1"
+			pvc1.Namespace = f.UniqueName
+			pvc1.Spec.VolumeAttributesClassName = &cgroupMediumVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc1, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC-1: %v", err)
+			}
+
+			pvc2, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC-2: %v", err)
+			}
+			pvc2.Name = "rbd-pvc-2"
+			pvc2.Namespace = f.UniqueName
+			pvc2.Spec.VolumeAttributesClassName = &cgroupHighVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc2, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC-2: %v", err)
+			}
+			validateRBDImageCount(f, 3, defaultRBDPool)
+			validateOmapCount(f, 3, rbdType, defaultRBDPool, volumesType)
+
+			// Validate each PVC's QoS metadata
+			err = validateCgroupQoS(f, pvc0, wantsLow)
+			if err != nil {
+				logAndFail("failed to validate cgroup QoS for PVC-0: %v", err)
+			}
+			err = validateCgroupQoS(f, pvc1, wantsMedium)
+			if err != nil {
+				logAndFail("failed to validate cgroup QoS for PVC-1: %v", err)
+			}
+			err = validateCgroupQoS(f, pvc2, wantsHigh)
+			if err != nil {
+				logAndFail("failed to validate cgroup QoS for PVC-2: %v", err)
+			}
+
+			// Create multi-PVC pod
+			pvcs := []*v1.PersistentVolumeClaim{pvc0, pvc1, pvc2}
+			multiPod, err := createMultiPVCPod(f, pvcs, "pod-multi-pvc-fs", false)
+			if err != nil {
+				logAndFail("failed to create multi-PVC pod: %v", err)
+			}
+
+			// Delete multi-PVC pod and PVCs
+			err = deletePod(multiPod.Name, multiPod.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete multi-PVC pod: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvc0, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC-0: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvc1, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC-1: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvc2, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC-2: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 7: VAC Modification
+			By("testing VAC modification")
+			pvc, err = loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC for VAC modification: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			pvc.Spec.VolumeAttributesClassName = &cgroupLowVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC for VAC modification: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			// Validate initial QoS
+			err = validateCgroupQoS(f, pvc, wantsLow)
+			if err != nil {
+				logAndFail("failed to validate initial cgroup QoS: %v", err)
+			}
+
+			// Modify VAC from low to high
+			err = modifyPVCVolumeAttributesClass(f.ClientSet, pvc, cgroupHighVACName)
+			if err != nil {
+				logAndFail("failed to modify VAC: %v", err)
+			}
+
+			// Validate modified QoS
+			err = validateCgroupQoS(f, pvc, wantsHigh)
+			if err != nil {
+				logAndFail("failed to validate modified cgroup QoS: %v", err)
+			}
+
+			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 8: Partial VAC Update
+			By("testing partial VAC update")
+			partialVACName := "cgroup-qos-partial"
+			partialQosParams := map[string]string{
+				"maxReadIops":  "750",
+				"maxWriteIops": "750",
+			}
+			err = createRBDVolumeAttributesClass(f.ClientSet, partialVACName, partialQosParams)
+			if err != nil {
+				logAndFail("failed to create partial VAC: %v", err)
+			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, partialVACName)
+				if err != nil {
+					logAndFail("failed to delete partial VAC: %v", err)
+				}
+			}()
+
+			pvc, err = loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC for partial VAC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			pvc.Spec.VolumeAttributesClassName = &cgroupMediumVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			// Modify to partial VAC (only IOPS, no BPS)
+			err = modifyPVCVolumeAttributesClass(f.ClientSet, pvc, partialVACName)
+			if err != nil {
+				logAndFail("failed to modify to partial VAC: %v", err)
+			}
+
+			// Validate only IOPS parameters present
+			wantsPartial := map[string]string{
+				"maxReadIops":  "750",
+				"maxWriteIops": "750",
+			}
+			err = validateCgroupQoS(f, pvc, wantsPartial)
+			if err != nil {
+				logAndFail("failed to validate partial cgroup QoS: %v", err)
+			}
+
+			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 11: Snapshot/Clone Non-Propagation
+			By("testing snapshot/clone QoS non-propagation")
+			pvcParent, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load parent PVC: %v", err)
+			}
+			pvcParent.Namespace = f.UniqueName
+			pvcParent.Spec.VolumeAttributesClassName = &cgroupMediumVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcParent, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create parent PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			// Validate parent QoS
+			err = validateCgroupQoS(f, pvcParent, wantsMedium)
+			if err != nil {
+				logAndFail("failed to validate parent cgroup QoS: %v", err)
+			}
+
+			// Create snapshot class
+			err = createRBDSnapshotClass(f)
+			if err != nil {
+				logAndFail("failed to create snapshot class: %v", err)
+			}
+			defer func() {
+				err = deleteRBDSnapshotClass()
+				if err != nil {
+					logAndFail("failed to delete snapshot class: %v", err)
+				}
+			}()
+
+			// Create snapshot
+			snap := getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvcParent.Name
+			err = createSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot: %v", err)
+			}
+			validateRBDImageCount(f, 2, defaultRBDPool) // parent + snapshot
+
+			// Create clone from snapshot with different VAC
+			pvcClone, err := loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load clone PVC: %v", err)
+			}
+			pvcClone.Namespace = f.UniqueName
+			pvcClone.Spec.VolumeAttributesClassName = &cgroupLowVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create clone PVC: %v", err)
+			}
+			validateRBDImageCount(f, 3, defaultRBDPool) // parent + snapshot + clone
+
+			// Validate clone has its own QoS (low), NOT parent's (medium)
+			err = validateCgroupQoS(f, pvcClone, wantsLow)
+			if err != nil {
+				logAndFail("failed to validate clone cgroup QoS: %v", err)
+			}
+
+			// Cleanup
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete clone PVC: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcParent, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete parent PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 4: RWX Block with deployment
+			By("testing RWX block volume with deployment")
+			pvcRWX, err := loadPVC(rawPvcPath)
+			if err != nil {
+				logAndFail("failed to load RWX raw PVC: %v", err)
+			}
+			pvcRWX.Namespace = f.UniqueName
+			pvcRWX.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteMany}
+			pvcRWX.Spec.VolumeAttributesClassName = &cgroupMediumVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcRWX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create RWX raw PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			// Validate QoS metadata
+			err = validateCgroupQoS(f, pvcRWX, wantsMedium)
+			if err != nil {
+				logAndFail("failed to validate RWX cgroup QoS: %v", err)
+			}
+
+			// Create deployment with 3 replicas
+			deployRWX, err := loadAppDeployment(deployBlockAppPath)
+			if err != nil {
+				logAndFail("failed to load block deployment: %v", err)
+			}
+			deployRWX.Namespace = f.UniqueName
+			deployRWX.Name = "deploy-rwx-qos"
+			replicas := int32(3)
+			deployRWX.Spec.Replicas = &replicas
+			deployRWX.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcRWX.Name
+
+			err = createDeploymentApp(f.ClientSet, deployRWX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create RWX deployment: %v", err)
+			}
+
+			// Delete deployment and PVC
+			err = deleteDeploymentApp(f.ClientSet, deployRWX.Name, deployRWX.Namespace, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete RWX deployment: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcRWX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete RWX PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 5: ROX Filesystem with clone + deployment
+			By("testing ROX filesystem volume with clone and deployment")
+			pvcROXParent, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load ROX parent PVC: %v", err)
+			}
+			pvcROXParent.Namespace = f.UniqueName
+			pvcROXParent.Spec.VolumeAttributesClassName = &cgroupLowVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcROXParent, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create ROX parent PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			snapROX := getSnapshot(snapshotPath)
+			snapROX.Namespace = f.UniqueName
+			snapROX.Spec.Source.PersistentVolumeClaimName = &pvcROXParent.Name
+			err = createSnapshot(&snapROX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot for ROX: %v", err)
+			}
+			validateRBDImageCount(f, 2, defaultRBDPool)
+
+			// Create ROX clone from snapshot
+			pvcROX, err := loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load ROX clone PVC: %v", err)
+			}
+			pvcROX.Namespace = f.UniqueName
+			pvcROX.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+			pvcROX.Spec.VolumeAttributesClassName = &cgroupMediumVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcROX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create ROX clone PVC: %v", err)
+			}
+			validateRBDImageCount(f, 3, defaultRBDPool)
+
+			// Validate ROX QoS
+			err = validateCgroupQoS(f, pvcROX, wantsMedium)
+			if err != nil {
+				logAndFail("failed to validate ROX cgroup QoS: %v", err)
+			}
+
+			// Create deployment with ROX volume
+			deployROX, err := loadAppDeployment(deployFSAppPath)
+			if err != nil {
+				logAndFail("failed to load ROX deployment: %v", err)
+			}
+			deployROX.Namespace = f.UniqueName
+			deployROX.Name = "deploy-rox-qos"
+			replicas = int32(3)
+			deployROX.Spec.Replicas = &replicas
+			deployROX.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcROX.Name
+			deployROX.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
+
+			err = createDeploymentApp(f.ClientSet, deployROX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create ROX deployment: %v", err)
+			}
+
+			// Cleanup ROX resources
+			err = deleteDeploymentApp(f.ClientSet, deployROX.Name, deployROX.Namespace, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete ROX deployment: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcROX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete ROX PVC: %v", err)
+			}
+			err = deleteSnapshot(&snapROX, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete ROX snapshot: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcROXParent, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete ROX parent PVC: %v", err)
+			}
+
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 10: Add VAC to Existing PVC
+			By("testing add VAC to existing PVC")
+			pvc, err = loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC without VAC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			// No VAC initially
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC without VAC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			// Validate no QoS metadata initially
+			err = validateCgroupQoS(f, pvc, map[string]string{})
+			if err != nil {
+				logAndFail("failed to validate no QoS initially: %v", err)
+			}
+
+			// Add VAC to existing PVC
+			err = modifyPVCVolumeAttributesClass(f.ClientSet, pvc, cgroupHighVACName)
+			if err != nil {
+				logAndFail("failed to add VAC to existing PVC: %v", err)
+			}
+
+			// Validate QoS metadata now present
+			err = validateCgroupQoS(f, pvc, wantsHigh)
+			if err != nil {
+				logAndFail("failed to validate QoS after adding VAC: %v", err)
+			}
+
+			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 14: Cgroup QoS with volume expansion
+			By("testing cgroup QoS with volume expansion")
+			pvcExpand, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC for expansion: %v", err)
+			}
+			pvcExpand.Namespace = f.UniqueName
+			pvcExpand.Spec.VolumeAttributesClassName = &cgroupLowVACName
+			pvcExpand.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("1Gi")
+			err = createPVCAndvalidatePV(f.ClientSet, pvcExpand, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC for expansion: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			// Validate initial QoS
+			err = validateCgroupQoS(f, pvcExpand, wantsLow)
+			if err != nil {
+				logAndFail("failed to validate QoS before expansion: %v", err)
+			}
+
+			app, err = loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcExpand.Name
+			err = createApp(f.ClientSet, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create app: %v", err)
+			}
+
+			// Expand volume
+			err = expandPVCSize(f.ClientSet, pvcExpand, "2Gi", deployTimeout)
+			if err != nil {
+				logAndFail("failed to expand PVC: %v", err)
+			}
+
+			// Validate QoS still present after expansion
+			err = validateCgroupQoS(f, pvcExpand, wantsLow)
+			if err != nil {
+				logAndFail("failed to validate QoS after expansion: %v", err)
+			}
+
+			err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete app: %v", err)
+			}
+
+			err = deletePVCAndValidatePV(f.ClientSet, pvcExpand, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete expanded PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Scenario 15: Cgroup QoS with encrypted volumes
+			By("testing cgroup QoS with encrypted volumes")
+			// Temporarily recreate SC with encryption + krbd + controller-modify-secret
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete storageclass for encryption: %v", err)
+			}
+			encryptionParams := map[string]string{
+				"encrypted": "true",
+				"csi.storage.k8s.io/controller-modify-secret-namespace": cephCSINamespace,
+				"csi.storage.k8s.io/controller-modify-secret-name":      rbdProvisionerSecretName,
+			}
+			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, encryptionParams, deletePolicy)
+			if err != nil {
+				logAndFail("failed to create encrypted storageclass: %v", err)
+			}
+
+			pvcEncrypted, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC for encryption: %v", err)
+			}
+			pvcEncrypted.Namespace = f.UniqueName
+			pvcEncrypted.Spec.VolumeAttributesClassName = &cgroupMediumVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcEncrypted, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create encrypted PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+
+			// Validate QoS on encrypted volume
+			err = validateCgroupQoS(f, pvcEncrypted, wantsMedium)
+			if err != nil {
+				logAndFail("failed to validate QoS on encrypted volume: %v", err)
+			}
+
+			// Mount and verify encryption + QoS
+			appEncrypted, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app for encrypted volume: %v", err)
+			}
+			appEncrypted.Namespace = f.UniqueName
+			appEncrypted.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcEncrypted.Name
+			err = createApp(f.ClientSet, appEncrypted, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create app with encrypted volume: %v", err)
+			}
+
+			err = deletePod(appEncrypted.Name, appEncrypted.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete encrypted app: %v", err)
+			}
+			err = deletePVCAndValidatePV(f.ClientSet, pvcEncrypted, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete encrypted PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+			// Restore original SC (krbd + controller-modify-secret, no encryption)
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete encrypted storageclass: %v", err)
+			}
+			err = createKRBDStorageClassWithModifySecret(f, defaultSCName)
+			if err != nil {
+				logAndFail("failed to recreate krbd storageclass: %v", err)
+			}
 		})
 
 		It("create a PVC and bind it to an app with encrypted RBD volume (default type setting)", func() {

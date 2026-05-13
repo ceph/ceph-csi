@@ -1,0 +1,14 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: cgroup-qos-high
+driverName: rbd.csi.ceph.com
+parameters:
+  # High-tier QoS limits
+  # 2000 IOPS for both read and write
+  maxReadIops: "2000"
+  maxWriteIops: "2000"
+  # 200 MB/s for both read and write
+  maxReadBps: "209715200"
+  maxWriteBps: "209715200"
