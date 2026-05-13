@@ -1,0 +1,27 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-multi-pvc-block
+spec:
+  containers:
+    - name: app-container
+      image: quay.io/centos/centos:latest
+      command: ["/bin/sleep", "infinity"]
+      volumeDevices:
+        - name: vol-0
+          devicePath: /dev/xvda
+        - name: vol-1
+          devicePath: /dev/xvdb
+        - name: vol-2
+          devicePath: /dev/xvdc
+  volumes:
+    - name: vol-0
+      persistentVolumeClaim:
+        claimName: rbd-pvc-0
+    - name: vol-1
+      persistentVolumeClaim:
+        claimName: rbd-pvc-1
+    - name: vol-2
+      persistentVolumeClaim:
+        claimName: rbd-pvc-2

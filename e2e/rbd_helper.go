@@ -19,7 +19,9 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"strconv"
 	"strings"
@@ -195,6 +197,23 @@ func createRBDStorageClass(
 
 		return true, nil
 	})
+}
+
+// createKRBDStorageClassWithModifySecret creates a StorageClass configured for
+// krbd mounter (default) with controller-modify-secret for VolumeAttributesClass support.
+// This is required for testing cgroup v2 QoS with VAC modification.
+func createKRBDStorageClassWithModifySecret(f *framework.Framework, scName string) error {
+	deletePolicy := v1.PersistentVolumeReclaimDelete
+
+	parameters := map[string]string{
+		// Empty mounter = krbd (default mounter)
+		"mounter": "",
+		// controller-modify-secret required for VAC modification
+		"csi.storage.k8s.io/controller-modify-secret-namespace": cephCSINamespace,
+		"csi.storage.k8s.io/controller-modify-secret-name":      rbdProvisionerSecretName,
+	}
+
+	return createRBDStorageClass(f.ClientSet, f, scName, nil, parameters, deletePolicy)
 }
 
 func createRadosNamespace(f *framework.Framework) error {
@@ -1382,6 +1401,192 @@ func validateQOS(f *framework.Framework,
 	return nil
 }
 
+// validateCgroupQoS validates cgroup v2 QoS parameters stored in RBD image metadata.
+// The wants map uses VolumeAttributesClass parameter names as keys:
+//   - "maxReadIops", "maxWriteIops"
+//   - "maxReadBps", "maxWriteBps"
+func validateCgroupQoS(f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	wants map[string]string,
+) error {
+	// Cgroup QoS metadata keys are prefixed to prevent clone/snapshot propagation
+	metadataPrefix := ".rbd.csi.ceph.com/cgroup_qos_"
+
+	// Map VolumeAttributesClass parameter names to metadata keys
+	paramToMetadataKey := map[string]string{
+		"maxReadIops":  metadataPrefix + "max_read_iops",
+		"maxWriteIops": metadataPrefix + "max_write_iops",
+		"maxReadBps":   metadataPrefix + "max_read_bps",
+		"maxWriteBps":  metadataPrefix + "max_write_bps",
+	}
+
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+	for param, metadataKey := range paramToMetadataKey {
+		expectedValue, shouldExist := wants[param]
+
+		actualValue, err := getImageMeta(rbdImageSpec, metadataKey, f)
+		if shouldExist {
+			if err != nil {
+				return fmt.Errorf("failed to get %s: %w", metadataKey, err)
+			}
+			if actualValue != expectedValue {
+				return fmt.Errorf("%s: got %q, want %q", param, actualValue, expectedValue)
+			}
+		} else if err == nil {
+			return fmt.Errorf("%s should be absent but found value %q", param, actualValue)
+		}
+	}
+
+	return nil
+}
+
+// testIOEnforcement validates that I/O operations respect cgroup QoS limits.
+// Uses dd with direct I/O to measure write throughput and compares against expected limits.
+// Allows 20% tolerance margin to account for measurement variance and kernel overhead.
+func testIOEnforcement(f *framework.Framework,
+	pod *v1.Pod,
+	volumePath string,
+	isBlock bool,
+	limits map[string]string,
+) error {
+	// Parse expected write bandwidth limit
+	maxWriteBpsStr, ok := limits["maxWriteBps"]
+	if !ok {
+		return fmt.Errorf("maxWriteBps not specified in limits")
+	}
+
+	maxWriteBps, err := strconv.ParseInt(maxWriteBpsStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse maxWriteBps: %w", err)
+	}
+
+	containerName := pod.Spec.Containers[0].Name
+
+	// For block devices, write directly to the device path.
+	// For filesystem volumes, create a test file under the mount path.
+	target := volumePath
+	if !isBlock {
+		target = volumePath + "/qos_test_file"
+	}
+
+	// Run dd write test: 100MB with direct I/O.
+	// Using direct I/O (oflag=direct) bypasses page cache and hits cgroup limits.
+	// dd outputs: "N bytes copied, T s, R MB/s" — parse the rate and unit to compute bytes/sec.
+	cmd := fmt.Sprintf(
+		"dd if=/dev/zero of=%s bs=1M count=100 oflag=direct 2>&1 | "+
+			"awk -F', ' '/copied/ {print $(NF)}' | "+
+			"awk '{rate=$1; unit=$2; m=1; "+
+			"if(unit==\"GB/s\") m=1e9; "+
+			"else if(unit==\"MB/s\") m=1e6; "+
+			"else if(unit==\"kB/s\") m=1e3; "+
+			"else if(unit==\"GiB/s\") m=1073741824; "+
+			"else if(unit==\"MiB/s\") m=1048576; "+
+			"else if(unit==\"KiB/s\") m=1024; "+
+			"printf \"%%.0f\\n\", rate*m}'",
+		target)
+
+	framework.Logf("running I/O enforcement test with command: %s", cmd)
+	output, stdErr, err := execCommandInContainerByPodName(f, cmd, pod.Namespace, pod.Name, containerName)
+	if err != nil {
+		return fmt.Errorf("failed to run dd test: %w (stderr: %s)", err, stdErr)
+	}
+
+	// Parse throughput from dd output
+	actualBpsStr := strings.TrimSpace(output)
+	actualBps, err := strconv.ParseInt(actualBpsStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse throughput from output %q: %w", output, err)
+	}
+
+	// Allow 20% tolerance for measurement variance
+	toleranceMargin := 1.20
+	maxAllowedBps := int64(float64(maxWriteBps) * toleranceMargin)
+
+	framework.Logf("I/O enforcement test: actual=%d bps, limit=%d bps, max_allowed=%d bps (%.0f%% tolerance)",
+		actualBps, maxWriteBps, maxAllowedBps, (toleranceMargin-1)*100)
+
+	if actualBps > maxAllowedBps {
+		return fmt.Errorf("write throughput %d bps exceeds limit %d bps (with %.0f%% tolerance margin)",
+			actualBps, maxWriteBps, (toleranceMargin-1)*100)
+	}
+
+	framework.Logf("I/O enforcement validated: actual throughput within limits")
+
+	return nil
+}
+
+// createMultiPVCPod creates a pod with multiple RBD volumes attached.
+// Critical for testing updateIOMaxForDevice read-modify-write logic.
+// When a pod has multiple volumes, each volume's QoS must be written to the same
+// io.max file without overwriting others.
+func createMultiPVCPod(f *framework.Framework,
+	pvcs []*v1.PersistentVolumeClaim,
+	podName string,
+	isBlock bool,
+) (*v1.Pod, error) {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: f.UniqueName,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:            "app-container",
+					Image:           "quay.io/centos/centos:latest",
+					ImagePullPolicy: v1.PullIfNotPresent,
+					Command:         []string{"/bin/sleep", "infinity"},
+				},
+			},
+		},
+	}
+
+	// Add volumes and volume mounts/devices
+	for i, pvc := range pvcs {
+		volumeName := fmt.Sprintf("vol-%d", i)
+
+		// Add volume source
+		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
+			Name: volumeName,
+			VolumeSource: v1.VolumeSource{
+				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvc.Name,
+				},
+			},
+		})
+
+		if isBlock {
+			// Block mode - add volume device
+			devicePath := fmt.Sprintf("/dev/xvd%c", 'a'+i)
+			pod.Spec.Containers[0].VolumeDevices = append(pod.Spec.Containers[0].VolumeDevices,
+				v1.VolumeDevice{
+					Name:       volumeName,
+					DevicePath: devicePath,
+				})
+		} else {
+			// Filesystem mode - add volume mount
+			mountPath := fmt.Sprintf("/mnt/vol-%d", i)
+			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts,
+				v1.VolumeMount{
+					Name:      volumeName,
+					MountPath: mountPath,
+				})
+		}
+	}
+
+	err := createApp(f.ClientSet, pod, deployTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return pod, nil
+}
+
 func validateDataPool(f *framework.Framework, imageName, poolName string, wants string) error {
 	var imgInfo imageInfo
 	imgInfoStr, err := getImageInfo(f, imageName, poolName)
@@ -1664,43 +1869,41 @@ func validateServiceAccountVolumeRestriction(
 
 func createRBDVolumeAttributesClass(
 	c kubernetes.Interface,
-	f *framework.Framework,
 	name string,
 	params map[string]string,
 ) error {
-	vacPath := fmt.Sprintf("%s/%s", rbdExamplePath, "volumeattributesclass.yaml")
-	vac, err := getVolumeAttributesClass(vacPath)
-	if err != nil {
-		return fmt.Errorf("failed to get vac: %w", err)
+	if name == "" {
+		return errors.New("name is required for VolumeAttributesClass")
 	}
-	if name != "" {
-		vac.Name = name
+	// Create a clean VolumeAttributesClass instead of loading from template
+	// to avoid mixing NBD QoS parameters from the template with cgroup QoS parameters.
+	vac := scv1.VolumeAttributesClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		DriverName: "rbd.csi.ceph.com",
+		Parameters: make(map[string]string),
 	}
 
-	// overload any parameters that were passed
-	if params == nil {
-		// create an empty params, so that params["clusterID"] below
-		// does not panic
-		params = map[string]string{}
-	}
-	for param, value := range params {
-		vac.Parameters[param] = value
+	// Add provided parameters
+	if params != nil {
+		maps.Copy(vac.Parameters, params)
 	}
 
 	timeout := time.Duration(deployTimeout) * time.Minute
 
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
-		_, err = c.StorageV1().VolumeAttributesClasses().Create(ctx, &vac, metav1.CreateOptions{})
-		if err != nil {
-			framework.Logf("error creating VolumeAttributesClass %q: %v", vac.Name, err)
-			if apierrs.IsAlreadyExists(err) {
+		_, createErr := c.StorageV1().VolumeAttributesClasses().Create(ctx, &vac, metav1.CreateOptions{})
+		if createErr != nil {
+			framework.Logf("error creating VolumeAttributesClass %q: %v", vac.Name, createErr)
+			if apierrs.IsAlreadyExists(createErr) {
 				return true, nil
 			}
-			if isRetryableAPIError(err) {
+			if isRetryableAPIError(createErr) {
 				return false, nil
 			}
 
-			return false, fmt.Errorf("failed to create VolumeAttributesClass %q: %w", vac.Name, err)
+			return false, fmt.Errorf("failed to create VolumeAttributesClass %q: %w", vac.Name, createErr)
 		}
 
 		return true, nil
