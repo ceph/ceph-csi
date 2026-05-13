@@ -40,6 +40,11 @@ const (
 	// PublishContextServiceAccount is the publish context key for the allowed
 	// service account, set during ControllerPublishVolume.
 	PublishContextServiceAccount = "serviceAccount"
+
+	// VolumeContextPodUIDKey is the key in the volume context that contains
+	// the pod's UID, set by Kubelet when podInfoOnMount is enabled in the
+	// CSIDriver spec.
+	VolumeContextPodUIDKey = "csi.storage.k8s.io/pod.uid"
 )
 
 // A regex to verify the expected format: 0000-0000-arbitrary-number-of-000-and-chars.

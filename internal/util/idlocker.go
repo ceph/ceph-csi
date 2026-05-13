@@ -32,6 +32,9 @@ const (
 	// TargetPathOperationAlreadyExistsFmt string format to return for concurrent operation on target path.
 	TargetPathOperationAlreadyExistsFmt = "an operation with the given target path %s already exists"
 
+	// PodOperationAlreadyExistsFmt string format to return for concurrent operation on pod.
+	PodOperationAlreadyExistsFmt = "an operation with the given Pod UUID %s already exists"
+
 	// HostOperationAlreadyExistsFmt is used for reporting an in-progress operation that modifies the
 	// NVMe-oF gateway configuration for a prticular host.
 	HostOperationAlreadyExistsFmt = "an operation that modifies the gateway for Host ID %s already exists"
