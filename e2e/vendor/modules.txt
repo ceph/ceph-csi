@@ -23,7 +23,7 @@ github.com/blang/semver/v4
 ## explicit; go 1.23
 github.com/cenkalti/backoff/v5
 # github.com/ceph/ceph-csi v2.0.1+incompatible => ../
-## explicit; go 1.25.0
+## explicit; go 1.26.0
 github.com/ceph/ceph-csi/internal/util/cryptsetup
 github.com/ceph/ceph-csi/internal/util/file
 github.com/ceph/ceph-csi/internal/util/log
@@ -577,8 +577,8 @@ gopkg.in/inf.v0
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# k8s.io/api v0.36.0 => k8s.io/api v0.35.4
-## explicit; go 1.25.0
+# k8s.io/api v0.36.0 => k8s.io/api v0.36.0
+## explicit; go 1.26.0
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/admissionregistration/v1
@@ -597,8 +597,6 @@ k8s.io/api/authorization/v1
 k8s.io/api/authorization/v1beta1
 k8s.io/api/autoscaling/v1
 k8s.io/api/autoscaling/v2
-k8s.io/api/autoscaling/v2beta1
-k8s.io/api/autoscaling/v2beta2
 k8s.io/api/batch/v1
 k8s.io/api/batch/v1beta1
 k8s.io/api/certificates/v1
@@ -632,14 +630,14 @@ k8s.io/api/resource/v1alpha3
 k8s.io/api/resource/v1beta1
 k8s.io/api/resource/v1beta2
 k8s.io/api/scheduling/v1
-k8s.io/api/scheduling/v1alpha1
+k8s.io/api/scheduling/v1alpha2
 k8s.io/api/scheduling/v1beta1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
 k8s.io/api/storagemigration/v1beta1
-# k8s.io/apiextensions-apiserver v0.35.3 => k8s.io/apiextensions-apiserver v0.35.4
-## explicit; go 1.25.0
+# k8s.io/apiextensions-apiserver v0.36.0 => k8s.io/apiextensions-apiserver v0.36.0
+## explicit; go 1.26.0
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
@@ -689,12 +687,10 @@ k8s.io/apimachinery/pkg/selection
 k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/util/cache
 k8s.io/apimachinery/pkg/util/diff
-k8s.io/apimachinery/pkg/util/dump
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/util/framer
 k8s.io/apimachinery/pkg/util/httpstream
 k8s.io/apimachinery/pkg/util/httpstream/spdy
-k8s.io/apimachinery/pkg/util/httpstream/wsstream
 k8s.io/apimachinery/pkg/util/intstr
 k8s.io/apimachinery/pkg/util/json
 k8s.io/apimachinery/pkg/util/managedfields
@@ -775,8 +771,8 @@ k8s.io/apiserver/pkg/util/filesystem
 k8s.io/apiserver/pkg/util/webhook
 k8s.io/apiserver/pkg/util/x509metrics
 k8s.io/apiserver/pkg/warning
-# k8s.io/client-go v0.36.0 => k8s.io/client-go v0.35.4
-## explicit; go 1.25.0
+# k8s.io/client-go v0.36.0 => k8s.io/client-go v0.36.0
+## explicit; go 1.26.0
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
 k8s.io/client-go/applyconfigurations/admissionregistration/v1alpha1
 k8s.io/client-go/applyconfigurations/admissionregistration/v1beta1
@@ -786,8 +782,6 @@ k8s.io/client-go/applyconfigurations/apps/v1beta1
 k8s.io/client-go/applyconfigurations/apps/v1beta2
 k8s.io/client-go/applyconfigurations/autoscaling/v1
 k8s.io/client-go/applyconfigurations/autoscaling/v2
-k8s.io/client-go/applyconfigurations/autoscaling/v2beta1
-k8s.io/client-go/applyconfigurations/autoscaling/v2beta2
 k8s.io/client-go/applyconfigurations/batch/v1
 k8s.io/client-go/applyconfigurations/batch/v1beta1
 k8s.io/client-go/applyconfigurations/certificates/v1
@@ -823,7 +817,7 @@ k8s.io/client-go/applyconfigurations/resource/v1alpha3
 k8s.io/client-go/applyconfigurations/resource/v1beta1
 k8s.io/client-go/applyconfigurations/resource/v1beta2
 k8s.io/client-go/applyconfigurations/scheduling/v1
-k8s.io/client-go/applyconfigurations/scheduling/v1alpha1
+k8s.io/client-go/applyconfigurations/scheduling/v1alpha2
 k8s.io/client-go/applyconfigurations/scheduling/v1beta1
 k8s.io/client-go/applyconfigurations/storage/v1
 k8s.io/client-go/applyconfigurations/storage/v1alpha1
@@ -848,8 +842,6 @@ k8s.io/client-go/informers/apps/v1beta2
 k8s.io/client-go/informers/autoscaling
 k8s.io/client-go/informers/autoscaling/v1
 k8s.io/client-go/informers/autoscaling/v2
-k8s.io/client-go/informers/autoscaling/v2beta1
-k8s.io/client-go/informers/autoscaling/v2beta2
 k8s.io/client-go/informers/batch
 k8s.io/client-go/informers/batch/v1
 k8s.io/client-go/informers/batch/v1beta1
@@ -898,7 +890,7 @@ k8s.io/client-go/informers/resource/v1beta1
 k8s.io/client-go/informers/resource/v1beta2
 k8s.io/client-go/informers/scheduling
 k8s.io/client-go/informers/scheduling/v1
-k8s.io/client-go/informers/scheduling/v1alpha1
+k8s.io/client-go/informers/scheduling/v1alpha2
 k8s.io/client-go/informers/scheduling/v1beta1
 k8s.io/client-go/informers/storage
 k8s.io/client-go/informers/storage/v1
@@ -922,8 +914,6 @@ k8s.io/client-go/kubernetes/typed/authorization/v1
 k8s.io/client-go/kubernetes/typed/authorization/v1beta1
 k8s.io/client-go/kubernetes/typed/autoscaling/v1
 k8s.io/client-go/kubernetes/typed/autoscaling/v2
-k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1
-k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2
 k8s.io/client-go/kubernetes/typed/batch/v1
 k8s.io/client-go/kubernetes/typed/batch/v1beta1
 k8s.io/client-go/kubernetes/typed/certificates/v1
@@ -957,7 +947,7 @@ k8s.io/client-go/kubernetes/typed/resource/v1alpha3
 k8s.io/client-go/kubernetes/typed/resource/v1beta1
 k8s.io/client-go/kubernetes/typed/resource/v1beta2
 k8s.io/client-go/kubernetes/typed/scheduling/v1
-k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1
+k8s.io/client-go/kubernetes/typed/scheduling/v1alpha2
 k8s.io/client-go/kubernetes/typed/scheduling/v1beta1
 k8s.io/client-go/kubernetes/typed/storage/v1
 k8s.io/client-go/kubernetes/typed/storage/v1alpha1
@@ -973,8 +963,6 @@ k8s.io/client-go/listers/apps/v1beta1
 k8s.io/client-go/listers/apps/v1beta2
 k8s.io/client-go/listers/autoscaling/v1
 k8s.io/client-go/listers/autoscaling/v2
-k8s.io/client-go/listers/autoscaling/v2beta1
-k8s.io/client-go/listers/autoscaling/v2beta2
 k8s.io/client-go/listers/batch/v1
 k8s.io/client-go/listers/batch/v1beta1
 k8s.io/client-go/listers/certificates/v1
@@ -1008,7 +996,7 @@ k8s.io/client-go/listers/resource/v1alpha3
 k8s.io/client-go/listers/resource/v1beta1
 k8s.io/client-go/listers/resource/v1beta2
 k8s.io/client-go/listers/scheduling/v1
-k8s.io/client-go/listers/scheduling/v1alpha1
+k8s.io/client-go/listers/scheduling/v1alpha2
 k8s.io/client-go/listers/scheduling/v1beta1
 k8s.io/client-go/listers/storage/v1
 k8s.io/client-go/listers/storage/v1alpha1
@@ -1127,12 +1115,12 @@ k8s.io/kube-openapi/pkg/validation/errors
 k8s.io/kube-openapi/pkg/validation/spec
 k8s.io/kube-openapi/pkg/validation/strfmt
 k8s.io/kube-openapi/pkg/validation/strfmt/bson
-# k8s.io/kubectl v0.0.0 => k8s.io/kubectl v0.35.4
-## explicit; go 1.25.0
+# k8s.io/kubectl v0.0.0 => k8s.io/kubectl v0.36.0
+## explicit; go 1.26.0
 k8s.io/kubectl/pkg/scale
 k8s.io/kubectl/pkg/util/podutils
-# k8s.io/kubelet v0.0.0 => k8s.io/kubelet v0.35.4
-## explicit; go 1.25.0
+# k8s.io/kubelet v0.0.0 => k8s.io/kubelet v0.36.0
+## explicit; go 1.26.0
 k8s.io/kubelet/pkg/apis
 k8s.io/kubelet/pkg/apis/stats/v1alpha1
 # k8s.io/kubernetes v1.36.0
@@ -1205,8 +1193,8 @@ k8s.io/kubernetes/test/utils/ktesting
 k8s.io/kubernetes/test/utils/ktesting/initoption
 k8s.io/kubernetes/test/utils/ktesting/internal
 k8s.io/kubernetes/test/utils/kubeconfig
-# k8s.io/mount-utils v0.35.3
-## explicit; go 1.25.0
+# k8s.io/mount-utils v0.36.0
+## explicit; go 1.26.0
 k8s.io/mount-utils
 # k8s.io/pod-security-admission v0.36.0
 ## explicit; go 1.26.0
@@ -1261,12 +1249,12 @@ sigs.k8s.io/structured-merge-diff/v6/value
 sigs.k8s.io/yaml
 # github.com/ceph/ceph-csi => ../
 # github.com/ceph/ceph-csi/api => ../api
-# k8s.io/api => k8s.io/api v0.35.4
-# k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.35.4
-# k8s.io/client-go => k8s.io/client-go v0.35.4
-# k8s.io/cri-client => k8s.io/cri-client v0.35.4
-# k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.35.4
-# k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.35.4
-# k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.35.4
-# k8s.io/kubectl => k8s.io/kubectl v0.35.4
-# k8s.io/kubelet => k8s.io/kubelet v0.35.4
+# k8s.io/api => k8s.io/api v0.36.0
+# k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.36.0
+# k8s.io/client-go => k8s.io/client-go v0.36.0
+# k8s.io/cri-client => k8s.io/cri-client v0.36.0
+# k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.36.0
+# k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.36.0
+# k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.36.0
+# k8s.io/kubectl => k8s.io/kubectl v0.36.0
+# k8s.io/kubelet => k8s.io/kubelet v0.36.0

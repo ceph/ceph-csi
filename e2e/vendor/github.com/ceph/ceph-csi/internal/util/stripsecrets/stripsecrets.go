@@ -65,15 +65,15 @@ func stripKey(out []string) bool {
 func stripSecret(out []string) bool {
 	for i := range out {
 		arg := out[i]
-		begin := strings.Index(arg, secretArg)
+		before, after, ok := strings.Cut(arg, secretArg)
 
-		if begin == -1 {
+		if !ok {
 			continue
 		}
 
-		end := strings.IndexByte(arg[begin+len(secretArg):], optionsArgSeparator)
+		end := strings.IndexByte(after, optionsArgSeparator)
 
-		out[i] = arg[:begin] + strippedSecret
+		out[i] = before + strippedSecret
 		if end != -1 {
 			out[i] += arg[end+len(secretArg):]
 		}
