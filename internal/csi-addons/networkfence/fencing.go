@@ -521,7 +521,9 @@ func matchEntry(actual, expected string) bool {
 		actual = strings.TrimSuffix(actual, ":0/32")
 	} else {
 		// for ipv6 address, strip the :0/128 suffix if present
+		// Ceph returns IPv6 blocklist entries in bracket format: [fd98::9]:0/128
 		actual = strings.TrimSuffix(actual, ":0/128")
+		actual = strings.Trim(actual, "[]")
 	}
 
 	actualIP := net.ParseIP(actual)

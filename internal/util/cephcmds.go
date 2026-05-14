@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"time"
@@ -355,14 +356,20 @@ func RemoveCephBlocklist(ctx context.Context, monitors string, cr *Credentials, 
 	}
 
 	var clientAddr string
+	//nolint:nestif // straightforward IPv4/IPv6 formatting with nonce
 	if useRange {
-		// When useRange is true, ip is already in CIDR format
 		clientAddr = ip
 	} else {
-		// If nonce is not empty and we are not using
-		// range based blocks, we need to add the nonce
 		if nonce != "" {
-			clientAddr = fmt.Sprintf("%s:0/%s", ip, nonce)
+			parsedIP := net.ParseIP(ip)
+			if parsedIP == nil {
+				return fmt.Errorf("failed to parse IP address %q", ip)
+			}
+			if parsedIP.To4() != nil {
+				clientAddr = fmt.Sprintf("%s:0/%s", ip, nonce)
+			} else {
+				clientAddr = fmt.Sprintf("[%s]:0/%s", ip, nonce)
+			}
 		} else {
 			clientAddr = ip
 		}
