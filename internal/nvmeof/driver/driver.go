@@ -66,6 +66,7 @@ func (d *nvmeofDriver) Run(conf *util.Config) {
 			csi.ControllerServiceCapability_RPC_MODIFY_VOLUME,
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 		})
 
 		cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{

@@ -118,7 +118,37 @@ func (cs *Server) CreateVolume(
 	}
 	defer cs.volumeLocks.Release(req.GetName())
 
+	// Extract clone source if present (for locking)
+	// Note- there is no need for snapshot source locking because snapshots are not
+	// used in the NVMe-oF gateway and do not affect the NVMe-oF resources.
+	var sourceVolumeID, sourceSnapshotID string
+	if contentSource := req.GetVolumeContentSource(); contentSource != nil {
+		switch contentSource.GetType().(type) {
+		case *csi.VolumeContentSource_Snapshot:
+			if snapshot := contentSource.GetSnapshot(); snapshot != nil {
+				sourceSnapshotID = snapshot.GetSnapshotId()
+				log.DebugLog(ctx, "Creating volume from snapshot: %s", sourceSnapshotID)
+			}
+		case *csi.VolumeContentSource_Volume:
+			if vol := contentSource.GetVolume(); vol != nil {
+				sourceVolumeID = vol.GetVolumeId()
+				log.DebugLog(ctx, "Creating volume clone from volume: %s", sourceVolumeID)
+			}
+		}
+	}
+
+	// Lock source volume to prevent concurrent deletion
+	if sourceVolumeID != "" {
+		if acquired := cs.volumeLocks.TryAcquire(sourceVolumeID); !acquired {
+			log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, sourceVolumeID)
+
+			return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, sourceVolumeID)
+		}
+		defer cs.volumeLocks.Release(sourceVolumeID)
+	}
+
 	// Step 1: Create RBD volume through backend. if exists, it is ok.
+	// RBD backend automatically handles cloning when VolumeContentSource is present.
 	res, err := cs.backendServer.CreateVolume(ctx, req)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create RBD volume: %v", err)
