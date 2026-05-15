@@ -1601,7 +1601,7 @@ var _ = Describe("RBD", func() {
 			}
 		})
 
-		It("create a PVC and bind it to an app with ext4 as the FS ", func() {
+		It("create a PVC and bind it to an app with ext4 as the FS", func() {
 			err := deleteResource(rbdExamplePath + "storageclass.yaml")
 			if err != nil {
 				logAndFail("failed to delete storageclass: %v", err)
@@ -1633,7 +1633,7 @@ var _ = Describe("RBD", func() {
 			}
 		})
 
-		It("create a PVC and bind it to an app with ext4 as the FS and 1024 inodes ", func() {
+		It("create a PVC and bind it to an app with ext4 as the FS and 1024 inodes", func() {
 			err := deleteResource(rbdExamplePath + "storageclass.yaml")
 			if err != nil {
 				logAndFail("failed to delete storageclass: %v", err)
