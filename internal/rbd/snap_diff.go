@@ -97,9 +97,11 @@ func (rbdSnap *rbdSnapshot) ProcessMetadata(
 		sendResponse,
 	)
 	diffIterateByIDConfig := librbd.DiffIterateByIDConfig{
-		Offset:   uint64(startingOffset),
-		Length:   uint64(rbdSnap.VolSize) - uint64(startingOffset),
-		Callback: cb,
+		Offset:        uint64(startingOffset),
+		Length:        uint64(rbdSnap.VolSize) - uint64(startingOffset),
+		IncludeParent: librbd.IncludeParent,
+		WholeObject:   librbd.EnableWholeObject,
+		Callback:      cb,
 	}
 	if baseSnap != nil {
 		// If a base snapshot is provided, set the FromSnapID to
