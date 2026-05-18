@@ -156,6 +156,9 @@ func createRBDStorageClass(
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
 
+	sc.Parameters["csi.storage.k8s.io/node-publish-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/node-publish-secret-name"] = rbdNodePluginSecretName
+
 	fsID, err := getClusterID(f)
 	if err != nil {
 		return fmt.Errorf("failed to get clusterID: %w", err)
