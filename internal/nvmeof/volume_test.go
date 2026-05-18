@@ -17,6 +17,7 @@ limitations under the License.
 package nvmeof
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -209,7 +210,7 @@ func TestSetFromParameters(t *testing.T) {
 	}
 	for _, test := range tests {
 		vol := &NVMeoFVolumeData{}
-		err := vol.SetFromParameters(test.params)
+		err := vol.SetFromParameters(context.Background(), test.params)
 		if test.expectError {
 			require.Error(t, err)
 		} else {

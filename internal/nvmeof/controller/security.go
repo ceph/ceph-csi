@@ -176,3 +176,106 @@ func (cs *Server) cleanupDHCHAPKeys(
 
 	return nil
 }
+
+// setupTLSPSKKey configures TLS-PSK secure transport and returns the PSK.
+// TLS-PSK provides both authentication and encryption.
+// Returns empty string if TLS-PSK is disabled.
+func (cs *Server) setupTLSPSKKey(
+	ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+	nodeID,
+	subsystemNQN,
+	tlsPskMode string,
+) (string, error) {
+	// Only proceed if TLS-PSK is explicitly enabled (validated at request time)
+	if tlsPskMode != nvmeof.TLSPSKEnabled {
+		return "", nil
+	}
+
+	log.DebugLog(ctx, "TLS-PSK mode: %s - setting up secure transport for node %s", tlsPskMode, nodeID)
+	// Get authentication KMS ID from volume context
+	volumeContext := req.GetVolumeContext()
+	authKMSID := volumeContext[vcAuthenticationKMSID]
+	secrets := req.GetSecrets()
+
+	// Initialize security key manager
+	securityKeysManager, err := cs.getOrInitSecurityKeys(ctx, authKMSID, secrets)
+
+	// Setup DEK store if needed (for metadata KMS)
+	// (just for test, not for production!! for production, use external KMS like Vault)
+	if errors.Is(err, nvmeof.ErrDEKStoreNeeded) {
+		volumeID := req.GetVolumeId()
+		mgr := rbdutil.NewManager(cs.backendServer.Driver.GetInstanceID(), nil, secrets)
+		defer mgr.Destroy(ctx)
+
+		rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+		if err != nil {
+			return "", fmt.Errorf("failed to find volume with ID %q: %w", volumeID, err)
+		}
+		defer rbdVol.Destroy(ctx)
+
+		dekStore := nvmeof.NewRBDVolumeDEKStore(rbdVol)
+		securityKeysManager.SetDEKStore(dekStore)
+	} else if err != nil {
+		return "", fmt.Errorf("failed to initialize security key manager: %w", err)
+	}
+
+	// Get or create TLS-PSK key
+	pskKey, err := nvmeof.GetOrCreateTLSPSKKey(ctx, securityKeysManager, nodeID, subsystemNQN)
+	if err != nil {
+		return "", fmt.Errorf("failed to get/create TLS-PSK key: %w", err)
+	}
+
+	log.DebugLog(ctx, "TLS-PSK key retrieved for node %s, subsystem %s", nodeID, subsystemNQN)
+
+	return pskKey, nil
+}
+
+// cleanupTLSPSKKey removes TLS-PSK keys for the unpublished host.
+func (cs *Server) cleanupTLSPSKKey(
+	ctx context.Context,
+	secrets map[string]string,
+	nodeID,
+	volumeID,
+	subsystemNQN,
+	tlsPskMode,
+	authKMSID string,
+) error {
+	// Return if TLS-PSK is disabled
+	if tlsPskMode == nvmeof.TLSPSKEmpty || tlsPskMode == nvmeof.TLSPSKNone {
+		return nil
+	}
+	log.DebugLog(ctx, "Cleaning up TLS-PSK keys for node %s, subsystem %s", nodeID, subsystemNQN)
+
+	log.DebugLog(ctx, "TLS-PSK mode: %s - cleaning up secure transport for node %s", tlsPskMode, nodeID)
+
+	// Initialize security key manager
+	securityKeysManager, err := cs.getOrInitSecurityKeys(ctx, authKMSID, secrets)
+
+	// Setup DEK store if needed (for metadata KMS)
+	// (just for test, not for production!! for production, use external KMS like Vault)
+	if errors.Is(err, nvmeof.ErrDEKStoreNeeded) {
+		mgr := rbdutil.NewManager(cs.backendServer.Driver.GetInstanceID(), nil, secrets)
+		defer mgr.Destroy(ctx)
+
+		rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
+		if err != nil {
+			return fmt.Errorf("failed to find volume with ID %q: %w", volumeID, err)
+		}
+		defer rbdVol.Destroy(ctx)
+
+		dekStore := nvmeof.NewRBDVolumeDEKStore(rbdVol)
+		securityKeysManager.SetDEKStore(dekStore)
+	} else if err != nil {
+		return fmt.Errorf("failed to initialize security key manager: %w", err)
+	}
+
+	// Remove PSK key
+	if err := nvmeof.RemoveTLSPSKKey(ctx, securityKeysManager, nodeID, subsystemNQN); err != nil {
+		log.ErrorLog(ctx, "Failed to remove TLS-PSK key: %v", err)
+	} else {
+		log.DebugLog(ctx, "TLS-PSK key removed for node %s", nodeID)
+	}
+
+	return nil
+}

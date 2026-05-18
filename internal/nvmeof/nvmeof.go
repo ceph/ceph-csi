@@ -357,7 +357,9 @@ func (gw *GatewayRpcClient) GetUUIDBySubsystemAndNameSpaceID(
 }
 
 // CreateSubsystem creates an NVMe-oF subsystem on the gateway.
-func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN, networkMask string) error {
+func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN, networkMask string,
+	securedListener bool,
+) error {
 	log.DebugLog(ctx, "Creating NVMe subsystem: %s on gateway %s",
 		subsystemNQN, gw.config)
 
@@ -382,6 +384,9 @@ func (gw *GatewayRpcClient) CreateSubsystem(ctx context.Context, subsystemNQN, n
 	if networkMask != "" {
 		listNetworkMask = append(listNetworkMask, networkMask)
 		req.NetworkMask = listNetworkMask
+		if securedListener {
+			req.SecureListeners = &securedListener
+		}
 	}
 	status, err := gw.client.CreateSubsystem(ctx, req)
 	switch {
@@ -453,7 +458,9 @@ func (gw *GatewayRpcClient) SubsystemExists(ctx context.Context, subsystemNQN st
 }
 
 // AddHost adds a host to a subsystem (allows access).
-func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN string, dhchapKeys DHCHAPKeys) error {
+func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN string,
+	dhchapKeys DHCHAPKeys, pskKey string,
+) error {
 	log.DebugLog(ctx, "Adding host %s to subsystem %s on gateway %s",
 		hostNQN, subsystemNQN, gw.config)
 
@@ -462,11 +469,14 @@ func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN s
 	req := &pb.AddHostReq{
 		SubsystemNqn: subsystemNQN,
 		HostNqn:      hostNQN,
-		// Psk: nil,          // No pre-shared key
-		// DhchapKey: nil,    // No DH-CHAP authentication
 		// PskEncrypted: nil, // No PSK encryption
 		// KeyEncrypted: nil, // No key encryption
 		// CtrlrKeyEncrypted: nil, // No controller key encryption
+	}
+
+	// Add TLS-PSK key if provided
+	if pskKey != "" {
+		req.Psk = &pskKey
 	}
 
 	// Add DH-CHAP key if provided
@@ -496,6 +506,7 @@ func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN s
 }
 
 func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN string, listenerInfo ListenerDetails,
+	securedListener bool,
 ) error {
 	log.DebugLog(ctx, "Adding listener %s to subsystem %s", listenerInfo.Address, subsystemNQN)
 	adrfam := pb.AddressFamily_ipv4
@@ -505,8 +516,12 @@ func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN str
 		Traddr:   listenerInfo.Address,
 		Trsvcid:  &listenerInfo.Port,
 		Adrfam:   &adrfam, // Assuming IPv4, can be configurable // TODO - make it configurable
-		// Secure  // false, // Assuming no security for now   // TODO - make it configurable?
 		// VerifyHostName // false, // Assuming no hostname verification for now // TODO - make it configurable
+	}
+
+	// Set secure flag for TLS if enabled
+	if securedListener {
+		req.Secure = &securedListener
 	}
 
 	resp, err := gw.client.CreateListener(ctx, req)

@@ -418,6 +418,16 @@ func validateDHCHAPParameter(dhchapMode string) error {
 	return nil
 }
 
+// validateTLSPSKParameter helper function to validate the TLS-PSK parameters.
+func validateTLSPSKParameter(tlsPskMode string) error {
+	if tlsPskMode != nvmeof.TLSPSKEmpty && tlsPskMode != nvmeof.TLSPSKNone &&
+		tlsPskMode != nvmeof.TLSPSKEnabled {
+		return fmt.Errorf("invalid tlsPskMode: %s (must be empty, 'none', or 'enabled')", tlsPskMode)
+	}
+
+	return nil
+}
+
 // validateCreateVolumeRequest validates the incoming request for nvmeof.
 // the rest of the parameters are validated by RBD.
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
@@ -466,6 +476,10 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 		return fmt.Errorf("invalid NVMe-oF QoS parameters: %w", err)
 	}
 	err = validateDHCHAPParameter(params["dhchapMode"])
+	if err != nil {
+		return err
+	}
+	err = validateTLSPSKParameter(params["tlsPskMode"])
 	if err != nil {
 		return err
 	}
@@ -656,6 +670,7 @@ func ensureSubsystem(
 	subsystemNQN,
 	networkMask string,
 	listeners []nvmeof.ListenerDetails,
+	securedListener bool,
 ) error {
 	exists, err := gateway.SubsystemExists(ctx, subsystemNQN)
 	if err != nil {
@@ -663,7 +678,7 @@ func ensureSubsystem(
 	}
 	if !exists {
 		// Create if it doesn't exist (controller decision)
-		err = gateway.CreateSubsystem(ctx, subsystemNQN, networkMask)
+		err = gateway.CreateSubsystem(ctx, subsystemNQN, networkMask, securedListener)
 		if err != nil {
 			return err
 		}
@@ -676,7 +691,7 @@ func ensureSubsystem(
 		// Create all listeners
 		for i, listener := range listeners {
 			log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
-			if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
+			if err := gateway.CreateListener(ctx, subsystemNQN, listener, securedListener); err != nil {
 				return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
 			}
 		}
@@ -751,7 +766,7 @@ func (cs *Server) createNVMeoFResources(
 	networkMask := params["networkMask"]
 	nvmeofData := &nvmeof.NVMeoFVolumeData{}
 
-	if err := nvmeofData.SetFromParameters(params); err != nil {
+	if err := nvmeofData.SetFromParameters(ctx, params); err != nil {
 		return nil, fmt.Errorf("failed to set NVMe-oF volume data: %w", err)
 	}
 
@@ -790,7 +805,10 @@ func (cs *Server) createNVMeoFResources(
 	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 
 	// Step 3: Ensure subsystem exists (and listener)
-	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask, nvmeofData.ListenerInfo); err != nil {
+	// Determine if TLS-PSK is enabled for secure listeners
+	secure := nvmeofData.Security.TlsPskMode == nvmeof.TLSPSKEnabled
+	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask,
+		nvmeofData.ListenerInfo, secure); err != nil {
 		return nvmeofData, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 
@@ -926,8 +944,16 @@ func (cs *Server) publishResources(ctx context.Context,
 		return "", err
 	}
 
+	// Get TLS-PSK configuration from volume context
+	tlsPskMode := volumeContext[vcTLSPSKMode] // "none", "enabled", or empty
+	var pskKey string
+	pskKey, err = cs.setupTLSPSKKey(ctx, req, nodeID, subsystemNQN, tlsPskMode)
+	if err != nil {
+		return "", err
+	}
+
 	// Add host to subsystem
-	if err := gateway.AddHost(ctx, subsystemNQN, hostNQN, dhchapKeys); err != nil {
+	if err := gateway.AddHost(ctx, subsystemNQN, hostNQN, dhchapKeys, pskKey); err != nil {
 		return "", fmt.Errorf("failed to add host %s: %w", hostNQN, err)
 	}
 
@@ -996,6 +1022,15 @@ func (cs *Server) unpublishResources(ctx context.Context,
 		}
 	}
 
+	// Cleanup TLS-PSK key from KMS
+	if data.Security.TlsPskMode == nvmeof.TLSPSKEnabled {
+		err = cs.cleanupTLSPSKKey(ctx, secrets, nodeID, volumeID, subsystemNQN,
+			data.Security.TlsPskMode, data.Security.AuthenticationKMSID)
+		if err != nil {
+			return fmt.Errorf("failed to cleanup TLS-PSK key for host %s: %w", hostNQN, err)
+		}
+	}
+
 	return nil
 }
 
@@ -1033,6 +1068,9 @@ const (
 
 	// DH-CHAP mode for authentication.
 	vcDHCHAPMode = "dhchapMode"
+
+	// TLS-PSK mode for secure transport (authentication + encryption).
+	vcTLSPSKMode = "tlsPskMode"
 )
 
 // toRBDMetadataKey converts clean volume context key to prefixed RBD metadata key.
@@ -1063,6 +1101,7 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) er
 	// Store Security info
 	volume.VolumeContext[vcAuthenticationKMSID] = data.Security.AuthenticationKMSID
 	volume.VolumeContext[vcDHCHAPMode] = data.Security.DhchapMode
+	volume.VolumeContext[vcTLSPSKMode] = data.Security.TlsPskMode
 
 	return nil
 }
@@ -1116,8 +1155,9 @@ func (cs *Server) storeNVMeoFMetadata(
 		toRBDMetadataKey(vcGatewayAddress): nvmeofData.GatewayManagementInfo.Address,
 		toRBDMetadataKey(vcGatewayPort):    gatewayManagementInfoPortStr,
 
-		// DH-CHAP mode
+		// Security config
 		toRBDMetadataKey(vcDHCHAPMode):          nvmeofData.Security.DhchapMode,
+		toRBDMetadataKey(vcTLSPSKMode):          nvmeofData.Security.TlsPskMode,
 		toRBDMetadataKey(vcAuthenticationKMSID): nvmeofData.Security.AuthenticationKMSID,
 	}
 
@@ -1173,6 +1213,7 @@ func (cs *Server) getNVMeoFMetadata(
 	}
 	optionalKeys := []string{
 		toRBDMetadataKey(vcDHCHAPMode),
+		toRBDMetadataKey(vcTLSPSKMode),
 		toRBDMetadataKey(vcAuthenticationKMSID),
 	}
 
@@ -1239,6 +1280,7 @@ func (cs *Server) getNVMeoFMetadata(
 		},
 		Security: nvmeof.NVMeoFSecurityConfig{
 			DhchapMode:          metadata[toRBDMetadataKey(vcDHCHAPMode)],
+			TlsPskMode:          metadata[toRBDMetadataKey(vcTLSPSKMode)],
 			AuthenticationKMSID: metadata[toRBDMetadataKey(vcAuthenticationKMSID)],
 		},
 	}

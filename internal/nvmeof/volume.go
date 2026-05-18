@@ -17,10 +17,13 @@ limitations under the License.
 package nvmeof
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // NVMeoFVolumeData holds the data required for an NVMe-oF volume.
@@ -35,6 +38,7 @@ type NVMeoFVolumeData struct {
 
 type NVMeoFSecurityConfig struct {
 	DhchapMode          string
+	TlsPskMode          string
 	AuthenticationKMSID string
 }
 
@@ -84,7 +88,7 @@ func SetupListeners(listenersJSON string) ([]ListenerDetails, error) {
 // It extracts the subsystem NQN, gateway management info, security config, and
 // listener info from the parameters.
 // It also applies default values to listeners if necessary.
-func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string) error {
+func (v *NVMeoFVolumeData) SetFromParameters(ctx context.Context, parameters map[string]string) error {
 	// set subsystem NQN
 	v.SubsystemNQN = parameters["subsystemNQN"]
 
@@ -100,6 +104,7 @@ func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string) error
 
 	// set security config
 	v.Security.DhchapMode = parameters["dhchapMode"]
+	v.Security.TlsPskMode = parameters["tlsPskMode"]
 	v.Security.AuthenticationKMSID = parameters["authenticationKMSID"]
 
 	// If dhchapMode was explicitly provided and is not "none", and authenticationKMSID is empty,
@@ -109,6 +114,18 @@ func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string) error
 		v.Security.DhchapMode != DHCHAPModeNone &&
 		v.Security.AuthenticationKMSID == "" {
 		v.Security.AuthenticationKMSID = RBDMetadataKMS
+	}
+
+	// If tlsPskMode was explicitly provided and is not "none", and authenticationKMSID is empty,
+	// use a default KMS ID - RBD metadata KMS.
+	// In production, users should always provide a KMS ID when using TLS-PSK.
+	if v.Security.TlsPskMode != TLSPSKEmpty &&
+		v.Security.TlsPskMode != TLSPSKNone &&
+		v.Security.AuthenticationKMSID == "" {
+		v.Security.AuthenticationKMSID = RBDMetadataKMS
+		log.WarningLog(ctx,
+			"using default KMS ID for TLS-PSK: %s, it is strongly recommended to provide a KMS ID in production",
+			RBDMetadataKMS)
 	}
 
 	// set listeners

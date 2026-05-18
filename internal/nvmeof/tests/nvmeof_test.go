@@ -119,13 +119,15 @@ func TestRealGateway(t *testing.T) {
 
 	// Test create subsystem
 	networkMask := "" // No auto-listeners
-	err = client.CreateSubsystem(ctx, nvmeofData.SubsystemNQN, networkMask)
+	securedListener := false
+	err = client.CreateSubsystem(ctx, nvmeofData.SubsystemNQN, networkMask, securedListener)
 	require.NoError(t, err)
 	t.Logf("✓ Subsystem created: %s", nvmeofData.SubsystemNQN)
 
 	// Test add host
 	noneDhchapKeys := nvmeof.DHCHAPKeys{} // No DH-CHAP authentication
-	err = client.AddHost(ctx, nvmeofData.SubsystemNQN, hostNQN, noneDhchapKeys)
+	noTLSPSKKey := ""                     // No TLS-PSK key
+	err = client.AddHost(ctx, nvmeofData.SubsystemNQN, hostNQN, noneDhchapKeys, noTLSPSKKey)
 	require.NoError(t, err)
 	t.Logf("✓ Host added: %s to subsystem %s", hostNQN, nvmeofData.SubsystemNQN)
 
@@ -136,7 +138,7 @@ func TestRealGateway(t *testing.T) {
 	t.Logf("✓ Subsystem exists: %s", nvmeofData.SubsystemNQN)
 
 	// Test create listener
-	err = client.CreateListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo[0])
+	err = client.CreateListener(ctx, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo[0], false)
 	require.NoError(t, err)
 	t.Logf("✓ Listener created for subsystem %s at %s", testNQN, config)
 
