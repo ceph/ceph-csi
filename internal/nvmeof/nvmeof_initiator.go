@@ -19,6 +19,7 @@ package nvmeof
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -74,6 +75,8 @@ type ConnectRequest struct {
 	SubsystemDhchapKey string
 	// Optional - In-band authentication secret for uni-directional authentication
 	HostDhchapKey string
+	// Optional - TLS-PSK pre-shared key for secure transport (authentication + encryption)
+	PSKKey string
 }
 
 // nvmeInitiator implements NVMeInitiator interface.
@@ -196,6 +199,20 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 	}
 	// Try connecting to each address until one succeeds
 	var success bool
+	if req.PSKKey != "" {
+		// Verify tlshd daemon is running (required for TLS-PSK keyring support)
+		if err := verifyTLSHandshakeDaemon(ctx); err != nil {
+			log.ErrorLog(ctx, "TLS handshake daemon verification failed for TLS-PSK connection: %v", err)
+
+			return false, err
+		}
+		// Insert PSK into kernel keyring using nvme check-tls-key
+		if err := insertPSKIntoKeyring(ctx, req.PSKKey, req.HostNQN, req.SubsystemNQN); err != nil {
+			log.ErrorLog(ctx, "Failed to insert TLS-PSK into keyring for %s: %v", req.SubsystemNQN, err)
+
+			return false, err
+		}
+	}
 	for _, listener := range req.Listeners {
 		portStr := strconv.FormatUint(uint64(listener.Port), 10)
 
@@ -235,6 +252,10 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 		// if Subsystem DH-CHAP key is provided, add it to the command (for bi-directional auth)
 		if req.SubsystemDhchapKey != "" {
 			args = append(args, "--dhchap-ctrl-secret", req.SubsystemDhchapKey)
+		}
+		// if PSK key is provided, connect with --tls (key already inserted into keyring above)
+		if req.PSKKey != "" {
+			args = append(args, "--tls")
 		}
 		stdout, stderr, err := util.ExecCommandWithTimeout(ctx, connectTimeout, "nvme", args...)
 		// Execute connection
@@ -548,4 +569,46 @@ func getNamespacesForController(ctx context.Context, controllerName string) ([]i
 	}
 
 	return nsids, nil
+}
+
+// verifyTLSHandshakeDaemon checks if the tlshd daemon is running.
+// tlshd must be pre-installed and running on the host node as a prerequisite for TLS-PSK.
+// This function is called only when TLS-PSK is actually requested.
+func verifyTLSHandshakeDaemon(ctx context.Context) error {
+	// Use pgrep which searches host process table (works since hostPID=true)
+	// systemctl is not reliable from within a container
+	_, _, err := util.ExecCommandWithTimeout(ctx, 5*time.Second, "pgrep", "-x", "tlshd")
+	if err != nil {
+		return errors.New("tlshd daemon is not running (required for TLS-PSK). " +
+			"Install ktls-utils and start tlshd on the host.")
+	}
+
+	log.DebugLog(ctx, "tlshd daemon is running and available for TLS-PSK")
+
+	return nil
+}
+
+// insertPSKIntoKeyring inserts a TLS-PSK into the kernel keyring.
+// This must be done before connecting with --tls flag.
+// The keyring is managed by tlshd daemon and uses identity version 0 for SPDK/Ceph compatibility.
+func insertPSKIntoKeyring(ctx context.Context, pskKey, hostNQN, subsystemNQN string) error {
+	args := []string{
+		"check-tls-key",
+		"--keydata", pskKey,
+		"--hostnqn", hostNQN,
+		"--subsysnqn", subsystemNQN,
+		"--identity", "0", // Use identity version 0 for SPDK/Ceph compatibility
+		"--insert", // Insert into kernel keyring
+	}
+
+	stdout, stderr, err := util.ExecCommandWithTimeout(ctx, connectTimeout, "nvme", args...)
+	if err != nil {
+		return fmt.Errorf("nvme check-tls-key --insert failed (stdout: %s, stderr: %s): %w",
+			stdout, stderr, err)
+	}
+
+	// Output format: "Inserted TLS key 156b1745"
+	log.DebugLog(ctx, "Inserted TLS-PSK into keyring: %s", strings.TrimSpace(stdout))
+
+	return nil
 }

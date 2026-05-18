@@ -76,6 +76,7 @@ type NvmeConnectionInfo struct {
 	HostNQN       string                   `json:"hostNQN,omitempty"`
 	Transport     string                   `json:"transport"`
 	DhchapMode    string                   `json:"dhchapMode,omitempty"`
+	TlsPskMode    string                   `json:"tlsPskMode,omitempty"`
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed
@@ -98,6 +99,7 @@ const (
 	nvmeofHostNQN       = "HostNQN"
 	defaultTransport    = "tcp"
 	nvmeofdhchapMode    = "dhchapMode"
+	nvmeoftlsPskMode    = "tlsPskMode"
 	authenticationKMSID = "authenticationKMSID"
 )
 
@@ -687,6 +689,10 @@ func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string
 	if !ok || dhchapMode == "" || dhchapMode == "none" {
 		dhchapMode = ""
 	}
+	tlsPskMode, ok := volumeContext[nvmeoftlsPskMode]
+	if !ok || tlsPskMode == "" || tlsPskMode == "none" {
+		tlsPskMode = ""
+	}
 
 	return &NvmeConnectionInfo{
 		SubsystemNQN:  subsystemNQN,
@@ -696,6 +702,7 @@ func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string
 		HostNQN:       hostNQN,
 		Transport:     defaultTransport,
 		DhchapMode:    dhchapMode,
+		TlsPskMode:    tlsPskMode,
 	}, nil
 }
 
@@ -717,6 +724,13 @@ func (ns *NodeServer) connectToSubsystem(
 	// Setup DH-CHAP authentication if required
 	if info.DhchapMode != nvmeof.DHCHAPEmpty && info.DhchapMode != nvmeof.DHCHAPModeNone {
 		if err := ns.setupDHCHAPAuth(ctx, volumeID, info, secrets, authKMSID, connectReq); err != nil {
+			return "", err
+		}
+	}
+
+	// Setup TLS-PSK secure transport if required
+	if info.TlsPskMode == nvmeof.TLSPSKEnabled {
+		if err := ns.setupTLSPSKAuth(ctx, volumeID, info, secrets, authKMSID, connectReq); err != nil {
 			return "", err
 		}
 	}

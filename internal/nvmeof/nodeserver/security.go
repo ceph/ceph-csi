@@ -99,3 +99,55 @@ func (ns *NodeServer) setupDHCHAPAuth(
 
 	return nil
 }
+
+// setupTLSPSKAuth configures TLS-PSK secure transport for the connection.
+// TLS-PSK provides both authentication and encryption.
+func (ns *NodeServer) setupTLSPSKAuth(
+	ctx context.Context,
+	volumeID string,
+	info *NvmeConnectionInfo,
+	secrets map[string]string,
+	authKMSID string,
+	connectReq *nvmeof.ConnectRequest,
+) error {
+	// Initialize security key manager
+	securityKeys, err := ns.getOrInitSecurityKeys(ctx, authKMSID, secrets)
+
+	// Setup DEK store if needed (for metadata KMS)
+	if errors.Is(err, nvmeof.ErrDEKStoreNeeded) {
+		cr, err := util.NewUserCredentialsWithMigration(secrets)
+		if err != nil {
+			return fmt.Errorf("failed to get user credentials: %w", err)
+		}
+		defer cr.DeleteCredentials()
+
+		rbdVol, err := rbdutil.GenVolFromVolID(ctx, volumeID, cr, secrets)
+		if err != nil {
+			return fmt.Errorf("failed to get volume: %w", err)
+		}
+		defer rbdVol.Destroy(ctx)
+
+		dekStore := nvmeof.NewRBDVolumeDEKStore(rbdVol)
+		securityKeys.SetDEKStore(dekStore)
+	} else if err != nil {
+		return fmt.Errorf("failed to initialize security key manager: %w", err)
+	}
+
+	// Get TLS-PSK key (get-only, no creation)
+	// Node-side must NOT create PSK keys to prevent mismatches with gateway.
+	// The controller creates the PSK during ControllerPublishVolume.
+	pskKey, err := nvmeof.GetTLSPSKKey(ctx, securityKeys, ns.nodeID, info.SubsystemNQN)
+	if err != nil {
+		if errors.Is(err, nvmeof.ErrKeyNotFound) {
+			return fmt.Errorf(
+				"TLS-PSK key not found in KMS for node %s and subsystem %s: "+
+					"ensure ControllerPublishVolume completed successfully before NodeStageVolume",
+				ns.nodeID, info.SubsystemNQN)
+		}
+
+		return fmt.Errorf("failed to retrieve TLS-PSK key: %w", err)
+	}
+	connectReq.PSKKey = pskKey
+
+	return nil
+}
