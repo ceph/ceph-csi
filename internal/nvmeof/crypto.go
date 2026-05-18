@@ -43,6 +43,12 @@ const (
 	// NVMeOFSecurityOwner is the identifier used when requesting KMS instances
 	// for NVMe-oF authentication key management.
 	NVMeOFSecurityOwner = "nvmeof-system"
+
+	// RBDMetadataKMS is the KMS identifier for the metadata-based KMS implementation.
+	// This KMS stores encrypted keys in RBD image metadata and is intended for testing
+	// and environments without an external KMS. It requires the caller to provide a DEKStore.
+	// In production, a more robust KMS like Vault should be used instead.
+	RBDMetadataKMS = "metadata"
 )
 
 // SecurityKeyManager defines the interface for managing NVMe-oF security keys.
@@ -87,7 +93,7 @@ func InitSecurityKeyManager(
 ) (SecurityKeyManager, error) {
 	if kmsID == "" {
 		// Use metadata KMS for testing (stores in RBD metadata)
-		kmsID = "metadata"
+		kmsID = RBDMetadataKMS
 	}
 	kmsInstance, err := kms.GetKMS(NVMeOFSecurityOwner, kmsID, credentials)
 	if err != nil {

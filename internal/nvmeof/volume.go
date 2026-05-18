@@ -108,7 +108,7 @@ func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string) error
 	if v.Security.DhchapMode != DHCHAPEmpty &&
 		v.Security.DhchapMode != DHCHAPModeNone &&
 		v.Security.AuthenticationKMSID == "" {
-		v.Security.AuthenticationKMSID = "metadata"
+		v.Security.AuthenticationKMSID = RBDMetadataKMS
 	}
 
 	// set listeners

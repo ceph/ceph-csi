@@ -177,7 +177,7 @@ func TestSetFromParameters(t *testing.T) {
 				},
 				Security: NVMeoFSecurityConfig{
 					DhchapMode:          "bidirectional",
-					AuthenticationKMSID: "metadata",
+					AuthenticationKMSID: RBDMetadataKMS,
 				},
 				ListenerInfo: []ListenerDetails{
 					{Hostname: "nvmeof-gw-b", GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.13"}},
