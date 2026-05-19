@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -117,9 +118,35 @@ func (h *nbdQoSHandler) HasParams(params map[string]string) bool {
 }
 
 // Validate validates traditional NBD QoS parameters.
-// Currently returns nil as NBD QoS validation is done during SetQOS.
 func (h *nbdQoSHandler) Validate(params map[string]string) error {
-	// NBD QoS validation is performed in SetQOS via calcQosBasedOnCapacity.
+	return validateNBDQoSParams(params)
+}
+
+// validateNBDQoSParams validates traditional NBD QoS parameters.
+// Ensures all numeric values are valid and positive.
+func validateNBDQoSParams(params map[string]string) error {
+	// All NBD QoS parameter keys that accept numeric values
+	numericParams := []string{
+		baseIops, maxIops, baseReadIops, maxReadIops, baseWriteIops, maxWriteIops,
+		baseBps, maxBps, baseReadBps, maxReadBps, baseWriteBps, maxWriteBps,
+		iopsPerGiB, readIopsPerGiB, writeIopsPerGiB,
+		bpsPerGiB, readBpsPerGiB, writeBpsPerGiB,
+		baseVolSizeBytes,
+	}
+
+	for _, key := range numericParams {
+		if val, ok := params[key]; ok && val != "" {
+			parsed, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid value for %s: %s, must be a valid integer", key, val)
+			}
+			// Allow zero for base limits (can be omitted), but not negative
+			if parsed < 0 {
+				return fmt.Errorf("invalid value for %s: %s, must be non-negative", key, val)
+			}
+		}
+	}
+
 	return nil
 }
 
