@@ -165,3 +165,79 @@ func TestToCSIVolume(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateQoSParameters(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		params  map[string]string
+		mounter string
+		wantErr bool
+	}{
+		{
+			name:    "krbd with cgroup params only",
+			params:  map[string]string{maxReadIops: "1000", maxWriteBps: "10485760"},
+			mounter: rbdDefaultMounter,
+			wantErr: false,
+		},
+		{
+			name:    "krbd with NBD-only params",
+			params:  map[string]string{baseIops: "3000"},
+			mounter: rbdDefaultMounter,
+			wantErr: true,
+		},
+		{
+			name:    "krbd with mixed cgroup and NBD params",
+			params:  map[string]string{maxReadIops: "1000", baseReadIops: "500"},
+			mounter: rbdDefaultMounter,
+			wantErr: true,
+		},
+		{
+			name:    "krbd with invalid cgroup param value",
+			params:  map[string]string{maxReadIops: "-1"},
+			mounter: rbdDefaultMounter,
+			wantErr: true,
+		},
+		{
+			name:    "krbd with empty params",
+			params:  map[string]string{},
+			mounter: rbdDefaultMounter,
+			wantErr: false,
+		},
+		{
+			name:    "nbd with NBD params and max limits",
+			params:  map[string]string{baseReadIops: "500", maxReadIops: "1000"},
+			mounter: rbdNbdMounter,
+			wantErr: false,
+		},
+		{
+			name:    "nbd with NBD-only params",
+			params:  map[string]string{baseIops: "3000", iopsPerGiB: "100"},
+			mounter: rbdNbdMounter,
+			wantErr: false,
+		},
+		{
+			name:    "nbd with invalid NBD param value",
+			params:  map[string]string{baseIops: "invalid"},
+			mounter: rbdNbdMounter,
+			wantErr: true,
+		},
+		{
+			name:    "nbd with empty params",
+			params:  map[string]string{},
+			mounter: rbdNbdMounter,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateQoSParameters(tt.params, tt.mounter)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateQoSParameters() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
