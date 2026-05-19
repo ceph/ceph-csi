@@ -167,6 +167,9 @@ type Config struct {
 	// Read affinity related options
 	EnableReadAffinity  bool   // enable OSD read affinity.
 	CrushLocationLabels string // list of CRUSH location labels to read from the node.
+
+	// FeatureGates is a comma-separated list of key=bool pairs (e.g., SlowGRPCRestart=false).
+	FeatureGates string
 }
 
 // ValidateDriverName validates the driver name.

@@ -52,6 +52,7 @@ make image-cephcsi
 | `--crush-location-labels`| _empty_                       | Kubernetes node labels that determine the CRUSH location the node belongs to, separated by ','.<br>`Note: These labels will be replaced if crush location labels are defined in the ceph-csi-config ConfigMap for the specific cluster.`                                                                                                                                                                                       |
 | `--radosnamespacecephfs`| _empty_                       | CephFS RadosNamespace used to store CSI specific objects and keys.                                                                                                                               |
 | `--logslowopinterval`   | `30s`                         | Log slow operations at the specified rate. Operation is considered slow if it outlives its deadline.                                                                                             |
+| `--feature-gates`       | _empty_                       | Comma-separated list of feature gates (e.g., `SlowGRPCRestart=false`). Available gates: `SlowGRPCRestart` (default: `true`) — restart the process when a unary gRPC call is stuck for more than 10 minutes. |
 
 **NOTE:** The parameter `-forcecephkernelclient` enables the Kernel
 CephFS mounter on kernels < 4.17.

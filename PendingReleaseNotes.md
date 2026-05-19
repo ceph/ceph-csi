@@ -28,3 +28,7 @@
 - The `--setmetadata` flag has been deprecated and has no effect. Metadata is
   now always set on RBD images and CephFS subvolumes. The flag will be removed
   in a future release.
+- csi-common: the CSI driver process is now automatically restarted if any
+  unary gRPC call is stuck for more than 10 minutes. ReclaimSpace calls are
+  excluded from this limit. The kubelet will restart the container in-place.
+  Use `--feature-gates=SlowGRPCRestart=false` to disable this behaviour.

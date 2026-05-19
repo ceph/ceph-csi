@@ -114,7 +114,15 @@ func NewGroupControllerServiceCapability(ctrlCap csi.GroupControllerServiceCapab
 // are instantiated when starting gRPC servers.
 type MiddlewareServerOptionConfig struct {
 	LogSlowOpInterval time.Duration
+	SlowGRPCRestart   bool
 }
+
+// slowGRPCRestartThreshold is the duration after which a stuck gRPC call
+// triggers a process restart; the kubelet will restart the container in-place.
+const slowGRPCRestartThreshold = 10 * time.Minute
+
+// osExit is a variable to allow overriding in tests.
+var osExit = os.Exit
 
 // NewMiddlewareServerOption creates a new grpc.ServerOption that configures a
 // common format for log messages and other gRPC related handlers.
@@ -137,6 +145,9 @@ func NewMiddlewareServerOption(config MiddlewareServerOptionConfig) grpc.ServerO
 		})
 	}
 
+	if config.SlowGRPCRestart {
+		middleWare = append(middleWare, killOnSlowGRPC)
+	}
 	middleWare = append(middleWare, panicHandler)
 
 	return grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(middleWare...))
@@ -403,6 +414,55 @@ func logSlowGRPC(
 
 	resp, err := handler(ctx, req)
 	close(handlerFinished)
+
+	return resp, err
+}
+
+// slowGRPCSkipPrefixes lists gRPC method prefixes excluded from the stuck-call
+// restart; methods with these prefixes can legitimately run for a long time.
+var slowGRPCSkipPrefixes = []string{
+	"/reclaimspace.",
+}
+
+// killOnSlowGRPC restarts the process if the gRPC handler does not return
+// within slowGRPCRestartThreshold; the kubelet restarts the container in-place.
+// Methods matching slowGRPCSkipPrefixes are excluded.
+func killOnSlowGRPC(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	return killOnSlowGRPCWithThreshold(slowGRPCRestartThreshold, ctx, req, info, handler)
+}
+
+func killOnSlowGRPCWithThreshold(
+	threshold time.Duration,
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	for _, prefix := range slowGRPCSkipPrefixes {
+		if strings.HasPrefix(info.FullMethod, prefix) {
+			return handler(ctx, req)
+		}
+	}
+	done := make(chan struct{})
+	timer := time.NewTimer(threshold)
+	go func() {
+		select {
+		case <-timer.C:
+			log.ExtendedLog(ctx,
+				"gRPC call %s stuck for %s, restarting process", info.FullMethod, threshold)
+			osExit(1)
+		case <-done:
+		}
+	}()
+
+	resp, err := handler(ctx, req)
+	timer.Stop()
+	close(done)
 
 	return resp, err
 }

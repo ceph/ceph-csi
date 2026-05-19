@@ -110,6 +110,7 @@ func (d *nvmeofDriver) Run(conf *util.Config) {
 
 	server.Start(conf.Endpoint, srv, csicommon.MiddlewareServerOptionConfig{
 		LogSlowOpInterval: conf.LogSlowOpInterval,
+		SlowGRPCRestart:   util.IsFeatureGateEnabled(util.SlowGRPCRestart),
 	})
 
 	if conf.EnableProfiling {

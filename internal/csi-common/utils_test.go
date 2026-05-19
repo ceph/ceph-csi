@@ -17,14 +17,18 @@ limitations under the License.
 package csicommon
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/replication"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	mount "k8s.io/mount-utils"
 )
 
@@ -741,5 +745,107 @@ func TestIsReaderOnly(t *testing.T) {
 				t.Errorf("isReadOnly() roOnly = %v, want %v", roOnly, tt.roOnly)
 			}
 		})
+	}
+}
+
+// killOnSlowGRPC tests must not run in parallel: they mutate the package-level
+// osExit variable and running them concurrently would cause a data race.
+//
+// ReclaimSpace methods (/reclaimspace.*) are excluded from the restart
+// mechanism and must never trigger osExit regardless of duration.
+
+//nolint:paralleltest // mutates package-level osExit; running in parallel causes a data race
+func TestKillOnSlowGRPCFastHandler(t *testing.T) {
+	exitCalled := false
+	orig := osExit
+	osExit = func(_ int) { exitCalled = true }
+	defer func() { osExit = orig }()
+
+	info := &grpc.UnaryServerInfo{FullMethod: "/csi.v1.Node/NodeStageVolume"}
+	handler := func(_ context.Context, _ any) (any, error) {
+		return "ok", nil
+	}
+
+	resp, err := killOnSlowGRPCWithThreshold(50*time.Millisecond, context.Background(), nil, info, handler)
+	require.NoError(t, err)
+	require.Equal(t, "ok", resp)
+	require.False(t, exitCalled, "osExit must not be called when handler returns quickly")
+}
+
+//nolint:paralleltest // mutates package-level osExit; running in parallel causes a data race
+func TestKillOnSlowGRPCHandlerError(t *testing.T) {
+	exitCalled := false
+	orig := osExit
+	osExit = func(_ int) { exitCalled = true }
+	defer func() { osExit = orig }()
+
+	info := &grpc.UnaryServerInfo{FullMethod: "/csi.v1.Controller/CreateVolume"}
+	wantErr := errors.New("handler error")
+	handler := func(_ context.Context, _ any) (any, error) {
+		return nil, wantErr
+	}
+
+	_, err := killOnSlowGRPCWithThreshold(50*time.Millisecond, context.Background(), nil, info, handler)
+	require.ErrorIs(t, err, wantErr)
+	require.False(t, exitCalled, "osExit must not be called when handler returns with error quickly")
+}
+
+//nolint:paralleltest // mutates package-level osExit; running in parallel causes a data race
+func TestKillOnSlowGRPCStuckHandler(t *testing.T) {
+	exitSignal := make(chan int, 1)
+	orig := osExit
+	osExit = func(code int) { exitSignal <- code }
+	defer func() { osExit = orig }()
+
+	blockDone := make(chan struct{})
+	info := &grpc.UnaryServerInfo{FullMethod: "/csi.v1.Node/NodeStageVolume"}
+	//nolint:unparam // first return is always nil; signature must match grpc.UnaryHandler
+	handler := func(_ context.Context, _ any) (any, error) {
+		<-blockDone
+
+		return nil, nil
+	}
+
+	go func() {
+		//nolint:errcheck // return values intentionally ignored; only side-effect (osExit) is tested
+		killOnSlowGRPCWithThreshold(50*time.Millisecond, context.Background(), nil, info, handler)
+	}()
+
+	select {
+	case code := <-exitSignal:
+		require.Equal(t, 1, code)
+	case <-time.After(2 * time.Second):
+		t.Fatal("osExit was not called within timeout for stuck handler")
+	}
+	close(blockDone)
+}
+
+//nolint:paralleltest // mutates package-level osExit; running in parallel causes a data race
+func TestKillOnSlowGRPCReclaimSpaceExcluded(t *testing.T) {
+	orig := osExit
+	osExit = func(_ int) { t.Error("osExit must not be called for ReclaimSpace methods") }
+	defer func() { osExit = orig }()
+
+	for _, method := range []string{
+		"/reclaimspace.ReclaimSpaceController/ControllerReclaimSpace",
+		"/reclaimspace.ReclaimSpaceNode/NodeReclaimSpace",
+	} {
+		info := &grpc.UnaryServerInfo{FullMethod: method}
+		blockDone := make(chan struct{})
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			handler := func(_ context.Context, _ any) (any, error) {
+				<-blockDone
+
+				return nil, nil
+			}
+			//nolint:errcheck // return values intentionally ignored; only side-effect (no osExit) is tested
+			killOnSlowGRPCWithThreshold(10*time.Millisecond, context.Background(), nil, info, handler)
+		}()
+		// Wait longer than the threshold; osExit must not fire.
+		time.Sleep(50 * time.Millisecond)
+		close(blockDone)
+		<-done
 	}
 }
