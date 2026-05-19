@@ -1977,7 +1977,8 @@ func modifyPVCVolumeAttributesClass(
 			return false, fmt.Errorf("failed to get pvc: %w", err)
 		}
 
-		if *updatedPVC.Status.CurrentVolumeAttributesClassName != vacName {
+		if updatedPVC.Status.CurrentVolumeAttributesClassName == nil ||
+			*updatedPVC.Status.CurrentVolumeAttributesClassName != vacName {
 			return false, nil
 		}
 
