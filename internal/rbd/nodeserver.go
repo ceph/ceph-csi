@@ -540,10 +540,8 @@ func (ns *NodeServer) stageTransaction(
 	log.DebugLog(ctx, "rbd image: %s was successfully mapped at %s\n",
 		volOptions, devicePath)
 
-	// userspace mounters like nbd need the device path as a reference while
-	// restarting the userspace processes on a nodeplugin restart. For kernel
-	// mounter(krbd) we don't need it as there won't be any process running
-	// in userspace, hence we don't store the device path for krbd devices.
+	// Store the raw device path for nbd before encryption processing.
+	// The nbd healer uses this path to re-attach the device on restart.
 	if volOptions.Mounter == rbdNbdMounter {
 		err = updateRBDImageMetadataStash(req.GetStagingTargetPath(), devicePath)
 		if err != nil {
@@ -566,6 +564,13 @@ func (ns *NodeServer) stageTransaction(
 	if volOptions.isFileEncrypted() {
 		if err = fscrypt.InitializeNode(ctx); err != nil {
 			return transaction, fmt.Errorf("file encryption setup for %s failed: %w", volOptions.VolID, err)
+		}
+	}
+
+	if volOptions.Mounter != rbdNbdMounter {
+		err = updateRBDImageMetadataStash(req.GetStagingTargetPath(), devicePath)
+		if err != nil {
+			return transaction, err
 		}
 	}
 
