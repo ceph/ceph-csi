@@ -1513,6 +1513,11 @@ func (ns *NodeServer) NodeGetVolumeStats(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+	}
+	defer ns.VolumeLocks.Release(targetPath)
+
 	stat, err := os.Stat(targetPath)
 	if err != nil {
 		if util.IsCorruptedMountError(err) {
