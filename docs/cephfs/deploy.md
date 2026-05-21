@@ -82,6 +82,7 @@ you're running it inside a k8s cluster and find the config itself).
 | `encrypted`                                                                                         | no             | disabled by default, use `"true"` to enable fscrypt encryption on PVC and `"false"` to disable it. **Do not change for existing storageclasses**                                                                          |
 | `encryptionKMSID`                                                                                   | no             | required if encryption is enabled and a kms is used to store passphrases                                                                                                                                                |
 | `extraDeploy` | no | array of extra objects to deploy with the release |
+| `namespaceIsolated` | no | Boolean value (truthy/falsy string), disabled by default - set to `"true"` in your Kubernetes CephFS StorageClass to create each new subvolume in a unique, isolated RADOS namespace. |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
 running pods. Refer to [Creating CSI configuration](../../examples/README.md#creating-csi-configuration)

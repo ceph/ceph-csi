@@ -274,6 +274,9 @@ func buildCreateVolumeResponse(
 	volumeContext := util.GetVolumeContext(req.GetParameters())
 	volumeContext["subvolumeName"] = vID.FsSubvolName
 	volumeContext["subvolumePath"] = volOptions.RootPath
+	if volOptions.PoolNamespace != "" {
+		volumeContext["radosNamespace"] = volOptions.PoolNamespace
+	}
 	volume := &csi.Volume{
 		VolumeId:      vID.VolumeID,
 		CapacityBytes: volOptions.Size,
@@ -468,6 +471,16 @@ func (cs *cephfsControllerServer) CreateVolume(
 			log.ErrorLog(ctx, "failed to get subvolume path %s: %v", vID.FsSubvolName, err)
 
 			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if volOptions.NamespaceIsolated {
+			svInfo, err := volClient.GetSubVolumeInfo(ctx)
+			if err != nil {
+				log.WarningLog(ctx, "failed to get subvolume info for pool namespace %s: %v",
+					vID.FsSubvolName, err)
+			} else {
+				volOptions.PoolNamespace = svInfo.PoolNamespace
+			}
 		}
 
 		// Set Metadata on PV Create

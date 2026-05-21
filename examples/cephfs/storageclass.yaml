@@ -64,6 +64,14 @@ parameters:
   # correlation to configmap entry.
   # encryptionKMSID: <kms-config-id>
 
+  # (optional) Enable RADOS namespace isolation for new CephFS subvolumes
+  #   Type: Boolean (as String), defaults to "false"
+  #   If enabled, each new subvolume created on the associated Ceph FS/volume
+  #   will get a unique RADOS namespace created for, and permanently assigned,
+  #   to it. This differs from file/directory layouts, as it is immutable. The
+  #   name of the new NS is not configurable, as it is automatically derived
+  #   from the subvolume name with an "fsvolumens_" prefix.
+  # namespaceIsolated: "true"
 
 reclaimPolicy: Delete
 allowVolumeExpansion: true
