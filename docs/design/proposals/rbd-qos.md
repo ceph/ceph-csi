@@ -93,47 +93,25 @@ above `kubepods-besteffort.slice` or `kubepods-burstable.slice` or
 `kubepods.slice` (Guaranteed QoS) cgroup. The 3 QoS classes are defined
 [here](https://kubernetes.io/docs/concepts/workloads/pods/pod-QoS/#quality-of-service-classes)
 
-To identify the right cgroup file, we need pod UUID and container UUID from the
-`pod yaml` output
+To identify the right cgroup file, we need pod UUID from the `pod yaml` output
 
 ```bash
 [$]kubectl get po csi-rbd-demo-pod -oyaml |grep uid
   uid: cdf7b785-4eb7-44f7-99cc-ef53890f4dfd
-[$]kubectl get po csi-rbd-demo-pod -oyaml |grep -i containerID
-  - containerID: cri-o://77e57fbbc0f0630f41f9f154f4b5fe368b6dcf7bef7dcd75a9c4b56676f10bc9
 [$]kubectl get po csi-rbd-demo-pod -oyaml |grep -i qosClass
   qosClass: BestEffort
 ```
 
 Now check in the `kubepods-besteffort.slice` and identify the right path using
-pod UID and container UID
+pod UID (hyphens replaced with underscores).
 
-Before that check `io.max` on the application pod and see if there is any limit
-
-```bash
-[$]kubectl exec -it csi-rbd-demo-pod -- sh
-sh-4.4# cat /sys/fs/cgroup/io.max
-sh-4.4#
-```
-
-Come back to the Node and find the right cgroup scope
+Come back to the Node and navigate to the pod's cgroup slice
 
 ```bash
-sh-5.1# cd kubepods-besteffort.slice/kubepods-besteffort-podcdf7b785_4eb7_44f7_99cc_ef53890f4dfd.slice/crio-77e57fbbc0f0630f41f9f154f4b5fe368b6dcf7bef7dcd75a9c4b56676f10bc9.scope/
-
-
+sh-5.1# cd kubepods-besteffort.slice/kubepods-besteffort-podcdf7b785_4eb7_44f7_99cc_ef53890f4dfd.slice/
 sh-5.1# echo "252:0 wbps=1048576" > io.max
 sh-5.1# cat io.max
 252:0 rbps=max wbps=1048576 riops=max wiops=max
-```
-
-Now go back to the application pod and check if we have the right limit set
-
-```bash
-[$]kubectl exec -it csi-rbd-demo-pod -- sh
-sh-4.4# cat /sys/fs/cgroup/io.max
-252:0 rbps=max wbps=1048576 riops=max wiops=max
-sh-4.4#
 ```
 
 Note:- We can only support the QoS that cgroup v2 io controller supports, this
@@ -143,10 +121,10 @@ Below are the configurations that will be supported
 
 |  Parameter     |  Description     |
 |  ---  |  ---  |
-|  MaxReadIOPS     | Max read IO operations per second      |
-|  MaxWriteIOPS     | Max write IO operations per second      |
-|  MaxReadBytesPerSecond     |  Max read bytes per second     |
-|  MaxWriteBytesPerSecond     |  Max write bytes per second     |
+|  maxReadIops     | Max read IO operations per second      |
+|  maxWriteIops     | Max write IO operations per second      |
+|  maxReadBps     |  Max read bytes per second     |
+|  maxWriteBps     |  Max write bytes per second     |
 
 ## Implementation Approach
 
@@ -160,10 +138,10 @@ kind: VolumeAttributesClass
 metadata:
   name: silver
 parameters:
-  MaxReadIOPS: ""
-  MaxWriteIOPS: ""
-  MaxReadBytesPerSecond: ""
-  MaxWriteBytesPerSecond: ""
+  maxReadIops: ""
+  maxWriteIops: ""
+  maxReadBps: ""
+  maxWriteBps: ""
 ```
 
 VolumeAttributesClassName is a new parameter in the PVC object the user can
@@ -182,41 +160,52 @@ QoS at the storage level which means setting some configuration at the storage
 1. During NodePublishVolume operation retrieve the QoS from image metadata
 1. Whenever a new pod comes in apply the QoS
 
-#### Container Discovery and QoS Application
+#### Pod-Level QoS Application
 
 When kubelet invokes the NodePublishVolume RPC call, it provides the pod UUID
-as part of the request. Ceph-CSI will use this pod UUID to locate the correct
-cgroup hierarchy path, following the same approach demonstrated in the manual
-steps above.
+as part of the request. Ceph-CSI uses this pod UUID to locate the pod's cgroup
+hierarchy path and applies QoS limits at the pod level.
 
-Since Ceph-CSI cannot determine which specific container within the pod the
-RBD volume is being mounted to, the QoS limits (io.max) must be applied to
-**all containers** found in the pod's cgroup directory. This ensures that the
-QoS limits are enforced regardless of which container is using the volume.
+##### Key Design Decision: Pod-Level io.max
 
-The container discovery process follows these steps:
+QoS limits are applied to the pod's io.max file, not individual container
+io.max files. This design choice provides several benefits:
+
+1. **Automatic Propagation**: cgroup v2 hierarchical design ensures pod-level
+   limits automatically apply to all containers within the pod
+1. **Simplified Implementation**: Single write operation instead of discovering
+   and updating multiple container cgroups
+1. **Timing Independence**: No dependency on container creation timing - works
+   even if containers start after volume mount
+1. **Consistent Behavior**: Same enforcement regardless of container runtime
+   (CRI-O, containerd, etc.)
+
+The QoS application process follows these steps:
 
 1. Kubelet provides pod UUID in NodePublishVolume request (via pod info in
    volume context)
 1. Ceph-CSI identifies the pod's QoS class (BestEffort, Burstable, or
-   Guaranteed) from the cgroup hierarchy
+   Guaranteed) by probing the cgroup hierarchy
 1. Navigate to the appropriate kubepods slice based on QoS class:
    * `kubepods-besteffort.slice` for BestEffort
    * `kubepods-burstable.slice` for Burstable
    * `kubepods.slice` for Guaranteed
-1. Locate the pod-specific slice using the pod UUID:
-   `kubepods-<qos>-pod<uuid>.slice/`
-1. Enumerate all container scopes (e.g., `crio-<container-id>.scope/`) within
-   the pod slice
-1. Apply io.max limits to each container's cgroup by writing to
-   `<container-scope>/io.max`
+1. Locate the pod-specific slice using the normalized pod UUID (hyphens
+   replaced with underscores): `kubepods-<qos>-pod<normalized-uuid>.slice/`
+1. Apply io.max limits to the pod's cgroup by writing to `<pod-slice>/io.max`
+1. cgroup v2 automatically enforces these limits on all containers in the pod
 
-Example path construction:
-`/sys/fs/cgroup/kubepods-besteffort.slice/kubepods-besteffort-podcdf7b785_4eb7_44f7_99cc_ef53890f4dfd.slice/crio-77e57fbbc0f0630f41f9f154f4b5fe368b6dcf7bef7dcd75a9c4b56676f10bc9.scope/io.max`
+##### Example path construction
 
-This approach ensures QoS enforcement across all containers in the pod,
-addressing the limitation that the specific target container is not known at
-NodePublishVolume time.
+For a BestEffort pod with UUID `cdf7b785-4eb7-44f7-99cc-ef53890f4dfd`:
+
+```text
+/sys/fs/cgroup/kubepods-besteffort.slice/kubepods-besteffort-podcdf7b785_4eb7_44f7_99cc_ef53890f4dfd.slice/io.max
+```
+
+This pod-level approach leverages cgroup v2's hierarchical design to
+automatically enforce QoS limits on all containers, eliminating the need for
+container discovery and individual container updates.
 
 #### Secret Management
 
