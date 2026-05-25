@@ -52,6 +52,19 @@ queue_rules:
                   - label=ci/skip/e2e
               - and:
                   - base~=^(release-.+)$
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.33"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.34"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.35"
+                  - "status-success=ci/centos/upgrade-tests-cephfs"
+                  - "status-success=ci/centos/upgrade-tests-rbd"
+              - and:
+                  - base=release-v3.16
                   - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
                   - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
                   - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
@@ -61,19 +74,6 @@ queue_rules:
                   - "status-success=ci/centos/mini-e2e/k8s-1.32"
                   - "status-success=ci/centos/mini-e2e/k8s-1.33"
                   - "status-success=ci/centos/mini-e2e/k8s-1.34"
-                  - "status-success=ci/centos/upgrade-tests-cephfs"
-                  - "status-success=ci/centos/upgrade-tests-rbd"
-              - and:
-                  - base=release-v3.15
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.31"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.31"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.32"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.31"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.32"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.33"
                   - "status-success=ci/centos/upgrade-tests-cephfs"
                   - "status-success=ci/centos/upgrade-tests-rbd"
               - and:
@@ -143,15 +143,6 @@ pull_request_rules:
     actions:
       dismiss_reviews: {}
 
-  - name: backport patches to release-v3.15 branch
-    conditions:
-      - base=devel
-      - label=backport-to-release-v3.15
-    actions:
-      backport:
-        branches:
-          - release-v3.15
-
   - name: backport patches to release-v3.16 branch
     conditions:
       - base=devel
@@ -160,6 +151,15 @@ pull_request_rules:
       backport:
         branches:
           - release-v3.16
+
+  - name: backport patches to release-v3.17 branch
+    conditions:
+      - base=devel
+      - label=backport-to-release-v3.17
+    actions:
+      backport:
+        branches:
+          - release-v3.17
 
   - name: remove outdated approvals on ci/centos
     conditions:
