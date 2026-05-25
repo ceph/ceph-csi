@@ -9,8 +9,8 @@ defaults:
       merge_bot_account: ceph-csi-bot
 
 merge_protections_settings:
-  auto_merge: true
   reporting_method: check-runs
+  auto_merge_conditions: true
 
 queue_rules:
   - name: default
