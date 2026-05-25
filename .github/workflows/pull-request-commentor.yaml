@@ -18,23 +18,14 @@ jobs:
 
     strategy:
       matrix:
-        branch: [release-v3.15, release-v3.16, devel]
-        k8s: ["1.31", "1.32", "1.33", "1.34", "1.35"]
+        branch: [release-v3.16, release-v3.17, devel]
+        k8s: ["1.32", "1.33", "1.34", "1.35"]
         exclude:
           - k8s: "1.35"
-            branch: "release-v3.15"
-
-          - k8s: "1.35"
             branch: "release-v3.16"
 
-          - k8s: "1.34"
-            branch: "release-v3.15"
-
-          - k8s: "1.31"
-            branch: "release-v3.16"
-
-          - k8s: "1.31"
-            branch: "devel"
+          - k8s: "1.32"
+            branch: "release-v3.17"
 
           - k8s: "1.32"
             branch: "devel"
