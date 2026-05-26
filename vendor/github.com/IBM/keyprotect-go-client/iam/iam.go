@@ -29,7 +29,7 @@ import (
 )
 
 // IAMTokenURL is the global endpoint URL for the IAM token service
-const IAMTokenURL = "https://iam.cloud.ibm.com/oidc/token"
+const IAMTokenURL = "https://iam.cloud.ibm.com/oidc/token" //nolint:gosec
 
 var (
 	// RetryWaitMax is the maximum time to wait between HTTP retries

@@ -112,16 +112,6 @@ func (c *Client) DeleteKMIPObject(ctx context.Context, adapter_id, object_id str
 	return nil
 }
 
-func wrapKMIPObject(object KMIPObject) KMIPObjects {
-	return KMIPObjects{
-		Metadata: CollectionMetadata{
-			CollectionType:  kmipObjectType,
-			CollectionTotal: 1,
-		},
-		Objects: []KMIPObject{object},
-	}
-}
-
 func unwrapKMIPObject(objects *KMIPObjects) *KMIPObject {
 	return &objects.Objects[0]
 }

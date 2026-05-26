@@ -1,3 +1,16 @@
+# [0.16.0](https://github.com/IBM/keyprotect-go-client/compare/v0.15.1...v0.16.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* **build:** add package.json for semantic release ([#147](https://github.com/IBM/keyprotect-go-client/issues/147)) ([b9ad613](https://github.com/IBM/keyprotect-go-client/commit/b9ad6131cb9567cdcc67dfbac63478daf019e363))
+* **build:** change bump2version to bump-my-version ([#148](https://github.com/IBM/keyprotect-go-client/issues/148)) ([a8d69ec](https://github.com/IBM/keyprotect-go-client/commit/a8d69ec1c12843b9ad6716821394e96e031a898a))
+
+
+### Features
+
+* **build:** Update module github.com/hashicorp/go-retryablehttp to v0.7.8 ([#142](https://github.com/IBM/keyprotect-go-client/issues/142)) ([84cacbf](https://github.com/IBM/keyprotect-go-client/commit/84cacbf708cbb217a79541a1882916ce91c7758e))
+
 ## [0.15.1](https://github.com/IBM/keyprotect-go-client/compare/v0.15.0...v0.15.1) (2024-08-01)
 
 

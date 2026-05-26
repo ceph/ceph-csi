@@ -265,9 +265,9 @@ func addRotationInstancePolicyData(enable bool, intervalMonth *int) (InstancePol
 	}
 
 	if enable && intervalMonth == nil {
-		return InstancePolicy{}, fmt.Errorf("Interval Month is required to enable rotation instance policy")
+		return InstancePolicy{}, fmt.Errorf("\"Interval Month\" is required to enable rotation instance policy")
 	} else if !enable && intervalMonth != nil {
-		return InstancePolicy{}, fmt.Errorf("Interval Month should only be provided if the policy is being enabled")
+		return InstancePolicy{}, fmt.Errorf("\"Interval Month\" should only be provided if the policy is being enabled")
 	} else if intervalMonth != nil {
 		rotationPolicyData.PolicyData.Attributes = &Attributes{
 			IntervalMonth: intervalMonth,
@@ -316,7 +316,7 @@ func (c *Client) SetAllowedIPInstancePolicy(ctx context.Context, enable bool, al
 		ips := IPAddresses(allowedIPs)
 		policy.PolicyData.Attributes.AllowedIP = &ips
 	} else if enable && len(allowedIPs) == 0 {
-		return fmt.Errorf("Please provide at least 1 IP subnet specified with CIDR notation")
+		return fmt.Errorf("please provide at least 1 IP subnet specified with CIDR notation")
 	} else if !enable && len(allowedIPs) != 0 {
 		return fmt.Errorf("IP address list should only be provided if the policy is being enabled")
 	}
@@ -607,7 +607,7 @@ func (c *Client) GetAllowedIPPrivateNetworkPort(ctx context.Context) (int, error
 	}
 
 	if len(portResponse.Ports) == 0 {
-		return 0, fmt.Errorf("No port number available. Please check the instance has an enabled allowedIP policy")
+		return 0, fmt.Errorf("no port number available. Please check the instance has an enabled allowedIP policy")
 	}
 	return portResponse.Ports[0].PrivatePort, nil
 }
