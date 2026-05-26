@@ -1,0 +1,10 @@
+[tool.bumpversion]
+current_version = "0.16.0"
+commit = true
+message = "Update version {current_version} -> {new_version} [skip ci]"
+
+
+[[tool.bumpversion.files]]
+filename = "README.md"
+search = "{current_version}"
+replace = "{new_version}"

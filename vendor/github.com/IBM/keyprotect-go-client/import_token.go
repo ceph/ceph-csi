@@ -21,7 +21,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
@@ -116,11 +116,11 @@ func encryptNonce(key, value, iv string) (string, string, error) {
 	var cipherText []byte
 	pubKey, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
-		return "", "", fmt.Errorf("Failed to decode public key: %s", err)
+		return "", "", fmt.Errorf("failed to decode public key: %s", err)
 	}
 	nonce, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
-		return "", "", fmt.Errorf("Failed to decode nonce: %s", err)
+		return "", "", fmt.Errorf("failed to decode nonce: %s", err)
 	}
 	block, err := aes.NewCipher(pubKey)
 	if err != nil {
@@ -148,12 +148,12 @@ func encryptNonce(key, value, iv string) (string, string, error) {
 func EncryptNonceWithCBCPAD(key, value, iv string) (string, string, error) {
 	keyMat, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
-		return "", "", fmt.Errorf("Failed to decode Key: %s", err)
+		return "", "", fmt.Errorf("failed to decode Key: %s", err)
 	}
 
 	nonce, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
-		return "", "", fmt.Errorf("Failed to decode Nonce: %s", err)
+		return "", "", fmt.Errorf("failed to decode Nonce: %s", err)
 	}
 
 	block, err := aes.NewCipher(keyMat)
@@ -174,7 +174,7 @@ func EncryptNonceWithCBCPAD(key, value, iv string) (string, string, error) {
 		newIv = make([]byte, aes.BlockSize)
 		// Generate an IV to achieve semantic security
 		if _, err := io.ReadFull(rand.Reader, newIv); err != nil {
-			return "", "", fmt.Errorf("Failed to generate IV: %s", err)
+			return "", "", fmt.Errorf("failed to generate IV: %s", err)
 		}
 	}
 
@@ -182,7 +182,6 @@ func EncryptNonceWithCBCPAD(key, value, iv string) (string, string, error) {
 
 	mode := cipher.NewCBCEncrypter(block, newIv)
 	mode.CryptBlocks(cipherText, nonce)
-
 	return base64.StdEncoding.EncodeToString(cipherText), base64.StdEncoding.EncodeToString(newIv), nil
 }
 
@@ -192,26 +191,28 @@ func encryptKey(key, pubKey string) (string, error) {
 }
 
 // EncryptKeyWithSHA1 uses sha1 to encrypt the key
+//
+// Deprecated: SHA-1 is officially deprecated by NIST due to being cryptographicaly insecure. Not recommended for use
 func EncryptKeyWithSHA1(key, pubKey string) (string, error) {
-	return encryptKeyWithSHA(key, pubKey, sha1.New())
+	return encryptKeyWithSHA(key, pubKey, sha1.New()) //nolint:gosec
 }
 
 func encryptKeyWithSHA(key, pubKey string, sha hash.Hash) (string, error) {
 	decodedPubKey, err := base64.StdEncoding.DecodeString(pubKey)
 	if err != nil {
-		return "", fmt.Errorf("Failed to decode public key: %s", err)
+		return "", fmt.Errorf("failed to decode public key: %s", err)
 	}
 	keyMat, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
-		return "", fmt.Errorf("Failed to decode key material: %s", err)
+		return "", fmt.Errorf("failed to decode key material: %s", err)
 	}
 	pubKeyBlock, _ := pem.Decode(decodedPubKey)
 	if pubKeyBlock == nil {
-		return "", fmt.Errorf("Failed to decode public key into pem format: %s", err)
+		return "", fmt.Errorf("failed to decode public key into pem format: %s", err)
 	}
 	parsedPubKey, err := x509.ParsePKIXPublicKey(pubKeyBlock.Bytes)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse public key: %s", err)
+		return "", fmt.Errorf("failed to parse public key: %s", err)
 	}
 	publicKey, isRSAPublicKey := parsedPubKey.(*rsa.PublicKey)
 	if !isRSAPublicKey {
@@ -219,7 +220,7 @@ func encryptKeyWithSHA(key, pubKey string, sha hash.Hash) (string, error) {
 	}
 	encryptedKey, err := rsa.EncryptOAEP(sha, rand.Reader, publicKey, keyMat, []byte(""))
 	if err != nil {
-		return "", fmt.Errorf("Failed to encrypt key: %s", err)
+		return "", fmt.Errorf("failed to encrypt key: %s", err)
 	}
 	return base64.StdEncoding.EncodeToString(encryptedKey), nil
 }

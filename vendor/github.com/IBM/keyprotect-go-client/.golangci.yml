@@ -1,0 +1,32 @@
+version: "2"
+linters:
+  enable:
+    - gosec
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+        path: (.+)_test\.go
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - -ST1003
+        - -ST1016
+        - -ST1023
+        - -QF1011
+        - -QF1003
+    govet:
+      enable-all: true
+      disable:
+        - buildtag
+        - fieldalignment
+        - shadow
+run:
+  timeout: 5m
+

@@ -51,9 +51,10 @@ const (
 	// VerboseAllNoRedact ...
 	VerboseAllNoRedact = 4
 
-	authContextKey ContextKey = 0
-	defaultTimeout            = 30 // in seconds.
+	defaultTimeout = 30 // in seconds.
 )
+
+const authContextKey ContextKey = 0
 
 var (
 	// RetryWaitMax is the maximum time to wait between HTTP retries
@@ -214,7 +215,7 @@ type Error struct {
 // Error returns correlation id and error message string
 func (e Error) Error() string {
 	var extraVars string
-	if e.Reasons != nil && len(e.Reasons) > 0 {
+	if len(e.Reasons) > 0 {
 		extraVars = fmt.Sprintf(", reasons='%s'", e.Reasons)
 	}
 
@@ -309,8 +310,12 @@ func (c *Client) do(ctx context.Context, req *http.Request, res interface{}) (*h
 
 		if strings.Contains(string(resBody), "errorMsg") {
 			kperr := KPError{}
-			json.Unmarshal(resBody, &kperr)
-			if len(kperr.Resources) > 0 && len(kperr.Resources[0].Message) > 0 {
+			unmarshalErr := json.Unmarshal(resBody, &kperr)
+			if unmarshalErr != nil {
+				fmt.Println(unmarshalErr.Error())
+				errMessage = "Failed to unmarshal error returned by API"
+				reasons = []reason{}
+			} else if len(kperr.Resources) > 0 && len(kperr.Resources[0].Message) > 0 {
 				errMessage = kperr.Resources[0].Message
 				reasons = kperr.Resources[0].Reasons
 			}
@@ -488,8 +493,7 @@ func dumpBody(reqBody, resBody []byte, log Logger, redactStrings []string, redac
 		if err != nil {
 			log.Info(err)
 		}
-		redactStrings = append(redactStrings, auth.AccessToken)
-		redactStrings = append(redactStrings, auth.RefreshToken)
+		redactStrings = append(redactStrings, auth.AccessToken, auth.RefreshToken) //nolint:all
 	}
 	// log.Info(string(redact(string(resBody), redactStrings)))
 }

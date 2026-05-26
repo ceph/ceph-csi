@@ -8,7 +8,7 @@ replace github.com/ceph/ceph-csi/api => ./api
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.4.0
-	github.com/IBM/keyprotect-go-client v0.15.1
+	github.com/IBM/keyprotect-go-client v0.16.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
@@ -24,7 +24,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/hashicorp/vault/api v1.23.0
-	github.com/kubernetes-csi/csi-lib-utils v0.23.2
+	github.com/kubernetes-csi/csi-lib-utils v0.24.0
 	github.com/libopenstorage/secrets v0.0.0-20231011182615-5f4b25ceede1
 	github.com/pkg/xattr v0.4.12
 	github.com/prometheus/client_golang v1.23.2
