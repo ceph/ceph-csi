@@ -34,29 +34,32 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
-// Server struct of CEPH CSI driver with supported methods of CSI controller
-// server spec.
-type Server struct {
+// nfsControllerServer struct of CEPH CSI driver with supported methods of CSI
+// controller server spec.
+type nfsControllerServer struct {
 	csi.UnimplementedControllerServer
 
 	// backendServer handles the CephFS requests
 	backendServer *cephfs.ControllerServer
 }
 
+// Assert required implementation of CSI interfaces.
+var _ csi.ControllerServer = &nfsControllerServer{}
+
 // NewControllerServer initialize a controller server for ceph CSI driver.
-func NewControllerServer(d *csicommon.CSIDriver) *Server {
+func NewControllerServer(d *csicommon.CSIDriver) csi.ControllerServer {
 	// global instance of the volume journal, yuck
 	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
 	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
 
-	return &Server{
+	return &nfsControllerServer{
 		backendServer: cephfs.NewControllerServer(d),
 	}
 }
 
 // ControllerGetCapabilities uses the CephFS backendServer to return the
 // capabilities that were set in the Driver.Run() function.
-func (cs *Server) ControllerGetCapabilities(
+func (cs *nfsControllerServer) ControllerGetCapabilities(
 	ctx context.Context,
 	req *csi.ControllerGetCapabilitiesRequest,
 ) (*csi.ControllerGetCapabilitiesResponse, error) {
@@ -65,7 +68,7 @@ func (cs *Server) ControllerGetCapabilities(
 
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
-func (cs *Server) ValidateVolumeCapabilities(
+func (cs *nfsControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
@@ -74,7 +77,7 @@ func (cs *Server) ValidateVolumeCapabilities(
 
 // CreateVolume creates the backing subvolume and on any error cleans up any
 // created entities.
-func (cs *Server) CreateVolume(
+func (cs *nfsControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 ) (*csi.CreateVolumeResponse, error) {
@@ -139,7 +142,7 @@ func (cs *Server) CreateVolume(
 }
 
 // DeleteVolume deletes the volume in backend and its reservation.
-func (cs *Server) DeleteVolume(
+func (cs *nfsControllerServer) DeleteVolume(
 	ctx context.Context,
 	req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
@@ -182,7 +185,7 @@ func (cs *Server) DeleteVolume(
 // ControllerPublishVolume delegates to the CephFS backend to read the service
 // account restriction metadata from the backing CephFS subvolume and pass it
 // to the node via publish context.
-func (cs *Server) ControllerPublishVolume(
+func (cs *nfsControllerServer) ControllerPublishVolume(
 	ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
@@ -190,7 +193,7 @@ func (cs *Server) ControllerPublishVolume(
 }
 
 // ControllerUnpublishVolume is a no-op for the NFS CSI driver.
-func (cs *Server) ControllerUnpublishVolume(
+func (cs *nfsControllerServer) ControllerUnpublishVolume(
 	ctx context.Context,
 	req *csi.ControllerUnpublishVolumeRequest,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
@@ -200,7 +203,7 @@ func (cs *Server) ControllerUnpublishVolume(
 // ControllerExpandVolume calls the backend (CephFS) procedure to expand the
 // volume. There is no interaction with the NFS-server needed to publish the
 // new size.
-func (cs *Server) ControllerExpandVolume(
+func (cs *nfsControllerServer) ControllerExpandVolume(
 	ctx context.Context,
 	req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
@@ -209,7 +212,7 @@ func (cs *Server) ControllerExpandVolume(
 
 // CreateSnapshot calls the backend (CephFS) procedure to create snapshot.
 // There is no interaction with the NFS-server needed for snapshot creation.
-func (cs *Server) CreateSnapshot(
+func (cs *nfsControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest,
 ) (*csi.CreateSnapshotResponse, error) {
@@ -218,7 +221,7 @@ func (cs *Server) CreateSnapshot(
 
 // DeleteSnapshot calls the backend (CephFS) procedure to delete snapshot.
 // There is no interaction with the NFS-server needed for snapshot creation.
-func (cs *Server) DeleteSnapshot(
+func (cs *nfsControllerServer) DeleteSnapshot(
 	ctx context.Context,
 	req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
@@ -228,7 +231,7 @@ func (cs *Server) DeleteSnapshot(
 // ControllerModifyVolume adjusts parameters after a volume has been created.
 // The new parameters from the [mutable_parameters] attribute are stored in
 // the [NFSVolume] object (which stores the parameters in the volumes OMAP).
-func (cs *Server) ControllerModifyVolume(
+func (cs *nfsControllerServer) ControllerModifyVolume(
 	ctx context.Context,
 	req *csi.ControllerModifyVolumeRequest,
 ) (*csi.ControllerModifyVolumeResponse, error) {
