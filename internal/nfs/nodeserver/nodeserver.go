@@ -47,26 +47,28 @@ const (
 
 var errInvalidParameter = errors.New("invalid parameter")
 
-// NodeServer struct of ceph CSI driver with supported methods of CSI
-// node server spec.
-type NodeServer struct {
+// nfsNodeServer implements the CSI node server for the NFS driver.
+type nfsNodeServer struct {
 	csicommon.DefaultNodeServer
 }
+
+// Assert required implementation of CSI interfaces.
+var _ csi.NodeServer = &nfsNodeServer{}
 
 // NewNodeServer initialize a node server for ceph CSI driver.
 func NewNodeServer(
 	d *csicommon.CSIDriver,
 	t string,
-) *NodeServer {
+) csi.NodeServer {
 	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
 
-	return &NodeServer{
+	return &nfsNodeServer{
 		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
 	}
 }
 
 // NodePublishVolume mount the volume.
-func (ns *NodeServer) NodePublishVolume(
+func (ns *nfsNodeServer) NodePublishVolume(
 	ctx context.Context,
 	req *csi.NodePublishVolumeRequest,
 ) (*csi.NodePublishVolumeResponse, error) {
@@ -133,7 +135,7 @@ func (ns *NodeServer) NodePublishVolume(
 }
 
 // NodeUnpublishVolume unmount the volume.
-func (ns *NodeServer) NodeUnpublishVolume(
+func (ns *nfsNodeServer) NodeUnpublishVolume(
 	ctx context.Context,
 	req *csi.NodeUnpublishVolumeRequest,
 ) (*csi.NodeUnpublishVolumeResponse, error) {
@@ -157,7 +159,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server.
-func (ns *NodeServer) NodeGetCapabilities(
+func (ns *nfsNodeServer) NodeGetCapabilities(
 	ctx context.Context,
 	req *csi.NodeGetCapabilitiesRequest,
 ) (*csi.NodeGetCapabilitiesResponse, error) {
@@ -182,7 +184,7 @@ func (ns *NodeServer) NodeGetCapabilities(
 }
 
 // NodeGetVolumeStats get volume stats.
-func (ns *NodeServer) NodeGetVolumeStats(
+func (ns *nfsNodeServer) NodeGetVolumeStats(
 	ctx context.Context,
 	req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
@@ -208,7 +210,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 }
 
 // mountNFS mounts nfs volumes.
-func (ns *NodeServer) mountNFS(
+func (ns *nfsNodeServer) mountNFS(
 	ctx context.Context,
 	volumeID, source, mountPoint, netNamespaceFilePath string,
 	mountOptions []string,
