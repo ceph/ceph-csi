@@ -27,7 +27,7 @@ import (
 )
 
 // validateCreateVolumeRequest validates the Controller CreateVolume request.
-func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
+func (cs *cephfsControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid CreateVolumeRequest: %w", err)
@@ -85,7 +85,7 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 }
 
 // validateDeleteVolumeRequest validates the Controller DeleteVolume request.
-func (cs *ControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
+func (cs *cephfsControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid DeleteVolumeRequest: %w", err)
@@ -99,7 +99,7 @@ func (cs *ControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeReq
 }
 
 // validateExpandVolumeRequest validates the Controller ExpandVolume request.
-func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpandVolumeRequest) error {
+func (cs *cephfsControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpandVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
 		return fmt.Errorf("invalid ExpandVolumeRequest: %w", err)
 	}

@@ -40,8 +40,8 @@ type cephfsDriver struct {
 	cd *csicommon.CSIDriver
 
 	is *IdentityServer
-	ns *NodeServer
-	cs *ControllerServer
+	ns csi.NodeServer
+	cs csi.ControllerServer
 	// cas is the CSIAddonsServer where CSI-Addons services are handled
 	cas *csiaddons.CSIAddonsServer
 }
@@ -62,13 +62,14 @@ func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 }
 
 // NewControllerServer initialize a controller server for ceph CSI driver.
-func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
-	return &ControllerServer{
+func NewControllerServer(d *csicommon.CSIDriver, clusterName string) csi.ControllerServer {
+	return &cephfsControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		VolumeLocks:             util.NewIDLocker(),
 		SnapshotLocks:           util.NewIDLocker(),
 		VolumeGroupLocks:        util.NewIDLocker(),
 		OperationLocks:          util.NewOperationLock(),
+		ClusterName:             clusterName,
 	}
 }
 
@@ -79,9 +80,9 @@ func NewNodeServer(
 	kernelMountOptions string,
 	fuseMountOptions string,
 	nodeLabels, topology, crushLocationMap map[string]string,
-) *NodeServer {
+) csi.NodeServer {
 	cliReadAffinityMapOptions := util.ConstructReadAffinityMapOption(crushLocationMap)
-	ns := &NodeServer{
+	ns := &cephfsNodeServer{
 		DefaultNodeServer:  csicommon.NewDefaultNodeServer(d, t, cliReadAffinityMapOptions, topology, nodeLabels),
 		VolumeLocks:        util.NewIDLocker(),
 		kernelMountOptions: kernelMountOptions,
@@ -174,8 +175,8 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 	}
 
 	if conf.IsControllerServer {
-		fs.cs = NewControllerServer(fs.cd)
-		fs.cs.ClusterName = conf.ClusterName
+		cs := NewControllerServer(fs.cd, conf.ClusterName)
+		fs.cs = cs
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
@@ -187,7 +188,7 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 			conf.KernelMountOptions, conf.FuseMountOptions,
 			nodeLabels, topology, crushLocationMap,
 		)
-		fs.cs = NewControllerServer(fs.cd)
+		fs.cs = NewControllerServer(fs.cd, "")
 	}
 
 	// configure CSI-Addons server and components
@@ -201,7 +202,7 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 		IS: fs.is,
 		CS: fs.cs,
 		NS: fs.ns,
-		GS: fs.cs,
+		GS: csicommon.ToGroupControllerServer(fs.cs),
 	}
 	server.Start(conf.Endpoint, srv, csicommon.MiddlewareServerOptionConfig{
 		LogSlowOpInterval: conf.LogSlowOpInterval,

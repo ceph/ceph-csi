@@ -29,7 +29,7 @@ import (
 
 func TestControllerServer_validateCreateVolumeGroupSnapshotRequest(t *testing.T) {
 	t.Parallel()
-	cs := ControllerServer{
+	cs := cephfsControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(
 			csicommon.NewCSIDriver("cephfs.csi.ceph.com", "1.0.0", "test", "default", false)),
 	}

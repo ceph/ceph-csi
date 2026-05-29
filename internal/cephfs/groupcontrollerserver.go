@@ -40,7 +40,7 @@ import (
 
 // validateCreateVolumeGroupSnapshotRequest validates the request for creating
 // a group snapshot of volumes.
-func (cs *ControllerServer) validateCreateVolumeGroupSnapshotRequest(
+func (cs *cephfsControllerServer) validateCreateVolumeGroupSnapshotRequest(
 	ctx context.Context,
 	req *csi.CreateVolumeGroupSnapshotRequest,
 ) error {
@@ -74,7 +74,7 @@ func (cs *ControllerServer) validateCreateVolumeGroupSnapshotRequest(
 }
 
 // CreateVolumeGroupSnapshot creates a group snapshot of volumes.
-func (cs *ControllerServer) CreateVolumeGroupSnapshot(
+func (cs *cephfsControllerServer) CreateVolumeGroupSnapshot(
 	ctx context.Context,
 	req *csi.CreateVolumeGroupSnapshotRequest) (
 	*csi.CreateVolumeGroupSnapshotResponse,
@@ -188,7 +188,7 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 // queisceFileSystems quiesces the subvolumes and subvolume groups present in
 // the filesystems of the volumeID's present in the
 // CreateVolumeGroupSnapshotRequest.
-func (cs *ControllerServer) queisceFileSystems(ctx context.Context,
+func (cs *cephfsControllerServer) queisceFileSystems(ctx context.Context,
 	vgs *store.VolumeGroupSnapshotIdentifier,
 	fsMap core.FSQuiesceClientMap,
 ) (bool, error) {
@@ -215,7 +215,7 @@ func (cs *ControllerServer) queisceFileSystems(ctx context.Context,
 // releaseQuiesceAndGetVolumeGroupSnapshotResponse releases the quiesce of the
 // subvolumes and subvolume groups in the filesystems for the volumeID's
 // present in the CreateVolumeGroupSnapshotRequest.
-func (cs *ControllerServer) releaseQuiesceAndGetVolumeGroupSnapshotResponse(
+func (cs *cephfsControllerServer) releaseQuiesceAndGetVolumeGroupSnapshotResponse(
 	ctx context.Context,
 	req *csi.CreateVolumeGroupSnapshotRequest,
 	vgs *store.VolumeGroupSnapshotIdentifier,
@@ -306,7 +306,7 @@ func (cs *ControllerServer) releaseQuiesceAndGetVolumeGroupSnapshotResponse(
 // volume and add the snapshotID and volumeID to the volume group journal omap.
 // If any error occurs other than ErrInProgress it will delete the snapshots
 // and undo the reservation and return the error.
-func (cs *ControllerServer) createSnapshotAddToVolumeGroupJournal(
+func (cs *cephfsControllerServer) createSnapshotAddToVolumeGroupJournal(
 	ctx context.Context,
 	req *csi.CreateVolumeGroupSnapshotRequest,
 	vgo *store.VolumeGroupOptions,
@@ -439,7 +439,7 @@ func fsQuiesceWithExpireTimeout(ctx context.Context,
 // createSnapshotAndAddMapping creates the snapshot and adds the snapshotID and
 // volumeID to the volume group journal omap. If any error occurs it will
 // delete the last created snapshot as its still not added to the journal.
-func (cs *ControllerServer) createSnapshotAndAddMapping(
+func (cs *cephfsControllerServer) createSnapshotAndAddMapping(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest,
 	vgo *store.VolumeGroupOptions,
@@ -612,7 +612,7 @@ func matchesSourceVolumeIDs(sourceVolumeIDs, volumeIDsInOMap []string) bool {
 // when fsMap is empty function will skip filesystem quiesce operations and
 // only perform snapshot deletion and reservation cleanup. This is the intended
 // behavior for DeleteVolumeGroupSnapshot operation where filesystem quiesce is not required.
-func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Context,
+func (cs *cephfsControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Context,
 	vgs *store.VolumeGroupSnapshotIdentifier,
 	cr *util.Credentials,
 	fsMap core.FSQuiesceClientMap,
@@ -679,7 +679,7 @@ func (cs *ControllerServer) deleteSnapshotsAndUndoReservation(ctx context.Contex
 
 // validateVolumeGroupSnapshotDeleteRequest validates the request for creating a group
 // snapshot of volumes.
-func (cs *ControllerServer) validateVolumeGroupSnapshotDeleteRequest(
+func (cs *cephfsControllerServer) validateVolumeGroupSnapshotDeleteRequest(
 	ctx context.Context,
 	req *csi.DeleteVolumeGroupSnapshotRequest,
 ) error {
@@ -699,7 +699,7 @@ func (cs *ControllerServer) validateVolumeGroupSnapshotDeleteRequest(
 }
 
 // DeleteVolumeGroupSnapshot deletes a group snapshot of volumes.
-func (cs *ControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
+func (cs *cephfsControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
 	req *csi.DeleteVolumeGroupSnapshotRequest) (
 	*csi.DeleteVolumeGroupSnapshotResponse,
 	error,
