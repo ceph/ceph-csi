@@ -56,6 +56,7 @@ environments.
 
 | Ceph CSI Version | Container Orchestrator Name | Version Tested      |
 | -----------------| --------------------------- | ------------------- |
+| devel (v3.18.0)  | Kubernetes                  | v1.34, v1.35, v1.36 |
 | v3.17.0          | Kubernetes                  | v1.33, v1.34, v1.35 |
 | v3.16.2          | Kubernetes                  | v1.32, v1.33, v1.34 |
 | v3.16.1          | Kubernetes                  | v1.32, v1.33, v1.34 |
