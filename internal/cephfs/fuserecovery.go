@@ -46,7 +46,7 @@ func (ms mountState) String() string {
 	}[int(ms)]
 }
 
-func (ns *NodeServer) getMountState(path string) (mountState, error) {
+func (ns *cephfsNodeServer) getMountState(path string) (mountState, error) {
 	isMnt, err := ns.Mounter.IsMountPoint(path)
 	if err != nil {
 		if util.IsCorruptedMountError(err) {
@@ -79,7 +79,7 @@ func (ns *NodeServer) getMountState(path string) (mountState, error) {
 //     * staging target path is unmounted and mounted again using ceph-fuse,
 //     * target path is only unmounted; NodePublishVolume is then expected to
 //     continue normally.
-func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
+func (ns *cephfsNodeServer) tryRestoreFuseMountsInNodePublish(
 	ctx context.Context,
 	volID fsutil.VolumeID,
 	stagingTargetPath string,
@@ -174,7 +174,7 @@ func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
 // Try to restore FUSE mount of the staging target path in NodeStageVolume.
 // If corruption is detected, try to only unmount the volume. NodeStageVolume
 // should be able to continue with mounting the volume normally afterwards.
-func (ns *NodeServer) tryRestoreFuseMountInNodeStage(
+func (ns *cephfsNodeServer) tryRestoreFuseMountInNodeStage(
 	ctx context.Context,
 	stagingTargetPath string,
 ) error {

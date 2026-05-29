@@ -44,9 +44,8 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
-// NodeServer struct of ceph CSI driver with supported methods of CSI
-// node server spec.
-type NodeServer struct {
+// cephfsNodeServer implements the CSI node server for the CephFS driver.
+type cephfsNodeServer struct {
 	*csicommon.DefaultNodeServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
@@ -55,6 +54,9 @@ type NodeServer struct {
 	fuseMountOptions   string
 	healthChecker      hc.Manager
 }
+
+// Assert required implementation of CSI interfaces.
+var _ csi.NodeServer = &cephfsNodeServer{}
 
 func getCredentialsForVolume(
 	volOptions *store.VolumeOptions,
@@ -84,7 +86,7 @@ func getCredentialsForVolume(
 	return cr, nil
 }
 
-func (ns *NodeServer) getVolumeOptions(
+func (ns *cephfsNodeServer) getVolumeOptions(
 	ctx context.Context,
 	volID fsutil.VolumeID,
 	volContext,
@@ -214,7 +216,7 @@ func maybeInitializeFileEncryption(
 // NodeStageVolume mounts the volume to a staging path on the node.
 //
 //nolint:gocyclo,cyclop // TODO: reduce complexity
-func (ns *NodeServer) NodeStageVolume(
+func (ns *cephfsNodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
 ) (*csi.NodeStageVolumeResponse, error) {
@@ -353,7 +355,7 @@ func (ns *NodeServer) NodeStageVolume(
 // The user ID is the ceph user used for mounting the subvolume.
 // If the volume is a snapshot-backed, the user ID mapping is set on the backing snapshot metadata.
 // If the volume is static it does nothing.
-func (ns *NodeServer) setUserIdMapping(
+func (ns *cephfsNodeServer) setUserIdMapping(
 	ctx context.Context, secrets map[string]string,
 	volumeId string, volOptions *store.VolumeOptions,
 ) error {
@@ -406,7 +408,7 @@ func (ns *NodeServer) setUserIdMapping(
 // We parse this to extract just the IP address portion (e.g., "10.244.0.1") and store in metadata.
 // If the '--enable-fencing' flag is set to false in CSI driver configuration or if the volume is static
 // this function does nothing.
-func (ns *NodeServer) setClientAddress(
+func (ns *cephfsNodeServer) setClientAddress(
 	ctx context.Context,
 	volumeId string,
 	secrets map[string]string,
@@ -472,7 +474,7 @@ func (ns *NodeServer) setClientAddress(
 // This checker can be shared between multiple containers.
 //
 // TODO: start a FileChecker for read-writable volumes that have an app-data subdir.
-func (ns *NodeServer) startSharedHealthChecker(ctx context.Context, volumeID, dir string) {
+func (ns *cephfsNodeServer) startSharedHealthChecker(ctx context.Context, volumeID, dir string) {
 	// The StatChecker works for volumes that do not have a dedicated app-data
 	// subdirectory, or are read-only.
 	err := ns.healthChecker.StartSharedChecker(volumeID, dir, hc.StatCheckerType)
@@ -481,7 +483,7 @@ func (ns *NodeServer) startSharedHealthChecker(ctx context.Context, volumeID, di
 	}
 }
 
-func (ns *NodeServer) mount(
+func (ns *cephfsNodeServer) mount(
 	ctx context.Context,
 	mnt mounter.VolumeMounter,
 	volOptions *store.VolumeOptions,
@@ -625,7 +627,7 @@ func getBackingSnapshotRoot(
 
 // NodePublishVolume mounts the volume mounted to the staging path to the target
 // path.
-func (ns *NodeServer) NodePublishVolume(
+func (ns *cephfsNodeServer) NodePublishVolume(
 	ctx context.Context,
 	req *csi.NodePublishVolumeRequest,
 ) (*csi.NodePublishVolumeResponse, error) {
@@ -746,7 +748,7 @@ func (ns *NodeServer) NodePublishVolume(
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path.
-func (ns *NodeServer) NodeUnpublishVolume(
+func (ns *cephfsNodeServer) NodeUnpublishVolume(
 	ctx context.Context,
 	req *csi.NodeUnpublishVolumeRequest,
 ) (*csi.NodeUnpublishVolumeResponse, error) {
@@ -811,7 +813,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 }
 
 // NodeUnstageVolume unstages the volume from the staging path.
-func (ns *NodeServer) NodeUnstageVolume(
+func (ns *cephfsNodeServer) NodeUnstageVolume(
 	ctx context.Context,
 	req *csi.NodeUnstageVolumeRequest,
 ) (*csi.NodeUnstageVolumeResponse, error) {
@@ -875,7 +877,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server.
-func (ns *NodeServer) NodeGetCapabilities(
+func (ns *cephfsNodeServer) NodeGetCapabilities(
 	ctx context.Context,
 	req *csi.NodeGetCapabilitiesRequest,
 ) (*csi.NodeGetCapabilitiesResponse, error) {
@@ -914,7 +916,7 @@ func (ns *NodeServer) NodeGetCapabilities(
 }
 
 // NodeGetVolumeStats returns volume stats.
-func (ns *NodeServer) NodeGetVolumeStats(
+func (ns *cephfsNodeServer) NodeGetVolumeStats(
 	ctx context.Context,
 	req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
@@ -990,7 +992,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 
 // setMountOptions updates the kernel/fuse mount options from CSI config file if it exists.
 // If not, it falls back to returning the kernelMountOptions/fuseMountOptions from the command line.
-func (ns *NodeServer) setMountOptions(
+func (ns *cephfsNodeServer) setMountOptions(
 	mnt mounter.VolumeMounter,
 	volOptions *store.VolumeOptions,
 	volCap *csi.VolumeCapability,
