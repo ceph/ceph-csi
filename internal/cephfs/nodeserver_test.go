@@ -69,14 +69,14 @@ func Test_setMountOptions(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		ns         *NodeServer
+		ns         *cephfsNodeServer
 		mnt        mounter.VolumeMounter
 		volOptions *store.VolumeOptions
 		want       string
 	}{
 		{
 			name: "KernelMountOptions set in cluster-1 config and not set in CLI",
-			ns:   &NodeServer{},
+			ns:   &cephfsNodeServer{},
 			mnt:  mounter.VolumeMounter(mounter.NewKernelMounter()),
 			volOptions: &store.VolumeOptions{
 				ClusterID: "cluster-1",
@@ -85,7 +85,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "FuseMountOptions set in cluster-1 config and not set in CLI",
-			ns:   &NodeServer{},
+			ns:   &cephfsNodeServer{},
 			mnt:  mounter.VolumeMounter(&mounter.FuseMounter{}),
 			volOptions: &store.VolumeOptions{
 				ClusterID: "cluster-1",
@@ -94,7 +94,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "KernelMountOptions set in cluster-1 config and set in CLI",
-			ns: &NodeServer{
+			ns: &cephfsNodeServer{
 				kernelMountOptions: cliKernelMountOptions,
 			},
 			mnt: mounter.VolumeMounter(mounter.NewKernelMounter()),
@@ -105,7 +105,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "FuseMountOptions not set in cluster-2 config and set in CLI",
-			ns: &NodeServer{
+			ns: &cephfsNodeServer{
 				fuseMountOptions: cliFuseMountOptions,
 			},
 			mnt: mounter.VolumeMounter(&mounter.FuseMounter{}),
@@ -116,7 +116,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "KernelMountOptions not set in cluster-2 config and set in CLI",
-			ns: &NodeServer{
+			ns: &cephfsNodeServer{
 				kernelMountOptions: cliKernelMountOptions,
 			},
 			mnt: mounter.VolumeMounter(mounter.NewKernelMounter()),
@@ -127,7 +127,7 @@ func Test_setMountOptions(t *testing.T) {
 		},
 		{
 			name: "FuseMountOptions not set in cluster-1 config and set in CLI",
-			ns: &NodeServer{
+			ns: &cephfsNodeServer{
 				fuseMountOptions: cliFuseMountOptions,
 			},
 			mnt: mounter.VolumeMounter(&mounter.FuseMounter{}),
