@@ -39,7 +39,7 @@ import (
 type cephfsDriver struct {
 	cd *csicommon.CSIDriver
 
-	is *IdentityServer
+	is csi.IdentityServer
 	ns csi.NodeServer
 	cs csi.ControllerServer
 	// cas is the CSIAddonsServer where CSI-Addons services are handled
@@ -55,8 +55,8 @@ func NewDriver() driver.Driver {
 }
 
 // NewIdentityServer initialize a identity server for ceph CSI driver.
-func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
-	return &IdentityServer{
+func NewIdentityServer(d *csicommon.CSIDriver) csi.IdentityServer {
+	return &cephfsIdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
@@ -175,8 +175,7 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 	}
 
 	if conf.IsControllerServer {
-		cs := NewControllerServer(fs.cd, conf.ClusterName)
-		fs.cs = cs
+		fs.cs = NewControllerServer(fs.cd, conf.ClusterName)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
