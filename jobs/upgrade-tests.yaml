@@ -1,7 +1,7 @@
 ---
 - project:
     name: upgrade-tests
-    k8s_version: '1.34'
+    k8s_version: '1.36'
     only_run_on_request: true
     test_type:
       - 'cephfs'
