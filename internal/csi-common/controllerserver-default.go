@@ -65,3 +65,19 @@ func (cs *DefaultControllerServer) GroupControllerGetCapabilities(
 		Capabilities: cs.Driver.groupCapabilities,
 	}, nil
 }
+
+// ToGroupControllerServer checks if the given ControllerServer implements the
+// GroupControllerServer interface and aborts the execution of the process if
+// it does not.
+func ToGroupControllerServer(cs csi.ControllerServer) csi.GroupControllerServer {
+	if cs == nil {
+		return nil
+	}
+
+	gcs, ok := cs.(csi.GroupControllerServer)
+	if !ok {
+		log.FatalLogMsg("BUG: ControllerServer does not implement GroupControllerServer")
+	}
+
+	return gcs
+}

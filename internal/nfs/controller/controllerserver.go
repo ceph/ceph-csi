@@ -40,7 +40,7 @@ type nfsControllerServer struct {
 	csi.UnimplementedControllerServer
 
 	// backendServer handles the CephFS requests
-	backendServer *cephfs.ControllerServer
+	backendServer csi.ControllerServer
 }
 
 // Assert required implementation of CSI interfaces.
@@ -53,7 +53,7 @@ func NewControllerServer(d *csicommon.CSIDriver) csi.ControllerServer {
 	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
 
 	return &nfsControllerServer{
-		backendServer: cephfs.NewControllerServer(d),
+		backendServer: cephfs.NewControllerServer(d, ""),
 	}
 }
 

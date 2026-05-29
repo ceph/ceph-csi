@@ -42,9 +42,8 @@ import (
 	rterrors "github.com/ceph/ceph-csi/internal/util/reftracker/errors"
 )
 
-// ControllerServer struct of CEPH CSI driver with supported methods of CSI
-// controller server spec.
-type ControllerServer struct {
+// cephfsControllerServer implements the CSI controller server for the CephFS driver.
+type cephfsControllerServer struct {
 	*csicommon.DefaultControllerServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
@@ -65,6 +64,12 @@ type ControllerServer struct {
 	ClusterName string
 }
 
+// Assert required implementation of CSI interfaces.
+var (
+	_ csi.ControllerServer      = &cephfsControllerServer{}
+	_ csi.GroupControllerServer = &cephfsControllerServer{}
+)
+
 // subvolumeMetadataHandler holds the metadata handling functions.
 type subvolumeMetadataHandler struct {
 	logSubvolumeName     string
@@ -73,7 +78,7 @@ type subvolumeMetadataHandler struct {
 }
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities.
-func (cs *ControllerServer) createBackingVolume(
+func (cs *cephfsControllerServer) createBackingVolume(
 	ctx context.Context,
 	volOptions,
 	parentVolOpt *store.VolumeOptions,
@@ -112,7 +117,7 @@ func (cs *ControllerServer) createBackingVolume(
 	return nil
 }
 
-func (cs *ControllerServer) createBackingVolumeFromSnapshotSource(
+func (cs *cephfsControllerServer) createBackingVolumeFromSnapshotSource(
 	ctx context.Context,
 	volOptions *store.VolumeOptions,
 	parentVolOpt *store.VolumeOptions,
@@ -156,7 +161,7 @@ func (cs *ControllerServer) createBackingVolumeFromSnapshotSource(
 	return nil
 }
 
-func (cs *ControllerServer) createBackingVolumeFromVolumeSource(
+func (cs *cephfsControllerServer) createBackingVolumeFromVolumeSource(
 	ctx context.Context,
 	parentVolOpt *store.VolumeOptions,
 	volClient core.SubVolumeClient,
@@ -183,7 +188,7 @@ func (cs *ControllerServer) createBackingVolumeFromVolumeSource(
 	return nil
 }
 
-func (cs *ControllerServer) checkContentSource(
+func (cs *cephfsControllerServer) checkContentSource(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 	cr *util.Credentials,
@@ -289,7 +294,7 @@ func buildCreateVolumeResponse(
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
 //
 //nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
-func (cs *ControllerServer) CreateVolume(
+func (cs *cephfsControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 ) (*csi.CreateVolumeResponse, error) {
@@ -484,7 +489,7 @@ func (cs *ControllerServer) CreateVolume(
 }
 
 // DeleteVolume deletes the volume in backend and its reservation.
-func (cs *ControllerServer) DeleteVolume(
+func (cs *cephfsControllerServer) DeleteVolume(
 	ctx context.Context,
 	req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
@@ -583,7 +588,7 @@ func (cs *ControllerServer) DeleteVolume(
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func (cs *ControllerServer) cleanUpBackingVolume(
+func (cs *cephfsControllerServer) cleanUpBackingVolume(
 	ctx context.Context,
 	volOptions *store.VolumeOptions,
 	volID *store.VolumeIdentifier,
@@ -674,7 +679,7 @@ func (cs *ControllerServer) cleanUpBackingVolume(
 
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
-func (cs *ControllerServer) ValidateVolumeCapabilities(
+func (cs *cephfsControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
@@ -693,7 +698,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 }
 
 // ControllerExpandVolume expands CephFS Volumes on demand based on resizer request.
-func (cs *ControllerServer) ControllerExpandVolume(
+func (cs *cephfsControllerServer) ControllerExpandVolume(
 	ctx context.Context,
 	req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
@@ -755,7 +760,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 // in store
 //
 //nolint:gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
-func (cs *ControllerServer) CreateSnapshot(
+func (cs *cephfsControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest,
 ) (*csi.CreateSnapshotResponse, error) {
@@ -916,7 +921,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}, nil
 }
 
-func (cs *ControllerServer) doSnapshot(
+func (cs *cephfsControllerServer) doSnapshot(
 	ctx context.Context,
 	volOpt *store.VolumeOptions,
 	snapshotName string,
@@ -960,7 +965,7 @@ func (cs *ControllerServer) doSnapshot(
 	return snap, err
 }
 
-func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.CreateSnapshotRequest) error {
+func (cs *cephfsControllerServer) validateSnapshotReq(ctx context.Context, req *csi.CreateSnapshotRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		log.ErrorLog(ctx, "invalid create snapshot req: %v", protosanitizer.StripSecrets(req))
@@ -981,7 +986,7 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
 // snapshot metadata from store.
-func (cs *ControllerServer) DeleteSnapshot(
+func (cs *cephfsControllerServer) DeleteSnapshot(
 	ctx context.Context,
 	req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
@@ -1127,7 +1132,7 @@ func deleteSnapshotAndUndoReservation(
 // ControllerPublishVolume implements the CSI ControllerPublishVolume RPC.
 // It reads the service account restriction metadata from the backing CephFS
 // subvolume and passes it to the node via publish context.
-func (cs *ControllerServer) ControllerPublishVolume(
+func (cs *cephfsControllerServer) ControllerPublishVolume(
 	ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
@@ -1150,7 +1155,7 @@ func (cs *ControllerServer) ControllerPublishVolume(
 // getServiceAccountRestriction reads the service account restriction metadata
 // from the CephFS subvolume backing the volume. Returns empty string if no
 // restriction is set.
-func (cs *ControllerServer) getServiceAccountRestriction(
+func (cs *cephfsControllerServer) getServiceAccountRestriction(
 	ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
 ) (string, error) {
@@ -1207,7 +1212,7 @@ func (cs *ControllerServer) getServiceAccountRestriction(
 
 // ControllerUnpublishVolume implements the CSI ControllerUnpublishVolume RPC.
 // This function is responsible for fencing a node when a volume is unpublished.
-func (cs *ControllerServer) ControllerUnpublishVolume(
+func (cs *cephfsControllerServer) ControllerUnpublishVolume(
 	ctx context.Context,
 	req *csi.ControllerUnpublishVolumeRequest,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
@@ -1266,7 +1271,7 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 
 // getSubvolumeMetadataHandler returns the appropriate metadata handler based on whether
 // the volume is a backing snapshot or a regular subvolume.
-func (cs *ControllerServer) getSubvolumeMetadataHandler(
+func (cs *cephfsControllerServer) getSubvolumeMetadataHandler(
 	ctx context.Context,
 	volOptions *store.VolumeOptions,
 	secrets map[string]string,
@@ -1317,7 +1322,7 @@ func (cs *ControllerServer) getSubvolumeMetadataHandler(
 //
 // Behavior:
 //   - Removes the user ID mapping metadata for the specified nodeId from the subvolume.
-func (cs *ControllerServer) removeUserIdMapping(
+func (cs *cephfsControllerServer) removeUserIdMapping(
 	ctx context.Context,
 	volumeId, nodeId string,
 	secrets map[string]string,
@@ -1367,7 +1372,7 @@ func (cs *ControllerServer) removeUserIdMapping(
 //   - Handles missing or empty metadata gracefully and logs appropriate warnings.
 //
 // Returns an error if any step in the fencing process fails.
-func (cs *ControllerServer) fenceNode(
+func (cs *cephfsControllerServer) fenceNode(
 	ctx context.Context,
 	volumeId, nodeId string,
 	secrets map[string]string,
