@@ -24,21 +24,23 @@ import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 )
 
-// Server struct of ceph CSI driver with supported methods of CSI identity
-// server spec.
-type Server struct {
+// nfsIdentityServer implements the CSI identity server for the NFS driver.
+type nfsIdentityServer struct {
 	*csicommon.DefaultIdentityServer
 }
 
+// Assert required implementation of CSI interfaces.
+var _ csi.IdentityServer = &nfsIdentityServer{}
+
 // NewIdentityServer initialize a identity server for ceph CSI driver.
-func NewIdentityServer(d *csicommon.CSIDriver) *Server {
-	return &Server{
+func NewIdentityServer(d *csicommon.CSIDriver) csi.IdentityServer {
+	return &nfsIdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
 // GetPluginCapabilities returns available capabilities of the ceph driver.
-func (is *Server) GetPluginCapabilities(
+func (is *nfsIdentityServer) GetPluginCapabilities(
 	ctx context.Context,
 	req *csi.GetPluginCapabilitiesRequest,
 ) (*csi.GetPluginCapabilitiesResponse, error) {
