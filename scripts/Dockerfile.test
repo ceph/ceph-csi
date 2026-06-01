@@ -50,7 +50,7 @@ RUN set -x \
 	pylint \
     && dnf -y update \
     && dnf -y clean all \
-    && gem install mdl \
+    && gem install mdl -v 0.15.0 \
     && mkdir -p ${GOROOT} \
     && curl -L https://go.dev/dl/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz  \
        | tar xzf - -C ${GOROOT} --strip-components=1 \
