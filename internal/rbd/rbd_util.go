@@ -604,6 +604,27 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 	return image, nil
 }
 
+// openReadOnly opens the rbdImage in read-only mode. This should be used when
+// the caller only needs to read from the image (e.g. DiffIterate for usage
+// statistics), as it avoids any interaction with the exclusive lock on the image.
+func (ri *rbdImage) openReadOnly() (*librbd.Image, error) {
+	err := ri.openIoctx()
+	if err != nil {
+		return nil, err
+	}
+
+	image, err := librbd.OpenImageReadOnly(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			err = fmt.Errorf("Failed as %w (internal %w)", rbderrors.ErrImageNotFound, err)
+		}
+
+		return nil, err
+	}
+
+	return image, nil
+}
+
 // isInUse checks if there is a watcher on the image. It returns true if there
 // is a watcher on the image, otherwise returns false.
 // In case of mirroring, the image should be primary to check watchers if the
@@ -2405,7 +2426,7 @@ func (rv *rbdVolume) PrepareVolumeForSnapshot(ctx context.Context, cr *util.Cred
 // getUsedBytes returns the logical used bytes of the rbd image by iterating over
 // the image using DiffIterate API.
 func (rv *rbdVolume) getUsedBytes(ctx context.Context) (uint64, error) {
-	img, err := rv.open()
+	img, err := rv.openReadOnly()
 	if err != nil {
 		return 0, err
 	}
