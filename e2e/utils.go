@@ -740,12 +740,7 @@ func validateNormalUserPVCAccessFunc(
 		return fmt.Errorf("failed to run validation function: %w", err)
 	}
 
-	// metrics for BlockMode was added in Kubernetes 1.22
-	isBlockMode := false
-	if pvc.Spec.VolumeMode != nil {
-		isBlockMode = (*pvc.Spec.VolumeMode == v1.PersistentVolumeBlock)
-	}
-	if !isBlockMode && !isOpenShift {
+	if !isOpenShift {
 		err = getMetricsForPVC(f, pvc, deployTimeout)
 		if err != nil {
 			return err

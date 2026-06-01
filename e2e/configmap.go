@@ -59,6 +59,10 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 		Monitors:  mons,
 		RBD: cephcsi.RBD{
 			RadosNamespace: radosNamespace,
+			ControllerPublishSecretRef: v1.SecretReference{
+				Name:      rbdProvisionerSecretName,
+				Namespace: cephCSINamespace,
+			},
 		},
 		CephFS: cephcsi.CephFS{
 			RadosNamespace: radosNamespace,
