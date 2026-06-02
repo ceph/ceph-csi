@@ -248,6 +248,11 @@ func (ns *NodeServer) NodeStageVolume(
 		}
 	}()
 	if err != nil {
+		// Return InvalidArgument for unsupported kernel (DH-CHAP requires kernel v6.0.0+)
+		if ns.dhchapUnsupportedKernelErr != nil && errors.Is(err, ns.dhchapUnsupportedKernelErr) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
