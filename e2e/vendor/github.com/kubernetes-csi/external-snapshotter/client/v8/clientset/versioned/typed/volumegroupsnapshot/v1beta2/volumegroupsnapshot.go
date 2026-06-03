@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,15 +19,14 @@ limitations under the License.
 package v1beta2
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1beta2 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta2"
+	volumegroupsnapshotv1beta2 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta2"
 	scheme "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // VolumeGroupSnapshotsGetter has a method to return a VolumeGroupSnapshotInterface.
@@ -38,158 +37,38 @@ type VolumeGroupSnapshotsGetter interface {
 
 // VolumeGroupSnapshotInterface has methods to work with VolumeGroupSnapshot resources.
 type VolumeGroupSnapshotInterface interface {
-	Create(ctx context.Context, volumeGroupSnapshot *v1beta2.VolumeGroupSnapshot, opts v1.CreateOptions) (*v1beta2.VolumeGroupSnapshot, error)
-	Update(ctx context.Context, volumeGroupSnapshot *v1beta2.VolumeGroupSnapshot, opts v1.UpdateOptions) (*v1beta2.VolumeGroupSnapshot, error)
-	UpdateStatus(ctx context.Context, volumeGroupSnapshot *v1beta2.VolumeGroupSnapshot, opts v1.UpdateOptions) (*v1beta2.VolumeGroupSnapshot, error)
+	Create(ctx context.Context, volumeGroupSnapshot *volumegroupsnapshotv1beta2.VolumeGroupSnapshot, opts v1.CreateOptions) (*volumegroupsnapshotv1beta2.VolumeGroupSnapshot, error)
+	Update(ctx context.Context, volumeGroupSnapshot *volumegroupsnapshotv1beta2.VolumeGroupSnapshot, opts v1.UpdateOptions) (*volumegroupsnapshotv1beta2.VolumeGroupSnapshot, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, volumeGroupSnapshot *volumegroupsnapshotv1beta2.VolumeGroupSnapshot, opts v1.UpdateOptions) (*volumegroupsnapshotv1beta2.VolumeGroupSnapshot, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta2.VolumeGroupSnapshot, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta2.VolumeGroupSnapshotList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*volumegroupsnapshotv1beta2.VolumeGroupSnapshot, error)
+	List(ctx context.Context, opts v1.ListOptions) (*volumegroupsnapshotv1beta2.VolumeGroupSnapshotList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta2.VolumeGroupSnapshot, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *volumegroupsnapshotv1beta2.VolumeGroupSnapshot, err error)
 	VolumeGroupSnapshotExpansion
 }
 
 // volumeGroupSnapshots implements VolumeGroupSnapshotInterface
 type volumeGroupSnapshots struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*volumegroupsnapshotv1beta2.VolumeGroupSnapshot, *volumegroupsnapshotv1beta2.VolumeGroupSnapshotList]
 }
 
 // newVolumeGroupSnapshots returns a VolumeGroupSnapshots
 func newVolumeGroupSnapshots(c *GroupsnapshotV1beta2Client, namespace string) *volumeGroupSnapshots {
 	return &volumeGroupSnapshots{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*volumegroupsnapshotv1beta2.VolumeGroupSnapshot, *volumegroupsnapshotv1beta2.VolumeGroupSnapshotList](
+			"volumegroupsnapshots",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *volumegroupsnapshotv1beta2.VolumeGroupSnapshot {
+				return &volumegroupsnapshotv1beta2.VolumeGroupSnapshot{}
+			},
+			func() *volumegroupsnapshotv1beta2.VolumeGroupSnapshotList {
+				return &volumegroupsnapshotv1beta2.VolumeGroupSnapshotList{}
+			},
+		),
 	}
-}
-
-// Get takes name of the volumeGroupSnapshot, and returns the corresponding volumeGroupSnapshot object, and an error if there is any.
-func (c *volumeGroupSnapshots) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta2.VolumeGroupSnapshot, err error) {
-	result = &v1beta2.VolumeGroupSnapshot{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of VolumeGroupSnapshots that match those selectors.
-func (c *volumeGroupSnapshots) List(ctx context.Context, opts v1.ListOptions) (result *v1beta2.VolumeGroupSnapshotList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1beta2.VolumeGroupSnapshotList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested volumeGroupSnapshots.
-func (c *volumeGroupSnapshots) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a volumeGroupSnapshot and creates it.  Returns the server's representation of the volumeGroupSnapshot, and an error, if there is any.
-func (c *volumeGroupSnapshots) Create(ctx context.Context, volumeGroupSnapshot *v1beta2.VolumeGroupSnapshot, opts v1.CreateOptions) (result *v1beta2.VolumeGroupSnapshot, err error) {
-	result = &v1beta2.VolumeGroupSnapshot{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(volumeGroupSnapshot).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a volumeGroupSnapshot and updates it. Returns the server's representation of the volumeGroupSnapshot, and an error, if there is any.
-func (c *volumeGroupSnapshots) Update(ctx context.Context, volumeGroupSnapshot *v1beta2.VolumeGroupSnapshot, opts v1.UpdateOptions) (result *v1beta2.VolumeGroupSnapshot, err error) {
-	result = &v1beta2.VolumeGroupSnapshot{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		Name(volumeGroupSnapshot.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(volumeGroupSnapshot).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *volumeGroupSnapshots) UpdateStatus(ctx context.Context, volumeGroupSnapshot *v1beta2.VolumeGroupSnapshot, opts v1.UpdateOptions) (result *v1beta2.VolumeGroupSnapshot, err error) {
-	result = &v1beta2.VolumeGroupSnapshot{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		Name(volumeGroupSnapshot.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(volumeGroupSnapshot).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the volumeGroupSnapshot and deletes it. Returns an error if one occurs.
-func (c *volumeGroupSnapshots) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *volumeGroupSnapshots) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched volumeGroupSnapshot.
-func (c *volumeGroupSnapshots) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta2.VolumeGroupSnapshot, err error) {
-	result = &v1beta2.VolumeGroupSnapshot{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("volumegroupsnapshots").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
