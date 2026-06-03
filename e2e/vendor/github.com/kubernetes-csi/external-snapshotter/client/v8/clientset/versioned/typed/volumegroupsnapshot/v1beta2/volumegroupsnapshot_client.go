@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ limitations under the License.
 package v1beta2
 
 import (
-	"net/http"
+	http "net/http"
 
-	v1beta2 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta2"
-	"github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/scheme"
+	volumegroupsnapshotv1beta2 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta2"
+	scheme "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -55,9 +55,7 @@ func (c *GroupsnapshotV1beta2Client) VolumeGroupSnapshotContents() VolumeGroupSn
 // where httpClient was generated with rest.HTTPClientFor(c).
 func NewForConfig(c *rest.Config) (*GroupsnapshotV1beta2Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	httpClient, err := rest.HTTPClientFor(&config)
 	if err != nil {
 		return nil, err
@@ -69,9 +67,7 @@ func NewForConfig(c *rest.Config) (*GroupsnapshotV1beta2Client, error) {
 // Note the http client provided takes precedence over the configured transport values.
 func NewForConfigAndClient(c *rest.Config, h *http.Client) (*GroupsnapshotV1beta2Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	client, err := rest.RESTClientForConfigAndClient(&config, h)
 	if err != nil {
 		return nil, err
@@ -94,17 +90,15 @@ func New(c rest.Interface) *GroupsnapshotV1beta2Client {
 	return &GroupsnapshotV1beta2Client{c}
 }
 
-func setConfigDefaults(config *rest.Config) error {
-	gv := v1beta2.SchemeGroupVersion
+func setConfigDefaults(config *rest.Config) {
+	gv := volumegroupsnapshotv1beta2.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	config.NegotiatedSerializer = rest.CodecFactoryForGeneratedClient(scheme.Scheme, scheme.Codecs).WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
-
-	return nil
 }
 
 // RESTClient returns a RESTClient that is used to communicate
