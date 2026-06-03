@@ -1,0 +1,13 @@
+---
+# This is an optional (re)configuration of the connection to the Vault
+# Service that can be created in a Kubernetes Namespace for a Tenant.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-kms-config
+data:
+  vaultAddress: "http://vault.default.svc.cluster.local:8200"
+  vaultBackend: "kv-v1"
+  vaultBackendPath: "secret/"
+  vaultTLSServerName: "vault.default.svc.cluster.local"
+  vaultCAVerify: "false"

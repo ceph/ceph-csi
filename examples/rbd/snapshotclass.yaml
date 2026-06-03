@@ -1,0 +1,23 @@
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: csi-rbdplugin-snapclass
+driver: rbd.csi.ceph.com
+parameters:
+  # String representing a Ceph cluster to provision storage snapshot from.
+  # Should be unique across all Ceph clusters in use for provisioning,
+  # cannot be greater than 36 bytes in length, and should remain immutable for
+  # the lifetime of the StorageClass in use.
+  # Ensure to create an entry in the configmap named ceph-csi-config, based on
+  # csi-config-map-sample.yaml, to accompany the string chosen to
+  # represent the Ceph cluster in clusterID below
+  clusterID: <cluster-id>
+
+  # Prefix to use for naming RBD snapshots.
+  # If omitted, defaults to "csi-snap-".
+  # snapshotNamePrefix: "foo-bar-"
+
+  csi.storage.k8s.io/snapshotter-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/snapshotter-secret-namespace: default
+deletionPolicy: Delete

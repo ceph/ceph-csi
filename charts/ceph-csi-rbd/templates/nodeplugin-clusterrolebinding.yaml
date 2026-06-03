@@ -1,0 +1,21 @@
+{{- if .Values.rbac.create -}}
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ceph-csi-rbd.serviceAccountName.nodeplugin" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end -}}

@@ -1,0 +1,177 @@
+---
+# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
+# This file contains all available configuration options
+# with their default values.
+version: "2"
+
+# options for analysis running
+run:
+  build-tags:
+@@BUILD_TAGS@@
+
+  # default concurrency is a available CPU number
+  concurrency: 4
+
+  # timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 20m
+
+  # exit code when at least one issue was found, default is 1
+  issues-exit-code: 1
+
+  # https://github.com/golangci/golangci-lint/blob/v1.23.6/.golangci.example.yml#L45-L49
+  modules-download-mode: vendor
+
+  # include test files or not, default is true
+  tests: true
+
+issues:
+  # which dirs to skip: they won't be analyzed;
+  # can use regexp here: generated.*, regexp is applied on full path;
+  # default value is empty list, but next dirs are always skipped independently
+  # from this option's value:
+  #   	vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
+  exclude-dirs:
+    - vendor$
+
+# output configuration options
+output:
+  # colored-line-number|line-number|json|tab|checkstyle|code-climate,
+  # default is "colored-line-number"
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
+
+linters:
+  default: all
+  disable:
+    - prealloc
+    - dupl
+    - gochecknoinits
+    - gochecknoglobals
+    - godox
+    - wsl
+    - funlen
+    - testpackage
+    # This requires extra addition of unnecessary code. Hence, we
+    # prefer to disable this linter. But, it can be enabled if we
+    # have better resolution. For more details check the
+    # issue below.
+    # see: https://github.com/ceph/ceph-csi/issues/1227
+    - err113
+    - forbidigo
+    # TODO: enable gomoddirectives
+    - gomoddirectives
+    # TODO: enable wrapcheck linter
+    # See: https://github.com/ceph/ceph-csi/pull/2268
+    - wrapcheck
+    # TODO: enable linters added in golangci-lint 1.43
+    - contextcheck
+    - mnd
+    - ireturn
+    - tagliatelle
+    - varnamelen
+    - nilnil
+    # TODO enable linters added in golangci-lint 1.46
+    - maintidx
+    - exhaustruct
+    - containedctx
+    # TODO: depguard requires a list of (un)acceptable imports
+    - depguard
+    # TODO enable linters added in golangci-lint 1.60
+    - iface
+    - recvcheck
+    # TODO enable linters added in 2.5.0
+    - godoclint
+    - embeddedstructfieldcheck
+    - wsl_v5
+    - iotamixing
+    - noctx
+    - noinlineerr
+  settings:
+    cyclop:
+      max-complexity: 20
+    dogsled:
+      max-blank-identifiers: 3
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocognit:
+      min-complexity: 40
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - sloppyReassign
+        - elseif
+        - unslice
+        - wrapperFunc
+        - unnamedResult
+        - dupImport
+        - uncheckedInlineErr
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+    gocyclo:
+      min-complexity: 20
+    gosec:
+      excludes:
+        - G115
+    modernize:
+      disable:
+        - newexpr
+    lll:
+      line-length: 120
+      tab-width: 1
+    misspell:
+      locale: US
+      ignore-rules:
+        - someword
+    nakedret:
+      max-func-lines: 30
+    nestif:
+      min-complexity: 7
+    revive:
+      rules:
+        - name: dot-imports
+          disabled: true
+    staticcheck:
+      checks:
+        - -ST1001
+    unparam:
+      check-exported: false
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+    - gci
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/ceph/ceph-csi
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+  exclusions:
+    generated: lax
+    paths:
+      - vendor$
+      - third_party$
+      - builtin$
+      - examples$

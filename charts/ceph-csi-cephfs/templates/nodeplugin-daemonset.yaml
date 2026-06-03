@@ -1,0 +1,264 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- if .Values.nodeplugin.annotations }}
+  annotations:
+    {{- toYaml .Values.nodeplugin.annotations | nindent 4 -}}
+{{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "ceph-csi-cephfs.name" . }}
+      component: {{ .Values.nodeplugin.name }}
+      release: {{ .Release.Name }}
+  updateStrategy:
+    type: {{ .Values.nodeplugin.updateStrategy }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "ceph-csi-cephfs.name" . }}
+        chart: {{ include "ceph-csi-cephfs.chart" . }}
+        component: {{ .Values.nodeplugin.name }}
+        release: {{ .Release.Name }}
+        heritage: {{ .Release.Service }}
+        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    {{- if .Values.nodeplugin.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.nodeplugin.podAnnotations | nindent 8 -}}
+    {{- end }}
+    spec:
+      securityContext: {{ toYaml .Values.nodeplugin.podSecurityContext | nindent 8 }}
+      serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.nodeplugin" . }}
+{{- if .Values.nodeplugin.priorityClassName }}
+      priorityClassName: {{ .Values.nodeplugin.priorityClassName }}
+{{- end }}
+      hostNetwork: true
+      hostPID: true
+      # to use e.g. Rook orchestrated cluster, and mons' FQDN is
+      # resolved through k8s service, set dns policy to cluster first
+      dnsPolicy: ClusterFirstWithHostNet
+{{- if .Values.nodeplugin.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.nodeplugin.imagePullSecrets | indent 8 -}}
+{{- end }}
+      containers:
+        - name: csi-cephfsplugin
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=cephfs"
+            - "--nodeserver=true"
+            - "--automaxprocs=true"
+            - "--pidlimit=-1"
+{{- if .Values.nodeplugin.forcecephkernelclient }}
+            - "--forcecephkernelclient={{ .Values.nodeplugin.forcecephkernelclient }}"
+{{- end }}
+            - "--kernelmountoptions={{ .Values.nodeplugin.kernelmountoptions }}"
+            - "--fusemountoptions={{ .Values.nodeplugin.fusemountoptions }}"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--v={{ .Values.logLevel }}"
+            - "--drivername=$(DRIVER_NAME)"
+{{- if .Values.instanceID }}
+            - "--instanceid={{ .Values.instanceID }}"
+{{- end }}
+{{- if .Values.radosNamespaceCephFS }}
+            - "--radosnamespacecephfs={{ .Values.radosNamespaceCephFS }}"
+{{- end }}
+{{- if .Values.nodeplugin.profiling.enabled }}
+            - "--enableprofiling={{ .Values.nodeplugin.profiling.enabled }}"
+{{- end }}
+            - "--enable-read-affinity={{ and .Values.readAffinity .Values.readAffinity.enabled | default false }}"
+{{- if and .Values.readAffinity .Values.readAffinity.enabled }}
+            - "--crush-location-labels={{ .Values.readAffinity.crushLocationLabels | join "," }}"
+{{- end }}
+{{- if .Values.nodeplugin.fencing }}
+            - "--enable-fencing={{ .Values.nodeplugin.fencing }}"
+{{- end }}
+            - "--logslowopinterval={{ .Values.logSlowOperationInterval }}"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName }}
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: "unix:///csi/{{ .Values.pluginSocketFile }}"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: mountpoint-dir
+              mountPath: {{ .Values.kubeletDir }}/pods
+              mountPropagation: Bidirectional
+            - name: plugin-dir
+              mountPath: {{ .Values.kubeletDir }}/plugins
+              mountPropagation: "Bidirectional"
+            - mountPath: /dev
+              name: host-dev
+            - mountPath: /run/mount
+              name: host-mount
+            - mountPath: /sys
+              name: host-sys
+{{- if .Values.selinuxMount }}
+            - mountPath: /etc/selinux
+              name: etc-selinux
+              readOnly: true
+{{- end }}
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - name: ceph-config
+              mountPath: /etc/ceph/
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+            - name: ceph-csi-mountinfo
+              mountPath: /csi/mountinfo
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+        - name: driver-registrar
+          # This is necessary only for systems with SELinux, where
+          # non-privileged sidecar containers cannot access unix domain socket
+          # created by privileged CSI driver container.
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+          image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
+          args:
+            - "--v={{ .Values.logLevel }}"
+            - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
+            - "--kubelet-registration-path={{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}/{{ .Values.pluginSocketFile }}"
+            - "--automaxprocs=true"
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+          resources:
+{{ toYaml .Values.nodeplugin.registrar.resources | indent 12 }}
+{{- if .Values.nodeplugin.httpMetrics.enabled }}
+        - name: liveness-prometheus
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport={{ .Values.nodeplugin.httpMetrics.containerPort }}"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: "unix:///csi/{{ .Values.pluginSocketFile }}"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.nodeplugin.httpMetrics.containerPort }}
+              name: metrics
+              protocol: TCP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+{{- end }}
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: "{{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}"
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: {{ .Values.kubeletDir }}/plugins_registry
+            type: Directory
+        - name: mountpoint-dir
+          hostPath:
+            path: {{ .Values.kubeletDir }}/pods
+            type: DirectoryOrCreate
+        - name: plugin-dir
+          hostPath:
+            path: {{ .Values.kubeletDir }}/plugins
+            type: Directory
+        - name: host-sys
+          hostPath:
+            path: /sys
+{{- if .Values.selinuxMount }}
+        - name: etc-selinux
+          hostPath:
+            path: /etc/selinux
+{{- end }}
+        - name: host-mount
+          hostPath:
+            path: /run/mount
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: host-dev
+          hostPath:
+            path: /dev
+        - name: ceph-config
+          configMap:
+            name: {{ .Values.cephConfConfigMapName | quote }}
+        - name: ceph-csi-config
+          configMap:
+            name: {{ .Values.configMapName | quote }}
+{{- if .Values.configMapKey }}
+            items:
+              - key: {{ .Values.configMapKey | quote }}
+                path: config.json
+{{- end }}
+        - name: keys-tmp-dir
+          emptyDir: {
+            medium: "Memory"
+          }
+        - name: ceph-csi-mountinfo
+          hostPath:
+            path: {{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}/mountinfo
+            type: DirectoryOrCreate
+{{- if .Values.nodeplugin.affinity }}
+      affinity:
+{{ toYaml .Values.nodeplugin.affinity | indent 8 -}}
+{{- end -}}
+{{- if .Values.nodeplugin.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeplugin.nodeSelector | indent 8 -}}
+{{- end -}}
+{{- if .Values.nodeplugin.tolerations }}
+      tolerations:
+{{ toYaml .Values.nodeplugin.tolerations | indent 8 -}}
+{{- end -}}

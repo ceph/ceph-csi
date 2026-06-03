@@ -1,0 +1,23 @@
+---
+# ssc based on the Ceph-CSI ssc
+# the "users:" contains a reference to the "default" namespace
+#
+kind: SecurityContextConstraints
+apiVersion: security.openshift.io/v1
+metadata:
+  name: "ceph-nvmeof-provisioner"
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+# The type of volumes which are mounted to csi pods
+volumes:
+  - configMap
+  - projected
+  - emptyDir
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+users:
+  # A user needs to be added for each service account.
+  - "system:serviceaccount:default:nvmeof-csi-provisioner"

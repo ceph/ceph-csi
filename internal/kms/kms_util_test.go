@@ -1,0 +1,87 @@
+/*
+Copyright 2022 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package kms
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestSetConfigInt(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		option *int
+		config map[string]any
+		key    string
+	}
+	option := 1
+	tests := []struct {
+		name  string
+		args  args
+		err   error
+		value int
+	}{
+		{
+			name: "valid value",
+			args: args{
+				option: &option,
+				config: map[string]any{
+					"a": 1.0,
+				},
+				key: "a",
+			},
+			err:   nil,
+			value: 1,
+		},
+		{
+			name: "invalid value",
+			args: args{
+				option: &option,
+				config: map[string]any{
+					"a": "abc",
+				},
+				key: "a",
+			},
+			err:   errConfigOptionInvalid,
+			value: 0,
+		},
+		{
+			name: "missing value",
+			args: args{
+				option: &option,
+				config: map[string]any{},
+				key:    "a",
+			},
+			err:   errConfigOptionMissing,
+			value: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := setConfigInt(tt.args.option, tt.args.config, tt.args.key)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("setConfigInt() error = %v, wantErr %v", err, tt.err)
+			}
+			if err != nil {
+				require.NotEqual(t, tt.value, tt.args.option)
+			}
+		})
+	}
+}

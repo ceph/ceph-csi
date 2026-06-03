@@ -1,0 +1,10 @@
+---
+# see https://artifacthub.io/docs/topics/repositories/#ownership-claim
+repositoryID: 5509143c-e176-40de-94d3-56c00be47aee
+owners:
+  - name: Madhu Rajanna
+    email: madhupr007@gmail.com
+  - name: Niels de Vos
+    email: ndevos@ibm.com
+  - name: Rakshith R
+    email: rar@redhat.com

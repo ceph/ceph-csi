@@ -1,0 +1,30 @@
+---
+name: 'Dependency Review'
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - '*'
+
+
+permissions:
+  contents: read
+
+# cancel the in-progress workflow when PR is refreshed.
+concurrency:
+  # yamllint disable-line rule:truthy rule:line-length
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - name: 'Dependency Review'
+        # yamllint disable-line rule:line-length
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48  # v4.9.0
+        with:
+          allow-ghsas: GHSA-f4w6-3rh6-6q4q

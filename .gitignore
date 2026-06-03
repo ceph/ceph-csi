@@ -1,0 +1,24 @@
+# build directory
+_output
+
+# e2e test executable
+e2e.test
+
+# docker build
+deploy/cephcsi/image/cephcsi
+
+# cached container image IDs
+.devel-container-id
+.test-container-id
+
+# detected 'docker' or 'podman'
+.container-cmd
+
+# git merge files
+*.orig
+*.patch
+*.rej
+
+# generated golangci-lint configuration
+scripts/golangci.yml
+scripts/golangci.yml.buildtags.in

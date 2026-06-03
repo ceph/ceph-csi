@@ -1,0 +1,71 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-cephfs-sc
+provisioner: cephfs.csi.ceph.com
+parameters:
+  # (required) String representing a Ceph cluster to provision storage from.
+  # Should be unique across all Ceph clusters in use for provisioning,
+  # cannot be greater than 36 bytes in length, and should remain immutable for
+  # the lifetime of the StorageClass in use.
+  # Ensure to create an entry in the configmap named ceph-csi-config, based on
+  # csi-config-map-sample.yaml, to accompany the string chosen to
+  # represent the Ceph cluster in clusterID below
+  clusterID: <cluster-id>
+
+  # (required) CephFS filesystem name into which the volume shall be created
+  # eg: fsName: myfs
+  fsName: <cephfs-name>
+
+  # (optional) Ceph pool into which volume data shall be stored
+  # pool: <cephfs-data-pool>
+
+  # (optional) Comma separated string of Ceph-fuse mount options.
+  # For eg:
+  # fuseMountOptions: debug
+
+  # (optional) Comma separated string of Cephfs kernel mount options.
+  # Check man mount.ceph for mount options. For eg:
+  # kernelMountOptions: readdir_max_bytes=1048576,norbytes
+
+  # The secrets have to contain user and/or Ceph admin credentials.
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
+  csi.storage.k8s.io/controller-publish-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+
+  # (optional) The driver can use either ceph-fuse (fuse) or
+  # ceph kernelclient (kernel).
+  # If omitted, default volume mounter will be used - this is
+  # determined by probing for ceph-fuse and mount.ceph
+  # mounter: kernel
+
+  # (optional) Prefix to use for naming subvolumes.
+  # If omitted, defaults to "csi-vol-".
+  # volumeNamePrefix: "foo-bar-"
+
+  # (optional) Boolean value. The PVC shall be backed by the CephFS snapshot
+  # specified in its data source. `pool` parameter must not be specified.
+  # (defaults to `true`)
+  # backingSnapshot: "false"
+
+  # (optional) Instruct the plugin it has to encrypt the volume
+  # By default it is disabled. Valid values are "true" or "false".
+  # A string is expected here, i.e. "true", not true.
+  # encrypted: "true"
+
+  # (optional) Use external key management system for encryption passphrases by
+  # specifying a unique ID matching KMS ConfigMap. The ID is only used for
+  # correlation to configmap entry.
+  # encryptionKMSID: <kms-config-id>
+
+
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+# mountOptions:
+#   - context="system_u:object_r:container_file_t:s0:c0,c1"

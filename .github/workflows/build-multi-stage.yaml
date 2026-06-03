@@ -1,0 +1,57 @@
+---
+name: multi-arch-build
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - '*'
+permissions:
+  contents: read
+
+# cancel the in-progress workflow when PR is refreshed.
+concurrency:
+  # yamllint disable-line rule:truthy rule:line-length
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  codespell:
+    name: multi-arch-build
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: delay a minute to have labels added
+        run: sleep 1m
+      - name: detect single-arch-build
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        id: detect-single-arch-build
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            })
+
+            for (const label of pr.data.labels) {
+              if (label.name === 'ci/skip/multi-arch-build') {
+                return true
+              }
+            }
+
+            return false
+          result-encoding: string
+
+      # yamllint disable-line rule:line-length
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - name: multi-arch-build
+        if: steps.detect-single-arch-build.outputs.result != 'true'
+        # podman cannot pull images with both tag and digest
+        # https://github.com/containers/buildah/issues/1407
+        # use docker to build images
+        run: CONTAINER_CMD=docker ./scripts/build-multi-arch-image.sh
+      - name: single-arch-build
+        if: steps.detect-single-arch-build.outputs.result == 'true'
+        run: make containerized-build

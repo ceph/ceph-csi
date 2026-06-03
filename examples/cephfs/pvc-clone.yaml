@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cephfs-pvc-clone
+spec:
+  storageClassName: csi-cephfs-sc
+  dataSource:
+    name: csi-cephfs-pvc
+    kind: PersistentVolumeClaim
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi

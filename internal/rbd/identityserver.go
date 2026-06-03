@@ -1,0 +1,97 @@
+/*
+Copyright 2018 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package rbd
+
+import (
+	"context"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
+
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/rbd/features"
+	"github.com/ceph/ceph-csi/internal/util/log"
+)
+
+// IdentityServer struct of rbd CSI driver with supported methods of CSI
+// identity server spec.
+type IdentityServer struct {
+	*csicommon.DefaultIdentityServer
+}
+
+// GetPluginCapabilities returns available capabilities of the rbd driver.
+func (is *IdentityServer) GetPluginCapabilities(
+	ctx context.Context,
+	req *csi.GetPluginCapabilitiesRequest,
+) (*csi.GetPluginCapabilitiesResponse, error) {
+	caps := []*csi.PluginCapability{
+		{
+			Type: &csi.PluginCapability_Service_{
+				Service: &csi.PluginCapability_Service{
+					Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
+				},
+			},
+		},
+		{
+			Type: &csi.PluginCapability_VolumeExpansion_{
+				VolumeExpansion: &csi.PluginCapability_VolumeExpansion{
+					Type: csi.PluginCapability_VolumeExpansion_ONLINE,
+				},
+			},
+		},
+		{
+			Type: &csi.PluginCapability_Service_{
+				Service: &csi.PluginCapability_Service{
+					Type: csi.PluginCapability_Service_VOLUME_ACCESSIBILITY_CONSTRAINTS,
+				},
+			},
+		},
+	}
+
+	// GroupSnapGetInfo is used within the VolumeGroupSnapshot implementation
+	vgsSupported, err := features.SupportsGroupSnapGetInfo()
+	if err != nil {
+		log.WarningLog(ctx, "error checking for group snapshot support: %s", err)
+	} else if vgsSupported {
+		gcs := csi.PluginCapability{
+			Type: &csi.PluginCapability_Service_{
+				Service: &csi.PluginCapability_Service{
+					Type: csi.PluginCapability_Service_GROUP_CONTROLLER_SERVICE,
+				},
+			},
+		}
+		caps = append(caps, &gcs)
+	}
+
+	// RBDSnapDiffByID is used within the SnapshotMetadata service
+	rbdSnapDiffByIDSupported, err := features.SupportsRBDSnapDiffByID()
+	if err != nil {
+		log.WarningLog(ctx, "error checking for snapshot diff by ID support: %s", err)
+	} else if rbdSnapDiffByIDSupported {
+		snapDiffCaps := csi.PluginCapability{
+			Type: &csi.PluginCapability_Service_{
+				Service: &csi.PluginCapability_Service{
+					Type: csi.PluginCapability_Service_SNAPSHOT_METADATA_SERVICE,
+				},
+			},
+		}
+		caps = append(caps, &snapDiffCaps)
+	}
+
+	return &csi.GetPluginCapabilitiesResponse{
+		Capabilities: caps,
+	}, nil
+}

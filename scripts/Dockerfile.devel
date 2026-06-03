@@ -1,0 +1,47 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG GOROOT=/usr/local/go
+ARG GOARCH
+
+ENV GOPATH=/go \
+ GOROOT=${GOROOT} \
+ GO111MODULE=on \
+ PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
+
+COPY build.env /
+
+RUN source /build.env \
+    && \
+    ( test -n "${GOARCH}" && exit 0; echo -e "\n\nMissing GOARCH argument for building image, install Golang or run: make containerized-build GOARCH=amd64\n\n"; exit 1 ) \
+    && mkdir -p ${GOROOT} \
+    && curl -L https://go.dev/dl/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1 \
+    && go version \
+    && true
+
+# TODO: remove the following cmd, when issues
+# https://github.com/ceph/ceph-container/issues/2034
+# https://github.com/ceph/ceph-container/issues/2141 are fixed.
+RUN true \
+    && dnf -y reinstall https://download.ceph.com/rpm-${CEPH_VERSION}/el9/noarch/ceph-release-1-1.el9.noarch.rpm \
+    && ( dnf config-manager --disable tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true ) \
+    && true
+
+RUN mkdir -p /etc/selinux && touch /etc/selinux/config
+
+# other/conflicting versions of protobuf get installed as dependency
+RUN dnf -y remove protobuf
+
+RUN dnf -y install \
+	git \
+	make \
+	gcc \
+	librados-devel \
+        libcephfs-devel \
+	librbd-devel \
+    && dnf -y --nobest update \
+    && dnf clean all \
+    && rm -rf /var/cache/yum \
+    && true
+
+WORKDIR "/go/src/github.com/ceph/ceph-csi"

@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-block-volume-clone
+spec:
+  containers:
+    - name: centos
+      image: quay.io/centos/centos:latest
+      command: ["/bin/sleep", "infinity"]
+      volumeDevices:
+        - name: data
+          devicePath: /dev/xvda
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: block-pvc-clone

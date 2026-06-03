@@ -1,0 +1,40 @@
+---
+# A workflow which checks out the code, builds a container
+# image using Docker and scans that image for vulnerabilities using
+# Snyk. The results are then uploaded to GitHub Security Code Scanning
+#
+# For more examples, including how to limit scans to only high-severity
+# issues, monitor images for newly disclosed vulnerabilities in Snyk and
+# fail PR checks for new vulnerabilities, see https://github.com/snyk/actions/
+name: Snyk Container
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    # Run weekly on every Monday
+    - cron: '0 0 * * 1'
+  push:
+    tags:
+      - v*
+    branches:
+      - release-*
+
+permissions:
+  contents: read
+
+jobs:
+  snyk:
+    if: github.repository == 'ceph/ceph-csi'
+    runs-on: ubuntu-latest
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - name: Build a Docker image
+        run: make image-cephcsi
+      - name: Run Snyk to check Docker image for vulnerabilities
+        # yamllint disable-line rule:line-length
+        uses: snyk/actions/docker@cdb760004ba9ea4d525f2e043745dfe85bb9077e  # master
+        env:
+          SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
+        with:
+          image: quay.io/cephcsi/cephcsi:${{ github.base_ref }}
+          args: --file=./deploy/cephcsi/image/Dockerfile

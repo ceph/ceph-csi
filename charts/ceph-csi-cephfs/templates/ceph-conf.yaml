@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.cephConfConfigMapName | quote }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+data:
+  ceph.conf: |
+{{ tpl .Values.cephconf . | indent 4 }}
+  keyring: ""

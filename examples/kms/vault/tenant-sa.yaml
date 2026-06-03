@@ -1,0 +1,24 @@
+---
+#
+# The ServiceAccount "ceph-csi-vault-sa" should be created in the Namespace of
+# the tenant that will be creating encrypted PVCs with a "vaulttenantsa" KMS
+# provider.
+#
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ceph-csi-vault-sa
+---
+#
+# Each tenant most likely has their own VAULT_BACKEND_PATH or other
+# configuration options. In this example, the tenant has its own key-value
+# store at "tenant".
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-kms-config
+data:
+  vaultBackend: kv-v2
+  vaultBackendPath: tenant
+  vaultRole: ceph-csi-tenant

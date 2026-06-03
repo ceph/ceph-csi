@@ -1,0 +1,17 @@
+{{- if not .Values.externallyManagedConfigmap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapName | quote }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.provisioner.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+data:
+  config.json: |-
+{{ toJson .Values.csiConfig | indent 4 -}}
+{{- end }}

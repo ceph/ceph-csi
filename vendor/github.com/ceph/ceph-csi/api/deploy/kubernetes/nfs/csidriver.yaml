@@ -1,0 +1,12 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: "{{ .Name }}"
+spec:
+  attachRequired: true
+  podInfoOnMount: true
+  fsGroupPolicy: File
+  seLinuxMount: true
+  volumeLifecycleModes:
+    - Persistent

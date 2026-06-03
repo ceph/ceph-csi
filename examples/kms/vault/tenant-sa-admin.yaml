@@ -1,0 +1,97 @@
+---
+#
+# "vault-tenant-sa-script" is an example of the commands that are required to
+# create a secret key-value store for a tenant. The ServiceAccount
+# "ceph-csi-vault-sa" in the Namespace of the tenant is given access to the
+# created key-value store.
+#
+# The steps in "add-tenant-sa.sh" would normally be executed by the
+# administrator of the Hashicorp Vault service. The tenant is not expected to
+# have sufficient permissions for running commands like this in a production
+# environment.
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-tenant-sa-script
+  namespace: default
+data:
+  add-tenant-sa.sh: |
+    # login into vault to add a configuration for the tenant
+    vault login ${VAULT_DEV_ROOT_TOKEN_ID}
+
+    # create a secret store for the tenant
+    vault secrets enable -version=2 -path="tenant" kv
+
+    # create a policy for the tenant
+    vault policy write "${TENANT_NAMESPACE}" - << EOS
+    path "tenant/*" {
+      capabilities = ["create", "update", "delete", "read", "list"]
+    }
+
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    EOS
+
+    # allow access with the tenant ServiceAccount
+    vault write "auth/${CLUSTER_IDENTIFIER}/role/${PLUGIN_ROLE}" \
+        bound_service_account_names="${TENANT_SA_NAME}" \
+        bound_service_account_namespaces="${TENANT_NAMESPACE}" \
+        policies="${TENANT_NAMESPACE}"
+---
+#
+# The "add-tenant-sa.sh" script from the above ConfigMap needs to get executed
+# against the Hashicorp Vault service. Usually the administrator of the KMS
+# would configure that, but for this example and testing a Job is included
+# here.
+#
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-tenant-sa
+  namespace: default
+spec:
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      name: vault-tenant-sa
+    spec:
+      serviceAccountName: rbd-csi-vault-token-review
+      volumes:
+        - name: vault-tenant-sa-script
+          configMap:
+            name: vault-tenant-sa-script
+      containers:
+        - name: vault-tenant-sa-job
+          image: docker.io/library/vault:latest
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            runAsUser: 100
+          volumeMounts:
+            - mountPath: /scripts
+              name: vault-tenant-sa-script
+          env:
+            - name: HOME
+              value: /tmp
+            - name: CLUSTER_IDENTIFIER
+              value: kubernetes
+            - name: SERVICE_ACCOUNT_TOKEN_PATH
+              value: /var/run/secrets/kubernetes.io/serviceaccount
+            - name: K8S_HOST
+              value: https://kubernetes.default.svc.cluster.local
+            - name: PLUGIN_ROLE
+              value: ceph-csi-tenant
+            - name: TENANT_SA_NAME
+              value: ceph-csi-vault-sa
+            - name: TENANT_NAMESPACE
+              value: tenant
+            - name: VAULT_ADDR
+              value: http://vault.default.svc.cluster.local:8200/
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: sample_root_token_id
+          command:
+            - /bin/sh
+            - /scripts/add-tenant-sa.sh
+      restartPolicy: Never

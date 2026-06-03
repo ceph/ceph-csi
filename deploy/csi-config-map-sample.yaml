@@ -1,0 +1,120 @@
+---
+# This is a sample configmap that helps define a Ceph cluster configuration
+# as required by the CSI plugins.
+apiVersion: v1
+kind: ConfigMap
+# Lets see the different configuration under config.json key.
+# The <cluster-id> is used by the CSI plugin to uniquely identify and use a
+# Ceph cluster, the value MUST match the value provided as `clusterID` in the
+# StorageClass
+# The <MONValue#> fields are the various monitor addresses for the Ceph cluster
+# identified by the <cluster-id>
+# If a CSI plugin is using more than one Ceph cluster, repeat the section for
+# each such cluster in use.
+# To add more clusters or edit MON addresses in an existing configmap, use
+# the `kubectl replace` command.
+# The "rbd.rados-namespace" is optional and represents a radosNamespace in the
+# pool. If any given, all of the rbd images, snapshots, and other metadata will
+# be stored within the radosNamespace.
+# NOTE: The given radosNamespace must already exists in the pool.
+# NOTE: Make sure you don't add radosNamespace option to a currently in use
+# configuration as it will cause issues.
+# The "rbd.mirrorDaemonCount" is optional and represents the total number of
+# RBD mirror daemons running on the ceph cluster.
+# The field "cephFS.subvolumeGroup" is optional and defaults to "csi".
+# NOTE: The given subvolumeGroup must already exist in the filesystem.
+# The "cephFS.netNamespaceFilePath" fields are the various network namespace
+# path for the Ceph cluster identified by the <cluster-id>, This will be used
+# by the CephFS CSI plugin to execute the mount -t in the
+# The "cephFS.kernelMountOptions" fields are comma separated mount options
+# for `Ceph Kernel client`. Setting this will override the kernelmountoptions
+# command line flag.
+# The "cephFS.fuseMountOptions" fields are common separated mount options
+# for `Ceph FUSE driver`. Setting this will override the fusemountoptions
+# command line flag.
+# The "cephFS.radosNamespace" is optional and represents a radosNamespace in the
+# metadata pool. If any given, the omap data of cephFS will be stored within
+# this radosNamespace.
+# NOTE: Make sure you don't add radosNamespace option to a currently in use
+# configuration as it will cause issues.
+# network namespace specified by the "cephFS.netNamespaceFilePath".
+# The "nfs.netNamespaceFilePath" fields are the various network namespace
+# path for the Ceph cluster identified by the <cluster-id>, This will be used
+# by the NFS CSI plugin to execute the mount -t in the
+# network namespace specified by the "nfs.netNamespaceFilePath".
+# The "rbd.netNamespaceFilePath" fields are the various network namespace
+# path for the Ceph cluster identified by the <cluster-id>, This will be used
+# by the RBD CSI plugin to execute the rbd map/unmap in the
+# network namespace specified by the "rbd.netNamespaceFilePath".
+# The "readAffinity" fields are used to enable read affinity and pass the crush
+# location map for the Ceph cluster identified by the cluster <cluster-id>,
+# enabling this will add
+# "read_from_replica=localize,crush_location=<label:value>" to the map option.
+# If a CSI plugin is using more than one Ceph cluster, repeat the section for
+# each such cluster in use.
+# NOTE: Changes to the configmap is automatically updated in the running pods,
+# thus restarting existing pods using the configmap is NOT required on edits
+# to the configmap.
+
+# Lets see the different configuration under cluster-mapping.json key.
+# This configuration is needed when volumes are mirrored using the Ceph-CSI.
+# clusterIDMapping holds the mapping between two clusterId's of storage
+# clusters.
+# RBDPoolIDMapping holds the mapping between two poolId's of storage clusters.
+# CephFSFscIDMapping holds the mapping between two FscId's of storage
+# clusters.
+data:
+  config.json: |-
+    [
+      {
+        "clusterID": "<cluster-id>",
+        "rbd": {
+           "netNamespaceFilePath": "<kubeletRootPath>/plugins/rbd.csi.ceph.com/net",
+           "radosNamespace": "<rados-namespace>",
+           "mirrorDaemonCount": 1,
+        },
+        "monitors": [
+          "<MONValue1>",
+          "<MONValue2>",
+          ...
+          "<MONValueN>"
+        ],
+        "cephFS": {
+          "subvolumeGroup": "<subvolumegroup for cephFS volumes>"
+          "netNamespaceFilePath": "<kubeletRootPath>/plugins/cephfs.csi.ceph.com/net",
+          "kernelMountOptions": "<kernelMountOptions for cephFS volumes>",
+          "fuseMountOptions": "<fuseMountOptions for cephFS volumes>",
+          "radosNamespace": "<rados-namespace>"
+        }
+        "nfs": {
+          "netNamespaceFilePath": "<kubeletRootPath>/plugins/nfs.csi.ceph.com/net",
+        },
+        "readAffinity": {
+          "enabled": "false",
+          "crushLocationLabels": [
+            "<Label1>",
+            "<Label2>"
+            ...
+            "<Label3>"
+          ]
+        }
+      }
+    ]
+  cluster-mapping.json: |-
+    [
+      {
+        "clusterIDMapping": {
+          "clusterID on site1": "clusterID on site2"
+        },
+        "RBDPoolIDMapping": [{
+          "poolID on site1": "poolID on site2"
+          ...
+        }],
+        "CephFSFscIDMapping": [{
+          "CephFS FscID on site1": "CephFS FscID on site2"
+          ...
+        }]
+      }
+    ]
+metadata:
+  name: ceph-csi-config

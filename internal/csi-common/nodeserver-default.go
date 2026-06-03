@@ -1,0 +1,97 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package csicommon
+
+import (
+	"context"
+	"slices"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	mount "k8s.io/mount-utils"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
+)
+
+// DefaultNodeServer stores driver object.
+type DefaultNodeServer struct {
+	csi.UnimplementedNodeServer
+	Driver  *CSIDriver
+	Type    string
+	Mounter mount.Interface
+	// NodeLabels stores the node labels
+	NodeLabels map[string]string
+	// CLIReadAffinityOptions contains map options passed through command line to enable read affinity.
+	CLIReadAffinityOptions string
+}
+
+// NodeGetInfo returns node ID.
+func (ns *DefaultNodeServer) NodeGetInfo(
+	ctx context.Context,
+	req *csi.NodeGetInfoRequest,
+) (*csi.NodeGetInfoResponse, error) {
+	log.TraceLog(ctx, "Using default NodeGetInfo")
+
+	csiTopology := &csi.Topology{
+		Segments: ns.Driver.topology,
+	}
+
+	return &csi.NodeGetInfoResponse{
+		NodeId:             ns.Driver.nodeID,
+		AccessibleTopology: csiTopology,
+	}, nil
+}
+
+// NodeGetCapabilities returns RPC unknown capability.
+func (ns *DefaultNodeServer) NodeGetCapabilities(
+	ctx context.Context,
+	req *csi.NodeGetCapabilitiesRequest,
+) (*csi.NodeGetCapabilitiesResponse, error) {
+	log.TraceLog(ctx, "Using default NodeGetCapabilities")
+
+	return &csi.NodeGetCapabilitiesResponse{
+		Capabilities: []*csi.NodeServiceCapability{
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_UNKNOWN,
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+// ConstructMountOptions returns only unique mount options in slice.
+func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
+	if m := volCap.GetMount(); m != nil {
+		for _, f := range m.GetMountFlags() {
+			if !slices.Contains(mountOptions, f) {
+				mountOptions = append(mountOptions, f)
+			}
+		}
+	}
+
+	// add "ro" in case the capabilities indicate READER_ONLY
+	rOnly := "ro"
+	if IsReaderOnly([]*csi.VolumeCapability{volCap}) {
+		if !slices.Contains(mountOptions, rOnly) {
+			mountOptions = append(mountOptions, rOnly)
+		}
+	}
+
+	return mountOptions
+}

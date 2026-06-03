@@ -1,0 +1,42 @@
+{{- if .Values.nodeplugin.httpMetrics.service.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+{{- if .Values.nodeplugin.httpMetrics.service.annotations }}
+  annotations:
+{{ toYaml .Values.nodeplugin.httpMetrics.service.annotations | indent 4 }}
+{{- end }}
+  name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}-http-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.fullname" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+{{- if .Values.nodeplugin.httpMetrics.service.clusterIP }}
+  clusterIP: "{{ .Values.nodeplugin.httpMetrics.service.clusterIP }}"
+{{- end }}
+{{- if .Values.nodeplugin.httpMetrics.service.externalIPs }}
+  externalIPs:
+{{ toYaml .Values.nodeplugin.httpMetrics.service.externalIPs | indent 4 }}
+{{- end }}
+{{- if .Values.nodeplugin.httpMetrics.service.loadBalancerIP }}
+  loadBalancerIP: "{{ .Values.nodeplugin.httpMetrics.service.loadBalancerIP }}"
+{{- end }}
+{{- if .Values.nodeplugin.httpMetrics.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+{{ toYaml .Values.nodeplugin.httpMetrics.service.loadBalancerSourceRanges | indent 4 }}
+{{- end }}
+  ports:
+    - name: http-metrics
+      port: {{ .Values.nodeplugin.httpMetrics.service.servicePort }}
+      targetPort: {{ .Values.nodeplugin.httpMetrics.containerPort }}
+  selector:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+  type: "{{ .Values.nodeplugin.httpMetrics.service.type }}"
+{{- end -}}

@@ -1,0 +1,25 @@
+---
+name: lint-extras
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - '*'
+permissions:
+  contents: read
+
+# cancel the in-progress workflow when PR is refreshed.
+concurrency:
+  # yamllint disable-line rule:truthy rule:line-length
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  lint-extras:
+    name: lint-extras
+    runs-on: ubuntu-latest
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - name: lint-extras
+        run: make containerized-test TARGET=lint-extras

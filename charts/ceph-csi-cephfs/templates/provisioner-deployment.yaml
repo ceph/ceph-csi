@@ -1,0 +1,380 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.provisioner.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- if .Values.provisioner.annotations }}
+  annotations:
+    {{- toYaml .Values.provisioner.annotations | nindent 4 -}}
+{{- end }}
+spec:
+  replicas: {{ .Values.provisioner.replicaCount }}
+  strategy:
+    type: {{ .Values.provisioner.strategy.type }}
+{{- if eq .Values.provisioner.strategy.type "RollingUpdate" }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.provisioner.strategy.rollingUpdate.maxUnavailable }}
+{{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "ceph-csi-cephfs.name" . }}
+      component: {{ .Values.provisioner.name }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "ceph-csi-cephfs.name" . }}
+        chart: {{ include "ceph-csi-cephfs.chart" . }}
+        component: {{ .Values.provisioner.name }}
+        release: {{ .Release.Name }}
+        heritage: {{ .Release.Service }}
+        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    {{- if .Values.provisioner.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.provisioner.podAnnotations | nindent 8 -}}
+    {{- end }}
+    spec:
+{{- if gt (int .Values.provisioner.replicaCount) 1 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ include "ceph-csi-cephfs.name" . }}
+                  - key: component
+                    operator: In
+                    values:
+                      - {{ .Values.provisioner.name }}
+              topologyKey: "kubernetes.io/hostname"
+{{- if .Values.provisioner.affinity }}
+{{ toYaml .Values.provisioner.affinity | indent 8 -}}
+{{- end -}}
+{{- else -}}
+{{- if .Values.provisioner.affinity }}
+      affinity:
+{{ toYaml .Values.provisioner.affinity | indent 8 -}}
+{{- end -}}
+{{- end }}
+      securityContext: {{ toYaml .Values.provisioner.podSecurityContext | nindent 8 }}
+      serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}
+      hostNetwork: {{ .Values.provisioner.enableHostNetwork }}
+{{- if .Values.provisioner.priorityClassName }}
+      priorityClassName: {{ .Values.provisioner.priorityClassName }}
+{{- end }}
+{{- if .Values.provisioner.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.provisioner.imagePullSecrets | indent 8 -}}
+{{- end }}
+      containers:
+        - name: csi-cephfsplugin
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=cephfs"
+            - "--controllerserver=true"
+            - "--automaxprocs=true"
+            - "--pidlimit=-1"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--v={{ .Values.logLevel }}"
+            - "--drivername=$(DRIVER_NAME)"
+{{- if .Values.instanceID }}
+            - "--instanceid={{ .Values.instanceID }}"
+{{- end }}
+{{- if .Values.radosNamespaceCephFS }}
+            - "--radosnamespacecephfs={{ .Values.radosNamespaceCephFS }}"
+{{- end }}
+{{- if .Values.provisioner.profiling.enabled }}
+            - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
+{{- end }}
+{{- if .Values.provisioner.clustername }}
+            - "--clustername={{ .Values.provisioner.clustername }}"
+{{- end }}
+{{- if .Values.provisioner.fencing }}
+            - "--enable-fencing={{ .Values.provisioner.fencing }}"
+{{- end }}
+            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
+            - "--logslowopinterval={{ .Values.logSlowOperationInterval }}"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName }}
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: host-sys
+              mountPath: /sys
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+            - name: host-dev
+              mountPath: /dev
+            - name: ceph-config
+              mountPath: /etc/ceph/
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+        - name: csi-provisioner
+          image: "{{ .Values.provisioner.provisioner.image.repository }}:{{ .Values.provisioner.provisioner.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.provisioner.image.pullPolicy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v={{ .Values.sidecarLogLevel }}"
+            - "--timeout={{ .Values.provisioner.timeout }}"
+            - "--leader-election=true"
+            - "--retry-interval-start=500ms"
+            - "--extra-create-metadata=true"
+            - "--automaxprocs=true"
+            - "--prevent-volume-mode-conversion=true"
+{{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.provisioner.args.httpEndpointPort }}"
+{{- end }}
+{{- range .Values.provisioner.provisioner.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.provisioner.args.httpEndpointPort }}
+              name: provisioner
+              protocol: TCP
+{{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.provisioner.provisioner.resources | indent 12 }}
+        - name: csi-snapshotter
+          image: {{ .Values.provisioner.snapshotter.image.repository }}:{{ .Values.provisioner.snapshotter.image.tag }}
+          imagePullPolicy: {{ .Values.provisioner.snapshotter.image.pullPolicy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v={{ .Values.sidecarLogLevel }}"
+            - "--timeout={{ .Values.provisioner.timeout }}"
+            - "--leader-election=true"
+            - "--extra-create-metadata=true"
+            - "--automaxprocs=true"
+            - "--feature-gates=CSIVolumeGroupSnapshot={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
+{{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.snapshotter.args.httpEndpointPort }}"
+{{- end }}
+{{- range .Values.provisioner.snapshotter.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.snapshotter.args.httpEndpointPort }}
+              name: snapshotter
+              protocol: TCP
+{{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.provisioner.snapshotter.resources | indent 12 }}
+{{- if .Values.provisioner.attacher.enabled }}
+        - name: csi-attacher
+          image: "{{ .Values.provisioner.attacher.image.repository }}:{{ .Values.provisioner.attacher.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.attacher.image.pullPolicy }}
+          args:
+            - "--v={{ .Values.sidecarLogLevel }}"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election=true"
+            - "--retry-interval-start=500ms"
+{{- if and .Values.provisioner.attacher.args .Values.provisioner.attacher.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.attacher.args.httpEndpointPort }}"
+{{- end }}
+{{- range .Values.provisioner.attacher.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.attacher.args .Values.provisioner.attacher.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.attacher.args.httpEndpointPort }}
+              name: attacher
+              protocol: TCP
+{{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.provisioner.attacher.resources | indent 12 }}
+{{- end }}
+{{- if .Values.provisioner.resizer.enabled }}
+        - name: csi-resizer
+          image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.resizer.image.pullPolicy }}
+          args:
+            - "--v={{ .Values.sidecarLogLevel }}"
+            - "--csi-address=$(ADDRESS)"
+            - "--timeout={{ .Values.provisioner.timeout }}"
+            - "--leader-election"
+            - "--retry-interval-start=500ms"
+            - "--handle-volume-inuse-error=false"
+            - "--feature-gates=RecoverVolumeExpansionFailure=true"
+            - "--automaxprocs=true"
+{{- if and .Values.provisioner.resizer.args .Values.provisioner.resizer.args.httpEndpointPort }}
+            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.resizer.args.httpEndpointPort }}"
+{{- end }}
+{{- range .Values.provisioner.resizer.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+{{- if and .Values.provisioner.resizer.args .Values.provisioner.resizer.args.httpEndpointPort }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.resizer.args.httpEndpointPort }}
+              name: resizer
+              protocol: TCP
+{{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.provisioner.resizer.resources | indent 12 }}
+{{- end }}
+{{- if .Values.provisioner.deployController }}
+        - name: csi-cephfsplugin-controller
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--type=controller"
+            - "--v={{ .Values.logLevel }}"
+            - "--drivername=$(DRIVER_NAME)"
+            - "--drivernamespace=$(DRIVER_NAMESPACE)"
+            {{- if .Values.provisioner.clustername }}
+            - "--clustername={{ .Values.provisioner.clustername }}"
+            {{- end }}
+            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
+          env:
+            - name: DRIVER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName }}
+          volumeMounts:
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+            - name: ceph-config
+              mountPath: /etc/ceph/
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+{{- end }}
+{{- if .Values.provisioner.httpMetrics.enabled }}
+        - name: liveness-prometheus
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport={{ .Values.provisioner.httpMetrics.containerPort }}"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.httpMetrics.containerPort }}
+              name: metrics
+              protocol: TCP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+{{- end }}
+      volumes:
+        - name: socket-dir
+          emptyDir: {
+            medium: "Memory"
+          }
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: host-dev
+          hostPath:
+            path: /dev
+        - name: ceph-config
+          configMap:
+            name: {{ .Values.cephConfConfigMapName | quote }}
+        - name: ceph-csi-config
+          configMap:
+            name: {{ .Values.configMapName | quote }}
+{{- if .Values.configMapKey }}
+            items:
+              - key: {{ .Values.configMapKey | quote }}
+                path: config.json
+{{- end }}
+        - name: keys-tmp-dir
+          emptyDir: {
+            medium: "Memory"
+          }
+{{- if .Values.provisioner.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.provisioner.nodeSelector | indent 8 -}}
+{{- end -}}
+{{- if .Values.provisioner.tolerations }}
+      tolerations:
+{{ toYaml .Values.provisioner.tolerations | indent 8 -}}
+{{- end -}}

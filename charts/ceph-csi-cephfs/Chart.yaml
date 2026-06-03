@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+appVersion: canary
+description: "Container Storage Interface (CSI) driver,
+provisioner, snapshotter, resizer and attacher for Ceph cephfs"
+name: ceph-csi-cephfs
+version: 3-canary
+keywords:
+  - ceph
+  - cephfs
+  - ceph-csi
+home: https://github.com/ceph/ceph-csi
+sources:
+  - https://github.com/ceph/ceph-csi/tree/devel/charts/ceph-csi-cephfs
+icon: https://raw.githubusercontent.com/ceph/ceph-csi/devel/assets/ceph-logo.png

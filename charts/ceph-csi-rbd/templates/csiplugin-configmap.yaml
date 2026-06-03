@@ -1,0 +1,19 @@
+{{- if not .Values.externallyManagedConfigmap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapName | quote }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+data:
+  config.json: |-
+{{ toJson .Values.csiConfig | indent 4 }}
+  cluster-mapping.json: |-
+{{ toJson .Values.csiMapping | indent 4 }}
+{{- end }}

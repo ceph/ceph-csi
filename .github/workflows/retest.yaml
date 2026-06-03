@@ -1,0 +1,26 @@
+---
+name: "Retest approved pull Requests"
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    # Run the retest action every 30 minutes
+    - cron: "30 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  retest:
+    if: github.repository == 'ceph/ceph-csi'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the ceph-csi repository
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - name: Run local retest github action
+        uses: ./actions/retest  # path to the retest action
+        with:
+          GITHUB_TOKEN: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          required-label: "ci/retry/e2e"
+          max-retry: "5"
+          required-approve-count: "2"

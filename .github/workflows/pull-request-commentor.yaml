@@ -1,0 +1,146 @@
+---
+name: Add comment
+# yamllint disable-line rule:truthy
+on:
+  pull_request_target:
+    branches:
+      - devel
+      - "release-v*"
+    types:
+      - labeled
+
+permissions:
+  pull-requests: write
+
+jobs:
+  branch-k8s-selection:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        branch: [release-v3.16, release-v3.17, devel]
+        k8s: ["1.32", "1.33", "1.34", "1.35", "1.36"]
+        exclude:
+          - k8s: "1.36"
+            branch: "release-v3.16"
+
+          - k8s: "1.36"
+            branch: "release-v3.17"
+
+          - k8s: "1.35"
+            branch: "release-v3.16"
+
+          - k8s: "1.32"
+            branch: "release-v3.17"
+
+          - k8s: "1.32"
+            branch: "devel"
+
+          - k8s: "1.33"
+            branch: "devel"
+
+
+    # watch out, matrix.branch can not be used in this if-statement :-/
+    if: >
+      (github.event.label.name == 'ok-to-test' &&
+      github.event.pull_request.merged != true)
+
+    steps:
+      - name: >
+          Add comment to trigger external storage tests for Kubernetes
+          ${{ matrix.k8s }}
+        if: ${{ github.base_ref == matrix.branch }}
+        # yamllint disable-line rule:line-length
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            /test ci/centos/k8s-e2e-external-storage/${{ matrix.k8s }}
+
+      - name: >
+          Add comment to trigger helm E2E tests for Kubernetes
+          ${{ matrix.k8s }}
+        if: ${{ github.base_ref == matrix.branch }}
+        # yamllint disable-line rule:line-length
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            /test ci/centos/mini-e2e-helm/k8s-${{ matrix.k8s }}
+
+      - name: Add comment to trigger E2E tests for Kubernetes ${{ matrix.k8s }}
+        # yamllint disable-line rule:line-length
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        if: ${{ github.base_ref == matrix.branch }}
+        with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            /test ci/centos/mini-e2e/k8s-${{ matrix.k8s }}
+
+  any-branch-k8s-version:
+    runs-on: ubuntu-latest
+
+    if: >
+      (github.event.label.name == 'ok-to-test' &&
+      github.event.pull_request.merged != true)
+
+    steps:
+      - name: Add comment to trigger cephfs upgrade tests
+        # yamllint disable-line rule:line-length
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            /test ci/centos/upgrade-tests-cephfs
+
+      - name: Add comment to trigger rbd upgrade tests
+        # yamllint disable-line rule:line-length
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            /test ci/centos/upgrade-tests-rbd
+
+  remove-label:
+    runs-on: ubuntu-latest
+
+    # run after the other jobs
+    needs:
+      - branch-k8s-selection
+      - any-branch-k8s-version
+
+    if: >
+      (github.event.label.name == 'ok-to-test' &&
+      github.event.pull_request.merged != true)
+
+    steps:
+      - name: add ci/in-progress/e2e label before removing ok-to-test
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["ci/in-progress/e2e"]
+            })
+
+      - name: remove ok-to-test-label after commenting
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            github.rest.issues.removeLabel({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: ["ok-to-test"]
+            })

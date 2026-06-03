@@ -1,0 +1,22 @@
+{{- if and .Values.rbac.create .Values.rbac.leastPrivileges -}}
+{{- if and .Values.encryptionKMSConfig (eq .Values.encryptionKMSConfig.encryptionKMSType "metadata") .Values.encryptionKMSConfig.secretNamespace .Values.encryptionKMSConfig.secretName -}}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
+  namespace: {{ .Values.encryptionKMSConfig.secretNamespace }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+  # allow to read the encryption key used with the metadata KMS
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: [{{ .Values.encryptionKMSConfig.secretName | quote }}]
+{{- end -}}
+{{- end -}}

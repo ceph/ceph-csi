@@ -1,0 +1,282 @@
+---
+defaults:
+  actions:
+    update:
+      bot_account: ceph-csi-bot
+    rebase:
+      bot_account: ceph-csi-bot
+    merge:
+      merge_bot_account: ceph-csi-bot
+
+merge_protections_settings:
+  reporting_method: check-runs
+  auto_merge_conditions: true
+
+queue_rules:
+  - name: default
+    update_bot_account: ceph-csi-bot
+    merge_method: rebase
+    update_method: rebase
+    batch_size: 1
+    queue_conditions:
+      - and:
+          # requirements for any branch
+          - label!=DNM
+          - "#approved-reviews-by>=2"
+          - "#changes-requested-reviews-by=0"
+          - "approved-reviews-by=@ceph/ceph-csi-contributors"
+          - "approved-reviews-by=@ceph/ceph-csi-maintainers"
+          - "status-success=DCO"
+          - or:
+              - and:
+                  # requirements for non ci/centos branches
+                  - base!=ci/centos
+                  - "status-success=codespell"
+                  - "status-success=go-test"
+                  - "status-success=golangci-lint"
+                  - "status-success=lint-extras"
+                  - "status-success=mod-check"
+                  - "status-success=multi-arch-build"
+                  - "status-success=uncommitted-code-check"
+                  - or:
+                      # dependabot has an invalid signed-off-by
+                      - author=dependabot[bot]
+                      - "status-success=commitlint"
+              # exclude the ci/centos branch from above status checks
+              - base=ci/centos
+          - or:
+              # requirenents per branch
+              - and:
+                  # ci/skip/e2e label has no meaning on ci/centos
+                  - base!=ci/centos
+                  - label=ci/skip/e2e
+              - and:
+                  - base~=^(release-.+)$
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.33"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.34"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.35"
+                  - "status-success=ci/centos/upgrade-tests-cephfs"
+                  - "status-success=ci/centos/upgrade-tests-rbd"
+              - and:
+                  - base=release-v3.16
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.32"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.32"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.33"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.34"
+                  - "status-success=ci/centos/upgrade-tests-cephfs"
+                  - "status-success=ci/centos/upgrade-tests-rbd"
+              - and:
+                  - base=devel
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
+                  - "status-success=ci/centos/k8s-e2e-external-storage/1.36"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
+                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.36"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.34"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.35"
+                  - "status-success=ci/centos/mini-e2e/k8s-1.36"
+                  - "status-success=ci/centos/upgrade-tests-cephfs"
+                  - "status-success=ci/centos/upgrade-tests-rbd"
+              - and:
+                  # requirements for ci/centos branch
+                  - base=ci/centos
+                  - "status-success=ci/centos/job-validation"
+                  - "status-success=ci/centos/jjb-validate"
+
+merge_queue:
+  max_parallel_checks: 1
+
+pull_request_rules:
+  - name: start CI jobs for PRs in the merge queue
+    conditions:
+      - -closed
+      - base~=^(devel)|(release-.+)$
+      - label!=conflicts
+      - label!=ci/skip/e2e
+      - label!=ci/in-progress/e2e
+      - not: check-pending~=^ci/centos
+      - not: status-success~=^ci/centos
+      - or:
+          - queue-position >= 0
+          - author=mergify[bot]
+    actions:
+      label:
+        add:
+          - ok-to-test
+
+  - name: remove outdated approvals
+    conditions:
+      - base~=^(devel)|(release-.+)$
+    actions:
+      dismiss_reviews:
+        approved: true
+        changes_requested: false
+      label:
+        remove:
+          - ci/in-progress/e2e
+
+  - name: ask to resolve conflict
+    conditions:
+      - conflict
+      - author!=dependabot[bot]
+    actions:
+      comment:
+        # yamllint disable-line rule:truthy rule:line-length
+        message: "This pull request now has conflicts with the target branch. Could you please resolve conflicts and force push the corrected changes? 🙏"
+
+  - name: dismiss review of merged pull request
+    conditions:
+      - base~=^(devel)|(release-.+)$
+      - merged
+    actions:
+      dismiss_reviews: {}
+
+  - name: backport patches to release-v3.16 branch
+    conditions:
+      - base=devel
+      - label=backport-to-release-v3.16
+    actions:
+      backport:
+        branches:
+          - release-v3.16
+
+  - name: backport patches to release-v3.17 branch
+    conditions:
+      - base=devel
+      - label=backport-to-release-v3.17
+    actions:
+      backport:
+        branches:
+          - release-v3.17
+
+  - name: remove outdated approvals on ci/centos
+    conditions:
+      - base=ci/centos
+    actions:
+      dismiss_reviews:
+        approved: true
+        changes_requested: false
+
+  ##
+  ## Automatically set/remove labels
+  ##
+  - name: title contains DNM
+    conditions:
+      - title~=DNM
+    actions:
+      label:
+        add:
+          - DNM
+  - name: title contains CephFS
+    conditions:
+      - "title~=cephfs: "
+    actions:
+      label:
+        add:
+          - component/cephfs
+  - name: title contains NFS
+    conditions:
+      - "title~=nfs: "
+    actions:
+      label:
+        add:
+          - component/nfs
+  - name: title contains RBD
+    conditions:
+      - "title~=rbd: "
+    actions:
+      label:
+        add:
+          - component/rbd
+  - name: title contains NVME-oF or nvmeof
+    conditions:
+      - "title~=(NVMe-oF)|(nvmeof)"
+    actions:
+      label:
+        add:
+          - component/nvme-of
+  - name: title contains CI, testing or e2e
+    conditions:
+      - "title~=(ci: )|(testing: )|(e2e)"
+    actions:
+      label:
+        add:
+          - component/testing
+  - name: title contains Helm
+    conditions:
+      - title~=helm
+    actions:
+      label:
+        add:
+          - component/deployment
+  - name: title contains rebase
+    conditions:
+      - "title~=rebase: "
+    actions:
+      label:
+        add:
+          - rebase
+  - name: title contains build
+    conditions:
+      - "title~=build: "
+    actions:
+      label:
+        add:
+          - component/build
+  - name: title indicates a bug fix
+    conditions:
+      - title~=(bug)|(fix)
+    actions:
+      label:
+        add:
+          - bug
+  - name: title contains cleanup
+    conditions:
+      - "title~=cleanup: "
+    actions:
+      label:
+        add:
+          - cleanup
+  - name: title contains doc
+    conditions:
+      - "title~=doc: "
+    actions:
+      label:
+        add:
+          - component/docs
+          - ci/skip/e2e
+          - ci/skip/multi-arch-build
+  - name: title contains Mergify
+    conditions:
+      - "title~=(?i)mergify"
+    actions:
+      label:
+        add:
+          - Repo activity
+          - ci/skip/e2e
+          - ci/skip/multi-arch-build
+
+  # A [skip ci] in the PR description prevents Jenkins jobs from running, mark
+  # the PR as Draft so that CI jobs do not automatically run anymore.
+  - name: detect [skip ci] in the PR description
+    conditions:
+      # this should be \[skip\W+ci\], but Mergify does not accept that
+      - "body-raw~=skip ci"
+    actions:
+      edit:
+        draft: true
+      comment:
+        # yamllint disable-line rule:truthy rule:line-length
+        message: "The PR description contains the unsupported `[skip ci]` command, please update the description and mark the PR ready for review again."

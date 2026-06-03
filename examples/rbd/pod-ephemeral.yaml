@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: csi-rbd-demo-ephemeral-pod
+spec:
+  containers:
+    - name: web-server
+      image: docker.io/library/nginx:latest
+      volumeMounts:
+        - mountPath: /myspace
+          name: mypvc
+  volumes:
+    - name: mypvc
+      ephemeral:
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: csi-rbd-sc
+            resources:
+              requests:
+                storage: 1Gi

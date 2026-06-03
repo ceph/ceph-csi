@@ -1,0 +1,29 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-fs-rx-volume
+  labels:
+    app: pod-fs-rx-volume
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pod-fs-rx-volume
+  template:
+    metadata:
+      labels:
+        app: pod-fs-rx-volume
+    spec:
+      containers:
+        - name: web-server
+          image: docker.io/library/nginx:latest
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: mypvc
+              mountPath: /var/lib/www/html
+      volumes:
+        - name: mypvc
+          persistentVolumeClaim:
+            claimName: rbd-pvc
+            readOnly: false

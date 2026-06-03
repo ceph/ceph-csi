@@ -1,0 +1,19 @@
+---
+apiVersion: ceph.rook.io/v1
+kind: CephNFS
+metadata:
+  name: my-nfs
+spec:
+  # For Ceph v15, the rados block is required. It is ignored for Ceph v16.
+  rados:
+    # some versions of Ceph v16 always uses/expects "nfs-ganesha" more recent
+    # versions always use ".nfs"
+    pool: .nfs
+    # RADOS namespace where NFS client recovery data is stored in the pool.
+    # fixed value for Ceph v16: the name of this CephNFS object
+    namespace: my-nfs
+
+  # Settings for the NFS server
+  server:
+    # the number of active NFS servers
+    active: 1

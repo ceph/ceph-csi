@@ -1,0 +1,296 @@
+/*
+Copyright 2019 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package kms
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+
+	"golang.org/x/crypto/scrypt"
+
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+)
+
+const (
+	// Encryption passphrase location in K8s secrets.
+	encryptionPassphraseKey = "encryptionPassphrase"
+
+	// kmsTypeSecretsMetadata is the secretKMS with per-volume encryption,
+	// where the DEK is stored in the metadata of the volume itself.
+	kmsTypeSecretsMetadata = "metadata"
+
+	// metadataSecretNameKey contains the key which corresponds to the
+	// kubernetes secret name from where encryptionPassphrase is feteched.
+	metadataSecretNameKey = "secretName"
+	// metadataSecretNamespaceKey contains the key which corresponds to the
+	// kubernetes secret namespace from where encryptionPassphrase is feteched.
+	metadataSecretNamespaceKey = "secretNamespace"
+)
+
+// secretsKMS is default KMS implementation that means no KMS is in use.
+type secretsKMS struct {
+	integratedDEK
+
+	passphrase string
+}
+
+var _ = RegisterProvider(Provider{
+	UniqueID:    DefaultKMSType,
+	Initializer: newSecretsKMS,
+})
+
+// newSecretsKMS initializes a secretsKMS that uses the passphrase from the
+// secret that is configured for the StorageClass. This KMS provider uses a
+// single (LUKS) passhprase for all volumes.
+func newSecretsKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+	passphraseValue, ok := args.Secrets[encryptionPassphraseKey]
+	if !ok {
+		return nil, errors.New("missing encryption passphrase in secrets")
+	}
+
+	return secretsKMS{passphrase: passphraseValue}, nil
+}
+
+// Destroy frees all used resources.
+func (kms secretsKMS) Destroy() {
+	// nothing to do
+}
+
+// FetchDEK returns passphrase from Kubernetes secrets.
+func (kms secretsKMS) FetchDEK(ctx context.Context, key string) (string, error) {
+	return kms.passphrase, nil
+}
+
+// StoreDEK does nothing, as there is no passphrase per key (volume), so
+// no need to store is anywhere.
+func (kms secretsKMS) StoreDEK(ctx context.Context, key, value string) error {
+	return nil
+}
+
+// RemoveDEK is doing nothing as no new passphrases are saved with
+// secretsKMS.
+func (kms secretsKMS) RemoveDEK(ctx context.Context, key string) error {
+	return nil
+}
+
+// secretsMetadataKMS is a KMS based on the secretKMS, but stores the
+// Data-Encryption-Key (DEK) in the metadata of the volume.
+type secretsMetadataKMS struct {
+	ProviderInitArgs
+}
+
+var _ = RegisterProvider(Provider{
+	UniqueID:    kmsTypeSecretsMetadata,
+	Initializer: initSecretsMetadataKMS,
+})
+
+// initSecretsMetadataKMS initializes a secretsMetadataKMS that wraps a secretKMS,
+// so that the passphrase from the user provided or StorageClass secrets can be used
+// for encrypting/decrypting DEKs that are stored in a detached DEKStore.
+func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+	var smKMS secretsMetadataKMS
+
+	smKMS.ProviderInitArgs = args
+
+	return smKMS, nil
+}
+
+// Destroy frees all used resources.
+func (kms secretsMetadataKMS) Destroy() {
+	// nothing to do
+}
+
+// FetchDEK returns passphrase from Kubernetes secrets.
+func (kms secretsMetadataKMS) FetchDEK(ctx context.Context, key string) (string, error) {
+	var (
+		encryptionPassphrase string
+		ok                   bool
+		err                  error
+	)
+
+	encryptionPassphrase, err = kms.fetchEncryptionPassphrase(
+		kms.Config, kms.Tenant)
+	if err != nil {
+		if !errors.Is(err, errConfigOptionMissing) {
+			return "", err
+		}
+		// if 'userSecret' option is not specified, fetch encryptionPassphrase
+		// from storageclass secrets.
+		encryptionPassphrase, ok = kms.Secrets[encryptionPassphraseKey]
+		if !ok {
+			return "", fmt.Errorf(
+				"missing %q in storageclass secret", encryptionPassphraseKey)
+		}
+	}
+
+	return encryptionPassphrase, nil
+}
+
+// StoreDEK does nothing, as there is no passphrase per key (volume), so
+// no need to store is anywhere.
+func (kms secretsMetadataKMS) StoreDEK(ctx context.Context, key, value string) error {
+	return nil
+}
+
+// RemoveDEK is doing nothing as no new passphrases are saved with
+// secretsKMS.
+func (kms secretsMetadataKMS) RemoveDEK(ctx context.Context, key string) error {
+	return nil
+}
+
+func (kms secretsMetadataKMS) RequiresDEKStore() DEKStoreType {
+	return DEKStoreMetadata
+}
+
+// encryptedMetadataDEK contains the encrypted DEK and the Nonce that was used
+// during encryption. This structure is stored (in JSON format) in the DEKStore
+// that is linked to this KMS provider.
+type encryptedMetadataDEK struct {
+	// DEK is the encrypted data-encryption-key for the volume.
+	DEK []byte `json:"dek"`
+	// Nonce is a random byte slice to guarantee the uniqueness of the
+	// encrypted DEK.
+	Nonce []byte `json:"nonce"`
+}
+
+// EncryptDEK encrypts the plainDEK with a key derived from the passphrase from
+// the secretsKMS and the volumeID.
+// The resulting encryptedDEK contains a JSON with the encrypted DEK and the
+// nonce that was used for encrypting.
+func (kms secretsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
+	// use the passphrase from the secretKMS
+	passphrase, err := kms.FetchDEK(ctx, volumeID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get passphrase: %w", err)
+	}
+
+	key, err := generateKeyFromPassphrase(passphrase, volumeID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate key for cipher: %w", err)
+	}
+
+	emd, err := symmetricEncrypt(plainDEK, key)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt the plainDEK: %w", err)
+	}
+
+	emdData, err := json.Marshal(&emd)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert "+
+			"encryptedMetadataDEK to JSON: %w", err)
+	}
+
+	return string(emdData), nil
+}
+
+// DecryptDEK takes the JSON formatted `encryptedMetadataDEK` contents, and it
+// fetches secretKMS passphrase to decrypt the DEK.
+func (kms secretsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK string) (string, error) {
+	// use the passphrase from the secretKMS
+	passphrase, err := kms.FetchDEK(ctx, volumeID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get passphrase: %w", err)
+	}
+
+	key, err := generateKeyFromPassphrase(passphrase, volumeID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate key for cipher: %w", err)
+	}
+
+	emd := encryptedMetadataDEK{}
+	err = json.Unmarshal([]byte(encryptedDEK), &emd)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert data to "+
+			"encryptedMetadataDEK: %w", err)
+	}
+
+	val, err := symmetricDecrypt(&emd, key)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt DEK: %w", err)
+	}
+
+	return val, nil
+}
+
+func (kms secretsMetadataKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
+	// use the passphrase from the secretKMS
+	return kms.FetchDEK(ctx, volumeID)
+}
+
+// fetchEncryptionPassphrase fetches encryptionPassphrase from user provided secret.
+func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
+	config map[string]any,
+	defaultNamespace string,
+) (string, error) {
+	var (
+		secretName      string
+		secretNamespace string
+	)
+
+	err := setConfigString(&secretName, config, metadataSecretNameKey)
+	if err != nil {
+		return "", err
+	}
+
+	err = setConfigString(&secretNamespace, config, metadataSecretNamespaceKey)
+	if err != nil {
+		if !errors.Is(err, errConfigOptionMissing) {
+			return "", err
+		}
+		// if 'secretNamespace' option is not specified, defaults to namespace in
+		// which PVC was created
+		secretNamespace = defaultNamespace
+	}
+
+	secretData, err := k8s.GetSecret(secretName, secretNamespace)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Secret %s/%s: %w", secretNamespace, secretName, err)
+	}
+
+	passphraseValue, ok := secretData[encryptionPassphraseKey]
+	if !ok {
+		return "", fmt.Errorf("missing %q in Secret %s/%s",
+			encryptionPassphraseKey, secretNamespace, secretName)
+	}
+
+	return passphraseValue, nil
+}
+
+// generateKeyFromPassphrase generates a 256bit key to be used for
+// crypto operations from the provided passphrase and salt.
+func generateKeyFromPassphrase(passphrase, salt string) ([]byte, error) {
+	key, err := scrypt.Key([]byte(passphrase), []byte(salt), 32768, 8, 1, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	return key, nil
+}
+
+// generateNonce returns a byte slice with random contents.
+func generateNonce(size int) ([]byte, error) {
+	nonce := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	return nonce, nil
+}

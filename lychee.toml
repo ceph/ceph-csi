@@ -1,0 +1,16 @@
+# lychee link checker configuration
+# See https://lychee.cli.rs for details
+
+# Exclude paths from being checked
+exclude_path = [
+    "actions/retest/vendor",
+    "api/vendor",
+    "e2e/vendor",
+    "vendor",
+]
+
+# Only check local/offline links (no network requests).
+offline = true
+
+# Output format
+format = "markdown"
