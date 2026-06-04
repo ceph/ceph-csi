@@ -344,6 +344,24 @@ func (cs *cephfsControllerServer) CreateVolume(
 		defer parentVol.Destroy()
 	}
 
+	// Lock the source volume or snapshot to prevent deletion while creating from it
+	if pvID != nil {
+		if acquired := cs.VolumeLocks.TryAcquire(pvID.VolumeID); !acquired {
+			log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, pvID.VolumeID)
+
+			return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, pvID.VolumeID)
+		}
+		defer cs.VolumeLocks.Release(pvID.VolumeID)
+	}
+	if sID != nil {
+		if acquired := cs.SnapshotLocks.TryAcquire(sID.SnapshotID); !acquired {
+			log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, sID.SnapshotID)
+
+			return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, sID.SnapshotID)
+		}
+		defer cs.SnapshotLocks.Release(sID.SnapshotID)
+	}
+
 	err = checkValidCreateVolumeRequest(volOptions, parentVol, pvID, sID, req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
