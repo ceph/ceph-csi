@@ -216,6 +216,8 @@ func getReqID(req any) string {
 		reqID = r.GetName()
 	case *csi.DeleteSnapshotRequest:
 		reqID = r.GetSnapshotId()
+	case *csi.GetSnapshotRequest:
+		reqID = r.GetSnapshotId()
 
 	case *csi.ControllerExpandVolumeRequest:
 		reqID = r.GetVolumeId()
