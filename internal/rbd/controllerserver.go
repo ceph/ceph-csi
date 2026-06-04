@@ -394,6 +394,8 @@ func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSna
 }
 
 // CreateVolume creates the volume in backend.
+//
+//nolint:gocyclo,cyclop // TODO: reduce complexity.
 func (cs *ControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
@@ -433,6 +435,24 @@ func (cs *ControllerServer) CreateVolume(
 	}
 	if rbdSnap != nil {
 		defer rbdSnap.Destroy(ctx)
+	}
+
+	// Lock the source volume or snapshot to prevent concurrent operations
+	if parentVol != nil {
+		if acquired := cs.VolumeLocks.TryAcquire(parentVol.VolID); !acquired {
+			log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, parentVol.VolID)
+
+			return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, parentVol.VolID)
+		}
+		defer cs.VolumeLocks.Release(parentVol.VolID)
+	}
+	if rbdSnap != nil {
+		if acquired := cs.SnapshotLocks.TryAcquire(rbdSnap.VolID); !acquired {
+			log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, rbdSnap.VolID)
+
+			return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, rbdSnap.VolID)
+		}
+		defer cs.SnapshotLocks.Release(rbdSnap.VolID)
 	}
 
 	err = updateTopologyConstraints(rbdVol, rbdSnap)
