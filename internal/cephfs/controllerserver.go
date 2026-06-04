@@ -844,7 +844,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	info, err := volClient.GetSubVolumeInfo(ctx)
 	if err != nil {
 		if sid != nil {
-			errDefer := store.UndoSnapReservation(ctx, parentVolOptions, *sid, snapName, cr)
+			errDefer := store.UndoSnapReservation(ctx, parentVolOptions, sid, snapName, cr)
 			if errDefer != nil {
 				log.WarningLog(ctx, "failed undoing reservation of snapshot: %s (%s)",
 					requestName, errDefer)
@@ -885,7 +885,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 	defer func() {
 		if err != nil {
-			errDefer := store.UndoSnapReservation(ctx, parentVolOptions, *sID, snapName, cr)
+			errDefer := store.UndoSnapReservation(ctx, parentVolOptions, sID, snapName, cr)
 			if errDefer != nil {
 				log.WarningLog(ctx, "failed undoing reservation of snapshot: %s (%s)",
 					requestName, errDefer)
@@ -1033,7 +1033,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 			// success as deletion is complete
 			return &csi.DeleteSnapshotResponse{}, nil
 		case errors.Is(err, cerrors.ErrSnapNotFound):
-			err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.RequestName, cr)
+			err = store.UndoSnapReservation(ctx, volOpt, sid, sid.RequestName, cr)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 					sid.RequestName, sid.FsSnapshotName, err)
@@ -1046,7 +1046,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 			// if the error is ErrVolumeNotFound, the subvolume is already deleted
 			// from backend, Hence undo the omap entries and return success
 			log.ErrorLog(ctx, "Volume not present")
-			err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.RequestName, cr)
+			err = store.UndoSnapReservation(ctx, volOpt, sid, sid.RequestName, cr)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 					sid.RequestName, sid.FsSnapshotName, err)
@@ -1113,7 +1113,7 @@ func deleteSnapshotAndUndoReservation(
 		return err
 	}
 
-	err = store.UndoSnapReservation(ctx, parentVolOptions, *snapID, snapID.RequestName, cr)
+	err = store.UndoSnapReservation(ctx, parentVolOptions, snapID, snapID.RequestName, cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 			snapID.RequestName, snapID.RequestName, err)

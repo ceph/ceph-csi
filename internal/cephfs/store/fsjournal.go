@@ -380,7 +380,7 @@ func ReserveSnap(
 func UndoSnapReservation(
 	ctx context.Context,
 	volOptions *VolumeOptions,
-	vid SnapshotIdentifier,
+	vid *SnapshotIdentifier,
 	snapName string,
 	cr *util.Credentials,
 ) error {
