@@ -882,6 +882,7 @@ func NewSnapshotOptionsFromID(
 	sid.RequestName = imageAttributes.RequestName
 	sid.FsSnapshotName = imageAttributes.ImageName
 	sid.FsSubvolName = imageAttributes.SourceName
+	sid.SourceVolumeID = imageAttributes.SourceVolumeID
 
 	volOptions.SubVolume.VolID = sid.FsSubvolName
 	volOptions.Owner = imageAttributes.Owner

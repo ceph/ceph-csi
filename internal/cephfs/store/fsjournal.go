@@ -60,6 +60,7 @@ type SnapshotIdentifier struct {
 	RequestName    string
 	CreationTime   *timestamp.Timestamp
 	FsSubvolName   string
+	SourceVolumeID string
 }
 
 /*
@@ -328,6 +329,7 @@ func ReserveSnap(
 	ctx context.Context,
 	volOptions *VolumeOptions,
 	parentSubVolName string,
+	sourceVolumeID string,
 	snap *SnapshotOption,
 	cr *util.Credentials,
 ) (*SnapshotIdentifier, error) {
@@ -352,6 +354,13 @@ func ReserveSnap(
 		volOptions.Owner, encryptionType)
 	if err != nil {
 		return nil, err
+	}
+
+	if sourceVolumeID != "" {
+		err = j.StoreSourceVolumeID(ctx, volOptions.MetadataPool, imageUUID, sourceVolumeID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// generate the snapshot ID to return to the CO system
@@ -428,6 +437,7 @@ func CheckSnapExists(
 	snapUUID := snapData.ImageUUID
 	snapID := snapData.ImageAttributes.ImageName
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
+	sid.SourceVolumeID = snapData.ImageAttributes.SourceVolumeID
 	snapClient := core.NewSnapshot(volOptions.conn, snapID,
 		volOptions.ClusterID, clusterName, &volOptions.SubVolume)
 	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
