@@ -1150,6 +1150,7 @@ func genSnapFromSnapID(
 	rbdSnap.RbdSnapName = imageAttributes.ImageName
 	rbdSnap.ReservedID = vi.ObjectUUID
 	rbdSnap.Owner = imageAttributes.Owner
+	rbdSnap.SourceVolumeID = imageAttributes.SourceVolumeID
 	// convert the journal pool ID to name, for use in DeleteSnapshot cases
 	if imageAttributes.JournalPoolID != util.InvalidPoolID {
 		rbdSnap.JournalPool, err = util.GetPoolName(rbdSnap.Monitors, cr, imageAttributes.JournalPoolID)

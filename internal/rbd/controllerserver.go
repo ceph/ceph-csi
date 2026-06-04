@@ -1582,6 +1582,60 @@ func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, c
 	return nil
 }
 
+// GetSnapshot returns the information about a snapshot.
+func (cs *ControllerServer) GetSnapshot(
+	ctx context.Context,
+	req *csi.GetSnapshotRequest,
+) (*csi.GetSnapshotResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_GET_SNAPSHOT); err != nil {
+		log.ErrorLog(ctx, "invalid get snapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
+	snapshotID := req.GetSnapshotId()
+	if snapshotID == "" {
+		return nil, status.Error(codes.InvalidArgument, "snapshot ID cannot be empty")
+	}
+
+	cr, err := util.NewAdminCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, req.GetSecrets())
+	if err != nil {
+		switch {
+		case errors.Is(err, util.ErrPoolNotFound):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		case errors.Is(err, util.ErrKeyNotFound):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		case errors.Is(err, rbderrors.ErrImageNotFound):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+	defer rbdSnap.Destroy(ctx)
+
+	if rbdSnap.SourceVolumeID == "" {
+		return nil, status.Errorf(codes.NotFound,
+			"snapshot %s does not have source volume ID metadata, it may have been created by an older version",
+			snapshotID)
+	}
+
+	csiSnap, err := rbdSnap.ToCSI(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.GetSnapshotResponse{
+		Snapshot: csiSnap,
+	}, nil
+}
+
 // ControllerExpandVolume expand RBD Volumes on demand based on resizer request.
 func (cs *ControllerServer) ControllerExpandVolume(
 	ctx context.Context,

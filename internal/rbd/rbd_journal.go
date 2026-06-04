@@ -438,6 +438,13 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 		return err
 	}
 
+	if rbdSnap.SourceVolumeID != "" {
+		err = j.StoreSourceVolumeID(ctx, rbdSnap.Pool, rbdSnap.ReservedID, rbdSnap.SourceVolumeID)
+		if err != nil {
+			return err
+		}
+	}
+
 	rbdSnap.VolID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, imagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, rbdSnap.ReservedID)
 	if err != nil {
