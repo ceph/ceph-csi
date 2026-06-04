@@ -217,6 +217,17 @@ CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
 #feature-gates for kube
 K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-""}
 
+# cri-dockerd does not support WebSocket v5 streaming, which is enabled by
+# default in K8s >= 1.36 via ExtendWebSocketsToKubelet (beta). This causes
+# "kubectl exec" to fail with "http: server gave HTTP response to HTTPS client".
+if [[ $(kube_version 2) -ge 36 ]]; then
+    if [[ -n "${K8S_FEATURE_GATES}" ]]; then
+        K8S_FEATURE_GATES="${K8S_FEATURE_GATES},ExtendWebSocketsToKubelet=false"
+    else
+        K8S_FEATURE_GATES="ExtendWebSocketsToKubelet=false"
+    fi
+fi
+
 # kubelet.resolv-conf needs to point to a file, not a symlink
 # the default minikube VM has /etc/resolv.conf -> /run/systemd/resolve/resolv.conf
 RESOLV_CONF="${RESOLV_CONF:-/run/systemd/resolve/resolv.conf}"
