@@ -879,7 +879,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 
 	// Reservation
-	sID, err := store.ReserveSnap(ctx, parentVolOptions, vid.FsSubvolName, cephfsSnap, cr)
+	sID, err := store.ReserveSnap(ctx, parentVolOptions, vid.FsSubvolName, sourceVolID, cephfsSnap, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -1122,6 +1122,66 @@ func deleteSnapshotAndUndoReservation(
 	}
 
 	return nil
+}
+
+// GetSnapshot returns the information about a snapshot.
+func (cs *ControllerServer) GetSnapshot(
+	ctx context.Context,
+	req *csi.GetSnapshotRequest,
+) (*csi.GetSnapshotResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_GET_SNAPSHOT); err != nil {
+		log.ErrorLog(ctx, "invalid get snapshot req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
+	snapshotID := req.GetSnapshotId()
+	if snapshotID == "" {
+		return nil, status.Error(codes.InvalidArgument, "snapshot ID cannot be empty")
+	}
+
+	cr, err := util.NewAdminCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	volOpt, snapInfo, sid, err := store.NewSnapshotOptionsFromID(ctx, snapshotID, cr,
+		req.GetSecrets(), cs.ClusterName)
+	if err != nil {
+		switch {
+		case errors.Is(err, cerrors.ErrInvalidVolID):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		case errors.Is(err, util.ErrPoolNotFound):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		case errors.Is(err, util.ErrKeyNotFound):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		case errors.Is(err, cerrors.ErrSnapNotFound):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		case errors.Is(err, cerrors.ErrVolumeNotFound):
+			return nil, status.Errorf(codes.NotFound, "snapshot %s not found: %v", snapshotID, err)
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+	defer volOpt.Destroy()
+
+	if sid.SourceVolumeID == "" {
+		return nil, status.Errorf(codes.NotFound,
+			"snapshot %s does not have source volume ID metadata, it may have been created by an older version",
+			snapshotID)
+	}
+
+	return &csi.GetSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SizeBytes:      volOpt.Size,
+			SnapshotId:     snapshotID,
+			SourceVolumeId: sid.SourceVolumeID,
+			CreationTime:   timestamppb.New(snapInfo.CreatedAt),
+			ReadyToUse:     snapInfo.HasPendingClones != "yes",
+		},
+	}, nil
 }
 
 // ControllerPublishVolume implements the CSI ControllerPublishVolume RPC.
