@@ -163,6 +163,9 @@ type Config struct {
 	// backingSnapshotIDKey ID of the snapshot on which the CephFS snapshot-backed volume is based
 	backingSnapshotIDKey string
 
+	// sourceVolumeIDKey stores the CSI volume ID of the source volume for snapshots
+	sourceVolumeIDKey string
+
 	// commonPrefix is the prefix common to all omap keys for this Config
 	commonPrefix string
 }
@@ -184,6 +187,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 		encryptionType:          "csi.volume.encryptionType",
 		ownerKey:                "csi.volume.owner",
 		backingSnapshotIDKey:    "csi.volume.backingsnapshotid",
+		sourceVolumeIDKey:       "",
 		commonPrefix:            "csi.",
 	}
 }
@@ -204,6 +208,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 		encryptKMSKey:           "csi.volume.encryptKMS",
 		encryptionType:          "csi.volume.encryptionType",
 		ownerKey:                "csi.volume.owner",
+		sourceVolumeIDKey:       "csi.sourceVolumeId",
 		commonPrefix:            "csi.",
 	}
 }
@@ -696,6 +701,7 @@ type ImageAttributes struct {
 	GroupID           string                // Contains the group id of the image
 	JournalPoolID     int64                 // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
 	BackingSnapshotID string                // ID of the snapshot on which the CephFS snapshot-backed volume is based
+	SourceVolumeID    string                // Contains the CSI volume ID of the source volume, if it is a snapshot
 }
 
 // GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure.
@@ -727,6 +733,7 @@ func (conn *Connection) GetImageAttributes(
 		cj.ownerKey,
 		cj.backingSnapshotIDKey,
 		cj.csiGroupIDKey,
+		cj.sourceVolumeIDKey,
 	}
 	values, err := getOMapValues(
 		ctx, conn, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+objectUUID,
@@ -777,6 +784,10 @@ func (conn *Connection) GetImageAttributes(
 			return nil, fmt.Errorf("%w: no snap source in omap for %q",
 				util.ErrKeyNotFound, cj.cephUUIDDirectoryPrefix+objectUUID)
 		}
+
+		if cj.sourceVolumeIDKey != "" {
+			imageAttributes.SourceVolumeID = values[cj.sourceVolumeIDKey]
+		}
 	}
 
 	return imageAttributes, nil
@@ -811,6 +822,21 @@ func (conn *Connection) StoreGroupID(ctx context.Context, pool, reservedUUID, gr
 		map[string]string{conn.config.csiGroupIDKey: groupID})
 	if err != nil {
 		return fmt.Errorf("failed to store groupID %w", err)
+	}
+
+	return nil
+}
+
+// StoreSourceVolumeID stores the CSI volume ID of the source volume in the snapshot's omap.
+func (conn *Connection) StoreSourceVolumeID(ctx context.Context, pool, reservedUUID, sourceVolumeID string) error {
+	if conn.config.sourceVolumeIDKey == "" {
+		return errors.New("sourceVolumeIDKey is not set for this journal")
+	}
+
+	err := setOMapKeys(ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
+		map[string]string{conn.config.sourceVolumeIDKey: sourceVolumeID})
+	if err != nil {
+		return fmt.Errorf("failed to store source volume ID: %w", err)
 	}
 
 	return nil
