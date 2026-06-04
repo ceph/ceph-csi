@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"strconv"
+	"strings"
 
 	osdAdmin "github.com/ceph/go-ceph/common/admin/osd"
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -32,6 +33,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/journal"
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
@@ -1621,9 +1623,13 @@ func (cs *ControllerServer) GetSnapshot(
 	defer rbdSnap.Destroy(ctx)
 
 	if rbdSnap.SourceVolumeID == "" {
-		return nil, status.Errorf(codes.NotFound,
-			"snapshot %s does not have source volume ID metadata, it may have been created by an older version",
-			snapshotID)
+		backfilledID, bErr := backfillSnapshotSourceVolumeID(ctx, rbdSnap, cr)
+		if bErr != nil {
+			return nil, status.Errorf(codes.NotFound,
+				"snapshot %s does not have source volume ID metadata and backfill failed: %v",
+				snapshotID, bErr)
+		}
+		rbdSnap.SourceVolumeID = backfilledID
 	}
 
 	csiSnap, err := rbdSnap.ToCSI(ctx)
@@ -1634,6 +1640,70 @@ func (cs *ControllerServer) GetSnapshot(
 	return &csi.GetSnapshotResponse{
 		Snapshot: csiSnap,
 	}, nil
+}
+
+// backfillSnapshotSourceVolumeID reconstructs and persists the source CSI
+// volume ID for snapshots created before sourceVolumeID was stored in the OMAP.
+func backfillSnapshotSourceVolumeID(
+	ctx context.Context,
+	rbdSnap *rbdSnapshot,
+	cr *util.Credentials,
+) (string, error) {
+	snapJ, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to snap journal: %w", err)
+	}
+	defer snapJ.Destroy()
+
+	// For group snapshots, genSnapFromSnapID overwrites RbdImageName with
+	// RbdSnapName. Re-read the original parent image name from the snap journal.
+	parentImageName := rbdSnap.RbdImageName
+	if rbdSnap.groupID != "" {
+		snapAttrs, sErr := snapJ.GetImageAttributes(ctx, rbdSnap.Pool, rbdSnap.ReservedID, true)
+		if sErr != nil {
+			return "", fmt.Errorf("failed to read snap journal for original source name: %w", sErr)
+		}
+		parentImageName = snapAttrs.SourceName
+	}
+
+	objectUUID := strings.TrimPrefix(parentImageName, journal.DefaultVolumeNamingPrefix)
+	if objectUUID == parentImageName {
+		return "", fmt.Errorf(
+			"cannot extract object UUID from image name %q: custom naming prefix is not supported for backfill",
+			parentImageName)
+	}
+
+	j, err := volJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to volume journal: %w", err)
+	}
+	defer j.Destroy()
+
+	imageAttributes, err := j.GetImageAttributes(ctx, rbdSnap.Pool, objectUUID, false)
+	if err != nil {
+		return "", fmt.Errorf("failed to look up parent volume UUID %q in journal: %w", objectUUID, err)
+	}
+
+	if imageAttributes.ImageName != parentImageName {
+		return "", fmt.Errorf("parent volume name mismatch: journal has %q, snapshot references %q",
+			imageAttributes.ImageName, parentImageName)
+	}
+
+	sourceVolumeID, err := util.GenerateVolID(ctx, rbdSnap.Monitors, cr, util.InvalidPoolID,
+		rbdSnap.Pool, rbdSnap.ClusterID, objectUUID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate source volume ID: %w", err)
+	}
+
+	// Persist to the snapshot's OMAP so future calls don't need backfill
+	if err = snapJ.StoreSourceVolumeID(ctx, rbdSnap.Pool, rbdSnap.ReservedID, sourceVolumeID); err != nil {
+		log.WarningLog(ctx, "failed to persist backfilled source volume ID for snapshot %s: %v",
+			rbdSnap.VolID, err)
+	} else {
+		log.DebugLog(ctx, "backfilled source volume ID %s for snapshot %s", sourceVolumeID, rbdSnap.VolID)
+	}
+
+	return sourceVolumeID, nil
 }
 
 // ControllerExpandVolume expand RBD Volumes on demand based on resizer request.

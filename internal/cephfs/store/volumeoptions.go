@@ -31,6 +31,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
+	"github.com/ceph/ceph-csi/internal/journal"
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
@@ -910,6 +911,72 @@ func NewSnapshotOptionsFromID(
 	}
 
 	return &volOptions, &info, &sid, nil
+}
+
+// BackfillSourceVolumeID reconstructs and persists the source CSI volume ID
+// for snapshots created before sourceVolumeID was stored in the OMAP.
+// It extracts the objectUUID from the parent subvolume name using the default
+// naming convention (csi-vol-<UUID>), verifies it via the volume journal,
+// composes the CSI volume ID, and persists it for future calls.
+func BackfillSourceVolumeID(
+	ctx context.Context,
+	volOptions *VolumeOptions,
+	sid *SnapshotIdentifier,
+	cr *util.Credentials,
+) (string, error) {
+	objectUUID := strings.TrimPrefix(sid.FsSubvolName, journal.DefaultVolumeNamingPrefix)
+	if objectUUID == sid.FsSubvolName {
+		return "", fmt.Errorf(
+			"cannot extract object UUID from subvolume name %q: custom naming prefix is not supported for backfill",
+			sid.FsSubvolName)
+	}
+
+	j, err := VolJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to volume journal: %w", err)
+	}
+	defer j.Destroy()
+
+	imageAttributes, err := j.GetImageAttributes(ctx, volOptions.MetadataPool, objectUUID, false)
+	if err != nil {
+		return "", fmt.Errorf("failed to look up parent volume UUID %q in journal: %w", objectUUID, err)
+	}
+
+	if imageAttributes.ImageName != sid.FsSubvolName {
+		return "", fmt.Errorf("parent volume name mismatch: journal has %q, snapshot references %q",
+			imageAttributes.ImageName, sid.FsSubvolName)
+	}
+
+	sourceVolumeID, err := util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
+		"", volOptions.ClusterID, objectUUID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate source volume ID: %w", err)
+	}
+
+	// Persist to the snapshot's OMAP so future calls don't need backfill
+	var vi util.CSIIdentifier
+	if err = vi.DecomposeCSIID(sid.SnapshotID); err != nil {
+		log.WarningLog(ctx, "failed to decompose snapshot ID for backfill persist: %v", err)
+
+		return sourceVolumeID, nil
+	}
+
+	snapJ, err := SnapJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
+	if err != nil {
+		log.WarningLog(ctx, "failed to persist backfilled source volume ID: %v", err)
+
+		return sourceVolumeID, nil
+	}
+	defer snapJ.Destroy()
+
+	if err = snapJ.StoreSourceVolumeID(ctx, volOptions.MetadataPool, vi.ObjectUUID, sourceVolumeID); err != nil {
+		log.WarningLog(ctx, "failed to persist backfilled source volume ID for snapshot %s: %v",
+			sid.SnapshotID, err)
+	} else {
+		log.DebugLog(ctx, "backfilled source volume ID %s for snapshot %s", sourceVolumeID, sid.SnapshotID)
+	}
+
+	return sourceVolumeID, nil
 }
 
 // SnapshotOption is a struct that holds the information about the snapshot.

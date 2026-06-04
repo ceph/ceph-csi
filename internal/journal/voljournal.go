@@ -110,6 +110,9 @@ single entity modifying the related omaps for a given VolName.
 const (
 	defaultVolumeNamingPrefix   string = "csi-vol-"
 	defaultSnapshotNamingPrefix string = "csi-snap-"
+
+	// DefaultVolumeNamingPrefix is the default prefix for volume names.
+	DefaultVolumeNamingPrefix = defaultVolumeNamingPrefix
 )
 
 // CSIJournal defines the interface and the required key names for the above RADOS based OMaps.

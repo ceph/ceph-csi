@@ -1168,9 +1168,13 @@ func (cs *ControllerServer) GetSnapshot(
 	defer volOpt.Destroy()
 
 	if sid.SourceVolumeID == "" {
-		return nil, status.Errorf(codes.NotFound,
-			"snapshot %s does not have source volume ID metadata, it may have been created by an older version",
-			snapshotID)
+		backfilledID, bErr := store.BackfillSourceVolumeID(ctx, volOpt, sid, cr)
+		if bErr != nil {
+			return nil, status.Errorf(codes.NotFound,
+				"snapshot %s does not have source volume ID metadata and backfill failed: %v",
+				snapshotID, bErr)
+		}
+		sid.SourceVolumeID = backfilledID
 	}
 
 	return &csi.GetSnapshotResponse{
