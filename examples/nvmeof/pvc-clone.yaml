@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nvmeof-pvc-clone
+spec:
+  storageClassName: csi-nvmeof-sc
+  dataSource:
+    name: nvmeof-pvc
+    kind: PersistentVolumeClaim
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 64Mi
