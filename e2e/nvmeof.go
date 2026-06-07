@@ -130,6 +130,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 	ginkgo.Context("Test NVMe CSI", ginkgo.Ordered, func() {
 
 		pvcPath := nvmeofExamplePath + "pvc.yaml"
+		pvcClonePath := nvmeofExamplePath + "pvc-clone.yaml"
 		appPath := nvmeofExamplePath + "pod.yaml"
 		rawPvcPath := nvmeofExamplePath + "raw-block-pvc.yaml"
 		rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
@@ -429,6 +430,71 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// validate created backend rbd images are deleted
+			validateRBDImageCount(f, 0, nvmeofPool)
+			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+		})
+
+		ginkgo.It("Cloning nvmeof PVC", func() {
+			// This test validates cloning of NVMe-oF PVCs.
+			//
+			// Test flow:
+			// 1. Create a source PVC and bind it to an app
+			// 2. Create a clone of the source PVC and bind it to an app
+			// 3. Delete the clone app and PVC
+			// 4. Delete the source app and PVC
+
+			ginkgo.By("Creating a source PVC")
+			sourcePVC, err := loadPVC(pvcPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			sourcePVC.Namespace = f.UniqueName
+			sourcePVC.Spec.StorageClassName = &nvmeofStorageClass
+
+			err = createPVCAndvalidatePV(f.ClientSet, sourcePVC, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Binding source PVC to an application")
+			sourceApp, err := loadApp(appPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			sourceApp.Namespace = f.UniqueName
+			sourceApp.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = sourcePVC.Name
+
+			err = createApp(f.ClientSet, sourceApp, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Creating a clone of the source PVC")
+			// Load clone PVC template with DataSource already configured
+			clonePVC, err := loadPVC(pvcClonePath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			clonePVC.Namespace = f.UniqueName
+			clonePVC.Spec.StorageClassName = &nvmeofStorageClass
+			clonePVC.Spec.DataSource.Name = sourcePVC.Name
+
+			err = createPVCAndvalidatePV(f.ClientSet, clonePVC, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Binding clone PVC to an application")
+			cloneApp, err := loadApp(appPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			cloneApp.Name = sourceApp.Name + "-clone"
+			cloneApp.Namespace = f.UniqueName
+			cloneApp.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = clonePVC.Name
+
+			err = createApp(f.ClientSet, cloneApp, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Deleting the clone application and PVC")
+			err = deletePVCAndApp("", f, clonePVC, cloneApp)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Deleting the source application and PVC")
+			err = deletePVCAndApp("", f, sourcePVC, sourceApp)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// validate all backend rbd images are cleaned up
 			validateRBDImageCount(f, 0, nvmeofPool)
 			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
 		})
