@@ -934,7 +934,7 @@ func getLuksStatus(selector, mountPath string, f *framework.Framework) (*cryptse
 	opt := metav1.ListOptions{
 		LabelSelector: selector,
 	}
-	cmd := fmt.Sprintf("mappedDev=$(findmnt -n -o SOURCE --target %s);sudo cryptsetup status $mappedDev;",
+	cmd := fmt.Sprintf("cryptsetup status $(findmnt -n -o SOURCE --target %s)",
 		mountPath)
 	stdOut, stdErr, err := execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
 	if err != nil {
