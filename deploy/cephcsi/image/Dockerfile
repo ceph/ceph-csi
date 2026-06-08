@@ -85,7 +85,7 @@ COPY --from=builder ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
 
 RUN true \
   && rpm -ivh https://download.ceph.com/rpm-${CEPH_VERSION}/el9/noarch/ceph-release-1-1.el9.noarch.rpm \
-  && microdnf -y install kmod nfs-utils nvme-cli epel-release psmisc e2fsprogs xfsprogs cryptsetup --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
+  && microdnf -y install kmod nfs-utils nvme-cli epel-release psmisc e2fsprogs xfsprogs cryptsetup attr --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
   && microdnf -y install thrift librados2 librbd1 libcephfs2 ceph-common ceph-fuse rbd-nbd --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
   && microdnf clean all \
   && true
