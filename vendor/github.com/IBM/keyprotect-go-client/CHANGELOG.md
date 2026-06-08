@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/IBM/keyprotect-go-client/compare/v0.16.0...v0.17.0) (2026-06-08)
+
+
+### Features
+
+* **build:** Adding KeyProtect Dedicated Support ([#149](https://github.com/IBM/keyprotect-go-client/issues/149)) ([ee8097e](https://github.com/IBM/keyprotect-go-client/commit/ee8097efab367b2a148791e3d2b935a5c2b5fc8c))
+
 # [0.16.0](https://github.com/IBM/keyprotect-go-client/compare/v0.15.1...v0.16.0) (2026-05-14)
 
 
