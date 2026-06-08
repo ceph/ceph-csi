@@ -1,4 +1,4 @@
-# IBM Cloud Go SDK Version 0.16.0
+# IBM Cloud Go SDK Version 0.17.0
 
 # keyprotect-go-client
 
