@@ -1187,21 +1187,12 @@ func (cs *cephfsControllerServer) getServiceAccountRestriction(
 	req *csi.ControllerPublishVolumeRequest,
 ) (string, error) {
 	volumeID := req.GetVolumeId()
-	secrets := req.GetSecrets()
-
-	if secrets == nil {
-		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeID, util.CephFsType)
-		if err != nil {
-			log.WarningLog(ctx, "controller publish secret not found: %v", err)
-
-			return "", nil
-		}
-
-		secrets, err = k8s.GetSecret(secretName, secretNamespace)
-		if err != nil {
-			return "", status.Errorf(codes.Internal,
-				"failed to get controller publish secret from k8s: %v", err)
-		}
+	secrets, skip, err := util.GetControllerPublishSecrets(ctx, req.GetSecrets(), volumeID, util.CephFsType)
+	if skip {
+		return "", nil
+	}
+	if err != nil {
+		return "", status.Error(codes.Internal, err.Error())
 	}
 
 	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeID, nil, secrets, cs.ClusterName)
@@ -1260,21 +1251,12 @@ func (cs *cephfsControllerServer) ControllerUnpublishVolume(
 	}
 	defer cs.VolumeLocks.Release(volumeId)
 
-	secrets := req.GetSecrets()
-	if secrets == nil {
-		secretName, secretNamespace, err := util.GetControllerPublishSecretRef(volumeId, util.CephFsType)
-		if err != nil {
-			log.WarningLog(ctx, "controller publish secret not found: %v", err)
-
-			// If the secret is not found, return success to not break for older PVs
-			// without controller-publish secrets.
-			return &csi.ControllerUnpublishVolumeResponse{}, nil
-		}
-
-		secrets, err = k8s.GetSecret(secretName, secretNamespace)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
-		}
+	secrets, skip, err := util.GetControllerPublishSecrets(ctx, req.GetSecrets(), volumeId, util.CephFsType)
+	if skip {
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil, secrets, cs.ClusterName)

@@ -36,4 +36,6 @@ var (
 	ErrMissingConfigForMonitor = errors.New("missing configuration of cluster ID for monitor")
 	// ErrConfigNotFound is returned when no configuration is found for a cluster ID.
 	ErrConfigNotFound = errors.New("missing configuration for cluster ID")
+	// ErrInvalidVolID is returned when the volume ID cannot be decomposed into a CSI identifier.
+	ErrInvalidVolID = errors.New("invalid volume ID")
 )
