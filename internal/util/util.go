@@ -34,6 +34,7 @@ import (
 	mount "k8s.io/mount-utils"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // Driver types to identify type of driver running.
@@ -349,7 +350,8 @@ func GetControllerPublishSecretRef(volumeId, driverType string) (string, string,
 	)
 	err := vi.DecomposeCSIID(volumeId)
 	if err != nil {
-		return secretName, secretNamespace, fmt.Errorf("failed to decode volume ID (%s): %w", volumeId, err)
+		return secretName, secretNamespace,
+			fmt.Errorf("failed to decode volume ID (%s): %w: %w", volumeId, ErrInvalidVolID, err)
 	}
 
 	secretName, secretNamespace, err = getControllerPublishSecretRef(vi.ClusterID, driverType)
@@ -393,6 +395,37 @@ func GetControllerPublishSecretRef(volumeId, driverType string) (string, string,
 	}
 
 	return secretName, secretNamespace, nil
+}
+
+// GetControllerPublishSecrets resolves secrets for a controller publish/unpublish operation.
+// If reqSecrets is non-nil, return it. Otherwise secrets are fetched from the CSI config.
+// When the second return value is true the caller should return early with no error.
+func GetControllerPublishSecrets(
+	ctx context.Context,
+	reqSecrets map[string]string,
+	volumeID, driverType string,
+) (map[string]string, bool, error) {
+	if reqSecrets != nil {
+		return reqSecrets, false, nil
+	}
+	secretName, secretNamespace, err := GetControllerPublishSecretRef(volumeID, driverType)
+	if errors.Is(err, ErrInvalidVolID) || errors.Is(err, ErrConfigNotFound) {
+		// Possibly the volume is a static/older volume. In this case, we have nothing to do.
+		// Even if it's not a static/older volume, we should skip handling it because
+		// we have no way to process handling anyway.
+		log.WarningLog(ctx, "should skip handling this volume: %v", err)
+
+		return nil, true, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get controller publish secret ref: %w", err)
+	}
+	secrets, err := k8s.GetSecret(secretName, secretNamespace)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get controller publish secret from k8s: %w", err)
+	}
+
+	return secrets, false, nil
 }
 
 func getControllerPublishSecretRef(clusterId, driverType string) (string, string, error) {

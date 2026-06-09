@@ -83,6 +83,9 @@ spec:
   volumeMode: Filesystem
 ```
 
+> [!note]
+> `controllerPublishSecretRef` must not be specified for static RBD PVs.
+
 ### RBD Volume Attributes in PV
 
 Below table explains the list of volume attributes can be set when creating a
@@ -277,6 +280,9 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   volumeMode: Filesystem
 ```
+
+> [!note]
+> `controllerPublishSecretRef` must not be specified for static CephFS PVs.
 
 ### Node stage secret ref in CephFS PV
 
