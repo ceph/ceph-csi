@@ -12,6 +12,8 @@
           only_run_on_request: true
       - '1.36':
           only_run_on_request: true
+      - '1.37':
+          only_run_on_request: true
     test_type:
       - 'cephfs'
       - 'nfs'
