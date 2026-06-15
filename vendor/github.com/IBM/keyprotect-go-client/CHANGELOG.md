@@ -1,3 +1,18 @@
+## [0.17.2](https://github.com/IBM/keyprotect-go-client/compare/v0.17.1...v0.17.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* **build:** Fixed the README.md ([#153](https://github.com/IBM/keyprotect-go-client/issues/153)) ([8b3aaa4](https://github.com/IBM/keyprotect-go-client/commit/8b3aaa44c535786d2316d1e40b4d21afb8c3e484))
+* **code:** allow initialize to retry ([#152](https://github.com/IBM/keyprotect-go-client/issues/152)) ([a0556d3](https://github.com/IBM/keyprotect-go-client/commit/a0556d3e8ffcbc36cc4ac8812ba3fb25f35fdcd7)), closes [#149](https://github.com/IBM/keyprotect-go-client/issues/149) [#150](https://github.com/IBM/keyprotect-go-client/issues/150)
+
+## [0.17.1](https://github.com/IBM/keyprotect-go-client/compare/v0.17.0...v0.17.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* **build:** changing init() to lib_lazy_load() ([#150](https://github.com/IBM/keyprotect-go-client/issues/150)) ([af4b1a1](https://github.com/IBM/keyprotect-go-client/commit/af4b1a151618a2d9e61c4e31a863c1ec03e51b98))
+
 # [0.17.0](https://github.com/IBM/keyprotect-go-client/compare/v0.16.0...v0.17.0) (2026-06-08)
 
 

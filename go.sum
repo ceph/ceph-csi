@@ -425,8 +425,8 @@ github.com/AzureAD/microsoft-authentication-library-for-go v1.7.0/go.mod h1:HKpQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/IBM/keyprotect-go-client v0.5.1/go.mod h1:5TwDM/4FRJq1ZOlwQL1xFahLWQ3TveR88VmL1u3njyI=
-github.com/IBM/keyprotect-go-client v0.17.0 h1:Y34dGu48Cg0Qh3dG1yGAyts1/PmuMIx+Nu0kZ7ptP7M=
-github.com/IBM/keyprotect-go-client v0.17.0/go.mod h1:gMJdUzT2EKeQd2jJKRU6mBRrx0Na4yUCQvA+lQbnEt8=
+github.com/IBM/keyprotect-go-client v0.17.2 h1:hSweHS9QJT1hU7apTpK54r4eUv5gvuv45utiTO+DZwk=
+github.com/IBM/keyprotect-go-client v0.17.2/go.mod h1:gMJdUzT2EKeQd2jJKRU6mBRrx0Na4yUCQvA+lQbnEt8=
 github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=
 github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=

@@ -69,7 +69,7 @@ github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/shared
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/version
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/managedidentity
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/public
-# github.com/IBM/keyprotect-go-client v0.17.0
+# github.com/IBM/keyprotect-go-client v0.17.2
 ## explicit; go 1.25.0
 github.com/IBM/keyprotect-go-client
 github.com/IBM/keyprotect-go-client/iam
