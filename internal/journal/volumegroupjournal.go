@@ -219,9 +219,9 @@ func (vgjc *volumeGroupJournalConnection) CheckReservation(ctx context.Context,
 	fetchKeys := []string{
 		cj.csiNameKeyPrefix + reqName,
 	}
-	values, err := getOMapValues(
+	values, err := getOMapValuesByKeys(
 		ctx, vgjc.connection, journalPool, cj.namespace, cj.csiDirectory,
-		cj.commonPrefix, fetchKeys)
+		fetchKeys)
 	if err != nil {
 		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			// pool or omap (oid) was not present
