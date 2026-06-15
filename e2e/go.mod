@@ -13,8 +13,8 @@ require (
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.6.0
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.6.0
-	github.com/onsi/ginkgo/v2 v2.29.0
-	github.com/onsi/gomega v1.41.0
+	github.com/onsi/ginkgo/v2 v2.31.0
+	github.com/onsi/gomega v1.42.0
 	// when updating k8s.io modules, update the 'replace' section below too
 	k8s.io/api v0.36.1
 	k8s.io/apimachinery v0.36.1
