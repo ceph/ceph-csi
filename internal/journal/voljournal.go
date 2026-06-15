@@ -315,9 +315,9 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 	fetchKeys := []string{
 		cj.csiNameKeyPrefix + reqName,
 	}
-	values, err := getOMapValues(
+	values, err := getOMapValuesByKeys(
 		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		cj.commonPrefix, fetchKeys)
+		fetchKeys)
 	if err != nil {
 		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			// pool or omap (oid) was not present
@@ -728,9 +728,9 @@ func (conn *Connection) GetImageAttributes(
 		cj.backingSnapshotIDKey,
 		cj.csiGroupIDKey,
 	}
-	values, err := getOMapValues(
+	values, err := getOMapValuesByKeys(
 		ctx, conn, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+objectUUID,
-		cj.commonPrefix, fetchKeys)
+		fetchKeys)
 	if err != nil {
 		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
 			return nil, err
@@ -819,9 +819,9 @@ func (conn *Connection) StoreGroupID(ctx context.Context, pool, reservedUUID, gr
 // FetchAttribute fetches an attribute (key) in omap.
 func (conn *Connection) FetchAttribute(ctx context.Context, pool, reservedUUID, attribute string) (string, error) {
 	key := conn.config.commonPrefix + attribute
-	values, err := getOMapValues(
+	values, err := getOMapValuesByKeys(
 		ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
-		conn.config.commonPrefix, []string{key})
+		[]string{key})
 	if err != nil {
 		return "", fmt.Errorf("failed to get values for key %q from OMAP: %w", key, err)
 	}
@@ -852,9 +852,9 @@ func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 	fetchKeys := []string{
 		cj.csiNameKeyPrefix + volumeHandle,
 	}
-	values, err := getOMapValues(
+	values, err := getOMapValuesByKeys(
 		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		cj.commonPrefix, fetchKeys)
+		fetchKeys)
 	if err != nil {
 		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			// pool or omap (oid) was not present

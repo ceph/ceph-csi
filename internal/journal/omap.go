@@ -32,10 +32,10 @@ import (
 // over and over.
 const chunkSize int64 = 512
 
-func getOMapValues(
+func getOMapValuesByKeys(
 	ctx context.Context,
 	conn *Connection,
-	poolName, namespace, oid, prefix string, keys []string,
+	poolName, namespace, oid string, keys []string,
 ) (map[string]string, error) {
 	// fetch and configure the rados ioctx
 	ioctx, err := conn.conn.GetIoctx(poolName)
@@ -49,33 +49,17 @@ func getOMapValues(
 	}
 
 	results := map[string]string{}
-	// want is our "lookup map" that ensures O(1) checks for keys
-	// while iterating, without needing to complicate the caller.
-	want := make(map[string]bool, len(keys))
-	for i := range keys {
-		want[keys[i]] = true
-	}
-	numKeys := uint64(0)
-	startAfter := ""
-	for {
-		prevNumKeys := numKeys
-		err = ioctx.ListOmapValues(
-			oid, startAfter, prefix, chunkSize,
-			func(key string, value []byte) {
-				numKeys++
-				startAfter = key
-				if want[key] {
-					results[key] = string(value)
-				}
-			},
-		)
-		// if we hit an error, or no new keys were seen, exit the loop
-		if err != nil || numKeys == prevNumKeys {
-			break
-		}
-	}
 
+	op := rados.CreateReadOp()
+	defer op.Release()
+
+	step := op.GetOmapValuesByKeys(keys)
+	err = op.Operate(ioctx, oid, rados.OperationNoFlag)
 	if err != nil {
+		var opErr rados.OperationError
+		if errors.As(err, &opErr) {
+			err = opErr.OpError
+		}
 		if errors.Is(err, rados.ErrNotFound) {
 			log.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
@@ -86,7 +70,21 @@ func getOMapValues(
 		return nil, err
 	}
 
-	log.DebugLog(ctx, "got omap values: (pool=%q, namespace=%q, name=%q): %+v",
+	for {
+		kv, err := step.Next()
+		if err != nil {
+			log.ErrorLog(ctx, "failed reading omap values by keys (pool=%q, namespace=%q, name=%q, keys=%+v): %v",
+				poolName, namespace, oid, keys, err)
+
+			return nil, err
+		}
+		if kv == nil {
+			break
+		}
+		results[kv.Key] = string(kv.Value)
+	}
+
+	log.DebugLog(ctx, "got omap values by keys: (pool=%q, namespace=%q, name=%q): %+v",
 		poolName, namespace, oid, results)
 
 	return results, nil
