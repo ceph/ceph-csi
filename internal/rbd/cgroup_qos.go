@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	librbd "github.com/ceph/go-ceph/rbd"
+	"golang.org/x/sys/unix"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -198,35 +199,18 @@ func hasCgroupQoSParams(params map[string]string) bool {
 }
 
 // getDeviceID returns the device major:minor number for the given device path.
-func getDeviceID(ctx context.Context, devicePath string) (string, error) {
-	// Get the real path if devicePath is a symlink.
+func getDeviceID(devicePath string) (string, error) {
 	realPath, err := filepath.EvalSymlinks(devicePath)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to resolve symlink for device %s: %v", devicePath, err)
-
-		return "", err
+		return "", fmt.Errorf("failed to resolve symlink for device %s: %w", devicePath, err)
 	}
 
-	// Read /proc/partitions to get major:minor for the device.
-	data, err := os.ReadFile("/proc/partitions")
-	if err != nil {
-		log.ErrorLog(ctx, "failed to read /proc/partitions: %v", err)
-
-		return "", err
+	var st unix.Stat_t
+	if err := unix.Stat(realPath, &st); err != nil {
+		return "", fmt.Errorf("failed to stat device %s: %w", realPath, err)
 	}
 
-	deviceName := filepath.Base(realPath)
-	for line := range strings.SplitSeq(string(data), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) >= 4 && fields[3] == deviceName {
-			major := fields[0]
-			minor := fields[1]
-
-			return fmt.Sprintf("%s:%s", major, minor), nil
-		}
-	}
-
-	return "", fmt.Errorf("device %s not found in /proc/partitions", deviceName)
+	return fmt.Sprintf("%d:%d", unix.Major(st.Rdev), unix.Minor(st.Rdev)), nil
 }
 
 // formatIOMax formats the io.max line for cgroup v2.
@@ -405,7 +389,7 @@ func (rv *rbdVolume) applyCgroupQoSForVolume(ctx context.Context, devicePath, po
 
 	// Get device ID (major:minor).
 	qos := parseCgroupQoSParams(qosParams)
-	qos.deviceID, err = getDeviceID(ctx, devicePath)
+	qos.deviceID, err = getDeviceID(devicePath)
 	if err != nil {
 		return fmt.Errorf("failed to get device ID for %s: %w", devicePath, err)
 	}
