@@ -6270,6 +6270,18 @@ var _ = Describe("RBD", func() {
 			if err != nil {
 				logAndFail("failed to create app: %v", err)
 			}
+
+			// Validate io.max file content on the node
+			appPod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(
+				context.TODO(), app.Name, metav1.GetOptions{})
+			if err != nil {
+				logAndFail("failed to get app pod: %v", err)
+			}
+			err = validateIOMax(f, appPod, pvc, wantsMedium)
+			if err != nil {
+				logAndFail("failed to validate io.max for RWO filesystem: %v", err)
+			}
+
 			err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete app: %v", err)
@@ -6315,6 +6327,17 @@ var _ = Describe("RBD", func() {
 			err = createApp(f.ClientSet, appBlock, deployTimeout)
 			if err != nil {
 				logAndFail("failed to create raw app: %v", err)
+			}
+
+			// Validate io.max file content on the node
+			appBlockPod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(
+				context.TODO(), appBlock.Name, metav1.GetOptions{})
+			if err != nil {
+				logAndFail("failed to get block app pod: %v", err)
+			}
+			err = validateIOMax(f, appBlockPod, pvcBlock, wantsLow)
+			if err != nil {
+				logAndFail("failed to validate io.max for RWO block: %v", err)
 			}
 
 			// Test I/O enforcement
@@ -6371,6 +6394,18 @@ var _ = Describe("RBD", func() {
 			if err != nil {
 				logAndFail("failed to create RWOP app: %v", err)
 			}
+
+			// Validate io.max file content on the node
+			appRWOPPod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(
+				context.TODO(), appRWOP.Name, metav1.GetOptions{})
+			if err != nil {
+				logAndFail("failed to get RWOP app pod: %v", err)
+			}
+			err = validateIOMax(f, appRWOPPod, pvcRWOP, wantsHigh)
+			if err != nil {
+				logAndFail("failed to validate io.max for RWOP: %v", err)
+			}
+
 			err = deletePod(appRWOP.Name, appRWOP.Namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete RWOP app: %v", err)
