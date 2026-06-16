@@ -2069,7 +2069,7 @@ func (cs *ControllerServer) ControllerModifyVolume(
 	switch {
 	case errors.Is(err, rbderrors.ErrMounterUnknown):
 		log.WarningLog(ctx, "volume %s has unknown mounter type (created before mounter tracking), "+
-			"proceeding with modification but QoS may not work if volume does not use rbd-nbd", volID)
+			"proceeding with modification but QoS will work only if volume uses krbd", volID)
 	case err != nil:
 		log.ErrorLog(ctx, "failed to check mounter type for volume %s: %v", volID, err)
 
