@@ -346,137 +346,62 @@ func TestFindPodCgroupPath(t *testing.T) {
 	}
 }
 
-// TestPodCgroupPathConstruction validates the path construction logic
-// without requiring actual filesystem access.
-func TestPodCgroupPathConstruction(t *testing.T) {
+// TestPodCgroupCandidates validates the candidate path generation for both
+// systemd and cgroupfs cgroup drivers.
+func TestPodCgroupCandidates(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name             string
-		podUID           string
-		qosClass         string
-		expectedSlice    string
-		expectedPodSlice string
-	}{
-		{
-			name:             "guaranteed pod path",
-			podUID:           "abc123-def456",
-			qosClass:         "Guaranteed",
-			expectedSlice:    kubepodsGuaranteedSlice,
-			expectedPodSlice: "kubepods-podabc123_def456.slice",
-		},
-		{
-			name:             "burstable pod path",
-			podUID:           "xyz789-uvw123",
-			qosClass:         "Burstable",
-			expectedSlice:    kubepodsBurstableSlice,
-			expectedPodSlice: "kubepods-burstable-podxyz789_uvw123.slice",
-		},
-		{
-			name:             "besteffort pod path",
-			podUID:           "pod-best-effort",
-			qosClass:         "BestEffort",
-			expectedSlice:    kubepodsBestEffortSlice,
-			expectedPodSlice: "kubepods-besteffort-podpod_best_effort.slice",
-		},
-		// Real-world examples from actual Kubernetes cluster cgroup paths
-		{
-			name:             "real besteffort pod",
-			podUID:           "d9fd4536-e68d-46a1-954b-2f05da70bd7d",
-			qosClass:         "BestEffort",
-			expectedSlice:    kubepodsBestEffortSlice,
-			expectedPodSlice: "kubepods-besteffort-podd9fd4536_e68d_46a1_954b_2f05da70bd7d.slice",
-		},
-		{
-			name:             "real guaranteed pod",
-			podUID:           "4d237886-32e9-4888-91da-ed1c0f1d4b89",
-			qosClass:         "Guaranteed",
-			expectedSlice:    kubepodsGuaranteedSlice,
-			expectedPodSlice: "kubepods-pod4d237886_32e9_4888_91da_ed1c0f1d4b89.slice",
-		},
-		{
-			name:             "real burstable pod",
-			podUID:           "bd7148ac-95e7-44b7-a285-bb13e225b4f1",
-			qosClass:         "Burstable",
-			expectedSlice:    kubepodsBurstableSlice,
-			expectedPodSlice: "kubepods-burstable-podbd7148ac_95e7_44b7_a285_bb13e225b4f1.slice",
-		},
+	podUID := "d9fd4536-e68d-46a1-954b-2f05da70bd7d"
+	uidUnderscore := "d9fd4536_e68d_46a1_954b_2f05da70bd7d"
+
+	candidates := podCgroupCandidates(podUID)
+
+	expectedPaths := []string{
+		// systemd
+		filepath.Join(cgroupV2SystemdBase,
+			"kubepods-pod"+uidUnderscore+".slice"),
+		filepath.Join(cgroupV2SystemdBase, "kubepods-burstable.slice",
+			"kubepods-burstable-pod"+uidUnderscore+".slice"),
+		filepath.Join(cgroupV2SystemdBase, "kubepods-besteffort.slice",
+			"kubepods-besteffort-pod"+uidUnderscore+".slice"),
+		// cgroupfs
+		filepath.Join(cgroupV2CgroupfsBase, "pod"+podUID),
+		filepath.Join(cgroupV2CgroupfsBase, "burstable", "pod"+podUID),
+		filepath.Join(cgroupV2CgroupfsBase, "besteffort", "pod"+podUID),
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	if len(candidates) != len(expectedPaths) {
+		t.Fatalf("podCgroupCandidates() returned %d candidates, want %d",
+			len(candidates), len(expectedPaths))
+	}
 
-			// Test UID normalization (hyphens → underscores)
-			normalizedUID := strings.ReplaceAll(tt.podUID, "-", "_")
-
-			// Find matching QoS class info
-			var qos *struct {
-				name      string
-				sliceName string
-				podPrefix string
-			}
-
-			for i := range qosClassInfo {
-				if qosClassInfo[i].name == tt.qosClass {
-					qos = &qosClassInfo[i]
-
-					break
-				}
-			}
-
-			if qos == nil {
-				t.Fatalf("QoS class %s not found in qosClassInfo", tt.qosClass)
-			}
-
-			// Construct expected path using same logic as findPodCgroupPath
-			podSliceName := qos.podPrefix + normalizedUID + ".slice"
-			expectedPath := filepath.Join(cgroupV2BasePath, tt.expectedSlice, tt.expectedPodSlice)
-			constructedPath := filepath.Join(cgroupV2BasePath, qos.sliceName, podSliceName)
-
-			if constructedPath != expectedPath {
-				t.Errorf("path construction mismatch:\ngot:  %s\nwant: %s",
-					constructedPath, expectedPath)
-			}
-		})
+	for i, got := range candidates {
+		if got != expectedPaths[i] {
+			t.Errorf("candidate[%d] = %s, want %s", i, got, expectedPaths[i])
+		}
 	}
 }
 
-func TestQoSClassOrdering(t *testing.T) {
+// TestPodCgroupCandidatesUIDNormalization verifies that systemd paths use
+// underscores and cgroupfs paths keep dashes.
+func TestPodCgroupCandidatesUIDNormalization(t *testing.T) {
 	t.Parallel()
 
-	// Verify that qosClassInfo array is ordered as expected (Guaranteed first).
-	// This ordering is critical for performance - most common QoS class checked first.
-	if qosClassInfo[0].name != "Guaranteed" {
-		t.Errorf("qosClassInfo[0] should be Guaranteed for optimal performance, got %s", qosClassInfo[0].name)
-	}
+	podUID := "abc-def-123"
+	candidates := podCgroupCandidates(podUID)
 
-	if qosClassInfo[1].name != "Burstable" {
-		t.Errorf("qosClassInfo[1] should be Burstable, got %s", qosClassInfo[1].name)
-	}
-
-	if qosClassInfo[2].name != "BestEffort" {
-		t.Errorf("qosClassInfo[2] should be BestEffort, got %s", qosClassInfo[2].name)
-	}
-
-	// Verify path prefixes are correctly constructed
-	expectedPrefixes := map[string]string{
-		"Guaranteed": "kubepods-pod",
-		"Burstable":  "kubepods-burstable-pod",
-		"BestEffort": "kubepods-besteffort-pod",
-	}
-
-	for i := range qosClassInfo {
-		expected, ok := expectedPrefixes[qosClassInfo[i].name]
-		if !ok {
-			t.Errorf("unexpected QoS class name: %s", qosClassInfo[i].name)
-
-			continue
+	for _, c := range candidates[:3] {
+		if strings.Contains(c, podUID) {
+			t.Errorf("systemd candidate should not contain dashed UID: %s", c)
 		}
+		if !strings.Contains(c, "abc_def_123") {
+			t.Errorf("systemd candidate should contain underscore UID: %s", c)
+		}
+	}
 
-		if qosClassInfo[i].podPrefix != expected {
-			t.Errorf("qosClassInfo[%d].podPrefix = %s, want %s",
-				i, qosClassInfo[i].podPrefix, expected)
+	for _, c := range candidates[3:] {
+		if !strings.Contains(c, podUID) {
+			t.Errorf("cgroupfs candidate should contain original dashed UID: %s", c)
 		}
 	}
 }
