@@ -64,31 +64,13 @@ const (
 	qosMetadataMaxReadBps   = qosMetadataKeyPrefix + "cgroup_qos_max_read_bps"
 	qosMetadataMaxWriteBps  = qosMetadataKeyPrefix + "cgroup_qos_max_write_bps"
 
-	// cgroup v2 base path.
-	cgroupV2BasePath = "/sys/fs/cgroup"
-
-	// Kubernetes cgroup slices based on QoS class.
-	// BestEffort and Burstable are nested under kubepods.slice parent.
-	kubepodsBestEffortSlice = "kubepods.slice/kubepods-besteffort.slice"
-	kubepodsBurstableSlice  = "kubepods.slice/kubepods-burstable.slice"
-	kubepodsGuaranteedSlice = "kubepods.slice"
-
 	// io.max file for cgroup v2.
 	ioMaxFile = "io.max"
-)
 
-// qosClassInfo holds pre-computed cgroup path information for each QoS class.
-// Ordered by most common QoS class in production (Guaranteed > Burstable > BestEffort)
-// to minimize stat() syscalls on average.
-var qosClassInfo = [...]struct {
-	name      string
-	sliceName string
-	podPrefix string
-}{
-	{"Guaranteed", kubepodsGuaranteedSlice, "kubepods-pod"},
-	{"Burstable", kubepodsBurstableSlice, "kubepods-burstable-pod"},
-	{"BestEffort", kubepodsBestEffortSlice, "kubepods-besteffort-pod"},
-}
+	// Cgroup v2 base paths for systemd and cgroupfs drivers.
+	cgroupV2SystemdBase  = "/sys/fs/cgroup/kubepods.slice"
+	cgroupV2CgroupfsBase = "/sys/fs/cgroup/kubepods"
+)
 
 // qosParamToMetadataKey maps VolumeAttributesClass parameter keys to RBD image metadata keys.
 // Metadata keys are prefixed with `.rbd.csi.ceph.com/` to prevent copying during clone/snapshot.
@@ -227,30 +209,43 @@ func writeIOMax(ioMaxPath, ioMaxLine string) error {
 	return os.WriteFile(ioMaxPath, []byte(ioMaxLine+"\n"), 0o600)
 }
 
-// findPodCgroupPath tries to find the pod's cgroup path by attempting all QoS classes.
-// Optimized to minimize allocations and stat() syscalls per lookup.
+// podCgroupCandidates returns candidate cgroup paths for the given pod UID,
+// covering both the systemd and cgroupfs cgroup drivers.
+// Systemd paths use underscores in place of dashes; cgroupfs paths keep the
+// original dashed UUID.
+// Ordered: Guaranteed > Burstable > BestEffort within each driver, systemd first.
+func podCgroupCandidates(podUID string) []string {
+	uid := strings.ReplaceAll(podUID, "-", "_")
+
+	return []string{
+		// systemd cgroup driver
+		filepath.Join(cgroupV2SystemdBase,
+			"kubepods-pod"+uid+".slice"),
+		filepath.Join(cgroupV2SystemdBase, "kubepods-burstable.slice",
+			"kubepods-burstable-pod"+uid+".slice"),
+		filepath.Join(cgroupV2SystemdBase, "kubepods-besteffort.slice",
+			"kubepods-besteffort-pod"+uid+".slice"),
+
+		// cgroupfs cgroup driver
+		filepath.Join(cgroupV2CgroupfsBase, "pod"+podUID),
+		filepath.Join(cgroupV2CgroupfsBase, "burstable", "pod"+podUID),
+		filepath.Join(cgroupV2CgroupfsBase, "besteffort", "pod"+podUID),
+	}
+}
+
+// findPodCgroupPath tries to find the pod's cgroup v2 path by probing
+// candidates for both the systemd and cgroupfs cgroup drivers.
 func findPodCgroupPath(ctx context.Context, podUID string) (string, error) {
 	if podUID == "" {
 		return "", errors.New("pod UID is empty")
 	}
 
-	// Normalize pod UID once: replace hyphens with underscores.
-	normalizedUID := strings.ReplaceAll(podUID, "-", "_")
+	for _, candidate := range podCgroupCandidates(podUID) {
+		ioMaxPath := filepath.Join(candidate, ioMaxFile)
+		if _, err := os.Stat(ioMaxPath); err == nil {
+			log.DebugLog(ctx, "found pod cgroup path: %s", candidate)
 
-	// Try each QoS class path using pre-computed path prefixes.
-	// Ordered by most common in production: Guaranteed → Burstable → BestEffort.
-	// This minimizes average syscalls (1-2 stat() calls instead of always 3).
-	for i := range qosClassInfo {
-		qos := &qosClassInfo[i]
-		// Construct pod slice name directly (e.g., "kubepods-guaranteed-pod<uid>.slice").
-		// Using string concatenation instead of fmt.Sprintf reduces allocations.
-		podSliceName := qos.podPrefix + normalizedUID + ".slice"
-		podPath := filepath.Join(cgroupV2BasePath, qos.sliceName, podSliceName)
-
-		if _, err := os.Stat(podPath); err == nil {
-			log.DebugLog(ctx, "found pod cgroup path: %s for QoS class: %s", podPath, qos.name)
-
-			return podPath, nil
+			return candidate, nil
 		}
 	}
 
