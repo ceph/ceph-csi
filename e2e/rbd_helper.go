@@ -18,6 +18,8 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1984,4 +1986,224 @@ func modifyPVCVolumeAttributesClass(
 
 		return true, nil
 	})
+}
+
+// validateIOMax reads the io.max file from the pod's cgroup on the node
+// and validates that it contains the expected QoS values for the volume's device.
+//
+// The function:
+//  1. Finds the csi-rbdplugin pod on the same node as the app pod.
+//  2. Discovers the RBD device major:minor from the node.
+//  3. Locates the pod's cgroup path (probing systemd and cgroupfs layouts).
+//  4. Reads io.max and verifies the device's line matches the expected QoS values.
+func validateIOMax(
+	f *framework.Framework,
+	appPod *v1.Pod,
+	pvc *v1.PersistentVolumeClaim,
+	wants map[string]string,
+) error {
+	podUID := string(appPod.UID)
+	nodeName := appPod.Spec.NodeName
+
+	pluginPodName, err := getDaemonsetPodOnNode(f, rbdDaemonsetName, nodeName, cephCSINamespace)
+	if err != nil {
+		return fmt.Errorf("failed to find csi-rbdplugin pod on node %s: %w", nodeName, err)
+	}
+
+	// Get the PV to find the volume handle for the staging path.
+	_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PV for PVC %s: %w", pvc.Name, err)
+	}
+
+	deviceID, err := getDeviceIDOnNode(f, pluginPodName, pv)
+	if err != nil {
+		return fmt.Errorf("failed to get device ID: %w", err)
+	}
+
+	framework.Logf("device ID for volume %s: %s", pv.Name, deviceID)
+
+	ioMaxContent, err := readPodCgroupIOMax(f, pluginPodName, podUID)
+	if err != nil {
+		return fmt.Errorf("failed to read io.max for pod %s: %w", appPod.Name, err)
+	}
+
+	framework.Logf("io.max content for pod %s:\n%s", appPod.Name, ioMaxContent)
+
+	return verifyIOMaxContent(ioMaxContent, deviceID, wants)
+}
+
+// getDeviceIDOnNode gets the major:minor device ID for the RBD volume on the node
+// by reading the stash file from the staging path in the csi-rbdplugin container.
+func getDeviceIDOnNode(
+	f *framework.Framework,
+	pluginPodName string,
+	pv *v1.PersistentVolume,
+) (string, error) {
+	volumeHandle := pv.Spec.CSI.VolumeHandle
+
+	// The kubelet staging directory layout differs for filesystem and block volumes:
+	//   Filesystem: /var/lib/kubelet/plugins/kubernetes.io/csi/rbd.csi.ceph.com/<sha256>/globalmount/
+	//   Block:      /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/staging/<pv-name>/
+	hash := sha256.Sum256([]byte(volumeHandle))
+	dirName := hex.EncodeToString(hash[:])
+	candidates := []string{
+		fmt.Sprintf(
+			"/var/lib/kubelet/plugins/kubernetes.io/csi/rbd.csi.ceph.com/%s/globalmount/image-meta.json",
+			dirName),
+		fmt.Sprintf(
+			"/var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/staging/%s/image-meta.json",
+			pv.Name),
+	}
+
+	var stashContent string
+	var stashPath string
+	for _, candidate := range candidates {
+		cmd := "cat " + candidate + " 2>/dev/null"
+		content, _, err := execCommandInContainerByPodName(
+			f, cmd, cephCSINamespace, pluginPodName, rbdContainerName)
+		if err == nil && strings.TrimSpace(content) != "" {
+			stashContent = content
+			stashPath = candidate
+
+			break
+		}
+	}
+
+	if stashContent == "" {
+		return "", fmt.Errorf("stash file not found for volume %s (tried %v)", volumeHandle, candidates)
+	}
+
+	framework.Logf("found stash file at %s", stashPath)
+
+	var stash struct {
+		Device string `json:"device"`
+	}
+	if err := json.Unmarshal([]byte(stashContent), &stash); err != nil {
+		return "", fmt.Errorf("failed to parse stash file: %w", err)
+	}
+
+	if stash.Device == "" {
+		return "", fmt.Errorf("device path not found in stash file %s", stashPath)
+	}
+
+	// stat the device to get major:minor
+	cmd := fmt.Sprintf("stat -c '%%t:%%T' %s", stash.Device)
+	hexID, _, err := execCommandInContainerByPodName(
+		f, cmd, cephCSINamespace, pluginPodName, rbdContainerName)
+	if err != nil {
+		return "", fmt.Errorf("failed to stat device %s: %w", stash.Device, err)
+	}
+
+	hexID = strings.TrimSpace(hexID)
+	parts := strings.SplitN(hexID, ":", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("unexpected stat output for device %s: %q", stash.Device, hexID)
+	}
+
+	major, err := strconv.ParseInt(parts[0], 16, 64)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse major number %q: %w", parts[0], err)
+	}
+
+	minor, err := strconv.ParseInt(parts[1], 16, 64)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse minor number %q: %w", parts[1], err)
+	}
+
+	return fmt.Sprintf("%d:%d", major, minor), nil
+}
+
+// readPodCgroupIOMax reads the io.max file from the pod's cgroup path on the node
+// by probing both systemd and cgroupfs cgroup driver layouts.
+func readPodCgroupIOMax(
+	f *framework.Framework,
+	pluginPodName string,
+	podUID string,
+) (string, error) {
+	uidUnderscore := strings.ReplaceAll(podUID, "-", "_")
+
+	// Candidate cgroup paths matching production code (podCgroupCandidates).
+	candidates := []string{
+		// systemd cgroup driver
+		"/sys/fs/cgroup/kubepods.slice/kubepods-pod" + uidUnderscore + ".slice",
+		"/sys/fs/cgroup/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod" + uidUnderscore + ".slice",
+		"/sys/fs/cgroup/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod" + uidUnderscore + ".slice",
+		// cgroupfs cgroup driver
+		"/sys/fs/cgroup/kubepods/pod" + podUID,
+		"/sys/fs/cgroup/kubepods/burstable/pod" + podUID,
+		"/sys/fs/cgroup/kubepods/besteffort/pod" + podUID,
+	}
+
+	for _, candidate := range candidates {
+		ioMaxPath := candidate + "/io.max"
+		cmd := "cat " + ioMaxPath + " 2>/dev/null"
+
+		content, _, err := execCommandInContainerByPodName(
+			f, cmd, cephCSINamespace, pluginPodName, rbdContainerName)
+		if err == nil && strings.TrimSpace(content) != "" {
+			framework.Logf("found io.max at %s", ioMaxPath)
+
+			return strings.TrimSpace(content), nil
+		}
+	}
+
+	return "", fmt.Errorf("io.max not found for pod UID %s in any candidate cgroup path", podUID)
+}
+
+// verifyIOMaxContent parses io.max content and verifies that the line for the
+// given device ID contains the expected QoS values.
+func verifyIOMaxContent(content, deviceID string, wants map[string]string) error {
+	// Map VAC parameter names to io.max field names.
+	paramToField := map[string]string{
+		"maxReadIops":  "riops",
+		"maxWriteIops": "wiops",
+		"maxReadBps":   "rbps",
+		"maxWriteBps":  "wbps",
+	}
+
+	// Find the line for our device.
+	var deviceLine string
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, deviceID+" ") || strings.HasPrefix(line, deviceID+"\t") {
+			deviceLine = line
+
+			break
+		}
+	}
+
+	if deviceLine == "" {
+		return fmt.Errorf("device %s not found in io.max content:\n%s", deviceID, content)
+	}
+
+	// Parse key=value pairs from the device line.
+	actual := make(map[string]string)
+	fields := strings.Fields(deviceLine)
+	for _, field := range fields[1:] {
+		parts := strings.SplitN(field, "=", 2)
+		if len(parts) == 2 {
+			actual[parts[0]] = parts[1]
+		}
+	}
+
+	// Verify each expected value.
+	for param, expected := range wants {
+		fieldName, ok := paramToField[param]
+		if !ok {
+			continue
+		}
+
+		got, exists := actual[fieldName]
+		if !exists {
+			return fmt.Errorf("io.max field %s (%s) not found for device %s", fieldName, param, deviceID)
+		}
+
+		if got != expected {
+			return fmt.Errorf("io.max %s (%s) for device %s: got %q, want %q",
+				fieldName, param, deviceID, got, expected)
+		}
+	}
+
+	return nil
 }
