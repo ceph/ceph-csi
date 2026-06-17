@@ -36,12 +36,12 @@ require (
 	golang.org/x/sys v0.46.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
-	k8s.io/api v0.36.1
-	k8s.io/apimachinery v0.36.1
-	k8s.io/cloud-provider v0.36.1
+	k8s.io/api v0.36.2
+	k8s.io/apimachinery v0.36.2
+	k8s.io/cloud-provider v0.36.2
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kubernetes v1.36.2
-	k8s.io/mount-utils v0.36.1
+	k8s.io/mount-utils v0.36.2
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 )
 
@@ -51,7 +51,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.24.1
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.36.1
+replace k8s.io/client-go => k8s.io/client-go v0.36.2
 
 exclude (
 	// missing tag, referred to by github.com/hashicorp/go-kms-wrapping@v0.5.1
@@ -156,11 +156,11 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.36.1 // indirect
-	k8s.io/apiserver v0.36.1 // indirect
-	k8s.io/component-base v0.36.1 // indirect
-	k8s.io/controller-manager v0.36.1 // indirect
-	k8s.io/csi-translation-lib v0.36.1 // indirect
+	k8s.io/apiextensions-apiserver v0.36.2 // indirect
+	k8s.io/apiserver v0.36.2 // indirect
+	k8s.io/component-base v0.36.2 // indirect
+	k8s.io/controller-manager v0.36.2 // indirect
+	k8s.io/csi-translation-lib v0.36.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
