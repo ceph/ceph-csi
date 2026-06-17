@@ -28,12 +28,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ctrl "github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/rbd"
@@ -128,26 +130,24 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return nil
 	}
 
-	// Create a new controller
-	c, err := controller.New(
-		"vgrcontent-controller",
-		mgr,
-		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
-	if err != nil {
-		return err
+	eventFilterPredicate := predicate.Funcs{
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
 	}
 
-	// Watch for changes to VolumeGroupReplicationContent
-	err = c.Watch(source.Kind(
-		mgr.GetCache(),
+	build := builder.ControllerManagedBy(mgr).Named(
+		"vgrcontent-controller").WithOptions(
+		controller.Options{MaxConcurrentReconciles: 1})
+
+	// Watch for changes to VolumeGroupReplicationContent metadata.
+	// This will only cache the metadata not the complete spec and status in cache.
+	err = build.WatchesMetadata(
 		&replicationv1alpha1.VolumeGroupReplicationContent{},
-		&handler.TypedEnqueueRequestForObject[*replicationv1alpha1.VolumeGroupReplicationContent]{}),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to watch the changes: %w", err)
-	}
+		&handler.EnqueueRequestForObject{}).
+		WithEventFilter(eventFilterPredicate).Complete(r)
 
-	return nil
+	return err
 }
 
 // Reconcile reconciles the VolumeGroupReplicationContent object and creates a new omap entries

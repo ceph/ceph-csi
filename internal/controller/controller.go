@@ -85,6 +85,7 @@ func Start(config Config) error {
 				DisableFor: []client.Object{
 					&corev1.PersistentVolume{},
 					&corev1.Secret{},
+					&replicationv1alpha1.VolumeGroupReplicationContent{},
 				},
 			},
 		},
