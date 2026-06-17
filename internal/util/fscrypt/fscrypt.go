@@ -46,6 +46,8 @@ const (
 	FscryptProtectorPrefix   = "ceph-csi"
 	FscryptSubdir            = "ceph-csi-encrypted"
 	encryptionPassphraseSize = 64
+	// fscrypt requires exactly 32 bytes for SourceType_raw_key (AES-256).
+	fscryptRawKeySize = 32
 )
 
 var policyV2Support = []kernel.KernelVersion{
@@ -172,7 +174,7 @@ func unlockExisting(
 		errMsg := fmt.Sprintf("fscrypt: unlock with protector error: %v", err)
 		log.ErrorLog(ctx, "%s, retry using a null padded passphrase", errMsg)
 
-		keyFn, err = createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID, encryptionPassphraseSize/2)
+		keyFn, err = createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID, fscryptRawKeySize)
 		if err != nil {
 			log.ErrorLog(ctx, "fscrypt: could not create key function: %v", err)
 
@@ -219,9 +221,9 @@ func initializeAndUnlock(
 
 	protector, err := fscryptactions.CreateProtector(fscryptContext, protectorName, keyFn, owner)
 	if err != nil {
-		log.ErrorLog(ctx, "fscrypt: protector name=%s create failed: %v. reverting.", protectorName, err)
-		if revertErr := protector.Revert(); revertErr != nil {
-			return revertErr
+		log.ErrorLog(ctx, "fscrypt: protector name=%s create failed: %v", protectorName, err)
+		if rmErr := os.Remove(encryptedPath); rmErr != nil {
+			log.ErrorLog(ctx, "fscrypt: failed to clean up directory %s: %v", encryptedPath, rmErr)
 		}
 
 		return err
@@ -374,8 +376,17 @@ func Unlock(
 	volEncryption *util.VolumeEncryption,
 	stagingTargetPath string, volID string,
 ) error {
+	keySize := -1
+
+	// In case of KMSes where we have integrated DEK stores, e.g. Vault
+	// the passphrase size must be of 32 bytes as fscrypt expects a 32
+	// byte key when the source type is `raw_key`.
+	if volEncryption.KMS.RequiresDEKStore() == kms.DEKStoreIntegrated {
+		keySize = fscryptRawKeySize
+	}
+
 	// Fetches keys from KMS. Do this first to catch KMS errors before setting up anything.
-	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID, -1)
+	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID, keySize)
 	if err != nil {
 		log.ErrorLog(ctx, "fscrypt: could not create key function: %v", err)
 
