@@ -49,8 +49,13 @@ var (
 // Callback, Offset, and Length should always be specified when passed to
 // DiffIterateByID. The other values are optional.
 type DiffIterateByIDConfig struct {
-	FromSnapID    uint64
-	Offset        uint64
+	FromSnapID uint64
+	// Offset is the starting byte position in the image from which to
+	// begin scanning for changed extents.
+	Offset uint64
+	// Length is the number of bytes to scan starting from Offset.
+	// The scanned range is [Offset, Offset+Length). Length must not
+	// exceed (imageSize - Offset).
 	Length        uint64
 	IncludeParent DiffIncludeParent
 	WholeObject   DiffWholeObject

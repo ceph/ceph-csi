@@ -485,8 +485,8 @@ github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
 github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260120065657-2425981cdad5 h1:giK4rX93KFW4C361EHurz46iM5nqFOKOT4EMuuroi+E=
 github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260120065657-2425981cdad5/go.mod h1:P+rCBJEUy2Yt6vOcTh7pyh9/g+o9pOZc7kyY6k/PS5U=
-github.com/ceph/go-ceph v0.39.0 h1:fzINuBItJqhmTtnC4/iiTY+ONtsOqV7W+B/3xTS/DsY=
-github.com/ceph/go-ceph v0.39.0/go.mod h1:UId58dqtDKTwnv3OY8rdpC+Ulz/AVpcvZqjXDICcd5c=
+github.com/ceph/go-ceph v0.40.0 h1:Wz9WOX6i73Hz74mpwhTO9S6IyX3eFPv88VUc7FRMPRk=
+github.com/ceph/go-ceph v0.40.0/go.mod h1:1oFtT/x/4y+teLsNiogdd/Kj81Gmrw6JM5w1bWnZoc4=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
@@ -905,6 +905,8 @@ github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFSt
 github.com/pborman/uuid v1.2.0 h1:J7Q5mO4ysT1dv8hyrUGHb9+ooztCXu1D8MY8DZYsu3g=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
+github.com/pierrec/xxHash v0.1.5 h1:n/jBpwTHiER4xYvK3/CdPVnLDPchj8eTJFFLUb4QHBo=
+github.com/pierrec/xxHash v0.1.5/go.mod h1:w2waW5Zoa/Wc4Yqe0wgrIYAGKqRMf7czn2HNKXmuL+I=
 github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c h1:+mdjkGKdHQG3305AYmdv1U2eRNDiU2ErMBj1gwrq8eQ=
 github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjLxUqIJNnCWiEdr3bn6IUYi15bNlnbCCU=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=

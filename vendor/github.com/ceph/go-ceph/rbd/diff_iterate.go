@@ -53,8 +53,13 @@ type DiffIterateCallback func(uint64, uint64, int, interface{}) int
 // Callback, Offset, and Length should always be specified when passed to
 // DiffIterate. The other values are optional.
 type DiffIterateConfig struct {
-	SnapName      string
-	Offset        uint64
+	SnapName string
+	// Offset is the starting byte position in the image from which to
+	// begin scanning for changed extents.
+	Offset uint64
+	// Length is the number of bytes to scan starting from Offset.
+	// The scanned range is [Offset, Offset+Length). Length must not
+	// exceed (imageSize - Offset).
 	Length        uint64
 	IncludeParent DiffIncludeParent
 	WholeObject   DiffWholeObject

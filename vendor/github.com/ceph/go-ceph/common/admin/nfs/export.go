@@ -208,10 +208,6 @@ func (nfsa *Admin) ExportInfo(clusterID, pseudoPath string) (ExportInfo, error) 
 /*
 TODO?
 
-'nfs export apply': cluster_id: str, inbuf: str
-"""Create or update an export by `-i <json_or_ganesha_export_file>`"""
-
-
 'nfs export create rgw':
 	   bucket: str,
 	   cluster_id: str,
