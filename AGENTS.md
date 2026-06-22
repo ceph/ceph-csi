@@ -57,6 +57,10 @@ make containerized-test TARGET=static-check       # Run specific test target in 
 make containerized-test TARGET=go-test            # Run only Go unit tests in container
 ```
 
+**Note:** `make containerized-test` can take 10 minutes or longer to complete,
+depending on system resources. The test suite builds a container image, runs
+all unit tests, and performs comprehensive static analysis checks.
+
 ### Local Unit Tests
 
 ```bash
