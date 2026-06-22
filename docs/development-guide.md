@@ -278,11 +278,13 @@ need to be met before it will be merged:
   on the PR. The bot will merge the PR if it's having one approval and the
   label `ready-to-merge`.
 
-When the criteria are met, a project maintainer can instruct the Mergify bot to
-queue the PR for merging. This usually is done by leaving two comments:
+When the criteria are met, a project maintainer can instruct the automation to
+queue the PR for merging by commenting `/queue` on the pull request.
 
-* `@mergifyio rebase` to rebase on the latest HEAD of the branch
-* `@mergifyio queue` once the rebasing is done, to add the PR to the merge queue
+The `/queue` command adds the `queued/rebase` label, asks Mergify to rebase the
+pull request on the latest HEAD of the branch, and after the rebase push adds
+the `ok-to-test` label so e2e testing can start before the PR is queued for
+merging.
 
 ### Backport a Fix to a Release Branch
 
