@@ -1,0 +1,90 @@
+---
+name: Queue pull request
+
+# yamllint disable-line rule:truthy
+on:
+  issue_comment:
+    types:
+      - created
+  pull_request_target:
+    branches:
+      - devel
+      - "release-v*"
+    types:
+      - synchronize
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  request-rebase:
+    # yamllint disable rule:line-length
+    if: >
+      github.repository == 'ceph/ceph-csi' &&
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.comment.body == '/queue' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    # yamllint enable rule:line-length
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add queued/rebase label
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['queued/rebase']
+            })
+
+      - name: Request rebase through Mergify
+        # yamllint disable-line rule:line-length
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            @mergifyio rebase
+
+  add-ok-to-test-label:
+    if: >
+      github.repository == 'ceph/ceph-csi' &&
+      github.event_name == 'pull_request_target' &&
+      (github.actor == 'ceph-csi-bot' || github.actor == 'mergify[bot]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add ok-to-test label after queued rebase push
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            const labels = context.payload.pull_request.labels.map(
+              (label) => label.name
+            )
+            if (!labels.includes('queued/rebase')) {
+              core.info(
+                'Skipping ok-to-test label because queued/rebase is not set'
+              )
+
+              return
+            }
+
+            await github.rest.issues.addLabels({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['ok-to-test']
+            })
+
+            await github.rest.issues.removeLabel({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'queued/rebase'
+            })
