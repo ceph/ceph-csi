@@ -513,8 +513,8 @@ github.com/container-storage-interface/spec v1.12.0/go.mod h1:txsm+MA2B2WDa5kW69
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/csi-addons/kubernetes-csi-addons v0.14.0 h1:aH4w1X9z6eOqbKvh9Q4M0YzksaUgQDU3aTU/fblG4yI=
 github.com/csi-addons/kubernetes-csi-addons v0.14.0/go.mod h1:jG5S4Txts6WHt8QmyfpIXB00HYPpawWPcyViW+Xppgc=
-github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79 h1:ditFTa+wl7DLanGQHSS/AwuITGuWeBXyl7syPO4n+4s=
-github.com/csi-addons/spec v0.2.1-0.20250610152019-b5a7205f6a79/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
+github.com/csi-addons/spec v0.2.1-0.20260515055340-d4a373713b9a h1:AxvSsTN8TxwpeP6X/ScNK5i+6eXu3APRfuIXSEMENVQ=
+github.com/csi-addons/spec v0.2.1-0.20260515055340-d4a373713b9a/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
 github.com/cyphar/filepath-securejoin v0.6.1 h1:5CeZ1jPXEiYt3+Z6zqprSAgSWiggmpVyciv8syjIpVE=
 github.com/cyphar/filepath-securejoin v0.6.1/go.mod h1:A8hd4EnAeyujCJRrICiOWqjS1AX0a9kM5XL+NwKoYSc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

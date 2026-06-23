@@ -21,12 +21,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Controller_EnableVolumeReplication_FullMethodName  = "/replication.Controller/EnableVolumeReplication"
-	Controller_DisableVolumeReplication_FullMethodName = "/replication.Controller/DisableVolumeReplication"
-	Controller_PromoteVolume_FullMethodName            = "/replication.Controller/PromoteVolume"
-	Controller_DemoteVolume_FullMethodName             = "/replication.Controller/DemoteVolume"
-	Controller_ResyncVolume_FullMethodName             = "/replication.Controller/ResyncVolume"
-	Controller_GetVolumeReplicationInfo_FullMethodName = "/replication.Controller/GetVolumeReplicationInfo"
+	Controller_EnableVolumeReplication_FullMethodName       = "/replication.Controller/EnableVolumeReplication"
+	Controller_DisableVolumeReplication_FullMethodName      = "/replication.Controller/DisableVolumeReplication"
+	Controller_PromoteVolume_FullMethodName                 = "/replication.Controller/PromoteVolume"
+	Controller_DemoteVolume_FullMethodName                  = "/replication.Controller/DemoteVolume"
+	Controller_ResyncVolume_FullMethodName                  = "/replication.Controller/ResyncVolume"
+	Controller_GetVolumeReplicationInfo_FullMethodName      = "/replication.Controller/GetVolumeReplicationInfo"
+	Controller_GetReplicationDestinationInfo_FullMethodName = "/replication.Controller/GetReplicationDestinationInfo"
 )
 
 // ControllerClient is the client API for Controller service.
@@ -46,6 +47,9 @@ type ControllerClient interface {
 	// GetVolumeReplicationInfo RPC call to get the volume replication
 	// information.
 	GetVolumeReplicationInfo(ctx context.Context, in *GetVolumeReplicationInfoRequest, opts ...grpc.CallOption) (*GetVolumeReplicationInfoResponse, error)
+	// GetReplicationDestinationInfo RPC call to get the destination
+	// volume or volume group details for an existing replication.
+	GetReplicationDestinationInfo(ctx context.Context, in *GetReplicationDestinationInfoRequest, opts ...grpc.CallOption) (*GetReplicationDestinationInfoResponse, error)
 }
 
 type controllerClient struct {
@@ -110,6 +114,15 @@ func (c *controllerClient) GetVolumeReplicationInfo(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *controllerClient) GetReplicationDestinationInfo(ctx context.Context, in *GetReplicationDestinationInfoRequest, opts ...grpc.CallOption) (*GetReplicationDestinationInfoResponse, error) {
+	out := new(GetReplicationDestinationInfoResponse)
+	err := c.cc.Invoke(ctx, Controller_GetReplicationDestinationInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServer is the server API for Controller service.
 // All implementations must embed UnimplementedControllerServer
 // for forward compatibility
@@ -127,6 +140,9 @@ type ControllerServer interface {
 	// GetVolumeReplicationInfo RPC call to get the volume replication
 	// information.
 	GetVolumeReplicationInfo(context.Context, *GetVolumeReplicationInfoRequest) (*GetVolumeReplicationInfoResponse, error)
+	// GetReplicationDestinationInfo RPC call to get the destination
+	// volume or volume group details for an existing replication.
+	GetReplicationDestinationInfo(context.Context, *GetReplicationDestinationInfoRequest) (*GetReplicationDestinationInfoResponse, error)
 	mustEmbedUnimplementedControllerServer()
 }
 
@@ -151,6 +167,9 @@ func (UnimplementedControllerServer) ResyncVolume(context.Context, *ResyncVolume
 }
 func (UnimplementedControllerServer) GetVolumeReplicationInfo(context.Context, *GetVolumeReplicationInfoRequest) (*GetVolumeReplicationInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVolumeReplicationInfo not implemented")
+}
+func (UnimplementedControllerServer) GetReplicationDestinationInfo(context.Context, *GetReplicationDestinationInfoRequest) (*GetReplicationDestinationInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetReplicationDestinationInfo not implemented")
 }
 func (UnimplementedControllerServer) mustEmbedUnimplementedControllerServer() {}
 
@@ -273,6 +292,24 @@ func _Controller_GetVolumeReplicationInfo_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Controller_GetReplicationDestinationInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReplicationDestinationInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServer).GetReplicationDestinationInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Controller_GetReplicationDestinationInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServer).GetReplicationDestinationInfo(ctx, req.(*GetReplicationDestinationInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Controller_ServiceDesc is the grpc.ServiceDesc for Controller service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -303,6 +340,10 @@ var Controller_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVolumeReplicationInfo",
 			Handler:    _Controller_GetVolumeReplicationInfo_Handler,
+		},
+		{
+			MethodName: "GetReplicationDestinationInfo",
+			Handler:    _Controller_GetReplicationDestinationInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
