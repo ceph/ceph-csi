@@ -61,7 +61,7 @@ func getOMapValuesByKeys(
 			err = opErr.OpError
 		}
 		if errors.Is(err, rados.ErrNotFound) {
-			log.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
+			log.DebugLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
 
 			return nil, fmt.Errorf("%w: %w", util.ErrKeyNotFound, err)
