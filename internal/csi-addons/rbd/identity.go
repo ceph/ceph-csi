@@ -97,6 +97,12 @@ func (is *IdentityServer) GetCapabilities(
 					},
 				},
 			}, &identity.Capability{
+				Type: &identity.Capability_VolumeReplication_{
+					VolumeReplication: &identity.Capability_VolumeReplication{
+						Type: identity.Capability_VolumeReplication_GET_REPLICATION_DESTINATION_INFO,
+					},
+				},
+			}, &identity.Capability{
 				Type: &identity.Capability_VolumeGroup_{
 					VolumeGroup: &identity.Capability_VolumeGroup{
 						Type: identity.Capability_VolumeGroup_VOLUME_GROUP,
