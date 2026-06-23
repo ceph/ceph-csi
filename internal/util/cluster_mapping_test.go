@@ -421,3 +421,94 @@ func TestFetchMappedClusterIDAndMons(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMappedClusterID(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	basePath := t.TempDir()
+	csiConfigFile := basePath + "/config.json"
+	clusterMappingFile := basePath + "/cluster-mapping.json"
+
+	csiConfig := []cephcsi.ClusterInfo{
+		{
+			ClusterID: "local-cluster",
+			Monitors:  []string{"10.0.0.1", "10.0.0.2"},
+		},
+	}
+	csiConfigContent, err := json.Marshal(csiConfig)
+	if err != nil {
+		t.Fatalf("failed to marshal csi config: %v", err)
+	}
+	err = os.WriteFile(csiConfigFile, csiConfigContent, 0o600)
+	if err != nil {
+		t.Fatalf("failed to write csi config: %v", err)
+	}
+
+	t.Run("no cluster-mapping.json file returns original ID", func(t *testing.T) {
+		t.Parallel()
+		got, err := getMappedClusterID(ctx, "nonexistent-cluster", clusterMappingFile, csiConfigFile)
+		if err != nil {
+			t.Errorf("getMappedClusterID() error = %v", err)
+		}
+		if got != "nonexistent-cluster" {
+			t.Errorf("getMappedClusterID() = %v, want %v", got, "nonexistent-cluster")
+		}
+	})
+
+	clusterMapping := []ClusterMappingInfo{
+		{
+			ClusterIDMapping: map[string]string{
+				"local-cluster": "remote-cluster",
+			},
+		},
+	}
+	clusterMappingContent, err := json.Marshal(clusterMapping)
+	if err != nil {
+		t.Fatalf("failed to marshal cluster mapping: %v", err)
+	}
+	err = os.WriteFile(clusterMappingFile, clusterMappingContent, 0o600)
+	if err != nil {
+		t.Fatalf("failed to write cluster mapping: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		clusterID string
+		want      string
+		wantErr   bool
+	}{
+		{
+			name:      "local cluster ID returns itself",
+			clusterID: "local-cluster",
+			want:      "local-cluster",
+			wantErr:   false,
+		},
+		{
+			name:      "remote cluster ID resolves to local",
+			clusterID: "remote-cluster",
+			want:      "local-cluster",
+			wantErr:   false,
+		},
+		{
+			name:      "unknown cluster ID returns itself",
+			clusterID: "unknown-cluster",
+			want:      "unknown-cluster",
+			wantErr:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := getMappedClusterID(ctx, tt.clusterID, clusterMappingFile, csiConfigFile)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getMappedClusterID() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getMappedClusterID() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
