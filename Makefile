@@ -65,6 +65,13 @@ LDFLAGS += -X $(GO_PROJECT)/internal/util.GitCommit=$(GIT_COMMIT)
 LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 GO_TAGS ?= -tags=$(shell echo $(GO_TAGS_LIST) | tr ' ' ',')
 
+# Enable verbose build output in CI environments
+ifdef CI
+GO_BUILD_VERBOSE := -v
+else
+GO_BUILD_VERBOSE ?=
+endif
+
 BASE_IMAGE ?= $(shell . $(CURDIR)/build.env ; echo $${BASE_IMAGE})
 
 # passing TARGET=static-check on the 'make containerized-test' or 'make
@@ -177,7 +184,7 @@ link-check:
 .PHONY: cephcsi
 cephcsi: check-env
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
-	GOOS=linux go build $(GO_TAGS) -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
+	GOOS=linux go build $(GO_BUILD_VERBOSE) $(GO_TAGS) -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
 e2e.test: check-env
 	cd e2e && go test $(GO_TAGS) -mod=vendor -c -o ../e2e.test ./
@@ -258,7 +265,7 @@ endif
 
 image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 image-cephcsi: .container-cmd
-	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE) --build-arg CEPH_VERSION=$(CEPH_VERSION)
+	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE) --build-arg CEPH_VERSION=$(CEPH_VERSION) --build-arg GO_BUILD_VERBOSE=$(GO_BUILD_VERBOSE)
 
 push-image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 push-image-cephcsi: .container-cmd image-cephcsi

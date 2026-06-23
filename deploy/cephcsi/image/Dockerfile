@@ -29,6 +29,7 @@ ARG CSI_IMAGE_VERSION=canary
 ARG GO_ARCH
 ARG SRC_DIR
 ARG GIT_COMMIT
+ARG GO_BUILD_VERBOSE
 ARG GOROOT=/usr/local/go
 
 COPY build.env /
@@ -68,7 +69,7 @@ WORKDIR ${SRC_DIR}
 COPY . ${SRC_DIR}
 
 # Build executable
-RUN make cephcsi
+RUN make cephcsi GO_BUILD_VERBOSE="${GO_BUILD_VERBOSE}"
 
 #-- Final container
 FROM ${FINAL_BASE_IMAGE}
