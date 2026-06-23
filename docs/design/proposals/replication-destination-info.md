@@ -84,6 +84,16 @@ indefinitely).
 
 ## Proposal
 
+### Capability Advertisement
+
+The CSI driver **must** advertise the `GET_REPLICATION_DESTINATION_INFO`
+capability via the `GetCapabilities` RPC. This allows DR orchestrators to
+discover whether the driver supports this feature.
+
+```go
+identity.Capability_VolumeReplication_GET_REPLICATION_DESTINATION_INFO
+```
+
 ### Architecture
 
 ```
