@@ -280,3 +280,14 @@ func GetRBDNodePublishSecretRef(pathToConfig, clusterID string) (string, string,
 
 	return secretRef.Name, secretRef.Namespace, nil
 }
+
+// GetReplicationDestinationInfo returns the replication destination configuration
+// for the given clusterID. Returns nil if no replication destination is configured.
+func GetReplicationDestinationInfo(pathToConfig, clusterID string) (*kubernetes.ReplicationDestinationInfo, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	return cluster.ReplicationDestination, nil
+}
