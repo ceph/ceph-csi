@@ -724,13 +724,6 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 	rbdVol *rbdVolume,
 	snapshotID string,
 ) error {
-	if acquired := cs.SnapshotLocks.TryAcquire(snapshotID); !acquired {
-		log.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, snapshotID)
-
-		return status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, snapshotID)
-	}
-	defer cs.SnapshotLocks.Release(snapshotID)
-
 	rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, secrets)
 	if err != nil {
 		if errors.Is(err, util.ErrPoolNotFound) {
