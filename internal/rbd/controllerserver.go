@@ -1154,7 +1154,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	if err := util.ValidateVolumeID(req.GetVolumeId(), util.IsStaticVol(req.GetVolumeContext())); err != nil {
+	if err := util.ValidateVolumeID(req.GetVolumeId(), util.IsPreProvisionedVol(req.GetVolumeContext())); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 

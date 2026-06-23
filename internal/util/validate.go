@@ -53,7 +53,7 @@ var validator = regexp.MustCompile(`^[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[a-zA-Z0-9\-_
 
 // ValidateControllerPublishVolumeRequest validates the controller publish request.
 func ValidateControllerPublishVolumeRequest(req *csi.ControllerPublishVolumeRequest) error {
-	if err := ValidateVolumeID(req.GetVolumeId(), IsStaticVol(req.GetVolumeContext())); err != nil {
+	if err := ValidateVolumeID(req.GetVolumeId(), IsPreProvisionedVol(req.GetVolumeContext())); err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -86,7 +86,7 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 		return status.Error(codes.InvalidArgument, "volume capability missing in request")
 	}
 
-	if err := ValidateVolumeID(req.GetVolumeId(), IsStaticVol(req.GetVolumeContext())); err != nil {
+	if err := ValidateVolumeID(req.GetVolumeId(), IsPreProvisionedVol(req.GetVolumeContext())); err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -129,7 +129,7 @@ func ValidateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 		return status.Error(codes.InvalidArgument, "volume capability missing in request")
 	}
 
-	if err := ValidateVolumeID(req.GetVolumeId(), IsStaticVol(req.GetVolumeContext())); err != nil {
+	if err := ValidateVolumeID(req.GetVolumeId(), IsPreProvisionedVol(req.GetVolumeContext())); err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -191,7 +191,7 @@ func ValidateVolumeID(volumeID string, skipFormatCheck bool) error {
 	}
 
 	// Should match the expected format: 0000-0000-arbitrary-number-of-000-and-chars.
-	// This is checked only when the volume is not statically provisioned.
+	// This is checked only when the volume is not pre-provisioned.
 	if matches := validator.MatchString(volumeID); !skipFormatCheck && !matches {
 		return fmt.Errorf("the volumeID has an unexpected format: %q", volumeID)
 	}
@@ -200,17 +200,23 @@ func ValidateVolumeID(volumeID string, skipFormatCheck bool) error {
 	return nil
 }
 
-// IsStaticVol checks the volumeAttribute of a volume to determine
-// if it is statically provisioned.
-func IsStaticVol(volAttrs map[string]string) bool {
-	val, ok := volAttrs["staticVolume"]
-	if ok {
-		boolVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return false
+// IsPreProvisionedVol checks the volume context to determine if the volume
+// was provisioned outside of ceph-csi (either as a static volume or via
+// an external provisioner).
+func IsPreProvisionedVol(volAttrs map[string]string) bool {
+	if val, ok := volAttrs["staticVolume"]; ok {
+		if boolVal, err := strconv.ParseBool(val); err == nil && boolVal {
+			return true
 		}
+	}
 
-		return boolVal
+	if val, ok := volAttrs["provisionVolume"]; ok {
+		if boolVal, err := strconv.ParseBool(val); err == nil && !boolVal {
+			log.WarningLogMsg("volumeContext key %q is deprecated, use %q instead",
+				"provisionVolume", "staticVolume=true")
+
+			return true
+		}
 	}
 
 	return false
