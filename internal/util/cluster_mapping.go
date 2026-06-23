@@ -187,3 +187,47 @@ func fetchMappedClusterIDAndMons(ctx context.Context,
 func FetchMappedClusterIDAndMons(ctx context.Context, clusterID string) (string, string, error) {
 	return fetchMappedClusterIDAndMons(ctx, clusterID, clusterMappingConfigFile, CsiConfigFile)
 }
+
+// getMappedClusterID resolves a (possibly remote) cluster ID to the local
+// cluster ID using cluster-mapping.json. It validates the mapped ID exists
+// in the CSI config. If no mapping is found or the given clusterID is already
+// the local one, it is returned as-is.
+func getMappedClusterID(ctx context.Context,
+	clusterID, clusterMappingFile, csiConfigFile string,
+) (string, error) {
+	clusterMappingInfo, err := getClusterMappingInfo(clusterID, clusterMappingFile)
+	if err != nil {
+		return "", err
+	}
+
+	if clusterMappingInfo != nil {
+		for _, cm := range *clusterMappingInfo {
+			for key, val := range cm.ClusterIDMapping {
+				mappedClusterID := GetMappedID(key, val, clusterID)
+				if mappedClusterID == "" {
+					continue
+				}
+
+				if _, err := readClusterInfo(csiConfigFile, mappedClusterID); err == nil {
+					log.DebugLog(ctx,
+						"mapped cluster ID %q to local cluster ID %q",
+						clusterID,
+						mappedClusterID)
+
+					return mappedClusterID, nil
+				} else if !errors.Is(err, ErrConfigNotFound) {
+					return "", err
+				}
+			}
+		}
+	}
+
+	return clusterID, nil
+}
+
+// GetMappedClusterID resolves a (possibly remote) cluster ID to the local
+// cluster ID using cluster-mapping.json. If no mapping is found, the
+// original clusterID is returned.
+func GetMappedClusterID(ctx context.Context, clusterID string) (string, error) {
+	return getMappedClusterID(ctx, clusterID, clusterMappingConfigFile, CsiConfigFile)
+}
