@@ -270,7 +270,7 @@ func (ns *nfsNodeServer) mountNFS(
 
 // validateNodePublishVolumeRequest validates node publish volume request.
 func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
-	if err := util.ValidateVolumeID(req.GetVolumeId(), util.IsStaticVol(req.GetVolumeContext())); err != nil {
+	if err := util.ValidateVolumeID(req.GetVolumeId(), util.IsPreProvisionedVol(req.GetVolumeContext())); err != nil {
 		return err
 	}
 

@@ -79,6 +79,40 @@ func TestValidateVolumeID(t *testing.T) {
 	}
 }
 
+func TestIsPreProvisionedVol(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		volAttrs map[string]string
+		want     bool
+	}{
+		{"staticVolume true", map[string]string{"staticVolume": "true"}, true},
+		{"staticVolume false", map[string]string{"staticVolume": "false"}, false},
+		{"provisionVolume false", map[string]string{"provisionVolume": "false"}, true},
+		{"provisionVolume true", map[string]string{"provisionVolume": "true"}, false},
+		{
+			"staticVolume checked first when both keys present",
+			map[string]string{"staticVolume": "true", "provisionVolume": "false"},
+			true,
+		},
+		{"neither set", map[string]string{"foo": "bar"}, false},
+		{"empty map", map[string]string{}, false},
+		{"nil map", nil, false},
+		{"staticVolume invalid", map[string]string{"staticVolume": "notabool"}, false},
+		{"provisionVolume invalid", map[string]string{"provisionVolume": "notabool"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := IsPreProvisionedVol(tt.volAttrs)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestValidateServiceAccountRestriction(t *testing.T) {
 	t.Parallel()
 
