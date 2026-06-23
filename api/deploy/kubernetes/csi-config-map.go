@@ -33,6 +33,10 @@ type ClusterInfo struct {
 	NFS NFS `json:"nfs"`
 	// Read affinity map options
 	ReadAffinity ReadAffinity `json:"readAffinity"`
+	// ReplicationDestination defines the destination cluster for replication.
+	// Populated by ceph-csi-operator from ReplicationDestinationConfig CR.
+	// +optional
+	ReplicationDestination *ReplicationDestinationInfo `json:"replicationDestination,omitempty"`
 }
 
 type CephFS struct {
@@ -73,4 +77,30 @@ type NFS struct {
 type ReadAffinity struct {
 	Enabled             bool     `json:"enabled"`
 	CrushLocationLabels []string `json:"crushLocationLabels"`
+}
+
+// ReplicationDestinationInfo contains destination cluster information for
+// replication. It enables the CSI driver to map source volume/group IDs
+// to destination volume/group IDs when pool IDs differ across clusters.
+type ReplicationDestinationInfo struct {
+	// RemoteClusterID is the clusterID of the destination cluster
+	RemoteClusterID string `json:"remoteClusterID"`
+	// RBD contains RBD-specific replication destination configuration
+	// +optional
+	RBD *RemoteRBDDetails `json:"rbd,omitempty"`
+}
+
+// RemoteRBDDetails contains RBD-specific remote cluster details for replication.
+type RemoteRBDDetails struct {
+	// RemotePoolMapping maps pool names to remote pool details.
+	// Key: pool name (e.g., "rbd", "replicapool")
+	// If empty, pool IDs are assumed identical on both clusters.
+	// +optional
+	RemotePoolMapping map[string]RemotePoolDetails `json:"remotePoolMapping,omitempty"`
+}
+
+// RemotePoolDetails contains details of a pool on the remote cluster.
+type RemotePoolDetails struct {
+	// PoolID is the remote pool ID as a decimal string (e.g., "5")
+	PoolID string `json:"poolID"`
 }
