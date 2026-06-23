@@ -64,7 +64,7 @@ func getOMapValuesByKeys(
 			log.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
 
-			return nil, fmt.Errorf("%w: %w", util.ErrKeyNotFound, err)
+			return nil, errors.Join(util.ErrObjectNotFound, util.ErrKeyNotFound, err)
 		}
 
 		return nil, err
