@@ -163,16 +163,22 @@ func (rsns *ReclaimSpaceNodeServer) NodeReclaimSpace(
 		return nil, status.Error(codes.Unimplemented, "block-mode space reclaim is not supported")
 	}
 
-	cmd := "fstrim"
-	_, stderr, err := util.ExecCommand(ctx, cmd, path)
+	err := fsTrim(path)
 	if err != nil {
+		// Check if the error is due to unsupported operation
+		if errors.Is(err, errTrimNotSupported) {
+			return nil, status.Errorf(
+				codes.Unimplemented,
+				"trim operation not supported for filesystem at %q: %s",
+				path,
+				err.Error())
+		}
+
 		return nil, status.Errorf(
 			codes.Internal,
-			"failed to execute %q on %q (%s): %s",
-			cmd,
+			"failed to trim filesystem at %q: %s",
 			path,
-			err.Error(),
-			stderr)
+			err.Error())
 	}
 
 	return &rs.NodeReclaimSpaceResponse{}, nil
