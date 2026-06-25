@@ -10,7 +10,6 @@ defaults:
 
 merge_protections_settings:
   reporting_method: check-runs
-  auto_merge_conditions: true
 
 queue_rules:
   - name: default
@@ -44,56 +43,57 @@ queue_rules:
                       - "status-success=commitlint"
               # exclude the ci/centos branch from above status checks
               - base=ci/centos
-          - or:
-              # requirenents per branch
-              - and:
-                  # ci/skip/e2e label has no meaning on ci/centos
-                  - base!=ci/centos
-                  - label=ci/skip/e2e
-              - and:
-                  - base~=^(release-.+)$
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.33"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.34"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.35"
-                  - "status-success=ci/centos/upgrade-tests-cephfs"
-                  - "status-success=ci/centos/upgrade-tests-rbd"
-              - and:
-                  - base=release-v3.16
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.32"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.32"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.33"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.34"
-                  - "status-success=ci/centos/upgrade-tests-cephfs"
-                  - "status-success=ci/centos/upgrade-tests-rbd"
-              - and:
-                  - base=devel
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
-                  - "status-success=ci/centos/k8s-e2e-external-storage/1.36"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
-                  - "status-success=ci/centos/mini-e2e-helm/k8s-1.36"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.34"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.35"
-                  - "status-success=ci/centos/mini-e2e/k8s-1.36"
-                  - "status-success=ci/centos/upgrade-tests-cephfs"
-                  - "status-success=ci/centos/upgrade-tests-rbd"
-              - and:
-                  # requirements for ci/centos branch
-                  - base=ci/centos
-                  - "status-success=ci/centos/job-validation"
-                  - "status-success=ci/centos/jjb-validate"
+    merge_conditions:
+      - or:
+          # requirements per branch
+          - and:
+              # ci/skip/e2e label has no meaning on ci/centos
+              - base!=ci/centos
+              - label=ci/skip/e2e
+          - and:
+              - base~=^(release-.+)$
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
+              - "status-success=ci/centos/mini-e2e/k8s-1.33"
+              - "status-success=ci/centos/mini-e2e/k8s-1.34"
+              - "status-success=ci/centos/mini-e2e/k8s-1.35"
+              - "status-success=ci/centos/upgrade-tests-cephfs"
+              - "status-success=ci/centos/upgrade-tests-rbd"
+          - and:
+              - base=release-v3.16
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.32"
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.33"
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.32"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.33"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
+              - "status-success=ci/centos/mini-e2e/k8s-1.32"
+              - "status-success=ci/centos/mini-e2e/k8s-1.33"
+              - "status-success=ci/centos/mini-e2e/k8s-1.34"
+              - "status-success=ci/centos/upgrade-tests-cephfs"
+              - "status-success=ci/centos/upgrade-tests-rbd"
+          - and:
+              - base=devel
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.34"
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.35"
+              - "status-success=ci/centos/k8s-e2e-external-storage/1.36"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.34"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.35"
+              - "status-success=ci/centos/mini-e2e-helm/k8s-1.36"
+              - "status-success=ci/centos/mini-e2e/k8s-1.34"
+              - "status-success=ci/centos/mini-e2e/k8s-1.35"
+              - "status-success=ci/centos/mini-e2e/k8s-1.36"
+              - "status-success=ci/centos/upgrade-tests-cephfs"
+              - "status-success=ci/centos/upgrade-tests-rbd"
+          - and:
+              # requirements for ci/centos branch
+              - base=ci/centos
+              - "status-success=ci/centos/job-validation"
+              - "status-success=ci/centos/jjb-validate"
 
 merge_queue:
   max_parallel_checks: 1
@@ -109,12 +109,43 @@ pull_request_rules:
       - not: check-pending~=^ci/centos
       - not: status-success~=^ci/centos
       - or:
-          - queue-position >= 0
+          - queue-position = 0
           - author=mergify[bot]
     actions:
       label:
         add:
           - ok-to-test
+
+  - name: label PRs entering the merge queue
+    conditions:
+      - -closed
+      - queue-position >= 0
+    actions:
+      label:
+        add:
+          - queued
+
+  - name: remove queued label when PR leaves the merge queue
+    conditions:
+      - label=queued
+      - not: queue-position >= 0
+    actions:
+      label:
+        remove:
+          - queued
+
+  - name: prevent concurrent CI for queued PRs not first in line
+    conditions:
+      - label=ok-to-test
+      - queue-position > 0
+      - base~=^(devel)|(release-.+)$
+    actions:
+      label:
+        remove:
+          - ok-to-test
+      comment:
+        # yamllint disable-line rule:line-length
+        message: "The `ok-to-test` label was removed because this PR is waiting in the merge queue. CI will start automatically when the PR reaches the front of the queue."
 
   - name: remove outdated approvals
     conditions:
