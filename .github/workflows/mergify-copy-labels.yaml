@@ -21,5 +21,4 @@ jobs:
       - name: Copying labels
         uses: Mergifyio/gha-mergify-merge-queue-labels-copier@1d2b277f94d52987008ec05b571fb68f2357e63f  # main
         with:
-          additional-labels: 'ok-to-test'
           token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
