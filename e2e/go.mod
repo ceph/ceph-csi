@@ -21,19 +21,19 @@ require (
 	k8s.io/client-go v0.36.2
 	k8s.io/cloud-provider v0.36.2
 	k8s.io/kubernetes v1.36.2
-	k8s.io/pod-security-admission v0.36.1
+	k8s.io/pod-security-admission v0.36.2
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.36.1
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.36.1
-	k8s.io/client-go => k8s.io/client-go v0.36.1
-	k8s.io/cri-client => k8s.io/cri-client v0.36.1
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.36.1
-	k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.36.1
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.36.1
-	k8s.io/kubectl => k8s.io/kubectl v0.36.1
-	k8s.io/kubelet => k8s.io/kubelet v0.36.1
+	k8s.io/api => k8s.io/api v0.36.2
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.36.2
+	k8s.io/client-go => k8s.io/client-go v0.36.2
+	k8s.io/cri-client => k8s.io/cri-client v0.36.2
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.36.2
+	k8s.io/dynamic-resource-allocation => k8s.io/dynamic-resource-allocation v0.36.2
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.36.2
+	k8s.io/kubectl => k8s.io/kubectl v0.36.2
+	k8s.io/kubelet => k8s.io/kubelet v0.36.2
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible
