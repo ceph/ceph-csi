@@ -337,6 +337,16 @@ teardown-rook)
     ${minikube} ssh "sudo rm -rf /mnt/${DISK}/var/lib/rook; sudo rm -rf /var/lib/rook"
     ${minikube} ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook; sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
     ;;
+deploy-networkpolicy)
+    echo "deploy ceph-csi network policies"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/rook.sh deploy-networkpolicy
+    ;;
+teardown-networkpolicy)
+    echo "teardown ceph-csi network policies"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/rook.sh teardown-networkpolicy
+    ;;
 cephcsi)
     echo "copying the cephcsi image"
     copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephcsi:"${CSI_IMAGE_VERSION}" "${CEPHCSI_IMAGE_REPO}"/cephcsi:"${CSI_IMAGE_VERSION}"
@@ -367,10 +377,12 @@ Available Commands:
   delete-block-pool    Deletes a rook block pool (named $ROOK_BLOCK_POOL_NAME)
   create-block-ec-pool Creates a rook erasure coded block pool (named $ROOK_BLOCK_EC_POOL_NAME)
   delete-block-ec-pool Creates a rook erasure coded block pool (named $ROOK_BLOCK_EC_POOL_NAME)
-  cleanup-snapshotter  Cleanup snapshot controller
-  teardown-rook        Teardown rook from minikube
-  cephcsi              Copy built docker images to kubernetes cluster
-  k8s-sidecar          Copy kubernetes sidecar docker images to kubernetes cluster
+  cleanup-snapshotter      Cleanup snapshot controller
+  teardown-rook            Teardown rook from minikube
+  deploy-networkpolicy     Deploy ceph-csi network policies
+  teardown-networkpolicy   Remove ceph-csi network policies
+  cephcsi                  Copy built docker images to kubernetes cluster
+  k8s-sidecar              Copy kubernetes sidecar docker images to kubernetes cluster
 " >&2
     ;;
 esac

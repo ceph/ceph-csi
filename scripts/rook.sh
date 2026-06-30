@@ -6,6 +6,7 @@ ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/deploy/exa
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 ROOK_BLOCK_EC_POOL_NAME=${ROOK_BLOCK_EC_POOL_NAME:-"ec-pool"}
 ROOK_SUBVOLUMEGROUP_NAME=${ROOK_SUBVOLUMEGROUP_NAME:-"csi"}
+CEPHCSI_NAMESPACE=${CEPHCSI_NAMESPACE:-"default"}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # shellcheck disable=SC1091
@@ -30,9 +31,42 @@ function log_errors() {
 	exit 1
 }
 
+function deploy_networkpolicy() {
+	local np_file="${SCRIPT_DIR}/../deploy/ceph-csi-networkpolicy.yaml"
+	if [ ! -f "${np_file}" ]; then
+		echo "NetworkPolicy file not found at ${np_file}, skipping"
+		return 0
+	fi
+
+	local temp_dir
+	temp_dir="$(mktemp -d)"
+	cp "${np_file}" "${temp_dir}/ceph-csi-networkpolicy.yaml"
+	sed -i "s|namespace: default # namespace:csi|namespace: ${CEPHCSI_NAMESPACE} # namespace:csi|g" "${temp_dir}/ceph-csi-networkpolicy.yaml"
+	sed -i "s|kubernetes.io/metadata.name: default # namespace:csi|kubernetes.io/metadata.name: ${CEPHCSI_NAMESPACE} # namespace:csi|g" "${temp_dir}/ceph-csi-networkpolicy.yaml"
+	kubectl_retry create -f "${temp_dir}/ceph-csi-networkpolicy.yaml"
+	rm -rf "${temp_dir}"
+	echo "NetworkPolicy resources created in namespace ${CEPHCSI_NAMESPACE}"
+}
+
+function teardown_networkpolicy() {
+	local np_file="${SCRIPT_DIR}/../deploy/ceph-csi-networkpolicy.yaml"
+	if [ ! -f "${np_file}" ]; then
+		return 0
+	fi
+
+	local temp_dir
+	temp_dir="$(mktemp -d)"
+	cp "${np_file}" "${temp_dir}/ceph-csi-networkpolicy.yaml"
+	sed -i "s|namespace: default # namespace:csi|namespace: ${CEPHCSI_NAMESPACE} # namespace:csi|g" "${temp_dir}/ceph-csi-networkpolicy.yaml"
+	sed -i "s|kubernetes.io/metadata.name: default # namespace:csi|kubernetes.io/metadata.name: ${CEPHCSI_NAMESPACE} # namespace:csi|g" "${temp_dir}/ceph-csi-networkpolicy.yaml"
+	kubectl delete -f "${temp_dir}/ceph-csi-networkpolicy.yaml" --ignore-not-found
+	rm -rf "${temp_dir}"
+}
+
 function deploy_rook() {
 	kubectl_retry create -f "${ROOK_URL}/common.yaml"
 	kubectl_retry create -f "${ROOK_URL}/crds.yaml"
+	deploy_networkpolicy
 
 	TEMP_DIR="$(mktemp -d)"
 	curl -o "${TEMP_DIR}/operator.yaml" "${ROOK_URL}/operator.yaml"
@@ -84,6 +118,7 @@ function deploy_rook() {
 }
 
 function teardown_rook() {
+	teardown_networkpolicy
 	create_or_delete_subvolumegroup "delete"
 	kubectl delete -f "${ROOK_URL}/pool-test.yaml"
 	kubectl delete -f "${ROOK_URL}/filesystem-test.yaml"
@@ -266,15 +301,23 @@ create-block-ec-pool)
 delete-block-ec-pool)
 	delete_block_ec_pool
 	;;
+deploy-networkpolicy)
+	deploy_networkpolicy
+	;;
+teardown-networkpolicy)
+	teardown_networkpolicy
+	;;
 *)
 	echo " $0 [command]
 Available Commands:
-  deploy             Deploy a rook
-  teardown           Teardown a rook
-  create-block-pool  Create a rook block pool
-  delete-block-pool  Delete a rook block pool
-  create-block-ec-pool Creates a rook erasure coded block pool
-  delete-block-ec-pool Deletes a rook erasure coded block pool
+  deploy                Deploy a rook
+  teardown              Teardown a rook
+  create-block-pool     Create a rook block pool
+  delete-block-pool     Delete a rook block pool
+  create-block-ec-pool  Creates a rook erasure coded block pool
+  delete-block-ec-pool  Deletes a rook erasure coded block pool
+  deploy-networkpolicy  Deploy ceph-csi network policies
+  teardown-networkpolicy Remove ceph-csi network policies
 " >&2
 	;;
 esac

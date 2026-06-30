@@ -1,0 +1,120 @@
+######################################################################
+# NetworkPolicy definitions for the Ceph-CSI driver pods.
+# These policies control ingress traffic for each CSI plugin
+# type (CephFS and RBD).
+#
+# Controller plugins expose metrics and CSI-Addons ports,
+# node plugins expose CSI-Addons ports. Monitoring ingress
+# is restricted to the monitoring namespace; CSI-Addons
+# ingress is restricted to the csi-addons-controller-manager
+# pod.
+######################################################################
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ceph-csi-cephfs-ctrlplugin
+  namespace: default # namespace:csi
+spec:
+  podSelector:
+    matchLabels:
+      app: openshift-storage.cephfs.csi.ceph.com-ctrlplugin
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring # namespace:monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8681
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default # namespace:csi
+          podSelector:
+            matchLabels:
+              app: csi-addons-controller-manager
+      ports:
+        - protocol: TCP
+          port: 9080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ceph-csi-cephfs-nodeplugin-csi-addons
+  namespace: default # namespace:csi
+spec:
+  podSelector:
+    matchLabels:
+      app: openshift-storage.cephfs.csi.ceph.com-nodeplugin-csi-addons
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default # namespace:csi
+          podSelector:
+            matchLabels:
+              app: csi-addons-controller-manager
+      ports:
+        - protocol: TCP
+          port: 9071
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ceph-csi-rbd-ctrlplugin
+  namespace: default # namespace:csi
+spec:
+  podSelector:
+    matchLabels:
+      app: openshift-storage.rbd.csi.ceph.com-ctrlplugin
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring # namespace:monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8680
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default # namespace:csi
+          podSelector:
+            matchLabels:
+              app: csi-addons-controller-manager
+      ports:
+        - protocol: TCP
+          port: 9070
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ceph-csi-rbd-nodeplugin-csi-addons
+  namespace: default # namespace:csi
+spec:
+  podSelector:
+    matchLabels:
+      app: openshift-storage.rbd.csi.ceph.com-nodeplugin-csi-addons
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default # namespace:csi
+          podSelector:
+            matchLabels:
+              app: csi-addons-controller-manager
+      ports:
+        - protocol: TCP
+          port: 9071
