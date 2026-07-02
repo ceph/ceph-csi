@@ -72,8 +72,11 @@ func createORDeleteVault(action kubectlAction) {
 	}
 
 	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
-
 	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
+	// Match SA name to the namespace-unique name created in the RBAC template.
+	data = strings.ReplaceAll(data,
+		"rbd-csi-vault-token-review",
+		"rbd-csi-vault-token-review-"+cephCSINamespace)
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		logAndFail("failed to %s vault statefulset %v", action, err)
@@ -83,6 +86,11 @@ func createORDeleteVault(action kubectlAction) {
 	if err != nil {
 		logAndFail("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
+	// Make cluster-scoped resource names unique per namespace to avoid
+	// conflicts when multiple driver tests run in parallel.
+	data = strings.ReplaceAll(data,
+		"rbd-csi-vault-token-review",
+		"rbd-csi-vault-token-review-"+cephCSINamespace)
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		logAndFail("failed to %s vault statefulset %v", action, err)
@@ -145,6 +153,10 @@ func createORDeleteTenantServiceAccount(action kubectlAction, ns string) error {
 
 	// replace "default" in the URL to the Vault service
 	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
+	// Match SA name to the namespace-unique name created in the RBAC template.
+	data = strings.ReplaceAll(data,
+		"rbd-csi-vault-token-review",
+		"rbd-csi-vault-token-review-"+cephCSINamespace)
 
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {

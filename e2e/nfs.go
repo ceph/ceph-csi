@@ -50,8 +50,10 @@ var (
 	nfsExamplePath     = examplePath + "nfs/"
 	nfsPoolName        = ".nfs"
 
-	// FIXME: some tests change the subvolumegroup to "e2e".
 	defaultSubvolumegroup = "csi"
+	nfsSubvolumegroup     = defaultSubvolumegroup
+	nfsMetadataPool       = ""
+	nfsRadosNamespace     = ""
 
 	helmNFSPodsLabel = "ceph-csi-nfs"
 
@@ -380,8 +382,8 @@ var _ = Describe("nfs", func() {
 			deployNFSPlugin()
 		}
 
-		// cephfs testing might have changed the default subvolumegroup
-		subvolumegroup = defaultSubvolumegroup
+		subvolumegroup = nfsSubvolumegroup
+		radosNamespace = nfsRadosNamespace
 		err := createConfigMap(nfsDirPath, f.ClientSet, f)
 		if err != nil {
 			logAndFail("failed to create configmap: %v", err)
@@ -405,11 +407,11 @@ var _ = Describe("nfs", func() {
 			logAndFail("failed to create node secret: %v", err)
 		}
 
-		err = createSubvolumegroup(f, fileSystemName, subvolumegroup)
+		err = createSubvolumegroup(f, fileSystemName, nfsSubvolumegroup)
 		if err != nil {
-			logAndFail("failed to create subvolumegroup %s: %v", subvolumegroup, err)
+			logAndFail("failed to create subvolumegroup %s: %v", nfsSubvolumegroup, err)
 		}
-		metadataPool, err = getCephFSMetadataPoolName(f, fileSystemName)
+		nfsMetadataPool, err = getCephFSMetadataPoolName(f, fileSystemName)
 		if err != nil {
 			logAndFail("failed getting cephFS metadata pool name: %v", err)
 		}
@@ -451,9 +453,9 @@ var _ = Describe("nfs", func() {
 		if err != nil {
 			logAndFail("failed to delete storageclass: %v", err)
 		}
-		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
+		err = deleteSubvolumegroup(f, fileSystemName, nfsSubvolumegroup)
 		if err != nil {
-			logAndFail("failed to delete subvolumegroup %s: %v", subvolumegroup, err)
+			logAndFail("failed to delete subvolumegroup %s: %v", nfsSubvolumegroup, err)
 		}
 
 		if deployNFS {
@@ -766,7 +768,7 @@ var _ = Describe("nfs", func() {
 			}
 			// validate no subvolumes remain
 			validateSubvolumeCount(f, 0, fileSystemName, defaultSubvolumegroup)
-			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+			validateOmapCount(f, 0, nfsType, nfsMetadataPool, volumesType)
 		})
 
 		It("Mount pvc as readonly in pod", func() {
@@ -928,7 +930,7 @@ var _ = Describe("nfs", func() {
 					name := fmt.Sprintf("%s-%d", uniqueName, n)
 					wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 					if wgErrs[n] == nil {
-						err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
+						err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, nfsSubvolumegroup)
 						if err != nil {
 							wgErrs[n] = err
 						}
@@ -971,9 +973,9 @@ var _ = Describe("nfs", func() {
 				logAndFail("calculating checksum failed, %d errors were logged", failed)
 			}
 
-			validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
-			validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
-			validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
+			validateSubvolumeCount(f, totalSubvolumes, fileSystemName, nfsSubvolumegroup)
+			validateOmapCount(f, totalSubvolumes, nfsType, nfsMetadataPool, volumesType)
+			validateOmapCount(f, totalCount, nfsType, nfsMetadataPool, snapsType)
 
 			wg.Add(totalCount)
 			// delete clone and app
@@ -999,9 +1001,9 @@ var _ = Describe("nfs", func() {
 			}
 
 			parentPVCCount := totalSubvolumes - totalCount
-			validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
-			validateOmapCount(f, parentPVCCount, cephfsType, metadataPool, volumesType)
-			validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
+			validateSubvolumeCount(f, parentPVCCount, fileSystemName, nfsSubvolumegroup)
+			validateOmapCount(f, parentPVCCount, nfsType, nfsMetadataPool, volumesType)
+			validateOmapCount(f, totalCount, nfsType, nfsMetadataPool, snapsType)
 			// create clones from different snapshots and bind it to an app
 			wg.Add(totalCount)
 			for i := range totalCount {
@@ -1010,7 +1012,7 @@ var _ = Describe("nfs", func() {
 					p.Spec.DataSource.Name = name
 					wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 					if wgErrs[n] == nil {
-						err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
+						err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, nfsSubvolumegroup)
 						if err != nil {
 							wgErrs[n] = err
 						}
@@ -1053,9 +1055,9 @@ var _ = Describe("nfs", func() {
 				logAndFail("calculating checksum failed, %d errors were logged", failed)
 			}
 
-			validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
-			validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
-			validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
+			validateSubvolumeCount(f, totalSubvolumes, fileSystemName, nfsSubvolumegroup)
+			validateOmapCount(f, totalSubvolumes, nfsType, nfsMetadataPool, volumesType)
+			validateOmapCount(f, totalCount, nfsType, nfsMetadataPool, snapsType)
 
 			wg.Add(totalCount)
 			// delete snapshot
@@ -1104,18 +1106,18 @@ var _ = Describe("nfs", func() {
 				logAndFail("deleting PVCs and apps failed, %d errors were logged", failed)
 			}
 
-			validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
-			validateOmapCount(f, parentPVCCount, cephfsType, metadataPool, volumesType)
-			validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
+			validateSubvolumeCount(f, parentPVCCount, fileSystemName, nfsSubvolumegroup)
+			validateOmapCount(f, parentPVCCount, nfsType, nfsMetadataPool, volumesType)
+			validateOmapCount(f, 0, nfsType, nfsMetadataPool, snapsType)
 			// delete parent pvc
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete PVC or application: %v", err)
 			}
 
-			validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
-			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
-			validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
+			validateSubvolumeCount(f, 0, fileSystemName, nfsSubvolumegroup)
+			validateOmapCount(f, 0, nfsType, nfsMetadataPool, volumesType)
+			validateOmapCount(f, 0, nfsType, nfsMetadataPool, snapsType)
 		})
 
 		It("create a PVC-PVC clone and bind it to an app", func() {
@@ -1213,8 +1215,8 @@ var _ = Describe("nfs", func() {
 				logAndFail("calculating checksum failed, %d errors were logged", failed)
 			}
 
-			validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
-			validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
+			validateSubvolumeCount(f, totalSubvolumes, fileSystemName, nfsSubvolumegroup)
+			validateOmapCount(f, totalSubvolumes, nfsType, nfsMetadataPool, volumesType)
 
 			// delete parent pvc
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
@@ -1245,8 +1247,8 @@ var _ = Describe("nfs", func() {
 				logAndFail("deleting PVCs and apps failed, %d errors were logged", failed)
 			}
 
-			validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
-			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+			validateSubvolumeCount(f, 0, fileSystemName, nfsSubvolumegroup)
+			validateOmapCount(f, 0, nfsType, nfsMetadataPool, volumesType)
 		})
 
 		It("delete NFS provisioner and plugin secret", func() {
