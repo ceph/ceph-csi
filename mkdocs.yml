@@ -1,0 +1,58 @@
+---
+site_name: Ceph-CSI Documentation
+site_description: Container Storage Interface (CSI) drivers for Ceph storage
+site_author: Ceph-CSI Contributors
+site_url: https://ceph.github.io/ceph-csi
+
+repo_name: ceph/ceph-csi
+repo_url: https://github.com/ceph/ceph-csi
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Features:
+      - Capabilities: capabilities.md
+      - Snapshots and Clones: snap-clone.md
+      - Volume Expansion: expand-pvc.md
+      - Static PVC: static-pvc.md
+      - Volume Attributes Class: volumeattributesclass.md
+      - Metrics: metrics.md
+  - Deployment:
+      - RBD:
+          - Deploy: rbd/deploy.md
+      - CephFS:
+          - Deploy: cephfs/deploy.md
+  - Operations:
+      - Upgrade: ceph-csi-upgrade.md
+      - In-tree Migration: intree-migrate.md
+      - Resource Cleanup: resource-cleanup.md
+      - Releases: releases.md
+  - CSI Addons:
+      - Disaster Recovery: csi-addons/disaster-recovery.md
+  - Contributing:
+      - Development Guide: development-guide.md
+      - Coding Conventions: coding.md
