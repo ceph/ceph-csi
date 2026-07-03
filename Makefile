@@ -235,6 +235,11 @@ containerized-test: REBASE ?= 0
 containerized-test: .container-cmd .test-container-id
 	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE) CONTAINERIZED=yes
 
+.PHONY: mkdocs
+mkdocs:
+	mkdir -p _output/docs
+	mkdocs build --clean --site-dir _output/docs
+
 ifeq ($(USE_PULLED_IMAGE),no)
 # create a (cached) container image with dependencies for building cephcsi
 .devel-container-id: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
@@ -282,7 +287,7 @@ push-manifest: .container-cmd
 clean:
 	go clean -mod=vendor -r -x
 	rm -f deploy/cephcsi/image/cephcsi
-	rm -f _output/cephcsi
+	rm -rf _output
 	$(RM) scripts/golangci.yml
 	$(RM) e2e.test
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel

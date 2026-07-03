@@ -32,14 +32,17 @@ RUN mkdir -p /etc/selinux && touch /etc/selinux/config
 # other/conflicting versions of protobuf get installed as dependency
 RUN dnf -y remove protobuf
 
-RUN dnf -y install \
+RUN source /build.env \
+    && dnf -y install \
 	git \
 	make \
 	gcc \
 	librados-devel \
         libcephfs-devel \
 	librbd-devel \
+	python3-pip \
     && dnf -y --nobest update \
+    && pip install mkdocs-material==${MKDOCS_MATERIAL} \
     && dnf clean all \
     && rm -rf /var/cache/yum \
     && true
