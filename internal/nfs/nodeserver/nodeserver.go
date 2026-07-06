@@ -32,6 +32,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/journal"
 	nfs "github.com/ceph/ceph-csi/internal/nfs/types"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -50,6 +51,7 @@ var errInvalidParameter = errors.New("invalid parameter")
 // nfsNodeServer implements the CSI node server for the NFS driver.
 type nfsNodeServer struct {
 	csicommon.DefaultNodeServer
+	healthChecker hc.Manager
 }
 
 // Assert required implementation of CSI interfaces.
@@ -64,6 +66,7 @@ func NewNodeServer(
 
 	return &nfsNodeServer{
 		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
+		healthChecker:     hc.NewHealthCheckManager(),
 	}
 }
 
@@ -131,6 +134,11 @@ func (ns *nfsNodeServer) NodePublishVolume(
 	log.DebugLog(ctx, "nfs: successfully mounted volume %q mount %q to %q succeeded",
 		volumeID, source, targetPath)
 
+	err = ns.healthChecker.StartChecker(volumeID, targetPath, hc.StatCheckerType)
+	if err != nil {
+		log.WarningLog(ctx, "failed to start healthchecker: %v", err)
+	}
+
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -147,6 +155,10 @@ func (ns *nfsNodeServer) NodeUnpublishVolume(
 	volumeID := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
 	log.DebugLog(ctx, "nfs: unmounting volume %s on %s", volumeID, targetPath)
+
+	// stop the health-checker that may have been started in NodePublishVolume()
+	ns.healthChecker.StopChecker(volumeID, targetPath)
+
 	err = mount.CleanupMountPoint(targetPath, ns.Mounter, true)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unmount target %q: %v",
@@ -179,6 +191,13 @@ func (ns *nfsNodeServer) NodeGetCapabilities(
 					},
 				},
 			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
+					},
+				},
+			},
 		},
 	}, nil
 }
@@ -195,8 +214,46 @@ func (ns *nfsNodeServer) NodeGetVolumeStats(
 			fmt.Sprintf("targetpath %v is empty", targetPath))
 	}
 
+	volumeID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// health check first, return without stats if unhealthy
+	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
+
+	// If healthy and an error is returned, it means that the checker was not
+	// started. This could happen when the node-plugin was restarted and the
+	// volume is already published.
+	if healthy && msg != nil {
+		err = ns.healthChecker.StartChecker(volumeID, targetPath, hc.StatCheckerType)
+		if err != nil {
+			log.WarningLog(ctx, "failed to start healthchecker: %v", err)
+		}
+	}
+
+	if !healthy {
+		return &csi.NodeGetVolumeStatsResponse{
+			VolumeCondition: &csi.VolumeCondition{
+				Abnormal: true,
+				Message:  msg.Error(),
+			},
+		}, nil
+	}
+
 	stat, err := os.Stat(targetPath)
 	if err != nil {
+		if util.IsCorruptedMountError(err) {
+			log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
+
+			return &csi.NodeGetVolumeStatsResponse{
+				VolumeCondition: &csi.VolumeCondition{
+					Abnormal: true,
+					Message:  err.Error(),
+				},
+			}, nil
+		}
+
 		return nil, status.Errorf(codes.InvalidArgument,
 			"failed to get stat for targetpath %q: %v", targetPath, err)
 	}
