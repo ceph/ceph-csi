@@ -1,3 +1,10 @@
+## [0.17.3](https://github.com/IBM/keyprotect-go-client/compare/v0.17.2...v0.17.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* **build:** 6-2026 Dependency Upgrade ([#156](https://github.com/IBM/keyprotect-go-client/issues/156)) ([973aa55](https://github.com/IBM/keyprotect-go-client/commit/973aa5564155543967c51452c6ff7262b2162249))
+
 ## [0.17.2](https://github.com/IBM/keyprotect-go-client/compare/v0.17.1...v0.17.2) (2026-06-12)
 
 
