@@ -580,6 +580,14 @@ var _ = Describe(cephfsType, func() {
 			}
 		})
 
+		It("check static PVC with monitors and provisionVolume=false", func() {
+			scPath := cephFSExamplePath + "secret.yaml"
+			err := validateCephFsMonitorListPV(f, appPath, scPath, fileSystemName)
+			if err != nil {
+				logAndFail("failed to validate CephFS static pv with monitor list: %v", err)
+			}
+		})
+
 		It("create a storageclass with pool and a PVC then bind it to an app", func() {
 			err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 			if err != nil {
