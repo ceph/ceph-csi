@@ -38,22 +38,34 @@ import (
 // controller server spec.
 type nfsControllerServer struct {
 	csi.UnimplementedControllerServer
+	csi.UnimplementedGroupControllerServer
 
 	// backendServer handles the CephFS requests
 	backendServer csi.ControllerServer
+
+	// backendGroupServer handles the CephFS group controller requests
+	backendGroupServer csi.GroupControllerServer
 }
 
 // Assert required implementation of CSI interfaces.
-var _ csi.ControllerServer = &nfsControllerServer{}
+var (
+	_ csi.ControllerServer      = &nfsControllerServer{}
+	_ csi.GroupControllerServer = &nfsControllerServer{}
+)
 
 // NewControllerServer initialize a controller server for ceph CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver) csi.ControllerServer {
 	// global instance of the volume journal, yuck
 	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
 	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(d.GetInstanceID(), fsutil.RadosNamespace)
+	store.VolumeGroupJournal = journal.NewCSIVolumeGroupJournalWithNamespace(
+		d.GetInstanceID(), fsutil.RadosNamespace)
+
+	backendServer := cephfs.NewControllerServer(d, "")
 
 	return &nfsControllerServer{
-		backendServer: cephfs.NewControllerServer(d, ""),
+		backendServer:      backendServer,
+		backendGroupServer: csicommon.ToGroupControllerServer(backendServer),
 	}
 }
 
@@ -226,6 +238,35 @@ func (cs *nfsControllerServer) DeleteSnapshot(
 	req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
 	return cs.backendServer.DeleteSnapshot(ctx, req)
+}
+
+// GroupControllerGetCapabilities calls the backend (CephFS) procedure to get
+// the group controller capabilities.
+func (cs *nfsControllerServer) GroupControllerGetCapabilities(
+	ctx context.Context,
+	req *csi.GroupControllerGetCapabilitiesRequest,
+) (*csi.GroupControllerGetCapabilitiesResponse, error) {
+	return cs.backendGroupServer.GroupControllerGetCapabilities(ctx, req)
+}
+
+// CreateVolumeGroupSnapshot calls the backend (CephFS) procedure to create a
+// volume group snapshot. There is no interaction with the NFS-server needed for
+// volume group snapshot creation.
+func (cs *nfsControllerServer) CreateVolumeGroupSnapshot(
+	ctx context.Context,
+	req *csi.CreateVolumeGroupSnapshotRequest,
+) (*csi.CreateVolumeGroupSnapshotResponse, error) {
+	return cs.backendGroupServer.CreateVolumeGroupSnapshot(ctx, req)
+}
+
+// DeleteVolumeGroupSnapshot calls the backend (CephFS) procedure to delete a
+// volume group snapshot. There is no interaction with the NFS-server needed for
+// volume group snapshot deletion.
+func (cs *nfsControllerServer) DeleteVolumeGroupSnapshot(
+	ctx context.Context,
+	req *csi.DeleteVolumeGroupSnapshotRequest,
+) (*csi.DeleteVolumeGroupSnapshotResponse, error) {
+	return cs.backendGroupServer.DeleteVolumeGroupSnapshot(ctx, req)
 }
 
 // ControllerModifyVolume adjusts parameters after a volume has been created.
