@@ -66,6 +66,10 @@ func (fs *nfsDriver) Run(conf *util.Config) {
 			csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
 			csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
 		})
+
+		cd.AddGroupControllerServiceCapabilities([]csi.GroupControllerServiceCapability_RPC_Type{
+			csi.GroupControllerServiceCapability_RPC_CREATE_DELETE_GET_VOLUME_GROUP_SNAPSHOT,
+		})
 	}
 
 	// Create gRPC servers
@@ -79,9 +83,11 @@ func (fs *nfsDriver) Run(conf *util.Config) {
 		srv.NS = nodeserver.NewNodeServer(cd, conf.Vtype)
 	case conf.IsControllerServer:
 		srv.CS = controller.NewControllerServer(cd)
+		srv.GS = csicommon.ToGroupControllerServer(srv.CS)
 	default:
 		srv.NS = nodeserver.NewNodeServer(cd, conf.Vtype)
 		srv.CS = controller.NewControllerServer(cd)
+		srv.GS = csicommon.ToGroupControllerServer(srv.CS)
 	}
 
 	server.Start(conf.Endpoint, srv, csicommon.MiddlewareServerOptionConfig{
