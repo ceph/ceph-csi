@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"time"
 
-	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta2"
+	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1"
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
-	groupsnapclient "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/typed/volumegroupsnapshot/v1beta2"
+	groupsnapclient "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/typed/volumegroupsnapshot/v1"
 	snapclient "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned/typed/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -77,7 +77,7 @@ type VolumeGroupSnapshotter interface {
 type volumeGroupSnapshotterBase struct {
 	timeout                   int
 	framework                 *framework.Framework
-	groupclient               *groupsnapclient.GroupsnapshotV1beta2Client
+	groupclient               *groupsnapclient.GroupsnapshotV1Client
 	snapClient                *snapclient.SnapshotV1Client
 	storageClassName          string
 	blockPVC                  bool
