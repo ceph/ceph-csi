@@ -136,6 +136,114 @@ func (c *cephFSVolumeGroupSnapshot) ValidateResourcesForDelete() error {
 	return nil
 }
 
+type nfsVolumeGroupSnapshot struct {
+	*volumeGroupSnapshotterBase
+}
+
+var _ VolumeGroupSnapshotter = &nfsVolumeGroupSnapshot{}
+
+func newNFSVolumeGroupSnapshot(f *framework.Framework, namespace,
+	storageClass string,
+	blockPVC bool,
+	timeout, totalPVCCount, additionalVGSnapshotCount int,
+) (VolumeGroupSnapshotter, error) {
+	base, err := newVolumeGroupSnapshotBase(f, namespace, storageClass, blockPVC,
+		timeout, totalPVCCount, additionalVGSnapshotCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create volumeGroupSnapshotterBase: %w", err)
+	}
+
+	return &nfsVolumeGroupSnapshot{
+		volumeGroupSnapshotterBase: base,
+	}, nil
+}
+
+func (nvgs *nfsVolumeGroupSnapshot) TestVolumeGroupSnapshot() error {
+	return nvgs.volumeGroupSnapshotterBase.testVolumeGroupSnapshot(nvgs)
+}
+
+func (nvgs *nfsVolumeGroupSnapshot) GetVolumeGroupSnapshotClass() (*groupsnapapi.VolumeGroupSnapshotClass, error) {
+	vgscPath := fmt.Sprintf("%s/%s", nfsExamplePath, "groupsnapshotclass.yaml")
+	vgsc := &groupsnapapi.VolumeGroupSnapshotClass{}
+	err := unmarshal(vgscPath, vgsc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal VolumeGroupSnapshotClass: %w", err)
+	}
+
+	vgsc.Parameters["csi.storage.k8s.io/group-snapshotter-secret-namespace"] = cephCSINamespace
+	vgsc.Parameters["csi.storage.k8s.io/group-snapshotter-secret-name"] = cephFSProvisionerSecretName
+	vgsc.Parameters["fsName"] = fileSystemName
+
+	fsID, err := getClusterID(nvgs.framework)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get clusterID: %w", err)
+	}
+	vgsc.Parameters["clusterID"] = fsID
+
+	return vgsc, nil
+}
+
+func (nvgs *nfsVolumeGroupSnapshot) ValidateResourcesForCreate(vgs *groupsnapapi.VolumeGroupSnapshot) error {
+	ctx := context.TODO()
+	metadataPool, err := getCephFSMetadataPoolName(nvgs.framework, fileSystemName)
+	if err != nil {
+		return fmt.Errorf("failed getting cephFS metadata pool name: %w", err)
+	}
+
+	vgsc, err := nvgs.groupclient.VolumeGroupSnapshotContents().Get(
+		ctx,
+		*vgs.Status.BoundVolumeGroupSnapshotContentName,
+		metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get VolumeGroupSnapshotContent: %w", err)
+	}
+
+	sourcePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
+	clonePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
+	totalPVCCount := sourcePVCCount + clonePVCCount
+	validateSubvolumeCount(nvgs.framework, totalPVCCount, fileSystemName, subvolumegroup)
+
+	for _, snapshot := range vgsc.Status.VolumeSnapshotInfoList {
+		volumeHandle := snapshot.VolumeHandle
+		volumeSnapshotName := fmt.Sprintf("snapshot-%x", sha256.Sum256([]byte(
+			string(vgs.UID)+volumeHandle)))
+		volumeSnapshot, err := nvgs.snapClient.VolumeSnapshots(vgs.Namespace).Get(ctx, volumeSnapshotName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get VolumeSnapshot: %w", err)
+		}
+		pvcName := *volumeSnapshot.Spec.Source.PersistentVolumeClaimName
+		pvc, err := nvgs.framework.ClientSet.CoreV1().PersistentVolumeClaims(vgs.Namespace).Get(ctx,
+			pvcName,
+			metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get PVC: %w", err)
+		}
+		pv := pvc.Spec.VolumeName
+		pvObj, err := nvgs.framework.ClientSet.CoreV1().PersistentVolumes().Get(ctx, pv, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get PV: %w", err)
+		}
+		validateCephFSSnapshotCount(nvgs.framework, 1, subvolumegroup, pvObj)
+	}
+	validateOmapCount(nvgs.framework, totalPVCCount, cephfsType, metadataPool, volumesType)
+	validateOmapCount(nvgs.framework, sourcePVCCount, cephfsType, metadataPool, snapsType)
+	validateOmapCount(nvgs.framework, 1, cephfsType, metadataPool, groupSnapsType)
+
+	return nil
+}
+
+func (nvgs *nfsVolumeGroupSnapshot) ValidateResourcesForDelete() error {
+	metadataPool, err := getCephFSMetadataPoolName(nvgs.framework, fileSystemName)
+	if err != nil {
+		return fmt.Errorf("failed getting cephFS metadata pool name: %w", err)
+	}
+	validateOmapCount(nvgs.framework, 0, cephfsType, metadataPool, volumesType)
+	validateOmapCount(nvgs.framework, 0, cephfsType, metadataPool, snapsType)
+	validateOmapCount(nvgs.framework, 0, cephfsType, metadataPool, groupSnapsType)
+
+	return nil
+}
+
 type rbdVolumeGroupSnapshot struct {
 	*volumeGroupSnapshotterBase
 }
