@@ -1249,6 +1249,19 @@ var _ = Describe("nfs", func() {
 			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 		})
 
+		It("test volumeGroupSnapshot", func() {
+			scName := "csi-nfs-sc"
+			snapshotter, err := newNFSVolumeGroupSnapshot(f, f.UniqueName, scName, false, deployTimeout, 3, 0)
+			if err != nil {
+				logAndFail("failed to create volumeGroupSnapshot Base: %v", err)
+			}
+
+			err = snapshotter.TestVolumeGroupSnapshot()
+			if err != nil {
+				logAndFail("failed to test volumeGroupSnapshot: %v", err)
+			}
+		})
+
 		It("delete NFS provisioner and plugin secret", func() {
 			// delete nfs provisioner secret
 			err := deleteCephUser(f, keyringCephFSProvisionerUsername)
