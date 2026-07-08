@@ -1,0 +1,28 @@
+{{- if and .Values.nodeplugin.podMonitor.enabled .Values.nodeplugin.httpMetrics.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
+  namespace: {{ .Values.nodeplugin.podMonitor.namespace | default .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.nodeplugin.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.nodeplugin.podMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "ceph-csi-rbd.name" . }}
+      component: {{ .Values.nodeplugin.name }}
+      release: {{ .Release.Name }}
+  podMetricsEndpoints:
+    - port: metrics
+{{- end }}
