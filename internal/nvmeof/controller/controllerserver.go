@@ -26,7 +26,6 @@ import (
 	"strconv"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/ghodss/yaml"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -348,13 +347,13 @@ func (cs *Server) ControllerModifyVolume(
 
 		return nil, status.Error(codes.InvalidArgument, "cannot set RBD QoS parameters on NVMe-oF volumes")
 	}
-	nvmeofQoS, err := parseQoSParameters(params)
+	nvmeofQoS, err := nvmeof.NewNVMeoFQosVolumeFromParams(params)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to parse NVMe-oF QoS parameters: %v", err)
 
 		return nil, status.Errorf(codes.InvalidArgument, "failed to parse QoS parameters: %v", err)
 	}
-	hostsList, err := parseHostsParameters(params)
+	hostsList, err := nvmeof.NewNVMeoFHostListFromParams(params)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to parse NVMe-oF hosts parameters: %v", err)
 
@@ -471,12 +470,12 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	}
 
 	// It take the mutableParams value from the volumeAttributesClassName in the PersistentVolumeClaim yaml.
-	_, err = parseQoSParameters(mutableParams)
+	_, err = nvmeof.NewNVMeoFQosVolumeFromParams(mutableParams)
 	if err != nil {
 		return fmt.Errorf("invalid NVMe-oF QoS parameters: %w", err)
 	}
 
-	_, err = parseHostsParameters(mutableParams)
+	_, err = nvmeof.NewNVMeoFHostListFromParams(mutableParams)
 	if err != nil {
 		return fmt.Errorf("invalid NVMe-oF hosts parameters (for external clients): %w", err)
 	}
@@ -546,26 +545,6 @@ func validateNetworkMask(networkMask string) error {
 	return nil
 }
 
-// parseHostsParameters parses the hosts yaml list parameter and validates its contents.
-// It returns a slice of hostNQNs or an error if the YAML is invalid.
-// Returns nil if the key is absent (caller should not modify hosts).
-// Returns empty slice if the key is present but empty (caller should remove all hosts).
-func parseHostsParameters(params map[string]string) ([]string, error) {
-	allowHostNQNs, exists := params[AllowHostNQNs]
-	if !exists {
-		return nil, nil // Key absent: don't modify existing hosts
-	}
-	if allowHostNQNs == "" {
-		return []string{}, nil // Key present but empty: remove all hosts
-	}
-	var allowHostsList []string
-	if err := yaml.Unmarshal([]byte(allowHostNQNs), &allowHostsList); err != nil {
-		return nil, fmt.Errorf("invalid %s: must be a YAML list of strings: %w", AllowHostNQNs, err)
-	}
-
-	return allowHostsList, nil
-}
-
 // withGatewayConnection is a helper that manages the common pattern of:
 // 1. Getting secrets (with fallback to k8s secret)
 // 2. Getting NVMe-oF metadata
@@ -624,8 +603,12 @@ func (cs *Server) withGatewayConnection(
 	return fn(ctx, gateway, nvmeofData)
 }
 
-// modifyNVMeoFHosts handles adding or removing hosts from the subsystem based on the provided list of host NQNs.
-func (cs *Server) modifyNVMeoFHosts(ctx context.Context, req *csi.ControllerModifyVolumeRequest, hosts []string) error {
+// modifyNVMeoFHosts handles adding or removing hosts from the subsystem based on the provided host list.
+func (cs *Server) modifyNVMeoFHosts(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+	hostsList *nvmeof.NVMeoFHostList,
+) error {
 	volumeID := req.GetVolumeId()
 
 	return cs.withGatewayConnection(ctx, req, volumeID, func(
@@ -634,9 +617,9 @@ func (cs *Server) modifyNVMeoFHosts(ctx context.Context, req *csi.ControllerModi
 		nvmeofData *nvmeof.NVMeoFVolumeData,
 	) error {
 		log.DebugLog(ctx, "Modifying hosts for subsystem=%s, nsid=%d: desired hosts=%v",
-			nvmeofData.SubsystemNQN, nvmeofData.NamespaceID, hosts)
+			nvmeofData.SubsystemNQN, nvmeofData.NamespaceID, hostsList)
 
-		err := gateway.UpdateHostsForSubsystem(ctx, nvmeofData.SubsystemNQN, hosts)
+		err := gateway.UpdateHostsForSubsystem(ctx, nvmeofData.SubsystemNQN, hostsList.HostNQNs)
 		if err != nil {
 			log.ErrorLog(ctx, "Failed to update hosts for subsystem: %v", err)
 
@@ -647,44 +630,6 @@ func (cs *Server) modifyNVMeoFHosts(ctx context.Context, req *csi.ControllerModi
 
 		return nil
 	})
-}
-
-// parseQoSParameters extracts and parses QoS parameters from the given map.
-func parseQoSParameters(params map[string]string) (*nvmeof.NVMeoFQosVolume, error) {
-	qos := &nvmeof.NVMeoFQosVolume{}
-	hasAnyQoS := false
-
-	parseParam := func(key, name string, dest **uint64) error {
-		if val, exists := params[key]; exists && val != "" {
-			parsed, err := strconv.ParseUint(val, 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid %s: %w", name, err)
-			}
-			*dest = &parsed
-			hasAnyQoS = true
-		}
-
-		return nil
-	}
-
-	if err := parseParam(nvmeof.RwIosPerSecond, nvmeof.RwIosPerSecond, &qos.RwIosPerSecond); err != nil {
-		return nil, err
-	}
-	if err := parseParam(nvmeof.RwMbytesPerSecond, nvmeof.RwMbytesPerSecond, &qos.RwMbytesPerSecond); err != nil {
-		return nil, err
-	}
-	if err := parseParam(nvmeof.RMbytesPerSecond, nvmeof.RMbytesPerSecond, &qos.RMbytesPerSecond); err != nil {
-		return nil, err
-	}
-	if err := parseParam(nvmeof.WMbytesPerSecond, nvmeof.WMbytesPerSecond, &qos.WMbytesPerSecond); err != nil {
-		return nil, err
-	}
-
-	if !hasAnyQoS {
-		return nil, nil
-	}
-
-	return qos, nil
 }
 
 // modifyNVMeoFQoS handles NVMe-oF gateway QoS modification.
@@ -835,7 +780,7 @@ func (cs *Server) createNVMeoFResources(
 	mutableParams := req.GetMutableParameters()
 	// It take the mutableParams value from the volumeAttributesClassName in the PersistentVolumeClaim yaml.
 	// We already verified in the validateCreateVolumeRequest that there is no RBD QoS
-	nvmeofQoS, err := parseQoSParameters(mutableParams)
+	nvmeofQoS, err := nvmeof.NewNVMeoFQosVolumeFromParams(mutableParams)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to parse NVMe-oF QoS parameters: %v", err)
 
@@ -844,7 +789,7 @@ func (cs *Server) createNVMeoFResources(
 	// If VAC with hosts list is given (for external client)
 	// We need to parse the hosts list and pass it to the gateway for creating host entries
 	// and adding them to the subsystem.
-	hosts, err := parseHostsParameters(mutableParams)
+	hostsList, err := nvmeof.NewNVMeoFHostListFromParams(mutableParams)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to parse NVMe-oF hosts parameters: %v", err)
 
@@ -897,9 +842,9 @@ func (cs *Server) createNVMeoFResources(
 			return nvmeofData, fmt.Errorf("setting QoS limits failed: %w", err)
 		}
 	}
-	if hosts != nil {
-		log.DebugLog(ctx, "Adding hosts to subsystem: %v", hosts)
-		for _, host := range hosts {
+	if hostsList != nil {
+		log.DebugLog(ctx, "Adding hosts to subsystem: %s", hostsList)
+		for _, host := range hostsList.HostNQNs {
 			// TODO - for now we create host with empty DH-CHAP keys,
 			// in the future we can extend the VAC parameters to allow passing DH-CHAP keys for each host if needed??
 			if err := gateway.AddHost(ctx, nvmeofData.SubsystemNQN, host, nvmeof.DHCHAPKeys{}); err != nil {
@@ -1105,15 +1050,6 @@ func getHostNQNFromNodeID(nodeID string) (string, error) {
 
 	return prefix + nodeID, nil
 }
-
-// AllowHostNQNs is the VolumeAttributesClass mutable parameter key for specifying
-// a YAML list of host NQNs to allow access to a volume. Use "*" to allow any host.
-// Example:
-//
-//	allowHostNQNs: |
-//	  - nqn.2014-08.org.nvmexpress:host1
-//	  - nqn.2014-08.org.nvmexpress:host2
-const AllowHostNQNs = "allowHostNQNs"
 
 // VolumeContext metadata keys.
 const (

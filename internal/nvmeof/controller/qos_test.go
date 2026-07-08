@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Ceph-CSI Authors.
+Copyright 2026 The Ceph-CSI Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -139,113 +139,7 @@ func TestParseQoSParameters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := parseQoSParameters(tt.params)
-
-			if tt.expectError {
-				require.Error(t, err)
-				assert.Nil(t, result)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expected, result)
-			}
-		})
-	}
-}
-
-func TestParseHostParameters(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name        string
-		params      map[string]string
-		expected    []string
-		expectError bool
-	}{
-		{
-			name:     "no allowHostNQNs parameter",
-			params:   map[string]string{},
-			expected: nil,
-		},
-		{
-			name: "empty allowHostNQNs (remove all hosts)",
-			params: map[string]string{
-				AllowHostNQNs: "",
-			},
-			expected: []string{}, // Empty slice, not nil - signals to remove all hosts
-		},
-		{
-			name: "single host NQN",
-			params: map[string]string{
-				AllowHostNQNs: `- nqn.2014-08.org.nvmexpress:host1`,
-			},
-			expected: []string{"nqn.2014-08.org.nvmexpress:host1"},
-		},
-		{
-			name: "multiple host NQNs",
-			params: map[string]string{
-				AllowHostNQNs: `- nqn.2014-08.org.nvmexpress:host1
-- nqn.2014-08.org.nvmexpress:host2
-- nqn.2014-08.org.nvmexpress:host3`,
-			},
-			expected: []string{
-				"nqn.2014-08.org.nvmexpress:host1",
-				"nqn.2014-08.org.nvmexpress:host2",
-				"nqn.2014-08.org.nvmexpress:host3",
-			},
-		},
-		{
-			name: "wildcard to allow any host",
-			params: map[string]string{
-				AllowHostNQNs: `- "*"`,
-			},
-			expected: []string{"*"},
-		},
-		{
-			name: "YAML list in flow style",
-			params: map[string]string{
-				AllowHostNQNs: `["nqn.2014-08.org.nvmexpress:host1", "nqn.2014-08.org.nvmexpress:host2"]`,
-			},
-			expected: []string{
-				"nqn.2014-08.org.nvmexpress:host1",
-				"nqn.2014-08.org.nvmexpress:host2",
-			},
-		},
-		{
-			name: "invalid YAML - not a list (plain string)",
-			params: map[string]string{
-				AllowHostNQNs: `nqn.2014-08.org.nvmexpress:host1`,
-			},
-			expectError: true,
-		},
-		{
-			name: "invalid YAML - map instead of list",
-			params: map[string]string{
-				AllowHostNQNs: `host1: nqn.2014-08.org.nvmexpress:host1`,
-			},
-			expectError: true,
-		},
-		{
-			name: "invalid YAML - unclosed quote",
-			params: map[string]string{
-				AllowHostNQNs: `- "nqn.2014-08.org.nvmexpress:host1`,
-			},
-			expectError: true,
-		},
-		{
-			name: "other parameters present but no allowHostNQNs",
-			params: map[string]string{
-				"someOtherParam":       "value",
-				"nvmeofRWIOsPerSecond": "10000",
-			},
-			expected: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			result, err := parseHostsParameters(tt.params)
+			result, err := nvmeof.NewNVMeoFQosVolumeFromParams(tt.params)
 
 			if tt.expectError {
 				require.Error(t, err)

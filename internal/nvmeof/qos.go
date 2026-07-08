@@ -17,6 +17,7 @@ package nvmeof
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -37,6 +38,45 @@ const (
 	RMbytesPerSecond  = "rMbytesPerSecond"
 	WMbytesPerSecond  = "wMbytesPerSecond"
 )
+
+// NewNVMeoFQosVolumeFromParams extracts and parses QoS parameters from the given map
+// and returns a new NVMeoFQosVolume instance. Returns nil if no QoS parameters are found.
+func NewNVMeoFQosVolumeFromParams(params map[string]string) (*NVMeoFQosVolume, error) {
+	qos := &NVMeoFQosVolume{}
+	hasAnyQoS := false
+
+	parseParam := func(key, name string, dest **uint64) error {
+		if val, exists := params[key]; exists && val != "" {
+			parsed, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid %s: %w", name, err)
+			}
+			*dest = &parsed
+			hasAnyQoS = true
+		}
+
+		return nil
+	}
+
+	if err := parseParam(RwIosPerSecond, RwIosPerSecond, &qos.RwIosPerSecond); err != nil {
+		return nil, err
+	}
+	if err := parseParam(RwMbytesPerSecond, RwMbytesPerSecond, &qos.RwMbytesPerSecond); err != nil {
+		return nil, err
+	}
+	if err := parseParam(RMbytesPerSecond, RMbytesPerSecond, &qos.RMbytesPerSecond); err != nil {
+		return nil, err
+	}
+	if err := parseParam(WMbytesPerSecond, WMbytesPerSecond, &qos.WMbytesPerSecond); err != nil {
+		return nil, err
+	}
+
+	if !hasAnyQoS {
+		return nil, nil
+	}
+
+	return qos, nil
+}
 
 // String returns a string representation of the NVMeoFQosVolume.
 func (q *NVMeoFQosVolume) String() string {
