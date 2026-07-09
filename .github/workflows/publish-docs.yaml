@@ -10,7 +10,6 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'build.env'
-      - 'assets/**'
 
 permissions:
   contents: write
