@@ -39,5 +39,6 @@ jobs:
           path: ~/.cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install mkdocs-material
+      # yamllint disable-line rule:line-length
+      - run: pip install mkdocs-material==$(source build.env; echo ${MKDOCS_MATERIAL})
       - run: mkdocs gh-deploy --force
