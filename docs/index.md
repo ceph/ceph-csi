@@ -4,7 +4,7 @@ Welcome to the Ceph-CSI documentation. Ceph-CSI implements Container Storage
 Interface (CSI) drivers for Ceph storage, enabling dynamic provisioning and
 management of Ceph volumes in Kubernetes.
 
-![Ceph Logo](/assets/ceph-logo.png)
+![Ceph Logo](assets/ceph-logo.png)
 
 ## Overview
 
