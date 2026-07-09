@@ -153,6 +153,7 @@ spec:
             - "--v=1"
             - "--timeout=150s"
             - "--leader-election=true"
+            - "--feature-gates=CSIVolumeGroupSnapshot=true"
             - "--http-endpoint=$(POD_IP):8092"
           env:
             - name: ADDRESS
