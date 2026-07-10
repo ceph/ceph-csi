@@ -88,6 +88,14 @@ type SubVolumeClient interface {
 	UnsetAllMetadata(keys []string) error
 	// ListMetadata gets the metadata for the subvolume.
 	ListMetadata() (map[string]string, error)
+
+	// PinVolume sets an MDS pinning policy on the subvolume.
+	// pinType is one of "export", "distributed" or "random".
+	// pinSetting is the value for the pin, its meaning depends on pinType:
+	//   - export:      MDS rank as an integer (e.g. "2"), or "-1" to unpin
+	//   - distributed: "1" to enable or "0" to disable
+	//   - random:      a float in the range 0.0-1.0
+	PinVolume(ctx context.Context, pinType, pinSetting string) error
 }
 
 // subVolumeClient implements SubVolumeClient interface.
@@ -322,4 +330,31 @@ func checkSubvolumeHasFeature(feature string, subVolFeatures []string) bool {
 	// The subvolume "features" are based on the internal version of the subvolume.
 	// Verify if subvolume supports the required feature.
 	return slices.Contains(subVolFeatures, feature)
+}
+
+// PinVolume sets an MDS pinning policy on the subvolume.
+// pinType can be "export", "distributed" or "random".
+// pinSetting is the value for the pin (e.g. MDS rank "2", "true"/"false").
+//
+// NOTE: go-ceph's PinSubVolume does not accept a subvolume group argument
+// (only PinSubVolumeGroup does, and that pins the group, not an individual
+// subvolume). As a result the pin is applied against Ceph's default subvolume
+// group. A subvolume group can be configured per StorageClass in ceph-csi
+// (parameter "subvolumeGroup"), so this is a known limitation until go-ceph
+// exposes a PinSubVolume variant that accepts the group.
+//
+// Similar To:
+//
+//	ceph fs subvolume pin <vol_name> <sub_name> <pin_type> <pin_setting>
+func (s *subVolumeClient) PinVolume(ctx context.Context, pinType, pinSetting string) error {
+	fsa, err := s.conn.GetFSAdmin()
+	if err != nil {
+		return fmt.Errorf("could not get FSAdmin to pin subvolume %s: %w", s.VolID, err)
+	}
+	_, err = fsa.PinSubVolume(s.FsName, s.VolID, pinType, pinSetting)
+	if err != nil {
+		return fmt.Errorf("failed to pin subvolume %s in fs %s: %w", s.VolID, s.FsName, err)
+	}
+
+	return nil
 }

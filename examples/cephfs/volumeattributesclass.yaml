@@ -1,0 +1,31 @@
+---
+# VolumeAttributesClass for CephFS volumes
+# This example demonstrates the mutable parameters supported by the CephFS
+# driver to control MDS pinning of a subvolume at runtime.
+#
+# The three MDS pinning parameters are MUTUALLY EXCLUSIVE: at most one of them
+# may be set. They map to "ceph fs subvolume pin <vol> <sub> <type> <setting>".
+# See: https://docs.ceph.com/en/latest/cephfs/multimds/#cephfs-pinning
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: cephfs-vac
+driverName: cephfs.csi.ceph.com
+parameters:
+  # Export pinning: pin the subvolume to a specific MDS rank.
+  # Value is an MDS rank (integer >= -1). Use "-1" to remove the pin.
+  mds-pin-export: "2"
+
+  # Alternative: Distributed ephemeral pinning.
+  # Value is "1" to enable or "0" to disable.
+  # mds-pin-distributed: "1"
+
+  # Alternative: Random ephemeral pinning.
+  # Value is a float in the range 0.0-1.0 (fraction of directories pinned).
+  # mds-pin-random: "0.5"
+
+# Notes:
+# - Only one of mds-pin-export, mds-pin-distributed or mds-pin-random may
+#   be set.
+# - VolumeAttributesClass can be modified at runtime using kubectl.
+# - Changes are applied dynamically via ControllerModifyVolume.

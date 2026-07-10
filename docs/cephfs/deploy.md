@@ -358,3 +358,45 @@ ceph fs subvolume metadata rm <filesystem> <subvolume> --group_name=<group> \
 
 All the Pods using the PVC should be scaled down completely and then scaled up for
 removing the restriction after removing metadata from the subvolume.
+
+## MDS pinning using VolumeAttributesClass
+
+CephFS subvolumes can be pinned to MDS ranks to control how their metadata is
+distributed across the MDS daemons of the filesystem. Ceph-CSI exposes this
+through the `VolumeAttributesClass` (VAC) mutable parameters, which are applied
+to an existing volume via the CSI `ControllerModifyVolume` RPC.
+
+This maps directly to:
+
+```bash
+ceph fs subvolume pin <vol_name> <sub_name> <pin_type> <pin_setting>
+```
+
+See the upstream documentation for the semantics of each pin type:
+<https://docs.ceph.com/en/latest/cephfs/multimds/#cephfs-pinning>
+
+### Supported parameters
+
+The following parameters are supported. They are **mutually exclusive**: at most
+one may be set on a single `VolumeAttributesClass`.
+
+| Parameter             | Pin type      | Value                                     |
+| --------------------- | ------------- | ----------------------------------------- |
+| `mds-pin-export`      | `export`      | MDS rank, an integer `>= -1` (`-1` unpins)|
+| `mds-pin-distributed` | `distributed` | `"1"` to enable, `"0"` to disable         |
+| `mds-pin-random`      | `random`      | float in the range `0.0`-`1.0`            |
+
+### Example
+
+An example `VolumeAttributesClass` is available at
+[volumeattributesclass.yaml][cephfs-vac-example].
+
+[cephfs-vac-example]: ../../examples/cephfs/volumeattributesclass.yaml
+
+Create the `VolumeAttributesClass` and reference it from a PVC using the
+`volumeAttributesClassName` field. The driver applies the pin when the PVC is
+associated with the class, and re-applies it when the class is changed.
+
+```bash
+kubectl create -f ../examples/cephfs/volumeattributesclass.yaml
+```

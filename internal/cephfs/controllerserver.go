@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"syscall"
 
 	osdAdmin "github.com/ceph/go-ceph/common/admin/osd"
@@ -1463,4 +1464,189 @@ func (cs *cephfsControllerServer) fenceNode(
 	}
 
 	return nil
+}
+
+const (
+	// paramMDSPinExport is the VolumeAttributesClass mutable parameter key for
+	// pinning the subvolume to a specific MDS rank (e.g. "2").
+	paramMDSPinExport = "mds-pin-export"
+	// paramMDSPinDistributed is the VolumeAttributesClass mutable parameter
+	// key for distributed ephemeral pinning ("1" to enable, "0" to disable).
+	paramMDSPinDistributed = "mds-pin-distributed"
+	// paramMDSPinRandom is the VolumeAttributesClass mutable parameter key for
+	// random ephemeral pinning, a float in the range 0.0–1.0 (e.g. "0.5").
+	paramMDSPinRandom = "mds-pin-random"
+)
+
+// mdsPinParamToType maps a VolumeAttributesClass MDS pin parameter key to the
+// CephFS pin type it represents, as per:
+// https://docs.ceph.com/en/latest/cephfs/multimds/#cephfs-pinning
+var mdsPinParamToType = map[string]string{
+	paramMDSPinExport:      "export",
+	paramMDSPinDistributed: "distributed",
+	paramMDSPinRandom:      "random",
+}
+
+// mdsPinParams is the ordered list of MDS pin parameter keys recognized on a
+// VolumeAttributesClass. The order is only relevant for deterministic error
+// messages.
+var mdsPinParams = []string{paramMDSPinExport, paramMDSPinDistributed, paramMDSPinRandom}
+
+// validateMDSPinParameters inspects the MDS pin parameters in params and
+// returns the CephFS pin type and setting to apply.
+//
+// The three pin parameters (mds-pin-export, mds-pin-distributed,
+// mds-pin-random) are mutually exclusive: at most one may be set. Any parameter
+// key that is not a recognized MDS pin parameter is rejected, as recommended by
+// the CSI spec for unsupported mutable parameters. It returns:
+//   - ("", "", nil)               when no MDS pin parameter is present
+//   - (pinType, pinSetting, nil)  when exactly one is present with a valid value
+//   - ("", "", err)               when an unknown parameter is present, more
+//     than one is present, or the value is invalid for the given pin type
+func validateMDSPinParameters(params map[string]string) (string, string, error) {
+	var (
+		selected string
+		setting  string
+	)
+
+	for key := range params {
+		if _, ok := mdsPinParamToType[key]; !ok {
+			return "", "", fmt.Errorf("unsupported mutable parameter %q", key)
+		}
+	}
+
+	for _, key := range mdsPinParams {
+		value, ok := params[key]
+		if !ok {
+			continue
+		}
+		if selected != "" {
+			return "", "", fmt.Errorf("%q and %q are mutually exclusive: only one may be set",
+				selected, key)
+		}
+		selected = key
+		setting = value
+	}
+
+	if selected == "" {
+		return "", "", nil
+	}
+
+	if err := validateMDSPinSetting(selected, setting); err != nil {
+		return "", "", err
+	}
+
+	return mdsPinParamToType[selected], setting, nil
+}
+
+// validateMDSPinSetting validates that setting is a valid value for the given
+// MDS pin parameter key.
+func validateMDSPinSetting(key, setting string) error {
+	switch key {
+	case paramMDSPinExport:
+		// MDS rank: a non-negative integer, or "-1" to unset the pin.
+		rank, err := strconv.Atoi(setting)
+		if err != nil || rank < -1 {
+			return fmt.Errorf("invalid %q value %q: must be an MDS rank integer >= -1",
+				key, setting)
+		}
+	case paramMDSPinDistributed:
+		// Distributed ephemeral pinning is a boolean-like "1"/"0".
+		if setting != "0" && setting != "1" {
+			return fmt.Errorf("invalid %q value %q: must be \"0\" or \"1\"", key, setting)
+		}
+	case paramMDSPinRandom:
+		// Random ephemeral pinning is a float in the range 0.0–1.0.
+		ratio, err := strconv.ParseFloat(setting, 64)
+		if err != nil || ratio < 0.0 || ratio > 1.0 {
+			return fmt.Errorf("invalid %q value %q: must be a float in the range 0.0-1.0",
+				key, setting)
+		}
+	}
+
+	return nil
+}
+
+// ControllerModifyVolume modifies mutable attributes of a CephFS subvolume
+// based on parameters from a VolumeAttributesClass.
+//
+// Currently supported parameters (mutually exclusive, at most one may be set):
+//   - mds-pin-export:      pin to a specific MDS rank (e.g. "2")
+//   - mds-pin-distributed: distributed ephemeral pinning ("1" or "0")
+//   - mds-pin-random:      random ephemeral pinning, a float 0.0–1.0
+//
+// Similar To:
+//
+//	ceph fs subvolume pin <vol_name> <sub_name> <pin_type> <pin_setting>
+func (cs *cephfsControllerServer) ControllerModifyVolume(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+) (*csi.ControllerModifyVolumeResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_MODIFY_VOLUME); err != nil {
+		log.ErrorLog(ctx, "invalid modify volume req: %v", protosanitizer.StripSecrets(req))
+
+		return nil, err
+	}
+
+	volID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	mutableParams := req.GetMutableParameters()
+	if len(mutableParams) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "mutable parameters cannot be empty")
+	}
+
+	// lock out parallel operations against the same volume ID
+	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer cs.VolumeLocks.Release(volID)
+
+	if err := cs.OperationLocks.GetModifyLock(volID); err != nil {
+		log.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+	defer cs.OperationLocks.ReleaseModifyLock(volID)
+
+	// resolve volume options — FsName, SubvolumeGroup and VolID are populated
+	// automatically from the cluster config, no extra input required.
+	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volID, nil, req.GetSecrets(),
+		cs.ClusterName)
+	if err != nil {
+		log.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
+
+		// the volume backing the given ID could not be found.
+		if errors.Is(err, cerrors.ErrVolumeNotFound) || errors.Is(err, util.ErrKeyNotFound) ||
+			errors.Is(err, util.ErrPoolNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer volOptions.Destroy()
+
+	pinType, pinSetting, err := validateMDSPinParameters(mutableParams)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if pinType != "" {
+		volClient := core.NewSubVolume(volOptions.GetConnection(),
+			&volOptions.SubVolume, volOptions.ClusterID, cs.ClusterName)
+		if err = volClient.PinVolume(ctx, pinType, pinSetting); err != nil {
+			log.ErrorLog(ctx, "failed to pin subvolume %s: %v", volID, err)
+
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		log.DebugLog(ctx, "cephfs: subvolume %s pinned with type=%s setting=%s",
+			volID, pinType, pinSetting)
+	}
+
+	return &csi.ControllerModifyVolumeResponse{}, nil
 }
