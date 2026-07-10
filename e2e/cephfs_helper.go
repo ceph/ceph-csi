@@ -27,6 +27,7 @@ import (
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -985,4 +986,66 @@ func verifyUserIdMappingMetadataSnapshotBacked(
 	}
 
 	return nil
+}
+
+// createCephFSVolumeAttributesClass creates a VolumeAttributesClass for CephFS
+// from the example manifest, optionally overriding its name and parameters.
+func createCephFSVolumeAttributesClass(
+	c kubernetes.Interface,
+	name string,
+	params map[string]string,
+) error {
+	vac, err := getVolumeAttributesClass(cephFSExamplePath + "volumeattributesclass.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to get vac: %w", err)
+	}
+	if name != "" {
+		vac.Name = name
+	}
+
+	// override with the parameters passed by the caller, so that a test can
+	// exercise a specific MDS pin type.
+	if params != nil {
+		vac.Parameters = params
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err = c.StorageV1().VolumeAttributesClasses().Create(ctx, &vac, metav1.CreateOptions{})
+		if err != nil {
+			if apierrs.IsAlreadyExists(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to create VolumeAttributesClass %q: %w", vac.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
+// deleteCephFSVolumeAttributesClass deletes the named CephFS
+// VolumeAttributesClass.
+func deleteCephFSVolumeAttributesClass(c kubernetes.Interface, name string) error {
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		err := c.StorageV1().VolumeAttributesClasses().Delete(ctx, name, metav1.DeleteOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to delete VolumeAttributesClass %q: %w", name, err)
+		}
+
+		return true, nil
+	})
 }
