@@ -412,6 +412,16 @@ func (cs *cephfsControllerServer) CreateVolume(
 			}
 		}
 
+		// apply MutableParameters (e.g. MDS pinning) from a
+		// VolumeAttributesClass, if any were requested. The subvolume already
+		// existed before this request, so it must not be purged on failure.
+		if len(req.GetMutableParameters()) != 0 {
+			if err = applyMutableParameters(ctx, volClient, vID.FsSubvolName,
+				req.GetMutableParameters()); err != nil {
+				return nil, err
+			}
+		}
+
 		return buildCreateVolumeResponse(req, volOptions, vID), nil
 	}
 
@@ -485,6 +495,22 @@ func (cs *cephfsControllerServer) CreateVolume(
 
 	log.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
 		vID.FsSubvolName, requestName)
+
+	// apply MutableParameters (e.g. MDS pinning) from a VolumeAttributesClass,
+	// if any were requested. On failure the freshly created subvolume must be
+	// purged to avoid leaving an orphaned subvolume behind (the deferred
+	// UndoVolReservation only cleans up the reservation/OMAP entry).
+	if len(req.GetMutableParameters()) != 0 {
+		if err = applyMutableParameters(ctx, volClient, vID.FsSubvolName,
+			req.GetMutableParameters()); err != nil {
+			if purgeErr := volClient.PurgeVolume(ctx, true); purgeErr != nil {
+				log.ErrorLog(ctx, "failed to purge subvolume %s after applying mutable "+
+					"parameters failed: %v", vID.FsSubvolName, purgeErr)
+			}
+
+			return nil, err
+		}
+	}
 
 	return buildCreateVolumeResponse(req, volOptions, vID), nil
 }
@@ -1567,8 +1593,12 @@ func validateMDSPinSetting(key, setting string) error {
 	return nil
 }
 
-// ControllerModifyVolume modifies mutable attributes of a CephFS subvolume
-// based on parameters from a VolumeAttributesClass.
+// applyMutableParameters applies the mutable VolumeAttributesClass parameters
+// to an already resolved subvolume. It performs no locking and does not resolve
+// the volume; the caller is expected to have taken the required locks and to
+// provide a ready-to-use SubVolumeClient. This lets both CreateVolume and
+// ControllerModifyVolume share the same logic without duplicating locking or
+// volume resolution steps.
 //
 // Currently supported parameters (mutually exclusive, at most one may be set):
 //   - mds-pin-export:      pin to a specific MDS rank (e.g. "2")
@@ -1578,6 +1608,34 @@ func validateMDSPinSetting(key, setting string) error {
 // Similar To:
 //
 //	ceph fs subvolume pin <vol_name> <sub_name> <pin_type> <pin_setting>
+func applyMutableParameters(
+	ctx context.Context,
+	volClient core.SubVolumeClient,
+	volID string,
+	mutableParams map[string]string,
+) error {
+	pinType, pinSetting, err := validateMDSPinParameters(mutableParams)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if pinType != "" {
+		if err = volClient.PinVolume(ctx, pinType, pinSetting); err != nil {
+			log.ErrorLog(ctx, "failed to pin subvolume %s: %v", volID, err)
+
+			return status.Error(codes.Internal, err.Error())
+		}
+		log.DebugLog(ctx, "cephfs: subvolume %s pinned with type=%s setting=%s",
+			volID, pinType, pinSetting)
+	}
+
+	return nil
+}
+
+// ControllerModifyVolume modifies mutable attributes of a CephFS subvolume
+// based on parameters from a VolumeAttributesClass. It acquires the required
+// locks, resolves the volume and delegates the actual work to
+// applyMutableParameters.
 func (cs *cephfsControllerServer) ControllerModifyVolume(
 	ctx context.Context,
 	req *csi.ControllerModifyVolumeRequest,
@@ -1631,21 +1689,10 @@ func (cs *cephfsControllerServer) ControllerModifyVolume(
 	}
 	defer volOptions.Destroy()
 
-	pinType, pinSetting, err := validateMDSPinParameters(mutableParams)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	if pinType != "" {
-		volClient := core.NewSubVolume(volOptions.GetConnection(),
-			&volOptions.SubVolume, volOptions.ClusterID, cs.ClusterName)
-		if err = volClient.PinVolume(ctx, pinType, pinSetting); err != nil {
-			log.ErrorLog(ctx, "failed to pin subvolume %s: %v", volID, err)
-
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		log.DebugLog(ctx, "cephfs: subvolume %s pinned with type=%s setting=%s",
-			volID, pinType, pinSetting)
+	volClient := core.NewSubVolume(volOptions.GetConnection(),
+		&volOptions.SubVolume, volOptions.ClusterID, cs.ClusterName)
+	if err = applyMutableParameters(ctx, volClient, volID, mutableParams); err != nil {
+		return nil, err
 	}
 
 	return &csi.ControllerModifyVolumeResponse{}, nil
