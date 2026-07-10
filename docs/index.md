@@ -38,6 +38,14 @@ straightforward.
 - [Static PVC](static-pvc.md) - Use pre-existing Ceph volumes
 - [Metrics](metrics.md) - Monitoring and observability
 
+### CSI-Addons
+
+Ceph-CSI integrates with [CSI-Addons](https://csi-addons.github.io/) to provide
+advanced storage operations and disaster recovery capabilities.
+
+- [Disaster Recovery](csi-addons/disaster-recovery.md) - Volume replication and failover/failback procedures
+- [CSI-Addons Documentation](https://csi-addons.github.io/) - Official CSI-Addons documentation
+
 ### Operations
 
 - [Upgrade Guide](ceph-csi-upgrade.md) - Upgrade Ceph-CSI to newer versions
