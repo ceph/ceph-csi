@@ -80,6 +80,9 @@ rules:
   - apiGroups: ["replication.storage.openshift.io"]
     resources: ["volumegroupreplicationclasses"]
     verbs: ["get"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattributesclasses"]
+    verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRoleBinding

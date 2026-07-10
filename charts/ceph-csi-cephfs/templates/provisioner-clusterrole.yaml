@@ -41,6 +41,9 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list","watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattributesclasses"]
+    verbs: ["get", "list", "watch"]
 {{- if .Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshots"]
