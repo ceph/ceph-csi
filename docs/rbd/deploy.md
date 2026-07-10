@@ -100,7 +100,7 @@ make image-cephcsi
 | `extraDeploy` | no | array of extra objects to deploy with the release |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
-running pods. Refer to [Creating CSI configuration](../../examples/README.md#creating-csi-configuration)
+running pods. Refer to [Creating CSI configuration](https://github.com/ceph/ceph-csi/blob/devel/examples/README.md#creating-csi-configuration)
 for more information.
 
 **NOTE:** A suggested way to populate and retain uniqueness of the clusterID is
@@ -152,7 +152,7 @@ kubectl create -f csi-config-map.yaml
 The configmap deploys an empty CSI configuration that is mounted as a volume
 within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
 details, refer to [Creating CSI configuration for RBD based
-provisioning](../../examples/README.md#creating-csi-configuration)
+provisioning](https://github.com/ceph/ceph-csi/blob/devel/examples/README.md#creating-csi-configuration)
 for more information.
 
 **Deploy Ceph configuration ConfigMap for CSI pods:**
@@ -214,8 +214,9 @@ service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        808
 
 Once the CSI plugin configuration is updated with details from a Ceph cluster of
 choice, you can try deploying a demo pod from examples/rbd using the
-instructions [provided](../../examples/README.md#deploying-the-storage-class) to
-test the deployment further.
+instructions
+[provided](https://github.com/ceph/ceph-csi/blob/devel/examples/README.md#deploying-the-storage-class)
+to test the deployment further.
 
 ## Deployment with Helm
 
@@ -318,7 +319,7 @@ of the volume.
 To encrypt rbd volumes with `metadata` encryption, users need to set
 `encrypted: "true"` and `encryptionKMSID` to a unique identifier in storageclass.
 This unique identifier should be similar to the
-[examples](../../examples/kms/vault/csi-kms-connection-details.yaml).
+[examples](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/csi-kms-connection-details.yaml).
 The configuration must include `"encryptionKMSType": "metadata"`. The
 `encryptionPassphrase` is fetched based on the following conditions:
 
@@ -345,7 +346,8 @@ There are two options to use Hashicorp Vault as a KMS:
 
 To use Vault as KMS set `encryptionKMSID` to a unique identifier for Vault
 configuration. You will also need to create vault configuration similar to the
-[example](../../examples/kms/vault/kms-config.yaml) and use same
+[example](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml)
+and use same
 `encryptionKMSID`.
 
 To use the Kubernetes ServiceAccount to access Vault, the configuration must
@@ -366,7 +368,7 @@ client can be instantiated to delete passphrase on volume delete)
 When the Tenants need to provide their own Vault Token, they will need to place
 it in a Kubernetes Secret (by default) called `ceph-csi-kms-token`, where the
 Vault Token is stored in the `token` key as shown in [the
-example](../../examples/kms/vault/tenant-token.yaml).
+example](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/tenant-token.yaml).
 
 #### Configuring HashiCorp Vault with a single Kubernetes ServiceAccount
 
@@ -376,7 +378,8 @@ documentation](https://www.vaultproject.io/docs/auth/kubernetes.html).
 
 If token reviewer is used, you will need to configure service account for
 that also like in
-[example](../../examples/kms/vault/csi-vaulttokenreview-rbac.yaml) to be able to
+[example](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/csi-vaulttokenreview-rbac.yaml)
+to be able to
 review jwt tokens.
 
 Configure a role(s) for service accounts used for ceph-csi:
@@ -396,7 +399,8 @@ ServiceAccount is expected to be called `ceph-csi-vault-sa` by default. This
 can be changed by setting the `tenantSAName` option to a different value. An
 example of the global configuration that can be done in the Kubernetes
 Namespace where Ceph-CSI is deployed can be found in
-[`kms-config.yaml`](../../examples/kms/vault/kms-config.yaml) where the
+[`kms-config.yaml`](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml)
+where the
 `encryptionKMSType` is set to `vaulttenantsa`.
 
 Most notably, the Vault Tokens KMS configuration can be used, without the Token
@@ -406,13 +410,15 @@ Tenants do have the ability to reconfigure parts of the connection details to
 the Vault service. It will often be required to set the backend path to a
 location where the Tenant can manage the secrets. These changes can be done by
 placing a ConfigMap called `ceph-csi-kms-config` in the Tenants Namespace, an
-[example](../../examples/kms/vault/tenant-sa.yaml) is available.
+[example](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/tenant-sa.yaml)
+is available.
 
 As each ServiceAccount needs to be added to the Vault configuration, the
 administrator of the service will need to apply the permissions by creating a
 Vault Policy that allows a ServiceAccount to access a key-value store in the
 KMS. In the Ceph-CSI automated testing, there is [a Kubernetes Job that sets
-this up](../../examples/kms/vault/tenant-token.yaml) for a single Tenant that uses
+this up](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/tenant-token.yaml)
+for a single Tenant that uses
 the Kubernetes Namespace `tenant`.
 
 #### Configuring Amazon KMS
@@ -425,7 +431,7 @@ passphrase, after which it can be used to open the device with `cryptsetup` and
 provide access to it for the Pod.
 
 There are a few settings that need to be included in the [KMS configuration
-file](../../examples/kms/vault/kms-config.yaml):
+file](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml):
 
 1. `KMS_PROVIDER`: should be set to `aws-metadata`.
 1. `KMS_SECRET_NAME`: name of the Kubernetes Secret (in the Namespace where
@@ -433,7 +439,9 @@ file](../../examples/kms/vault/kms-config.yaml):
    AWS. This defaults to `ceph-csi-aws-credentials`.
 1. `AWS_REGION`: the region where the AWS KMS service is available.
 
-The [Secret with credentials](../../examples/kms/vault/aws-credentials.yaml) for
+The
+[Secret with credentials](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/aws-credentials.yaml)
+for
 the AWS KMS is expected to contain:
 
 1. `AWS_ACCESS_KEY_ID`: ID of the key to use for encrypting/decrypting
@@ -462,7 +470,8 @@ file](../../examples/kms/vault/kms-config.yaml):
    AWS. This defaults to `ceph-csi-aws-credentials`.
 
 The [Secret with
-credentials](../../examples/kms/vault/aws-sts-credentials.yaml) for the AWS KMS
+credentials](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/aws-sts-credentials.yaml)
+for the AWS KMS
 is expected to contain:
 
 1. `awsRoleARN`: Role which will be used access credentials from AWS STS
@@ -492,7 +501,9 @@ file](../../examples/kms/vault/kms-config.yaml):
    created in Azure Active Directory that serves as the username.
 1. `AZURE_TENANT_ID`: Tenant ID of the service principal.
 
-The [Secret with credentials](../../examples/kms/vault/azure-credentials.yaml) for
+The
+[Secret with credentials](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/azure-credentials.yaml)
+for
 the Azure KMS is expected to contain:
 
 1. `CLIENT_CERT`: The client certificate used for authentication
@@ -529,7 +540,9 @@ file](../../examples/kms/vault/kms-config.yaml):
 1. `WRITE_TIMEOUT`(optional): Network write timeout, in seconds. The default
    value is 10.
 
-The [Secret with credentials](../../examples/kms/vault/kmip-credentials.yaml) for
+The
+[Secret with credentials](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kmip-credentials.yaml)
+for
 the KMIP KMS is expected to contain:
 
 1. `CA_CERT`: CA certificate that will be used to connect to KMIP server.

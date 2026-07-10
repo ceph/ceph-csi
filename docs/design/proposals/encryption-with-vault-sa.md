@@ -14,7 +14,7 @@ KMS implementation. Or, if changes would be minimal, a configuration option to
 one of the implementations can be added.
 
 Different KMS implementations and their configurable options can be found at
-[`csi-kms-connection-details.yaml`](../../../examples/kms/vault/csi-kms-connection-details.yaml)
+[`csi-kms-connection-details.yaml`](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/csi-kms-connection-details.yaml)
 .
 
 ### VaultTokensKMS
@@ -24,17 +24,18 @@ Different KMS implementations and their configurable options can be found at
 - fetches a Secret from the Tenants (volume owner) namespace
 
 An example of the per Tenant configuration options are in
-[`tenant-config.yaml`](../../../examples/kms/vault/tenant-config.yaml) and
-[`tenant-token.yaml`](../../../examples/kms/vault/tenant-token.yaml).
+[`tenant-config.yaml`](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/tenant-config.yaml)
+and
+[`tenant-token.yaml`](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/tenant-token.yaml).
 
-Implementation is in [`vault_tokens.go`](../../../internal/kms/vault_tokens.go)
+Implementation is in [`vault_tokens.go`](https://github.com/ceph/ceph-csi/blob/devel/internal/kms/vault_tokens.go)
 .
 
 ### Vault
 
 - uses Kubernetes Auth with single service account (aka storage admin account)
 
-Implementation is in [`vault.go`](../../../internal/kms/vault.go).
+Implementation is in [`vault.go`](https://github.com/ceph/ceph-csi/blob/devel/internal/kms/vault.go).
 
 ## Extension or New KMS implementation
 
@@ -67,7 +68,7 @@ read the contents of the ServiceAccount(s) in the Tenants namespace.
    parameter
 1. a ConfigMap in the namespace of the Ceph-CSI deployment contains the KMS
    configuration for the `kmsID`
-   ([`csi-kms-connection-details.yaml`](../../../examples/kms/vault/csi-kms-connection-details.yaml))
+([`csi-kms-connection-details.yaml`](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/csi-kms-connection-details.yaml))
 
 When Ceph-CSI receives a `CreateVolume` request, the parameters from the
 StorageClass and details about the requested Volume are available. The Ceph-CSI

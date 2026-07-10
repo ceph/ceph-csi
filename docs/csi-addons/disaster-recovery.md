@@ -197,7 +197,7 @@ status:
    * Create storageclass on the secondary cluster
 
   ```bash
-    kubectl create -f examples/rbd/storageclass.yaml --context=cluster-2
+    kubectl create -f https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/rbd/storageclass.yaml --context=cluster-2
 
    storageclass.storage.k8s.io/csi-rbd-sc created
   ```

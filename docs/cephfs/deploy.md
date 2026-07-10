@@ -84,7 +84,7 @@ you're running it inside a k8s cluster and find the config itself).
 | `extraDeploy` | no | array of extra objects to deploy with the release |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
-running pods. Refer to [Creating CSI configuration](../../examples/README.md#creating-csi-configuration)
+running pods. Refer to [Creating CSI configuration](https://github.com/ceph/ceph-csi/blob/devel/examples/README.md#creating-csi-configuration)
 for more information.
 
 **NOTE:** A suggested way to populate and retain uniqueness of the clusterID is
@@ -141,7 +141,7 @@ kubectl create -f csi-config-map.yaml
 
 The configmap deploys an empty CSI configuration that is mounted as a volume
 within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
-details, refer to [Creating CSI configuration](../../examples/README.md#creating-csi-configuration)
+details, refer to [Creating CSI configuration](https://github.com/ceph/ceph-csi/blob/devel/examples/README.md#creating-csi-configuration)
 for more information.
 
 **Deploy Ceph configuration ConfigMap for CSI pods:**
@@ -203,7 +203,9 @@ service/csi-cephfsplugin-provisioner   ClusterIP   10.101.78.75     <none>      
 
 Once the CSI plugin configuration is updated with details from a Ceph cluster of
 choice, you can try deploying a demo pod from examples/cephfs using the
-instructions [provided](../../examples/README.md#deploying-the-storage-class) to
+instructions
+[provided](https://github.com/ceph/ceph-csi/blob/devel/examples/README.md#deploying-the-storage-class)
+to
 test the deployment further.
 
 ### Notes on volume deletion
