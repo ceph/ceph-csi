@@ -35,11 +35,11 @@ attaching them to workloads.
 Independent CSI plugins are provided to support RBD and CephFS backed volumes,
 
 - For details about configuration and deployment of RBD plugin, please refer
-  [rbd doc](https://github.com/ceph/ceph-csi/blob/devel/docs/rbd/deploy.md) and
+  [rbd doc](https://ceph.github.io/ceph-csi/rbd/deploy/) and
   for CephFS plugin configuration and deployment please
-  refer [cephFS doc](https://github.com/ceph/ceph-csi/blob/devel/docs/cephfs/deploy.md).
+  refer [cephFS doc](https://ceph.github.io/ceph-csi/cephfs/deploy/).
 - For example usage of the RBD and CephFS CSI plugins, see examples in `examples/`.
-- Stale resource cleanup, please refer [cleanup doc](docs/resource-cleanup.md).
+- Stale resource cleanup, please refer [cleanup doc](https://ceph.github.io/ceph-csi/resource-cleanup/).
 
 NOTE:
 
@@ -204,8 +204,8 @@ in the Kubernetes documentation.
 
 ## Contributing to this repo
 
-Please follow [development-guide](<https://github.com/ceph/ceph-csi/tree/devel/docs/development-guide.md>)
-and [coding style guidelines](<https://github.com/ceph/ceph-csi/tree/devel/docs/coding.md>)
+Please follow [development-guide](https://ceph.github.io/ceph-csi/development-guide/)
+and [coding style guidelines](https://ceph.github.io/ceph-csi/coding/)
 if you are interested to contribute to this repo.
 
 ## Troubleshooting
