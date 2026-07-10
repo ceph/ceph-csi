@@ -47,7 +47,7 @@
 ### Create CephFS SnapshotClass
 
 ```console
-kubectl create -f ../examples/cephfs/snapshotclass.yaml
+kubectl create -f https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/cephfs/snapshotclass.yaml
 ```
 
 ### Create CephFS Snapshot
@@ -70,7 +70,7 @@ csi-cephfs-pvc    Bound         pvc-1ea51547-a88b-4ab0-8b4a-812caeaf025d   1Gi  
 - Create snapshot of the bound PVC
 
 ```console
-$ kubectl create -f ../examples/cephfs/snapshot.yaml
+$ kubectl create -f https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/cephfs/snapshot.yaml
 volumesnapshot.snapshot.storage.k8s.io/cephfs-pvc-snapshot created
 ```
 
@@ -95,7 +95,7 @@ snapcontent-881cb74a-9dff-4989-a83d-eece5ed079af   true         1073741824    De
 ### Restore CephFS Snapshot
 
 ```console
-kubectl create -f ../examples/cephfs/pvc-restore.yaml
+kubectl create -f https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/cephfs/pvc-restore.yaml
 ```
 
 ```console
@@ -108,7 +108,7 @@ cephfs-pvc-restore   Bound    pvc-95308c75-6c93-4928-a551-6b5137192209   1Gi    
 ### Clone CephFS PVC
 
 ```console
-kubectl create -f ../examples/cephfs/pvc-clone.yaml
+kubectl create -f https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/cephfs/pvc-clone.yaml
 ```
 
 ```console
@@ -122,8 +122,8 @@ cephfs-pvc-restore   Bound    pvc-95308c75-6c93-4928-a551-6b5137192209   1Gi    
 ## Create RBD Snapshot and Clone Volume
 
 In the `examples/rbd` directory you will find two files related to snapshots:
-[snapshotclass.yaml](../examples/rbd/snapshotclass.yaml)
-and [snapshot.yaml](../examples/rbd/snapshot.yaml)
+[snapshotclass.yaml](https://github.com/ceph/ceph-csi/blob/devel/examples/rbd/snapshotclass.yaml)
+and [snapshot.yaml](https://github.com/ceph/ceph-csi/blob/devel/examples/rbd/snapshot.yaml)
 
 Once you created RBD PVC, you'll need to customize `snapshotclass.yaml` and
 make sure the `clusterid` parameter matches `clusterid` mentioned in the
@@ -165,8 +165,8 @@ rbd-pvc-snapshot   true         rbd-pvc                             1Gi         
 ### Restore RBD Snapshot
 
 To restore the snapshot to a new PVC, create
-[pvc-restore.yaml](../examples/rbd/pvc-restore.yaml)
-and a testing pod [pod-restore.yaml](../examples/rbd/pod-restore.yaml)
+[pvc-restore.yaml](https://github.com/ceph/ceph-csi/blob/devel/examples/rbd/pvc-restore.yaml)
+and a testing pod [pod-restore.yaml](https://github.com/ceph/ceph-csi/blob/devel/examples/rbd/pod-restore.yaml)
 
 ```bash
 kubectl create -f pvc-restore.yaml
@@ -176,7 +176,7 @@ kubectl create -f pod-restore.yaml
 ### Clone RBD PVC
 
 ```console
-$ kubectl create -f ../examples/rbd/pvc-clone.yaml
+$ kubectl create -f https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/rbd/pvc-clone.yaml
 $ kubectl get pvc
 NAME              STATUS    VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      AGE
 rbd-pvc           Bound     pvc-c2ffdc98-3abe-4b07-838c-35a2a8067771   1Gi        RWO            rook-ceph-block   41m
