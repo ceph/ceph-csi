@@ -110,7 +110,7 @@ func GetOrCreateDHCHAPHostKey(
 	hostNQN string,
 ) (string, error) {
 	// Try to get existing key
-	hostKey, err := getDHCHAPHostKey(ctx, skm, nodeID, subsystemNQN)
+	hostKey, err := GetDHCHAPHostKey(ctx, skm, nodeID, subsystemNQN)
 	if err == nil {
 		// Key exists, return it
 		return hostKey, nil
@@ -146,7 +146,7 @@ func GetOrCreateDHCHAPSubsystemKey(
 	hostNQN string,
 ) (string, error) {
 	// Try to get existing key
-	subsystemKey, err := getDHCHAPSubsystemKey(ctx, skm, nodeID, subsystemNQN)
+	subsystemKey, err := GetDHCHAPSubsystemKey(ctx, skm, nodeID, subsystemNQN)
 	if err == nil {
 		// Key exists, return it
 		return subsystemKey, nil
@@ -327,7 +327,7 @@ func buildDHCHAPKeyID(
 	return fmt.Sprintf("%s-%s-%s", prefix, nodeID, subsystemHash)
 }
 
-func getDHCHAPHostKey(
+func GetDHCHAPHostKey(
 	ctx context.Context,
 	skm SecurityKeyManager,
 	nodeID string,
@@ -339,7 +339,7 @@ func getDHCHAPHostKey(
 	return skm.GetKey(ctx, keyID)
 }
 
-func getDHCHAPSubsystemKey(
+func GetDHCHAPSubsystemKey(
 	ctx context.Context,
 	skm SecurityKeyManager,
 	nodeID string,

@@ -81,7 +81,7 @@ func (ns *NodeServer) setupDHCHAPAuth(
 	}
 
 	// Get host key
-	hostKey, err := nvmeof.GetOrCreateDHCHAPHostKey(ctx, securityKeys, ns.nodeID, info.SubsystemNQN, connectReq.HostNQN)
+	hostKey, err := nvmeof.GetDHCHAPHostKey(ctx, securityKeys, ns.nodeID, info.SubsystemNQN)
 	if err != nil {
 		return fmt.Errorf("failed to get DHCHAP host key: %w", err)
 	}
@@ -89,8 +89,7 @@ func (ns *NodeServer) setupDHCHAPAuth(
 
 	// Get subsystem key for bidirectional mode
 	if info.DhchapMode == nvmeof.DHCHAPModeBiDirectional {
-		subsystemKey, err := nvmeof.GetOrCreateDHCHAPSubsystemKey(ctx, securityKeys, ns.nodeID,
-			info.SubsystemNQN, connectReq.HostNQN)
+		subsystemKey, err := nvmeof.GetDHCHAPSubsystemKey(ctx, securityKeys, ns.nodeID, info.SubsystemNQN)
 		if err != nil {
 			return fmt.Errorf("failed to get DH-CHAP subsystem key: %w", err)
 		}
