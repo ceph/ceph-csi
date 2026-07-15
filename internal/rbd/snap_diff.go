@@ -42,7 +42,7 @@ func (rbdSnap *rbdSnapshot) ProcessMetadata(
 ) error {
 	var fromSnapID uint64
 
-	image, err := rbdSnap.open()
+	image, err := rbdSnap.openReadOnly()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q: %w", rbdSnap, err)
 	}
