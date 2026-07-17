@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   deploy:
+    if: github.repository == 'ceph/ceph-csi'
     runs-on: ubuntu-latest
     steps:
       # yamllint disable-line rule:line-length

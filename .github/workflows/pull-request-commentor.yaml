@@ -42,6 +42,7 @@ jobs:
 
     # watch out, matrix.branch can not be used in this if-statement :-/
     if: >
+      github.repository == 'ceph/ceph-csi' &&
       (github.event.label.name == 'ok-to-test' &&
       github.event.pull_request.merged != true)
 

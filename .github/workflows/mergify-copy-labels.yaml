@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   mergify-merge-queue-labels-copier:
+    if: github.repository == 'ceph/ceph-csi'
     runs-on: ubuntu-latest
     steps:
       - name: Copying labels
