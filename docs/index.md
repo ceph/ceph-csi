@@ -47,6 +47,8 @@ advanced storage operations and disaster recovery capabilities.
   and failover/failback procedures
 - [Network Fencing](csi-addons/networkfence.md) - Network-based access
   control for storage resources
+- [Reclaim Space](csi-addons/reclaimspace.md) - Space reclamation for
+  filesystem volumes using fstrim
 - [CSI-Addons Documentation](https://csi-addons.github.io/) - Official
   CSI-Addons documentation
 
