@@ -6,6 +6,13 @@ Manual deletion of PV will result in stale omap keys, values,
 cephFS subvolume and rbd image.
 It is required to cleanup metadata and image separately.
 
+New CSI journal request-name mappings are stored in sharded `csiDirectory`
+objects. For volume journals this means new entries are written to
+`csi.volumes.<instance_id>.<shard>` where `<shard>` is in the range `0..10`.
+During upgrades, older mappings may still exist in the legacy unsharded
+`csi.volumes.<instance_id>` object. Manual cleanup should check the shard oids
+first and also clean the legacy oid when applicable.
+
 ## Steps
 
 ### 1. Get PV name from PVC
@@ -27,26 +34,50 @@ a. get pv_name
 
 ### 2. Get omap key/value
 
-a. get omapkey (suffix of csi.volumes.default is value used for the CLI option
-   [--instanceid](rbd/deploy.md#configuration) in the provisioner deployment.)
+a. get omapkey (suffix of `csi.volumes.<instance_id>` is value used for the CLI
+   option [--instanceid](rbd/deploy.md#configuration) in the provisioner
+   deployment). New entries are stored in one of the 11 shard oids
+   `csi.volumes.<instance_id>.0` ... `csi.volumes.<instance_id>.10`, while
+   upgraded clusters may still have older entries in the legacy unsharded
+   `csi.volumes.<instance_id>` oid.
 
   ```
-  rados listomapkeys csi.volumes.default -p pool_name | grep pv_name
+  pv_name="pvc-bc537af8-67fc-4963-99c4-f40b3401686a"
+  instance_id="default"
+  key="csi.volume.${pv_name}"
+  csi_directory_oid=""
+
+  for shard in $(seq 0 10); do
+    oid="csi.volumes.${instance_id}.${shard}"
+    if rados listomapkeys "${oid}" -p pool_name 2>/dev/null | grep -Fx "${key}" >/dev/null; then
+      csi_directory_oid="${oid}"
+      break
+    fi
+  done
+
+  if [ -z "${csi_directory_oid}" ]; then
+    legacy_oid="csi.volumes.${instance_id}"
+    if rados listomapkeys "${legacy_oid}" -p pool_name 2>/dev/null | grep -Fx "${key}" >/dev/null; then
+      csi_directory_oid="${legacy_oid}"
+    fi
+  fi
+
+  echo "${csi_directory_oid}"
   ```
 
   ```bash
-  $ rados listomapkeys csi.volumes.default -p kube_csi | grep pvc-bc537af8-67fc-4963-99c4-f40b3401686a
-  csi.volume.pvc-bc537af8-67fc-4963-99c4-f40b3401686a
+  $ echo "${csi_directory_oid}"
+  csi.volumes.default.3
   ```
 
 b. get omapval
 
   ```
-  rados getomapval csi.volumes.default omapkey -p pool_name
+  rados getomapval csi_directory_oid omapkey -p pool_name
   ```
 
   ```bash
-  $ rados getomapval csi.volumes.default csi.volume.pvc-bc537af8-67fc-4963-99c4-f40b3401686a -p kube_csi
+  $ rados getomapval "${csi_directory_oid}" "${key}" -p kube_csi
   value (36 bytes) :
   00000000  64 64 32 34 37 33 64 30  2d 36 61 38 63 2d 31 31  |dd2473d0-6a8c-11|
   00000010  65 61 2d 39 31 31 33 2d  30 61 64 35 39 64 39 39  |ea-9113-0ad59d99|
@@ -89,14 +120,16 @@ a. delete omap object
   rados rm csi.volume.dd2473d0-6a8c-11ea-9113-0ad59d995ce7 -p kube_csi
   ```
 
-b. delete omapkey
-
-  ```
-  rados rmomapkey csi.volumes.default csi.volume.omapkey -p pool_name
-  ```
+b. delete omapkey from the found oid. If the key was found in a shard oid, also
+   try to delete it from the legacy unsharded oid to cleanup upgraded clusters.
 
   ```bash
-  rados rmomapkey csi.volumes.default csi.volume.pvc-bc537af8-67fc-4963-99c4-f40b3401686a -p kube_csi
+  rados rmomapkey "${csi_directory_oid}" "${key}" -p pool_name
+
+  legacy_oid="csi.volumes.${instance_id}"
+  if [ "${csi_directory_oid}" != "${legacy_oid}" ]; then
+    rados rmomapkey "${legacy_oid}" "${key}" -p pool_name || true
+  fi
   ```
 
 ### 5. Delete PV
