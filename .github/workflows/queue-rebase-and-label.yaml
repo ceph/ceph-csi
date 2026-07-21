@@ -29,7 +29,53 @@ jobs:
     # yamllint enable rule:line-length
     runs-on: ubuntu-latest
     steps:
+      - name: Get PR details
+        id: pr
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            })
+            core.setOutput('head_sha', pr.data.head.sha)
+            core.setOutput('base_ref', pr.data.base.ref)
+            core.setOutput('head_ref', pr.data.head.ref)
+
+      - name: Checkout PR branch
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          fetch-depth: 0
+
+      - name: Check if rebase is needed
+        id: check_rebase
+        run: |
+          set -euo pipefail
+          BASE_REF="${{ steps.pr.outputs.base_ref }}"
+          git fetch origin -- "$BASE_REF"
+
+          # Get the merge base between PR and target branch
+          MERGE_BASE=$(git merge-base HEAD "origin/$BASE_REF")
+
+          # Get the latest commit on the target branch
+          BASE_SHA=$(git rev-parse "origin/$BASE_REF")
+
+          # If merge base equals latest commit on base, no rebase needed
+          if [ "$MERGE_BASE" = "$BASE_SHA" ]; then
+            echo "needs_rebase=false" >> "$GITHUB_OUTPUT"
+            echo "PR is up to date with base branch, no rebase needed"
+          else
+            echo "needs_rebase=true" >> "$GITHUB_OUTPUT"
+            echo "PR needs rebase"
+          fi
+
       - name: Add queued/rebase label
+        if: steps.check_rebase.outputs.needs_rebase == 'true'
         # yamllint disable-line rule:line-length
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
@@ -43,6 +89,7 @@ jobs:
             })
 
       - name: Request rebase through Mergify
+        if: steps.check_rebase.outputs.needs_rebase == 'true'
         # yamllint disable-line rule:line-length
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
         with:
@@ -50,6 +97,20 @@ jobs:
           issue-number: ${{ github.event.issue.number }}
           body: |
             @mergifyio rebase
+
+      - name: Add ok-to-test label directly
+        if: steps.check_rebase.outputs.needs_rebase == 'false'
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['ok-to-test']
+            })
 
   add-ok-to-test-label:
     if: >
