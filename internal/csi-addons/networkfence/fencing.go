@@ -18,11 +18,9 @@ package networkfence
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
@@ -42,8 +40,6 @@ const (
 	// TODO: Make this configurable.
 	blockListCoolDownPeriod = 5 * time.Minute
 	invalidCommandStr       = "invalid command"
-	// we can always use mds rank 0, since all the clients have a session with rank-0.
-	mdsRank = 0
 )
 
 // NetworkFence contains the CIDR blocks to be blocked.
@@ -51,11 +47,6 @@ type NetworkFence struct {
 	Cidr     []string
 	Monitors string
 	cr       *util.Credentials
-}
-
-// activeClient represents the structure of an active client.
-type activeClient struct {
-	Inst string `json:"inst"`
 }
 
 // NewNetworkFence returns a networkFence struct object from the Network fence/unfence request.
@@ -86,51 +77,6 @@ func NewNetworkFence(
 	nwFence.cr = cr
 
 	return nwFence, nil
-}
-
-// AddClientEviction blocks access for all the IPs in the CIDR block
-// using client eviction, it also blocks the entire CIDR.
-func (nf *NetworkFence) AddClientEviction(ctx context.Context) error {
-	evictedIPs := make(map[string]bool)
-	// fetch active clients
-	activeClients, err := nf.listActiveClients(ctx)
-	if err != nil {
-		return err
-	}
-	// iterate through CIDR blocks and check if any active client matches
-	for _, cidr := range nf.Cidr {
-		for _, client := range activeClients {
-			var clientIP string
-			clientIP, err = client.fetchIP()
-			if err != nil {
-				return fmt.Errorf("error fetching client IP: %w", err)
-			}
-			// check if the clientIP is in the CIDR block
-			if isIPInCIDR(ctx, clientIP, cidr) {
-				var clientID int
-				clientID, err = client.fetchID()
-				if err != nil {
-					return fmt.Errorf("error fetching client ID: %w", err)
-				}
-				// evict the client
-				err = nf.evictCephFSClient(ctx, clientID)
-				if err != nil {
-					return fmt.Errorf("error evicting client %d: %w", clientID, err)
-				}
-				log.DebugLog(ctx, "client %d has been evicted\n", clientID)
-				// add the CIDR to the list of blocklisted IPs
-				evictedIPs[clientIP] = true
-			}
-		}
-	}
-
-	// add the range based blocklist for CIDR
-	err = nf.AddNetworkFence(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // RemoveNetworkFence unblocks access for all the IPs in the IP range mentioned via the CIDR block
@@ -218,91 +164,6 @@ func (nf *NetworkFence) AddNetworkFence(ctx context.Context) error {
 // addCephBlocklist adds an IP to ceph osd blocklist.
 func (nf *NetworkFence) addCephBlocklist(ctx context.Context, ip string, useRange bool) error {
 	return util.AddCephBlocklist(ctx, nf.Monitors, nf.cr, ip, useRange)
-}
-
-func (nf *NetworkFence) listActiveClients(ctx context.Context) ([]activeClient, error) {
-	arg := []string{
-		"--id", nf.cr.ID,
-		"--keyfile=" + nf.cr.KeyFile,
-		"-m", nf.Monitors,
-	}
-	// FIXME: replace the ceph command with go-ceph API in future
-	cmd := []string{"tell", fmt.Sprintf("mds.%d", mdsRank), "client", "ls"}
-	cmd = append(cmd, arg...)
-	stdout, stdErr, err := util.ExecCommandWithTimeout(ctx, 2*time.Minute, "ceph", cmd...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list active clients: %w, stderr: %q", err, stdErr)
-	}
-
-	var activeClients []activeClient
-	if err := json.Unmarshal([]byte(stdout), &activeClients); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
-	}
-
-	return activeClients, nil
-}
-
-func (nf *NetworkFence) evictCephFSClient(ctx context.Context, clientID int) error {
-	arg := []string{
-		"--id", nf.cr.ID,
-		"--keyfile=" + nf.cr.KeyFile,
-		"-m", nf.Monitors,
-	}
-	// FIXME: replace the ceph command with go-ceph API in future
-	cmd := []string{"tell", fmt.Sprintf("mds.%d", mdsRank), "client", "evict", fmt.Sprintf("id=%d", clientID)}
-	cmd = append(cmd, arg...)
-	_, stdErr, err := util.ExecCommandWithTimeout(ctx, 2*time.Minute, "ceph", cmd...)
-	if err != nil {
-		return fmt.Errorf("failed to evict client %d: %w, stderr: %q", clientID, err, stdErr)
-	}
-	log.DebugLog(ctx, "client %s has been evicted from CephFS\n", clientID)
-
-	return nil
-}
-
-func isIPInCIDR(ctx context.Context, ip, cidr string) bool {
-	// Parse the CIDR block
-	_, ipCidr, err := net.ParseCIDR(cidr)
-	if err != nil {
-		log.ErrorLog(ctx, "error parsing CIDR block %s: %w\n", cidr, err)
-
-		return false
-	}
-
-	// Parse the IP address
-	ipAddress := net.ParseIP(ip)
-	if ipAddress == nil {
-		log.ErrorLog(ctx, "error parsing IP address %s\n", ip)
-
-		return false
-	}
-
-	// Check if the IP address is within the CIDR block
-	return ipCidr.Contains(ipAddress)
-}
-
-func (ac *activeClient) fetchIP() (string, error) {
-	// example: "inst": "client.4305 172.21.9.34:0/422650892",
-	// then returning value will be 172.21.9.34
-	return util.ParseClientIP(ac.Inst)
-}
-
-func (ac *activeClient) fetchID() (int, error) {
-	// example: "inst": "client.4305 172.21.9.34:0/422650892",
-	// then returning value will be 4305
-	clientInfo := ac.Inst
-	parts := strings.Fields(clientInfo)
-	if len(parts) >= 1 {
-		clientIDStr := strings.TrimPrefix(parts[0], "client.")
-		clientID, err := strconv.Atoi(clientIDStr)
-		if err != nil {
-			return 0, fmt.Errorf("failed to convert client ID to int: %w", err)
-		}
-
-		return clientID, nil
-	}
-
-	return 0, fmt.Errorf("failed to extract client ID, incorrect format: %s", clientInfo)
 }
 
 // getIPRange returns a list of IPs from the IP range
