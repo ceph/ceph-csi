@@ -64,7 +64,8 @@ func validateNetworkFenceReq(fenceClients []*fence.CIDR, options map[string]stri
 }
 
 // FenceClusterNetwork blocks access to a CIDR block by creating a network fence.
-// It evicts the IP addresses of clients, which are in CIDR block.
+// The MDS automatically evicts clients whose IPs appear in the OSD blocklist,
+// so explicit client eviction via MDS commands is not needed.
 func (fcs *FenceControllerServer) FenceClusterNetwork(
 	ctx context.Context,
 	req *fence.FenceClusterNetworkRequest,
@@ -85,7 +86,7 @@ func (fcs *FenceControllerServer) FenceClusterNetwork(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = nwFence.AddClientEviction(ctx)
+	err = nwFence.AddNetworkFence(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to fence CIDR block %q: %s", nwFence.Cidr, err.Error())
 	}
