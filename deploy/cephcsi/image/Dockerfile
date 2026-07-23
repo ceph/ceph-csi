@@ -1,24 +1,18 @@
 ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
 ARG BASE_IMAGE
-ARG FINAL_BASE_IMAGE="quay.io/centos/centos:stream9-minimal"
+ARG FINAL_BASE_IMAGE="docker.io/rockylinux/rockylinux:10-minimal"
 
 FROM ${BASE_IMAGE} as updated_base
 
-# TODO: remove the following cmd, when issues
-# https://github.com/ceph/ceph-container/issues/2034
-# https://github.com/ceph/ceph-container/issues/2141 are fixed.
-RUN true \
-    && dnf -y reinstall https://download.ceph.com/rpm-${CEPH_VERSION}/el9/noarch/ceph-release-1-1.el9.noarch.rpm \
-    && ( dnf config-manager --disable tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true ) \
-    && true
+ARG CEPH_VERSION
 
-RUN mkdir -p /etc/selinux && touch /etc/selinux/config
-
-RUN dnf -y update --nobest \
-       && dnf -y install nfs-utils \
-       && dnf clean all \
-       && rm -rf /var/cache/yum
+RUN rpm -ivh https://download.ceph.com/rpm-${CEPH_VERSION}/el10/noarch/ceph-release-1-0.el10.noarch.rpm \
+    && dnf -y install epel-release \
+    && dnf -y update --nobest \
+    && dnf -y install --enablerepo=crb --setopt=install_weak_deps=False nfs-utils \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf /var/cache/yum
 
 FROM updated_base as builder
 
@@ -45,7 +39,7 @@ RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 # other/conflicting versions of protobuf get installed as dependency
 RUN dnf -y remove protobuf
 
-RUN dnf -y install --nodocs \
+RUN dnf -y install --enablerepo=crb --nodocs \
 	librados-devel librbd-devel libcephfs-devel \
 	/usr/bin/cc \
 	make \
@@ -85,9 +79,9 @@ LABEL maintainers="Ceph-CSI Authors" \
 COPY --from=builder ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
 
 RUN true \
-  && rpm -ivh https://download.ceph.com/rpm-${CEPH_VERSION}/el9/noarch/ceph-release-1-1.el9.noarch.rpm \
+  && rpm -ivh https://download.ceph.com/rpm-${CEPH_VERSION}/el10/noarch/ceph-release-1-0.el10.noarch.rpm \
   && microdnf -y install kmod nfs-utils nvme-cli epel-release psmisc e2fsprogs xfsprogs cryptsetup attr --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
-  && microdnf -y install thrift librados2 librbd1 libcephfs2 ceph-common ceph-fuse rbd-nbd --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
+  && microdnf -y install --enablerepo=crb thrift librados2 librbd1 libcephfs2 ceph-common ceph-fuse rbd-nbd --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
   && microdnf clean all \
   && true
 
