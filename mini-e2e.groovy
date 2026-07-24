@@ -182,6 +182,8 @@ node('cico-workspace') {
 			ssh "./podman2minikube.sh docker.io/library/nginx:latest"
 			podman_pull(ci_registry, "docker.io", "library/vault:1.8.5")
 			ssh "./podman2minikube.sh docker.io/library/vault:1.8.5"
+			podman_pull(ci_registry, "docker.io", "rockylinux/rockylinux:10-minimal")
+			ssh "./podman2minikube.sh docker.io/rockylinux/rockylinux:10-minimal"
 		}
 		stage('run e2e') {
 			timeout(time: 240, unit: 'MINUTES') {

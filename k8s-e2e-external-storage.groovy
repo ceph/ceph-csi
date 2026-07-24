@@ -177,6 +177,8 @@ node('cico-workspace') {
 			// busybox is used in external storage testing
 			podman_pull(ci_registry, "docker.io", "library/busybox:1.29")
 			ssh "./podman2minikube.sh docker.io/library/busybox:1.29"
+			podman_pull(ci_registry, "docker.io", "rockylinux/rockylinux:10-minimal")
+			ssh "./podman2minikube.sh docker.io/rockylinux/rockylinux:10-minimal"
 		}
 		stage('deploy ceph-csi through operator') {
 			def operator_version = sh(
