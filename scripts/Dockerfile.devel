@@ -19,32 +19,24 @@ RUN source /build.env \
     && go version \
     && true
 
-# TODO: remove the following cmd, when issues
-# https://github.com/ceph/ceph-container/issues/2034
-# https://github.com/ceph/ceph-container/issues/2141 are fixed.
-RUN true \
-    && dnf -y reinstall https://download.ceph.com/rpm-${CEPH_VERSION}/el9/noarch/ceph-release-1-1.el9.noarch.rpm \
-    && ( dnf config-manager --disable tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true ) \
-    && true
-
-RUN mkdir -p /etc/selinux && touch /etc/selinux/config
-
 # other/conflicting versions of protobuf get installed as dependency
 RUN dnf -y remove protobuf
 
 RUN source /build.env \
-    && dnf -y install \
+    && rpm -ivh https://download.ceph.com/rpm-${CEPH_VERSION}/el10/noarch/ceph-release-1-0.el10.noarch.rpm \
+    && dnf -y install epel-release \
+    && dnf -y --nobest update \
+    && dnf -y install --enablerepo=crb \
 	git \
 	make \
 	gcc \
 	librados-devel \
-        libcephfs-devel \
+	libcephfs-devel \
 	librbd-devel \
 	python3-pip \
-    && dnf -y --nobest update \
     && pip install mkdocs-material==${MKDOCS_MATERIAL} \
     && dnf clean all \
-    && rm -rf /var/cache/yum \
+    && rm -rf /var/cache/dnf /var/cache/yum \
     && true
 
 WORKDIR "/go/src/github.com/ceph/ceph-csi"
