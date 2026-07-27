@@ -941,8 +941,10 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 	// health check first, return without stats if unhealthy
 	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
 
-	// If healthy and an error is returned, it means that the checker was not
-	// started. This could happen when the node-plugin was restarted and the
+	// If healthy and an error is returned, it either means that the checker
+	// was not started or it is running but has not completed its
+	// first health-check cycle yet.
+	// This could happen when the node-plugin was restarted and the
 	// volume is already staged and published.
 	if healthy && msg != nil {
 		// Start a StatChecker for the mounted targetPath, this prevents
@@ -950,10 +952,27 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 		// FileChecker is started with the stagingTargetPath, but we can't
 		// get the stagingPath from the request easily.
 		// TODO: resolve the stagingPath like rbd.getStagingPath() does
+		// NOTE: rbd.getStagingPath() uses os.Stat() internally which
+		// if called synchronously, could block indefinitely.
+
+		// Start the background checker but return
+		// immediately instead of calling os.Stat() on this goroutine.
+		// If the mount is unresponsive, os.Stat() would block,
+		// holding the VolumeLock (acquired above) and preventing all future
+		// calls for this path from reaching isHealthy().
+		// The background checker will do the stat(), the next periodic
+		// call will pick up the result (or detect the timeout).
 		err = ns.healthChecker.StartChecker(req.GetVolumeId(), targetPath, hc.StatCheckerType)
 		if err != nil {
 			log.WarningLog(ctx, "failed to start healthchecker: %v", err)
 		}
+
+		return &csi.NodeGetVolumeStatsResponse{
+			VolumeCondition: &csi.VolumeCondition{
+				Abnormal: false,
+				Message:  "health checker started, status not yet available",
+			},
+		}, nil
 	}
 
 	// !healthy indicates a problem with the volume
@@ -966,7 +985,8 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 		}, nil
 	}
 
-	// warning: stat() may hang on an unhealthy volume
+	// warning: reaching here should mean that synchronous os.Stat()
+	// call is safe and will not indefinitely block/hang
 	stat, err := os.Stat(targetPath)
 	if err != nil {
 		if util.IsCorruptedMountError(err) {

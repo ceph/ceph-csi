@@ -30,7 +30,7 @@ func TestFileChecker(t *testing.T) {
 	if !ok {
 		t.Errorf("failed to convert fc to *fileChecker: %v", fc)
 	}
-	checker.interval = time.Second * 5
+	checker.interval = time.Second * 3
 
 	// start the checker
 	checker.start()
@@ -41,9 +41,18 @@ func TestFileChecker(t *testing.T) {
 		t.Error("checker failed to start")
 	}
 
+	// before the checker has completed its first check cycle
+	healthy, msg := checker.isHealthy()
+	if !healthy || msg == nil {
+		t.Errorf("expected (true, error) before the first tick, got (%t, %v)", healthy, msg)
+	}
+
+	// wait well past the first tick, so the first check has completed.
+	time.Sleep(checker.interval + time.Second)
+
 	for range 10 {
 		// check health, should be healthy
-		healthy, msg := checker.isHealthy()
+		healthy, msg = checker.isHealthy()
 		if !healthy || msg != nil {
 			t.Error("volume is unhealthy")
 		}

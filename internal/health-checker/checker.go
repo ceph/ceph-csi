@@ -17,6 +17,7 @@ limitations under the License.
 package healthchecker
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -37,8 +38,8 @@ type checker struct {
 	// timeout contains the delay (interval + timeout)
 	timeout time.Duration
 
-	// mutex protects against concurrent access to healthy, err and
-	// lastUpdate
+	// mutex protects against concurrent access to healthy, err,
+	// lastUpdate and checked
 	mutex *sync.RWMutex
 
 	// current status
@@ -46,6 +47,12 @@ type checker struct {
 	healthy    bool
 	err        error
 	lastUpdate time.Time
+
+	// checked is set to true once runChecker() has completed its first
+	// health-check cycle (successful or not). This matters for
+	// checker (re)start scenarios, e.g. following a node-plugin restart
+	// where the volume was already mounted.
+	checked bool
 
 	// commands is the channel to read commands from; when to stop.
 	commands chan command
@@ -60,6 +67,7 @@ func (c *checker) initDefaults() {
 	c.isRunning = false
 	c.err = nil
 	c.healthy = true
+	c.checked = false
 	c.lastUpdate = time.Now()
 	c.commands = make(chan command)
 
@@ -91,12 +99,25 @@ func (c *checker) isHealthy() (bool, error) {
 	// It is required to check, in case the write or read in the go routine
 	// is blocked.
 
-	delay := time.Since(c.lastUpdate)
-	if delay > (c.interval + c.timeout) {
+	c.mutex.RLock()
+	checked := c.checked
+	lastUpdate := c.lastUpdate
+	c.mutex.RUnlock()
+
+	delay := time.Since(lastUpdate)
+	switch {
+	case delay > (c.interval + c.timeout):
 		c.mutex.Lock()
 		c.healthy = false
 		c.err = fmt.Errorf("health-check has not responded for %f seconds", delay.Seconds())
 		c.mutex.Unlock()
+	case !checked:
+		// The first health-check cycle has not completed yet.
+		// Report this explicitly so that callers do
+		// not mistake this for a confirmed healthy volume and fall
+		// through to a fallback that could itself block (e.g. a
+		// synchronous os.Stat() on an unresponsive mount).
+		return true, errors.New("health-check has not completed its first check yet")
 	}
 
 	// read lock to get consistency between the return values
