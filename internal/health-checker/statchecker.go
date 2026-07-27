@@ -47,20 +47,18 @@ func newStatChecker(dir string) ConditionChecker {
 
 				return
 			case now := <-ticker.C:
-				_, err := os.Stat(sc.dirname)
-				if err != nil {
-					sc.mutex.Lock()
-					sc.healthy = false
-					sc.err = err
-					sc.mutex.Unlock()
-
-					continue
-				}
+				_, statErr := os.Stat(sc.dirname)
 
 				sc.mutex.Lock()
-				sc.healthy = true
-				sc.err = nil
-				sc.lastUpdate = now
+				sc.checked = true
+				if statErr != nil {
+					sc.healthy = false
+					sc.err = statErr
+				} else {
+					sc.healthy = true
+					sc.err = nil
+					sc.lastUpdate = now
+				}
 				sc.mutex.Unlock()
 			}
 		}

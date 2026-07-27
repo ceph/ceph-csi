@@ -52,6 +52,7 @@ func newFileChecker(dir string) ConditionChecker {
 				err := fc.writeTimestamp(now)
 				if err != nil {
 					fc.mutex.Lock()
+					fc.checked = true
 					fc.healthy = false
 					fc.err = err
 					fc.mutex.Unlock()
@@ -62,6 +63,7 @@ func newFileChecker(dir string) ConditionChecker {
 				ts, err := fc.readTimestamp()
 				if err != nil {
 					fc.mutex.Lock()
+					fc.checked = true
 					fc.healthy = false
 					fc.err = err
 					fc.mutex.Unlock()
@@ -72,6 +74,7 @@ func newFileChecker(dir string) ConditionChecker {
 				// verify that the written timestamp is read back
 				if now.Compare(ts) != 0 {
 					fc.mutex.Lock()
+					fc.checked = true
 					fc.healthy = false
 					fc.err = errors.New("timestamp read from file does not match what was written")
 					fc.mutex.Unlock()
@@ -81,6 +84,7 @@ func newFileChecker(dir string) ConditionChecker {
 
 				// run health check, write a timestamp to a file, read it back
 				fc.mutex.Lock()
+				fc.checked = true
 				fc.healthy = true
 				fc.err = nil
 				fc.lastUpdate = ts
