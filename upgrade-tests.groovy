@@ -142,6 +142,9 @@ node('cico-workspace') {
 			podman_pull(ci_registry, "quay.io", "${base_image}" - q_io_regex)
 			// cephcsi:devel is used with 'make containerized-build'
 			podman_pull(ci_registry, ci_registry, "ceph-csi:devel")
+			// rockylinux images are used for building ceph-csi
+			podman_pull(ci_registry, "docker.io", "rockylinux/rockylinux:10")
+			podman_pull(ci_registry, "docker.io", "rockylinux/rockylinux:10-minimal")
 		}
 		stage('build artifacts') {
 			// build container image
@@ -182,8 +185,6 @@ node('cico-workspace') {
 			ssh "./podman2minikube.sh docker.io/library/nginx:latest"
 			podman_pull(ci_registry, "docker.io", "library/vault:1.8.5")
 			ssh "./podman2minikube.sh docker.io/library/vault:1.8.5"
-			podman_pull(ci_registry, "docker.io", "rockylinux/rockylinux:10-minimal")
-			ssh "./podman2minikube.sh docker.io/rockylinux/rockylinux:10-minimal"
 		}
 		stage("set csi-upgrade-version from build.env") {
 			def build_env_csi_upgrade_version = sh(

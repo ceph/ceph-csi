@@ -29,4 +29,5 @@ docker.io/library/vault:latest	library/vault:latest
 docker.io/library/vault:1.8.5	library/vault:1.8.5
 
 # Ceph base OS
+docker.io/rockylinux/rockylinux:10		rockylinux/rockylinux:10
 docker.io/rockylinux/rockylinux:10-minimal	rockylinux/rockylinux:10-minimal
