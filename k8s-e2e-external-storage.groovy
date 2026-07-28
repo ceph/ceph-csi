@@ -140,7 +140,9 @@ node('cico-workspace') {
 			}
 
 			// base_image is like quay.io/ceph/ceph:v19, strip "quay.io/"
-			podman_pull(ci_registry, "quay.io", "${base_image}" - q_io_regex)
+			if (base_image.startsWith("quay.io/")) {
+				podman_pull(ci_registry, "quay.io", "${base_image}" - q_io_regex)
+			}
 			// cephcsi:devel is used with 'make containerized-build'
 			podman_pull(ci_registry, ci_registry, "ceph-csi:devel")
 			// rockylinux images are used for building ceph-csi
