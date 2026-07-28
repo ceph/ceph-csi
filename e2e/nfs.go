@@ -483,7 +483,7 @@ var _ = Describe("nfs", func() {
 		appClonePath := nfsExamplePath + "pod-restore.yaml"
 		snapshotPath := nfsExamplePath + "snapshot.yaml"
 
-		It("checking provisioner and nodeplugin are running", func() {
+		It("checking provisioner and nodeplugin are running", Label("tier1"), func() {
 			Expect(waitForCSI(
 				f.ClientSet,
 				nfsDeployment.getDeploymentName(),
@@ -674,7 +674,7 @@ var _ = Describe("nfs", func() {
 			}
 		})
 
-		It("create a PVC and bind it to an app", func() {
+		It("create a PVC and bind it to an app", Label("tier1"), func() {
 			err := createNFSStorageClass(f.ClientSet, f, false, nil)
 			if err != nil {
 				logAndFail("failed to create NFS storageclass: %v", err)

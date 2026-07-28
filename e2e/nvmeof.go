@@ -134,7 +134,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		rawPvcPath := nvmeofExamplePath + "raw-block-pvc.yaml"
 		rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
 
-		ginkgo.It("create a PVC and delete it", func() {
+		ginkgo.It("create a PVC and delete it", ginkgo.Label("tier1"), func() {
 			pvc, err := loadPVC(pvcPath)
 			Expect(err).ShouldNot(HaveOccurred())
 
