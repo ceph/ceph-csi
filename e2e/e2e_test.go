@@ -53,6 +53,7 @@ func init() {
 	flag.StringVar(&clusterID, "clusterid", "", "Ceph cluster ID to use (defaults to `ceph fsid` detection)")
 	flag.StringVar(&nfsDriverName, "nfs-driver", "nfs.csi.ceph.com", "name of the driver for NFS-volumes")
 	flag.BoolVar(&operatorDeployment, "operator-deployment", false, "test running on deployment via operator")
+	flag.BoolVar(&skipVault, "skip-vault", false, "skip Vault KMS deployment (e.g. for acceptance smoke tests)")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags

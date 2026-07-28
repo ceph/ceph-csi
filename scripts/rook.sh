@@ -79,7 +79,7 @@ function deploy_rook() {
 
 	# Check if CephBlockPool is empty
 	if ! kubectl_retry -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
-		check_rbd_stat ""
+		check_rbd_stat "replicapool"
 	fi
 }
 
@@ -207,41 +207,25 @@ function check_mds_stat() {
 }
 
 function check_rbd_stat() {
+	local pool_name="${1}"
 	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
-		if [ -z "$1" ]; then
-			RBD_POOL_NAME=$(kubectl_retry -n rook-ceph get cephblockpools -ojsonpath='{.items[0].metadata.name}')
-		else
-			RBD_POOL_NAME=$1
-		fi
-		# Rook creates a default pool with name device_health_metrics for
-		#  device-health-metrics CephBlockPool CR
-		if [[ "${RBD_POOL_NAME}" == "device-health-metrics" ]]; then
-			RBD_POOL_NAME="device_health_metrics"
+		if [ -z "${pool_name}" ]; then
+			pool_name=$(kubectl_retry -n rook-ceph get cephblockpools -ojsonpath='{.items[0].metadata.name}')
 		fi
 
-		# Rook v1.9.x creates pool with name .mgr for builtin-mgr CephBlockPool CR
-		if [[ "${RBD_POOL_NAME}" == "builtin-mgr" ]]; then
-			RBD_POOL_NAME=".mgr"
-		fi
+		echo "Checking RBD (${pool_name}) status... ${retry}s" && sleep 5
 
-		echo "Checking RBD ($RBD_POOL_NAME) stats... ${retry}s" && sleep 5
-
-		TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
-		TOOLBOX_POD_STATUS=$(kubectl_retry -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
-		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] &&
-			{
-				echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"
-				continue
-			}
-
-		if kubectl_retry exec -n rook-ceph "$TOOLBOX_POD" -it -- rbd pool stats "$RBD_POOL_NAME" &>/dev/null; then
-			echo "RBD ($RBD_POOL_NAME) is successfully created..."
+		local phase
+		phase=$(kubectl_retry -n rook-ceph get cephblockpools "${pool_name}" -ojsonpath='{.status.phase}' 2>/dev/null || echo "")
+		if [[ "${phase}" == "Ready" ]]; then
+			echo "RBD (${pool_name}) is Ready"
 			break
 		fi
+		echo "RBD (${pool_name}) phase: [${phase}]"
 	done
 
 	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
-		echo "[Timeout] Failed to get RBD pool stats"
+		echo "[Timeout] Failed to get RBD pool Ready"
 		return 1
 	fi
 	echo ""

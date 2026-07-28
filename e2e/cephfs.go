@@ -241,7 +241,14 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			logAndFail("failed to create node secret: %v", err)
 		}
-		deployVault(f.ClientSet, deployTimeout)
+		if !skipVault {
+			deployVault(f.ClientSet, deployTimeout)
+		} else {
+			err = createEmptyKMSConfigMap(f.ClientSet, cephCSINamespace)
+			if err != nil {
+				logAndFail("failed to create empty KMS configmap: %v", err)
+			}
+		}
 
 		err = cephFSDeployment.setClusterName(defaultClusterName)
 		if err != nil {
@@ -300,7 +307,9 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			logAndFail("failed to delete storageclass: %v", err)
 		}
-		deleteVault()
+		if !skipVault {
+			deleteVault()
+		}
 
 		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
 		if err != nil {
@@ -336,7 +345,7 @@ var _ = Describe(cephfsType, func() {
 		appEphemeralPath := cephFSExamplePath + "pod-ephemeral.yaml"
 		pvcRWOPPath := cephFSExamplePath + "pvc-rwop.yaml"
 
-		It("checking provisioner and nodeplugin are running", func() {
+		It("checking provisioner and nodeplugin are running", Label("acceptance"), func() {
 			Expect(waitForCSI(
 				f.ClientSet,
 				cephFSDeployment.getDeploymentName(),
@@ -940,7 +949,7 @@ var _ = Describe(cephfsType, func() {
 			}
 		})
 
-		It("create a PVC and bind it to an app", func() {
+		It("create a PVC and bind it to an app", Label("acceptance"), func() {
 			err := createCephfsStorageClass(f.ClientSet, f, false, nil)
 			if err != nil {
 				logAndFail("failed to create CephFS storageclass: %v", err)
@@ -1502,7 +1511,7 @@ var _ = Describe(cephfsType, func() {
 			}
 		})
 
-		It("create a PVC clone and bind it to an app", func() {
+		It("create a PVC clone and bind it to an app", Label("acceptance"), func() {
 			var wg sync.WaitGroup
 			totalCount := 3
 			wgErrs := make([]error, totalCount)
@@ -2401,7 +2410,7 @@ var _ = Describe(cephfsType, func() {
 			}
 		}
 
-		It("create a PVC-PVC clone and bind it to an app", func() {
+		It("create a PVC-PVC clone and bind it to an app", Label("acceptance"), func() {
 			var wg sync.WaitGroup
 			totalCount := 3
 			wgErrs := make([]error, totalCount)

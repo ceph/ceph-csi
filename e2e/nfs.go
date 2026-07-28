@@ -493,7 +493,7 @@ var _ = Describe("nfs", func() {
 		appClonePath := nfsExamplePath + "pod-restore.yaml"
 		snapshotPath := nfsExamplePath + "snapshot.yaml"
 
-		It("checking provisioner and nodeplugin are running", func() {
+		It("checking provisioner and nodeplugin are running", Label("acceptance"), func() {
 			Expect(waitForCSI(
 				f.ClientSet,
 				nfsDeployment.getDeploymentName(),
@@ -659,7 +659,7 @@ var _ = Describe("nfs", func() {
 			}
 		})
 
-		It("create a PVC and bind it to an app", func() {
+		It("create a PVC and bind it to an app", Label("acceptance"), func() {
 			err := createNFSStorageClass(f.ClientSet, f, false, nil)
 			if err != nil {
 				logAndFail("failed to create NFS storageclass: %v", err)
@@ -813,7 +813,7 @@ var _ = Describe("nfs", func() {
 			}
 		})
 
-		It("create a PVC clone and bind it to an app", func() {
+		It("create a PVC clone and bind it to an app", Label("acceptance"), func() {
 			var wg sync.WaitGroup
 			totalCount := 3
 			wgErrs := make([]error, totalCount)
@@ -1103,7 +1103,7 @@ var _ = Describe("nfs", func() {
 			validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
 		})
 
-		It("create a PVC-PVC clone and bind it to an app", func() {
+		It("create a PVC-PVC clone and bind it to an app", Label("acceptance"), func() {
 			var wg sync.WaitGroup
 			totalCount := 3
 			wgErrs := make([]error, totalCount)

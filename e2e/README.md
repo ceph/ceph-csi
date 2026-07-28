@@ -126,6 +126,75 @@ follow these steps before running e2e.
     ./scripts/install-snapshot.sh cleanup
     ```
 
+## Acceptance E2E (Minikube)
+
+The acceptance suite is a lightweight smoke gate that runs on **every PR** via
+GitHub Actions (`.github/workflows/e2e-minikube-acceptance.yaml`). It deploys
+ceph-csi on a minikube cluster with Rook Ceph and runs only specs labeled
+`Label("acceptance")`.
+
+**Scope (12 specs):**
+
+| Driver | Specs |
+|--------|-------|
+| RBD    | PVC→app, snapshot→clone, PVC-PVC clone, block PVC |
+| CephFS | health check, PVC→app, snapshot→clone, PVC-PVC clone |
+| NFS    | health check, PVC→app, snapshot→clone, PVC-PVC clone |
+
+**Relationship to CentOS mini-e2e:** The acceptance suite does **not** replace
+CentOS `ci/centos/mini-e2e/k8s-*`. CentOS jobs run the full suite (~85 RBD +
+~48 CephFS + NFS + more) after `ok-to-test`. Acceptance catches "drivers won't
+deploy / basic provision broken" before that.
+
+### Running acceptance specs locally
+
+```console
+# Run acceptance specs on an existing cluster
+cd e2e && ../e2e.test -test.v -ginkgo.v \
+  --ginkgo.label-filter=acceptance \
+  --ginkgo.timeout=15m \
+  --deploy-timeout=10 \
+  --test-rbd=true --test-cephfs=true \
+  --test-nfs=true --test-nvmeof=false \
+  --deploy-rbd=true --deploy-cephfs=true \
+  --operator-deployment \
+  --skip-vault=true
+```
+
+### Adding specs to acceptance
+
+Add `Label("acceptance")` to the `It()` declaration:
+
+```go
+It("my new smoke test", Label("acceptance"), func() {
+    // ...
+})
+```
+
+### Running acceptance e2e in your fork
+
+Contributors can run the acceptance gate in their own fork before
+opening a PR upstream:
+
+1. Fork `ceph/ceph-csi` on GitHub.
+1. Push your branch to **your fork**.
+1. Open a PR **within your fork** (base: your fork's `devel`, head: your
+   branch). The `e2e-minikube-acceptance` workflow triggers automatically on
+   `pull_request` — no secrets or `ok-to-test` label required.
+1. Check the Actions tab for results. Failed runs upload logs as the
+   `acceptance-e2e-logs` artifact.
+
+This gives you a quick signal that basic provisioning, snapshots, and clones
+work before submitting upstream. When adding new features, tag their specs
+with `Label("acceptance")` to include them in the gate — this enables fast
+e2e verification loops entirely within your fork.
+
+### Test parameters for acceptance
+
+| flag       | description                                       |
+|------------|---------------------------------------------------|
+| skip-vault | Skip Vault KMS deployment for faster runs (default: false) |
+
 ## Running E2E
 
 `

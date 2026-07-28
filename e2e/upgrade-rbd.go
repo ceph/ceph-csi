@@ -77,7 +77,9 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			logAndFail("failed to do  getwd: %v", err)
 		}
 
-		deployVault(f.ClientSet, deployTimeout)
+		if !skipVault {
+			deployVault(f.ClientSet, deployTimeout)
+		}
 		err = upgradeAndDeployCSI(upgradeVersion, "rbd")
 		if err != nil {
 			logAndFail("failed to upgrade and deploy CSI: %v", err)
@@ -160,7 +162,9 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if err != nil {
 			logAndFail("failed to delete snapshotclass: %v", err)
 		}
-		deleteVault()
+		if !skipVault {
+			deleteVault()
+		}
 		if deployRBD {
 			deleteRBDPlugin()
 		}

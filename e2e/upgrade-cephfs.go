@@ -79,7 +79,9 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if err != nil {
 			logAndFail("failed to getwd: %v", err)
 		}
-		deployVault(f.ClientSet, deployTimeout)
+		if !skipVault {
+			deployVault(f.ClientSet, deployTimeout)
+		}
 		err = upgradeAndDeployCSI(upgradeVersion, "cephfs")
 		if err != nil {
 			logAndFail("failed to upgrade csi: %v", err)
@@ -156,7 +158,9 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if err != nil {
 			logAndFail("failed to delete storageclass: %v", err)
 		}
-		deleteVault()
+		if !skipVault {
+			deleteVault()
+		}
 		if deployCephFS {
 			deleteCephfsPlugin()
 		}
