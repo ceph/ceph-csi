@@ -420,6 +420,9 @@ func (ri *rbdImage) Connect(cr *util.Credentials) error {
 // Destroy cleans up the rbdVolume and closes the connection to the Ceph
 // cluster in case one was setup.
 func (ri *rbdImage) Destroy(ctx context.Context) {
+	if ri == nil {
+		return
+	}
 	if ri.ioctx != nil {
 		ri.ioctx.Destroy()
 		ri.ioctx = nil
