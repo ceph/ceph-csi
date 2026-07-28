@@ -126,6 +126,54 @@ follow these steps before running e2e.
     ./scripts/install-snapshot.sh cleanup
     ```
 
+## Tier-1 Quick E2E (Minikube)
+
+Tier-1 is a lightweight smoke gate that runs on **every PR** via GitHub Actions
+(`.github/workflows/e2e-minikube-tier1.yaml`). It deploys ceph-csi on a minikube
+cluster with Rook Ceph and runs only specs labeled `Label("tier1")`.
+
+**Scope:** RBD + CephFS PVC→Pod→IO, RBD block mode, RBD snapshot→clone,
+NFS and NVMeoF deploy/health. Hard timeout: **30 minutes**.
+
+**Relationship to CentOS mini-e2e:** Tier-1 does **not** replace CentOS
+`ci/centos/mini-e2e/k8s-*`. CentOS jobs run the full suite (~85 RBD + ~48
+CephFS + NFS + more) after `ok-to-test`. Tier-1 catches "drivers won't deploy /
+basic provision broken" before that.
+
+### Running tier1 specs locally
+
+```console
+# Full bootstrap + test (requires minikube none driver)
+# (Available after PR 2 lands make targets)
+# make e2e-minikube-tier1
+
+# Run tier1 specs on an existing cluster
+cd e2e && ../e2e.test -test.v -ginkgo.v \
+  --ginkgo.label-filter=tier1 \
+  --ginkgo.timeout=15m \
+  --deploy-timeout=10 \
+  --test-rbd=true --test-cephfs=true \
+  --test-nfs=true --test-nvmeof=true \
+  --deploy-rbd=true --deploy-cephfs=true \
+  --skip-vault=true
+```
+
+### Adding specs to tier1
+
+Add `Label("tier1")` to the `It()` declaration:
+
+```go
+It("my new smoke test", Label("tier1"), func() {
+    // ...
+})
+```
+
+### Test parameters for tier1
+
+| flag       | description                                       |
+|------------|---------------------------------------------------|
+| skip-vault | Skip Vault KMS deployment for faster runs (default: false) |
+
 ## Running E2E
 
 `

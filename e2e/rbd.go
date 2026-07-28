@@ -412,7 +412,9 @@ var _ = Describe("RBD", func() {
 		if err != nil {
 			logAndFail("failed to create node secret: %v", err)
 		}
-		deployVault(f.ClientSet, deployTimeout)
+		if !skipVault {
+			deployVault(f.ClientSet, deployTimeout)
+		}
 
 		// wait for provisioner and nodeplugin
 		Expect(waitForCSI(
@@ -485,7 +487,9 @@ var _ = Describe("RBD", func() {
 			logAndFail("failed to delete storageclass: %v", err)
 		}
 		// deleteResource(rbdExamplePath + "snapshotclass.yaml")
-		deleteVault()
+		if !skipVault {
+			deleteVault()
+		}
 		if deployRBD {
 			deleteRBDPlugin()
 		}
@@ -1037,7 +1041,7 @@ var _ = Describe("RBD", func() {
 			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 		})
 
-		It("create a PVC and bind it to an app", func() {
+		It("create a PVC and bind it to an app", Label("tier1"), func() {
 			err := validatePVCAndAppBinding(pvcPath, appPath, f)
 			if err != nil {
 				logAndFail("failed to validate pvc and application binding: %v", err)
@@ -1057,7 +1061,7 @@ var _ = Describe("RBD", func() {
 			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 		})
 
-		It("create a Block mode RWOP PVC and bind it to more than one app", func() {
+		It("create a Block mode RWOP PVC and bind it to more than one app", Label("tier1"), func() {
 			pvc, err := loadPVC(rawPVCRWOPPath)
 			if err != nil {
 				logAndFail("failed to load PVC: %v", err)
@@ -3372,7 +3376,7 @@ var _ = Describe("RBD", func() {
 			},
 		)
 
-		It("create a PVC clone and bind it to an app", func() {
+		It("create a PVC clone and bind it to an app", Label("tier1"), func() {
 			validatePVCSnapshot(
 				defaultCloneCount,
 				pvcPath,
@@ -3673,7 +3677,7 @@ var _ = Describe("RBD", func() {
 			}
 		})
 
-		It("create a block type PVC and bind it to an app", func() {
+		It("create a block type PVC and bind it to an app", Label("tier1"), func() {
 			err := validatePVCAndAppBinding(rawPvcPath, rawAppPath, f)
 			if err != nil {
 				logAndFail("failed to validate pvc and application binding: %v", err)

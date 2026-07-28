@@ -100,6 +100,7 @@ var (
 	clusterID          string
 	nfsDriverName      string
 	operatorDeployment bool
+	skipVault          bool
 	monsCache          = make(map[string][]string)
 )
 

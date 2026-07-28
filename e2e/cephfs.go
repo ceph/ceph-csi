@@ -241,7 +241,9 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			logAndFail("failed to create node secret: %v", err)
 		}
-		deployVault(f.ClientSet, deployTimeout)
+		if !skipVault {
+			deployVault(f.ClientSet, deployTimeout)
+		}
 
 		err = cephFSDeployment.setClusterName(defaultClusterName)
 		if err != nil {
@@ -300,7 +302,9 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			logAndFail("failed to delete storageclass: %v", err)
 		}
-		deleteVault()
+		if !skipVault {
+			deleteVault()
+		}
 
 		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
 		if err != nil {
@@ -336,7 +340,7 @@ var _ = Describe(cephfsType, func() {
 		appEphemeralPath := cephFSExamplePath + "pod-ephemeral.yaml"
 		pvcRWOPPath := cephFSExamplePath + "pvc-rwop.yaml"
 
-		It("checking provisioner and nodeplugin are running", func() {
+		It("checking provisioner and nodeplugin are running", Label("tier1"), func() {
 			Expect(waitForCSI(
 				f.ClientSet,
 				cephFSDeployment.getDeploymentName(),
@@ -940,7 +944,7 @@ var _ = Describe(cephfsType, func() {
 			}
 		})
 
-		It("create a PVC and bind it to an app", func() {
+		It("create a PVC and bind it to an app", Label("tier1"), func() {
 			err := createCephfsStorageClass(f.ClientSet, f, false, nil)
 			if err != nil {
 				logAndFail("failed to create CephFS storageclass: %v", err)
