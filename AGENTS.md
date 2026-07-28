@@ -92,6 +92,21 @@ make run-e2e E2E_ARGS="--test-cephfs=false"       # Run with specific args
 functional Ceph cluster. Only run these tests when both are available and
 properly configured. See `e2e/` directory for test implementations.
 
+### Acceptance E2E (Quick Smoke Gate)
+
+The `e2e-minikube-acceptance` workflow (`.github/workflows/e2e-minikube-acceptance.yaml`)
+runs 12 core specs (RBD, CephFS, NFS) on a minikube cluster with Rook Ceph.
+It triggers on every `pull_request` to `devel` or `release-v*` branches — no
+secrets or `ok-to-test` label needed.
+
+**Fork users:** Add `Label("acceptance")` to new feature specs and open a PR
+within your fork for quick e2e verification loops before submitting upstream.
+Check your fork's Actions tab for results.
+
+Specs are tagged with `Label("acceptance")` in the e2e Go files. To add a
+spec to the acceptance suite, add the label to its `It()` declaration. See
+`e2e/README.md` for details.
+
 ### Module Checks
 
 ```bash

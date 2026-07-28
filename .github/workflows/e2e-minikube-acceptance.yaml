@@ -1,0 +1,133 @@
+---
+# Acceptance quick e2e: minikube + Rook Ceph smoke on every PR.
+# Complements (does NOT replace) CentOS mini-e2e via ok-to-test.
+name: e2e-minikube-acceptance
+"on":
+  pull_request:
+    branches:
+      - devel
+      - "release-v*"
+    paths:
+      - "**"
+      - "!docs/**"
+      - "!**/*.md"
+      - "!.github/workflows/**"
+      - ".github/workflows/e2e-minikube-acceptance.yaml"
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{
+    github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION_FILE: go.mod
+
+jobs:
+  e2e-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+
+      - name: Source build.env
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source build.env
+          set +a
+          {
+            echo "KUBE_VERSION=${KUBE_VERSION}"
+            echo "MINIKUBE_VERSION=${MINIKUBE_VERSION}"
+            echo "ROOK_VERSION=${ROOK_VERSION}"
+            echo "ROOK_CEPH_CLUSTER_IMAGE=${ROOK_CEPH_CLUSTER_IMAGE}"
+            echo "SNAPSHOT_VERSION=${SNAPSHOT_VERSION}"
+            echo "VM_DRIVER=${VM_DRIVER}"
+            echo "CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION}"
+          } >> "$GITHUB_ENV"
+
+      - name: Install minikube prerequisites
+        run: >-
+          scripts/github-action-helper.sh
+          install_minikube_prereqs
+
+      - name: Setup minikube
+        run: |
+          sudo sysctl fs.protected_regular=0
+          scripts/minikube.sh up
+        env:
+          MEMORY: "6144"
+
+      - name: Prepare disk for OSD
+        run: >-
+          scripts/github-action-helper.sh prepare_disk
+
+      - name: Pre-pull Ceph image
+        run: >-
+          docker pull "$ROOK_CEPH_CLUSTER_IMAGE"
+
+      - name: Deploy Rook + Ceph
+        run: scripts/minikube.sh deploy-rook
+        env:
+          ROOK_DEPLOY_TIMEOUT: "600"
+          KUBECTL_RETRY_DELAY: "5"
+
+      - name: Install snapshot controller
+        run: >-
+          scripts/minikube.sh install-snapshotter
+
+      - name: Build ceph-csi image
+        run: make image-cephcsi
+        env:
+          CONTAINER_CMD: docker
+
+      - name: Load ceph-csi image
+        run: scripts/minikube.sh cephcsi
+
+      - name: Load sidecar images
+        run: scripts/minikube.sh k8s-sidecar
+
+      - name: Deploy ceph-csi-operator
+        run: >-
+          scripts/deploy-ceph-csi-operator.sh deploy
+
+      - name: Build e2e.test
+        run: make e2e.test
+
+      - name: Run acceptance e2e
+        run: |
+          cd e2e && ../e2e.test \
+            -test.v -ginkgo.v \
+            --ginkgo.label-filter=acceptance \
+            --ginkgo.timeout=25m \
+            --deploy-timeout=10 \
+            --test-rbd=true \
+            --test-cephfs=true \
+            --test-nfs=true \
+            --test-nvmeof=false \
+            --deploy-rbd=false \
+            --deploy-cephfs=false \
+            --operator-deployment \
+            --skip-vault=true
+
+      - name: Collect logs on failure
+        if: '!success()'
+        run: >-
+          scripts/github-action-helper.sh collect_logs
+
+      - name: Upload failure logs
+        if: '!success()'
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-e2e-logs
+          path: /tmp/acceptance-e2e-logs/
+          retention-days: 7

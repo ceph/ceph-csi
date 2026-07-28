@@ -108,7 +108,7 @@ function install_kubectl() {
     fi
     # Download kubectl, which is a requirement for using minikube.
     echo "Installing kubectl. Version: ${KUBE_VERSION}"
-    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"${KUBE_VERSION}"/bin/linux/"${MINIKUBE_ARCH}"/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/
+    curl -Lo kubectl https://dl.k8s.io/release/"${KUBE_VERSION}"/bin/linux/"${MINIKUBE_ARCH}"/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/
 }
 
 function validate_container_cmd() {
@@ -268,11 +268,17 @@ up)
 
     # shellcheck disable=SC2086
     ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG}  --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
-    # shellcheck disable=SC2086
-    ${minikube} ssh "sudo  sed -i 's/\(ExecStart=\/var.*\)/\1 --v=4/' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf"
-    ${minikube} ssh "sudo systemctl daemon-reload"
-    ${minikube} ssh "sudo systemctl restart kubelet"
-    ${minikube} ssh "ps -Af |grep kubelet"
+    if [[ "${VM_DRIVER}" == "none" ]]; then
+        sudo sed -i 's/\(ExecStart=\/var.*\)/\1 --v=4/' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf || true
+        sudo systemctl daemon-reload
+        sudo systemctl restart kubelet
+    else
+        # shellcheck disable=SC2086
+        ${minikube} ssh "sudo  sed -i 's/\(ExecStart=\/var.*\)/\1 --v=4/' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf"
+        ${minikube} ssh "sudo systemctl daemon-reload"
+        ${minikube} ssh "sudo systemctl restart kubelet"
+        ${minikube} ssh "ps -Af |grep kubelet"
+    fi
     # create a link so the default dataDirHostPath will work for this
     # environment
     if [[ "${VM_DRIVER}" != "none" ]] && [[ "${VM_DRIVER}" != "podman" ]]; then
