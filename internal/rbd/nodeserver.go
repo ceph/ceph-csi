@@ -1597,6 +1597,8 @@ func (ns *NodeServer) blockNodeGetVolumeStats(
 
 	rv, err := GenVolFromVolID(ctx, volumeId, credentials, secrets)
 	if err != nil {
+		rv.Destroy(ctx)
+
 		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v",
 			volumeId, err)
 	}

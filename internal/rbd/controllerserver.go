@@ -853,6 +853,7 @@ func checkContentSource(
 		}
 		rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, req.GetSecrets())
 		if err != nil {
+			rbdSnap.Destroy(ctx)
 			log.ErrorLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)
 			if !errors.Is(err, rbderrors.ErrSnapNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
@@ -873,6 +874,7 @@ func checkContentSource(
 		}
 		rbdvol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
+			rbdvol.Destroy(ctx)
 			log.ErrorLog(ctx, "failed to get backend image for %s: %v", volID, err)
 			if !errors.Is(err, rbderrors.ErrImageNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
@@ -1498,6 +1500,8 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 	rbdSnap, err := genSnapFromSnapID(ctx, snapshotID, cr, req.GetSecrets())
 	if err != nil {
+		rbdSnap.Destroy(ctx)
+
 		// if error is ErrPoolNotFound, the pool is already deleted we don't
 		// need to worry about deleting snapshot or omap data, return success
 		if errors.Is(err, util.ErrPoolNotFound) {
@@ -1812,6 +1816,8 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 
 	rv, err := GenVolFromVolID(ctx, volumeId, credentials, secrets)
 	if err != nil {
+		rv.Destroy(ctx)
+
 		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v",
 			volumeId, err)
 	}
