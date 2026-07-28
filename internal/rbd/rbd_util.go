@@ -529,7 +529,7 @@ func (ri *rbdImage) getImageID() error {
 	if ri.ImageID != "" {
 		return nil
 	}
-	image, err := ri.open()
+	image, err := ri.openReadOnly()
 	if err != nil {
 		return err
 	}
@@ -635,7 +635,7 @@ func (ri *rbdImage) openReadOnly() (*librbd.Image, error) {
 // isInUse is called with exponential backoff to check the image is used by
 // anyone else the returned bool value is discarded if its a RWX access.
 func (ri *rbdImage) isInUse() (bool, error) {
-	image, err := ri.open()
+	image, err := ri.openReadOnly()
 	if err != nil {
 		if errors.Is(err, rbderrors.ErrImageNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			return false, err
@@ -661,8 +661,8 @@ func (ri *rbdImage) isInUse() (bool, error) {
 		return false, fmt.Errorf("cannot map image %s it is not primary", ri)
 	}
 
-	// because we opened the image, there is at least one watcher
-	defaultWatchers := 1
+	// openReadOnly does not register a watcher on the image
+	defaultWatchers := 0
 	if mirrorInfo.Primary {
 		count, err := util.GetRBDMirrorDaemonCount(util.CsiConfigFile, ri.ClusterID)
 		if err != nil {
@@ -1788,7 +1788,7 @@ func (ri *rbdImage) GetCreationTime(ctx context.Context) (*time.Time, error) {
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found.
 func (ri *rbdImage) getImageInfo() error {
-	image, err := ri.open()
+	image, err := ri.openReadOnly()
 	if err != nil {
 		return err
 	}
@@ -2061,7 +2061,7 @@ func (ri *rbdImage) resize(newSize int64) error {
 }
 
 func (ri *rbdImage) GetMetadata(key string) (string, error) {
-	image, err := ri.open()
+	image, err := ri.openReadOnly()
 	if err != nil {
 		return "", err
 	}
