@@ -52,6 +52,7 @@ var nvmeofMutableParams = []string{
 
 type Server struct {
 	csi.UnimplementedControllerServer
+	csi.UnimplementedGroupControllerServer
 
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
@@ -70,16 +71,24 @@ type Server struct {
 
 	// backendServer handles the RBD requests
 	backendServer *rbd.ControllerServer
+
+	// backendGroupServer handles the RBD group controller requests
+	backendGroupServer csi.GroupControllerServer
 }
+
+var _ csi.GroupControllerServer = &Server{}
 
 // NewControllerServer initialize a controller server for nvmeof CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver) (*Server, error) {
+	backendServer := rbddriver.NewControllerServer(d)
+
 	return &Server{
-		volumeLocks:    util.NewIDLocker(),
-		hostLocks:      util.NewIDLocker(),
-		subsystemLocks: util.NewIDLocker(),
-		backendServer:  rbddriver.NewControllerServer(d),
-		securityKeys:   nil, // Initialize lazily when needed
+		volumeLocks:        util.NewIDLocker(),
+		hostLocks:          util.NewIDLocker(),
+		subsystemLocks:     util.NewIDLocker(),
+		backendServer:      backendServer,
+		backendGroupServer: csicommon.ToGroupControllerServer(backendServer),
+		securityKeys:       nil, // Initialize lazily when needed
 	}, nil
 }
 
@@ -474,6 +483,38 @@ func (cs *Server) DeleteSnapshot(
 
 	// delete snapshot is handled by rbd backend server
 	return cs.backendServer.DeleteSnapshot(ctx, req)
+}
+
+// GroupControllerGetCapabilities delegates to the RBD backend group controller.
+func (cs *Server) GroupControllerGetCapabilities(
+	ctx context.Context,
+	req *csi.GroupControllerGetCapabilitiesRequest,
+) (*csi.GroupControllerGetCapabilitiesResponse, error) {
+	return cs.backendGroupServer.GroupControllerGetCapabilities(ctx, req)
+}
+
+// CreateVolumeGroupSnapshot delegates to the RBD backend group controller.
+func (cs *Server) CreateVolumeGroupSnapshot(
+	ctx context.Context,
+	req *csi.CreateVolumeGroupSnapshotRequest,
+) (*csi.CreateVolumeGroupSnapshotResponse, error) {
+	return cs.backendGroupServer.CreateVolumeGroupSnapshot(ctx, req)
+}
+
+// DeleteVolumeGroupSnapshot delegates to the RBD backend group controller.
+func (cs *Server) DeleteVolumeGroupSnapshot(
+	ctx context.Context,
+	req *csi.DeleteVolumeGroupSnapshotRequest,
+) (*csi.DeleteVolumeGroupSnapshotResponse, error) {
+	return cs.backendGroupServer.DeleteVolumeGroupSnapshot(ctx, req)
+}
+
+// GetVolumeGroupSnapshot delegates to the RBD backend group controller.
+func (cs *Server) GetVolumeGroupSnapshot(
+	ctx context.Context,
+	req *csi.GetVolumeGroupSnapshotRequest,
+) (*csi.GetVolumeGroupSnapshotResponse, error) {
+	return cs.backendGroupServer.GetVolumeGroupSnapshot(ctx, req)
 }
 
 // validateDHCHAPParameter helper function to validates the DH-CHAP parameters.
