@@ -392,6 +392,10 @@ func (ns *NodeServer) NodeStageVolume(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	if rv.NetNamespaceFilePath != "" {
+		log.WarningLog(ctx, "netNamespaceFilePath is deprecated and will be removed in a future version. "+
+			"Please migrate to using host networking for CSI plugin pods.")
+	}
 	if isHealer {
 		err = healerStageTransaction(ctx, cr, rv, stagingParentPath)
 		if err != nil {
