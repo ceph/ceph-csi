@@ -498,5 +498,18 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			validateRBDImageCount(f, 0, nvmeofPool)
 			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
 		})
+
+		ginkgo.It("test volumeGroupSnapshot", func() {
+			scName := nvmeofStorageClass
+			snapshotter, err := newNVMeOFVolumeGroupSnapshot(
+				f, f.UniqueName, scName, false, deployTimeout, 3, 0)
+			if err != nil {
+				logAndFail("failed to create volumeGroupSnapshot Base: %v", err)
+			}
+			err = snapshotter.TestVolumeGroupSnapshot()
+			if err != nil {
+				logAndFail("failed to test volumeGroupSnapshot: %v", err)
+			}
+		})
 	})
 })

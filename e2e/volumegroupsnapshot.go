@@ -322,3 +322,86 @@ func (rvgs *rbdVolumeGroupSnapshot) ValidateResourcesForDelete() error {
 
 	return nil
 }
+
+type nvmeofVolumeGroupSnapshot struct {
+	*volumeGroupSnapshotterBase
+}
+
+var _ VolumeGroupSnapshotter = &nvmeofVolumeGroupSnapshot{}
+
+func newNVMeOFVolumeGroupSnapshot(f *framework.Framework, namespace,
+	storageClass string,
+	blockPVC bool,
+	timeout, totalPVCCount, additionalVGSnapshotCount int,
+) (VolumeGroupSnapshotter, error) {
+	base, err := newVolumeGroupSnapshotBase(f, namespace, storageClass, blockPVC,
+		timeout, totalPVCCount, additionalVGSnapshotCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create volumeGroupSnapshotterBase: %w", err)
+	}
+
+	return &nvmeofVolumeGroupSnapshot{
+		volumeGroupSnapshotterBase: base,
+	}, nil
+}
+
+func (nvgs *nvmeofVolumeGroupSnapshot) TestVolumeGroupSnapshot() error {
+	return nvgs.volumeGroupSnapshotterBase.testVolumeGroupSnapshot(nvgs)
+}
+
+func (nvgs *nvmeofVolumeGroupSnapshot) GetVolumeGroupSnapshotClass() (
+	*groupsnapapi.VolumeGroupSnapshotClass, error,
+) {
+	vgscPath := fmt.Sprintf("%s/%s", nvmeofExamplePath, "groupsnapshotclass.yaml")
+	vgsc := &groupsnapapi.VolumeGroupSnapshotClass{}
+	err := unmarshal(vgscPath, vgsc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal VolumeGroupSnapshotClass: %w", err)
+	}
+
+	vgsc.Parameters["csi.storage.k8s.io/group-snapshotter-secret-namespace"] = cephCSINamespace
+	vgsc.Parameters["csi.storage.k8s.io/group-snapshotter-secret-name"] = nvmeofProvisionerSecretName
+	vgsc.Parameters["pool"] = nvmeofPool
+
+	fsID, err := getClusterID(nvgs.framework)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get clusterID: %w", err)
+	}
+	vgsc.Parameters["clusterID"] = fsID
+
+	return vgsc, nil
+}
+
+func (nvgs *nvmeofVolumeGroupSnapshot) ValidateResourcesForCreate(
+	vgs *groupsnapapi.VolumeGroupSnapshot,
+) error {
+	vgsc, err := nvgs.groupclient.VolumeGroupSnapshotContents().Get(
+		context.TODO(),
+		*vgs.Status.BoundVolumeGroupSnapshotContentName,
+		metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get VolumeGroupSnapshotContent: %w", err)
+	}
+
+	sourcePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
+	clonePVCCount := len(vgsc.Status.VolumeSnapshotInfoList)
+	totalPVCCount := sourcePVCCount + clonePVCCount
+
+	validateOmapCount(nvgs.framework, totalPVCCount, rbdType, nvmeofPool, volumesType)
+
+	return nil
+}
+
+func (nvgs *nvmeofVolumeGroupSnapshot) ValidateResourcesForDelete() error {
+	validateOmapCount(nvgs.framework, 0, rbdType, nvmeofPool, volumesType)
+	validateOmapCount(nvgs.framework, 0, rbdType, nvmeofPool, snapsType)
+	validateOmapCount(nvgs.framework, 0, rbdType, nvmeofPool, groupSnapsType)
+	validateRBDImageCount(nvgs.framework, 0, nvmeofPool)
+
+	err := waitToRemoveImagesFromTrash(nvgs.framework, nvmeofPool, deployTimeout)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
