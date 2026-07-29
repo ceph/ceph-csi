@@ -133,6 +133,31 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: csi-snapshotter
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.6.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=1"
+            - "--timeout=150s"
+            - "--leader-election=true"
+            - "--extra-create-metadata=true"
+            - "--feature-gates=CSIVolumeGroupSnapshot=true"
+            - "--http-endpoint=$(POD_IP):8092"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi-provisioner.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 8092
+              name: snapshotter
+              protocol: TCP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: csi-attacher
           image: registry.k8s.io/sig-storage/csi-attacher:v4.12.0
           args:
