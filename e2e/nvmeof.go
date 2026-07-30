@@ -499,6 +499,91 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
 		})
 
+		ginkgo.It("Create snapshot and restore from snapshot", func() {
+			// This test validates snapshot creation and restore for NVMe-oF PVCs.
+			//
+			// Test flow:
+			// 1. Create a source PVC
+			// 2. Create a snapshot of the source PVC
+			// 3. Create a new PVC restored from the snapshot
+			// 4. Delete the restored PVC
+			// 5. Delete the snapshot
+			// 6. Delete the source PVC
+
+			snapshotPath := nvmeofExamplePath + "snapshot.yaml"
+			pvcRestorePath := nvmeofExamplePath + "pvc-restore.yaml"
+
+			ginkgo.By("Creating VolumeSnapshotClass")
+			err := createNVMeoFSnapshotClass(f)
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				err = deleteNVMeoFSnapshotClass()
+				if err != nil {
+					logAndFail("failed to delete VolumeSnapshotClass: %v", err)
+				}
+			}()
+
+			ginkgo.By("Creating a source PVC")
+			sourcePVC, err := loadPVC(pvcPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			sourcePVC.Namespace = f.UniqueName
+			sourcePVC.Spec.StorageClassName = &nvmeofStorageClass
+
+			err = createPVCAndvalidatePV(f.ClientSet, sourcePVC, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Validate backend RBD image created (1 PVC)
+			validateRBDImageCount(f, 1, nvmeofPool)
+			validateOmapCount(f, 1, rbdType, nvmeofPool, volumesType)
+
+			ginkgo.By("Creating a snapshot of the source PVC")
+			snap := getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &sourcePVC.Name
+
+			err = createSnapshot(&snap, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Validate backend RBD images: 1 parent PVC + 1 snapshot
+			validateRBDImageCount(f, 2, nvmeofPool)
+			validateOmapCount(f, 1, rbdType, nvmeofPool, volumesType)
+			validateOmapCount(f, 1, rbdType, nvmeofPool, snapsType)
+
+			ginkgo.By("Creating a PVC restored from the snapshot")
+			restorePVC, err := loadPVC(pvcRestorePath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			restorePVC.Namespace = f.UniqueName
+			restorePVC.Spec.StorageClassName = &nvmeofStorageClass
+			restorePVC.Spec.DataSource.Name = snap.Name
+
+			err = createPVCAndvalidatePV(f.ClientSet, restorePVC, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Validate backend RBD images: 1 parent + 1 snapshot + 1 restored PVC
+			validateRBDImageCount(f, 3, nvmeofPool)
+			validateOmapCount(f, 2, rbdType, nvmeofPool, volumesType)
+			validateOmapCount(f, 1, rbdType, nvmeofPool, snapsType)
+
+			ginkgo.By("Deleting the restored PVC")
+			err = deletePVCAndValidatePV(f.ClientSet, restorePVC, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Deleting the snapshot")
+			err = deleteSnapshot(&snap, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Deleting the source PVC")
+			err = deletePVCAndValidatePV(f.ClientSet, sourcePVC, deployTimeout)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// validate all backend rbd images are cleaned up
+			validateRBDImageCount(f, 0, nvmeofPool)
+			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
+			validateOmapCount(f, 0, rbdType, nvmeofPool, snapsType)
+		})
+
 		ginkgo.It("test volumeGroupSnapshot", func() {
 			scName := nvmeofStorageClass
 			snapshotter, err := newNVMeOFVolumeGroupSnapshot(
