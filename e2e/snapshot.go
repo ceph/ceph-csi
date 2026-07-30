@@ -184,6 +184,39 @@ func deleteRBDSnapshotClass() error {
 	return sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
 }
 
+func createNVMeoFSnapshotClass(f *framework.Framework) error {
+	scPath := fmt.Sprintf("%s/%s", nvmeofExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+
+	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = nvmeofProvisionerSecretName
+
+	fsID, err := getClusterID(f)
+	if err != nil {
+		return fmt.Errorf("failed to get clusterID: %w", err)
+	}
+	sc.Parameters["clusterID"] = fsID
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+	_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+
+	return err
+}
+
+func deleteNVMeoFSnapshotClass() error {
+	scPath := fmt.Sprintf("%s/%s", nvmeofExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+
+	return sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+}
+
 func createCephFSSnapshotClass(f *framework.Framework) error {
 	scPath := fmt.Sprintf("%s/%s", cephFSExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
