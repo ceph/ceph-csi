@@ -39,13 +39,24 @@ func TestNoOpChecker(t *testing.T) {
 		t.Error("checker failed to start")
 	}
 
-	// check health, should always be healthy with the expected message
+	// check health, should be healthy with the expected message
 	healthy, msg := checker.isHealthy()
 	if !healthy {
 		t.Error("NoOpChecker should always return healthy=true")
 	}
 	if msg != nil {
 		t.Error("NoOpChecker should never return an error message")
+	}
+
+	// verify the isHealthy override
+	// prevents the base checker from marking it unhealthy
+	checker.lastUpdate = checker.lastUpdate.Add(-(checker.interval + checker.timeout + time.Minute))
+	healthy, msg = checker.isHealthy()
+	if !healthy {
+		t.Error("NoOpChecker should stay healthy even after timeout window")
+	}
+	if msg != nil {
+		t.Errorf("unexpected message after timeout window: %v", msg)
 	}
 
 	// verify it stays healthy over time
