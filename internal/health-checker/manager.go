@@ -32,6 +32,8 @@ const (
 	// FileCheckerType writes and reads a timestamp to a file for checking the
 	// volume health.
 	FileCheckerType
+	// NoOpCheckerType is a no-operation checker that always returns healthy.
+	NoOpCheckerType
 )
 
 // Manager provides the API for getting the health status of a volume. The main
@@ -147,9 +149,18 @@ func (hcm *healthCheckManager) createChecker(volumeID, path string, ct CheckerTy
 		return hcm.startFileChecker(volumeID, path, shared)
 	case StatCheckerType:
 		return hcm.startStatChecker(volumeID, path, shared)
+	case NoOpCheckerType:
+		return hcm.startNoOpChecker(volumeID, path, shared)
 	}
 
 	return nil
+}
+
+// startNoOpChecker initializes the noOpChecker and starts it.
+func (hcm *healthCheckManager) startNoOpChecker(volumeID, path string, shared bool) error {
+	cc := newNoOpChecker()
+
+	return hcm.startChecker(cc, volumeID, path, shared)
 }
 
 // startFileChecker initializes the fileChecker and starts it.
