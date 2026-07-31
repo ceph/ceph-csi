@@ -1863,6 +1863,19 @@ func (ns *NodeServer) blockNodeGetVolumeStats(
 	}
 	defer rv.Destroy(ctx)
 
+	// DiffIterate requires object-map, fast-diff, and exclusive-lock on the entire chain
+	requiredFeatures := librbd.FeatureObjectMap | librbd.FeatureFastDiff | librbd.FeatureExclusiveLock
+	hasRequiredFeatures, err := rv.imageChainHasFeature(ctx, requiredFeatures)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check required features on image chain %s: %v",
+			rv, err)
+	}
+	if !hasRequiredFeatures {
+		log.DebugLog(ctx, "image %s or a parent lacks required features (object-map, fast-diff, exclusive-lock), skipping DiffIterate", rv)
+
+		return getBlockMetrics(ctx, targetPath)
+	}
+
 	usedBytes, err := rv.getUsedBytes(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get used bytes for volume %s: %v",
