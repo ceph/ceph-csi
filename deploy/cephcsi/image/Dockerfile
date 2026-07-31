@@ -1,7 +1,7 @@
 ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
 ARG BASE_IMAGE
-ARG FINAL_BASE_IMAGE="docker.io/rockylinux/rockylinux:10-minimal"
+ARG FINAL_BASE_IMAGE="quay.io/rockylinux/rockylinux:10-minimal"
 
 FROM ${BASE_IMAGE} as updated_base
 
