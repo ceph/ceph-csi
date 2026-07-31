@@ -1114,6 +1114,74 @@ func (ri *rbdImage) hasFeature(feature uint64) bool {
 	return (uint64(ri.ImageFeatureSet) & feature) == feature
 }
 
+// allImageInChainHasFeature returns true only if every image in the clone chain
+// (starting from ri and walking up through parents) has the given feature
+// enabled. This is useful for operations like DiffIterate that traverse the
+// full parent chain and require a feature (fast-diff, exclusive-lock, object-map) on all ancestors.
+func (ri *rbdImage) allImageInChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
+	rbdImg := rbdImage{}
+
+	rbdImg.Pool = ri.Pool
+	rbdImg.RadosNamespace = ri.RadosNamespace
+	rbdImg.Monitors = ri.Monitors
+	rbdImg.RbdImageName = ri.RbdImageName
+	rbdImg.conn = ri.conn.Copy()
+	defer rbdImg.Destroy(ctx)
+
+	for {
+		if rbdImg.RbdImageName == "" {
+			return true, nil
+		}
+
+		hasFeature := false
+		err := func() error {
+			if err := rbdImg.openIoctx(); err != nil {
+				return err
+			}
+			defer func() {
+				rbdImg.ioctx.Destroy()
+				rbdImg.ioctx = nil
+			}()
+
+			var img *librbd.Image
+			var err error
+			if rbdImg.ImageID != "" {
+				img, err = rbdImg.openReadOnlyByID()
+			} else {
+				img, err = rbdImg.openReadOnly()
+			}
+			if err != nil {
+				return err
+			}
+			defer img.Close() //nolint:errcheck // not a critical failure
+
+			err = rbdImg.setImageInfo(img)
+			if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+				return err
+			}
+
+			hasFeature = rbdImg.hasFeature(feature)
+
+			return nil
+		}()
+		if err != nil {
+			log.ErrorLog(ctx, "failed to check feature on image %s: %s", rbdImg.String(), err)
+
+			return false, err
+		}
+
+		if !hasFeature {
+			log.DebugLog(ctx, "image %s in chain lacks feature %d", rbdImg.String(), feature)
+
+			return false, nil
+		}
+
+		rbdImg.ImageID = rbdImg.ParentImageID
+		rbdImg.RbdImageName = rbdImg.ParentName
+		rbdImg.Pool = rbdImg.ParentPool
+	}
+}
+
 func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
 	rbdImg := rbdImage{}
 
