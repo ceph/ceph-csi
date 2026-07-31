@@ -27,6 +27,7 @@ import (
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/driver"
+	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/rbd/features"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -82,6 +83,7 @@ func NewNodeServer(
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, cliReadAffinityMapOptions, topology, nodeLabels),
 		VolumeLocks:       util.NewIDLocker(),
 	}
+	ns.SetHealthChecker(hc.NewHealthCheckManager())
 
 	return &ns
 }

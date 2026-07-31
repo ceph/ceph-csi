@@ -24,7 +24,6 @@ func newNoOpChecker() ConditionChecker {
 	nc := &noOpChecker{}
 	nc.initDefaults()
 
-	// always healthy, no errors
 	nc.healthy = true
 	nc.err = nil
 
@@ -37,4 +36,12 @@ func newNoOpChecker() ConditionChecker {
 	}
 
 	return nc
+}
+
+// always healthy, no errors
+// overrides checker.isHealthy() so that the timeout-based
+// staleness check (which compares lastUpdate against interval+timeout)
+// never marks a NoOp checker unhealthy
+func (nc *noOpChecker) isHealthy() (bool, error) {
+	return true, nil
 }
