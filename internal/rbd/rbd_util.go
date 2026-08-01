@@ -2031,6 +2031,63 @@ func cleanupRBDImageMetadataStash(metaDataPath string) error {
 	return nil
 }
 
+// The "/csi" directory inside the container is backed by the
+// host-path volume "socket-dir" (ref rbd-plugin DaemonSet yaml file)
+// which maps to "/var/lib/kubelet/plugins/rbd.csi.ceph.com" on the node.
+const volumeInfoDir = "/csi/volume-info"
+
+// Holds per-volume metadata that needs to persist across
+// node-plugin restarts, indexed by volumeID.
+type volumeInfo struct {
+	IsBlockMode bool `json:"isBlockMode"`
+}
+
+// This function is different from "stashRBDImageMetadata" which stores info at stagingPath.
+// Not all RPCs have access to the stagingPath. For example,
+// NodeGetVolumeStats uses this to determine the volume mode using volumeID as the index.
+func stashVolumeInfo(volumeID string, info *volumeInfo) error {
+	if err := os.MkdirAll(volumeInfoDir, 0o750); err != nil {
+		return fmt.Errorf("failed to create volume-info directory: %w", err)
+	}
+
+	encodedBytes, err := json.Marshal(info)
+	if err != nil {
+		return fmt.Errorf("failed to marshal volume info for %s: %w", volumeID, err)
+	}
+
+	fPath := filepath.Join(volumeInfoDir, volumeID+".json")
+	if err = os.WriteFile(fPath, encodedBytes, 0o600); err != nil {
+		return fmt.Errorf("failed to stash volume info for %s: %w", volumeID, err)
+	}
+
+	return nil
+}
+
+func lookupVolumeInfo(volumeID string) (*volumeInfo, error) {
+	fPath := filepath.Join(volumeInfoDir, volumeID+".json")
+
+	encodedBytes, err := os.ReadFile(fPath) // #nosec - intended reading from fPath
+	if err != nil {
+		return nil, err
+	}
+
+	var info volumeInfo
+	if err = json.Unmarshal(encodedBytes, &info); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal volume info for %s: %w", volumeID, err)
+	}
+
+	return &info, nil
+}
+
+func removeVolumeInfo(volumeID string) error {
+	fPath := filepath.Join(volumeInfoDir, volumeID+".json")
+	if err := os.Remove(fPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove volume info for %s: %w", volumeID, err)
+	}
+
+	return nil
+}
+
 // expand checks if the requestedVolume size and the existing image size both
 // are same. If they are same, it returns nil else it resizes the image.
 func (rv *rbdVolume) expand() error {

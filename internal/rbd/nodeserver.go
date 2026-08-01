@@ -385,6 +385,10 @@ func (ns *NodeServer) NodeStageVolume(
 		} else if !isNotMnt {
 			log.DebugLog(ctx, "rbd: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
 
+			if stashErr := stashVolumeInfo(volID, &volumeInfo{IsBlockMode: isBlock}); stashErr != nil {
+				log.WarningLog(ctx, "failed to stash volume info for %s: %v", volID, stashErr)
+			}
+
 			ns.startSharedHealthChecker(ctx, volID, stagingTargetPath, isBlock)
 
 			return &csi.NodeStageVolumeResponse{}, nil
@@ -406,6 +410,10 @@ func (ns *NodeServer) NodeStageVolume(
 		err = healerStageTransaction(ctx, cr, rv, stagingParentPath)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if stashErr := stashVolumeInfo(volID, &volumeInfo{IsBlockMode: isBlock}); stashErr != nil {
+			log.WarningLog(ctx, "failed to stash volume info for %s: %v", volID, stashErr)
 		}
 
 		ns.startSharedHealthChecker(ctx, volID, stagingTargetPath, isBlock)
@@ -447,6 +455,10 @@ func (ns *NodeServer) NodeStageVolume(
 		"rbd: successfully mounted volume %s to stagingTargetPath %s",
 		volID,
 		stagingTargetPath)
+
+	if stashErr := stashVolumeInfo(volID, &volumeInfo{IsBlockMode: isBlock}); stashErr != nil {
+		log.WarningLog(ctx, "failed to stash volume info for %s: %v", volID, stashErr)
+	}
 
 	ns.startSharedHealthChecker(ctx, volID, stagingTargetPath, isBlock)
 
@@ -1354,6 +1366,11 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 		// It was not mounted and image metadata is also missing, we are done as the last step in
 		// the staging transaction is complete
+		// remove the volume info stash for this volumeID (in case it exists)
+		if err = removeVolumeInfo(volID); err != nil {
+			log.WarningLog(ctx, "failed to remove volume info for %s: %v", volID, err)
+		}
+
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
 
@@ -1387,6 +1404,10 @@ func (ns *NodeServer) NodeUnstageVolume(
 		log.ErrorLog(ctx, "failed to cleanup image metadata stash (%v)", err)
 
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if err = removeVolumeInfo(volID); err != nil {
+		log.WarningLog(ctx, "failed to remove volume info for %s: %v", volID, err)
 	}
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
@@ -1716,6 +1737,14 @@ func (ns *NodeServer) NodeGetVolumeStats(
 		// NOTE: rbd.getStagingPath() uses os.Stat() internally which
 		// if called synchronously, could block indefinitely.
 
+		var checkerType hc.CheckerType = hc.StatCheckerType
+		info, lookupErr := lookupVolumeInfo(volumeId)
+		if lookupErr == nil && info.IsBlockMode {
+			checkerType = hc.NoOpCheckerType
+		} else if lookupErr != nil {
+			log.DebugLog(ctx, "could not lookup volume info for %s: %v", volumeId, lookupErr)
+		}
+
 		// Start the background checker and return
 		// immediately instead of calling os.Stat() on this goroutine.
 		// If the mount is unresponsive, os.Stat() would block,
@@ -1723,27 +1752,6 @@ func (ns *NodeServer) NodeGetVolumeStats(
 		// calls for this path from reaching isHealthy().
 		// The background checker will do the stat(), the next periodic
 		// call will pick up the result (or detect the timeout).
-
-		var checkerType hc.CheckerType = hc.StatCheckerType
-
-		// Known bug for filesystem-mode volumes, still causing
-		// the calling goroutine to block indefinitely on an
-		// unresponsive mount:
-		// when the node-plugin restarts
-		// (healthy = true, msg = "first check not yet completed"),
-		// this block of code is executed and if the mount is already
-		// unresponsive, this call blocks while holding the VolumeLock,
-		// causing all subsequent NodeGetVolumeStats calls for this path
-		// to fail with "Aborted".
-		// TODO: remove synchronous os.Stat() for volume mode detection here.
-		stat, statErr := os.Stat(targetPath)
-		if statErr != nil {
-			log.WarningLog(ctx, "failed to stat targetPath %q: %v",
-				targetPath, statErr)
-		} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
-			checkerType = hc.NoOpCheckerType
-		}
-
 		err = ns.healthChecker.StartChecker(volumeId, targetPath, checkerType)
 		if err != nil {
 			log.WarningLog(ctx, "failed to start healthchecker: %v", err)
@@ -1769,8 +1777,6 @@ func (ns *NodeServer) NodeGetVolumeStats(
 
 	// warning: reaching here should mean that synchronous os.Stat()
 	// call is safe and will not indefinitely block/hang
-	// NOTE: we have a known bug (mentioned above) which still
-	// causes hangs, that needs to be fixed.
 	stat, err := os.Stat(targetPath)
 	if err != nil {
 		if util.IsCorruptedMountError(err) {

@@ -41,7 +41,7 @@ func newNoOpChecker() ConditionChecker {
 // always healthy, no errors
 // overrides checker.isHealthy() so that the timeout-based
 // staleness check (which compares lastUpdate against interval+timeout)
-// never marks a NoOp checker unhealthy
+// never marks a NoOp checker unhealthy.
 func (nc *noOpChecker) isHealthy() (bool, error) {
 	return true, nil
 }
