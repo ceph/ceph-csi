@@ -18,6 +18,7 @@ package lock
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"syscall"
 	"time"
@@ -26,6 +27,12 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
+
+// ErrLockNotPermitted is returned when the CephX credentials are not allowed to
+// perform the lock operation. Locking is a RADOS class operation, so it needs
+// the class-exec permission on the pool, and caps that cover the RADOS
+// namespace of the IO context.
+var ErrLockNotPermitted = errors.New("not allowed to lock")
 
 // IOCtxLock provides methods for acquiring and releasing exclusive locks on a volume.
 // using rados IO context locks.
@@ -82,6 +89,8 @@ func (lck *lock) LockExclusive(ctx context.Context) error {
 		case -int(syscall.EEXIST):
 			return fmt.Errorf("lock is already held by the same client and cookie pair for %v volume",
 				lck.volID)
+		case -int(syscall.EPERM), -int(syscall.EACCES):
+			return fmt.Errorf("%w volume ID %v", ErrLockNotPermitted, lck.volID)
 		default:
 			return fmt.Errorf("failed to lock volume ID %v: %w", lck.volID, err)
 		}
