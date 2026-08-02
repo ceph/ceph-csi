@@ -669,6 +669,70 @@ var _ = Describe(cephfsType, func() {
 					}
 				})
 			}
+
+			It("verify the fscrypt lock is taken in the CephFS RADOS namespace", func() {
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "secrets-metadata-test",
+				}
+				err := createCephfsStorageClass(f.ClientSet, f, true, scOpts)
+				if err != nil {
+					logAndFail("failed to create CephFS storageclass: %v", err)
+				}
+
+				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create PVC and application binding: %v", err)
+				}
+
+				imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+				if err != nil {
+					logAndFail("failed to get image info from PVC: %v", err)
+				}
+
+				// Staging an encrypted volume serializes the fscrypt setup
+				// with a RADOS lock on an object named after the ObjectUUID
+				// of the volume. The lock must live in the RADOS namespace
+				// configured as cephFS.radosNamespace, where cephfsOptions()
+				// points the rados commands.
+				//
+				// The lock is released before NodeStageVolume returns, so it
+				// can not be observed directly. Instead this relies on
+				// cls_lock leaving the object behind on unlock, which holds
+				// for every lock type except LOCK_EXCLUSIVE_EPHEMERAL. If
+				// the fscrypt lock ever becomes ephemeral, this check needs
+				// a new way to observe the namespace of the lock.
+				_, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rados stat %s %s", imageData.imageID, cephfsOptions(metadataPool)),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					logAndFail("fscrypt lock object %s missing in the CephFS RADOS namespace: err=%v stdErr=%s",
+						imageData.imageID, err, stdErr)
+				}
+
+				// The transitional lock that serializes against nodeplugins
+				// which have not been upgraded yet is taken in the default
+				// RADOS namespace. Remove this check together with
+				// acquireLegacyEncryptionLock.
+				_, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rados stat %s --pool=%s", imageData.imageID, metadataPool),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					logAndFail("legacy fscrypt lock object %s missing in the default RADOS namespace: err=%v stdErr=%s",
+						imageData.imageID, err, stdErr)
+				}
+
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					logAndFail("failed to delete PVC and application: %v", err)
+				}
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete CephFS storageclass: %v", err)
+				}
+			})
 		}
 
 		It("create a PVC and check PVC/PV metadata on CephFS subvolume", func() {
