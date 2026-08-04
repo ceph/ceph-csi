@@ -2034,7 +2034,7 @@ func cleanupRBDImageMetadataStash(metaDataPath string) error {
 // The "/csi" directory inside the container is backed by the
 // host-path volume "socket-dir" (ref rbd-plugin DaemonSet yaml file)
 // which maps to "/var/lib/kubelet/plugins/rbd.csi.ceph.com" on the node.
-const volumeInfoDir = "/csi/volume-info"
+var volumeInfoDir = "/csi/volume-info"
 
 // Holds per-volume metadata that needs to persist across
 // node-plugin restarts, indexed by volumeID.
