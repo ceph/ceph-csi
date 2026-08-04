@@ -1742,7 +1742,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 		if lookupErr == nil && info.IsBlockMode {
 			checkerType = hc.NoOpCheckerType
 		} else if lookupErr != nil {
-			log.DebugLog(ctx, "could not lookup volume info for %s: %v", volumeId, lookupErr)
+			log.WarningLog(ctx, "could not lookup volume info for %s: %v", volumeId, lookupErr)
 		}
 
 		// Start the background checker and return
