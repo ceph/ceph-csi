@@ -284,6 +284,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	if err != nil {
 		return nil, getGRPCError(err)
 	}
+	defer rbdVol.Destroy(ctx)
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -355,6 +356,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	if err != nil {
 		return nil, getGRPCError(err)
 	}
+	defer rbdVol.Destroy(ctx)
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -424,6 +426,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	if err != nil {
 		return nil, getGRPCError(err)
 	}
+	defer rbdVol.Destroy(ctx)
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -512,6 +515,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	if err != nil {
 		return nil, getGRPCError(err)
 	}
+	defer rbdVol.Destroy(ctx)
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -629,6 +633,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	if err != nil {
 		return nil, getGRPCError(err)
 	}
+	defer rbdVol.Destroy(ctx)
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -868,6 +873,7 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 
 		return nil, err
 	}
+	defer rbdVol.Destroy(ctx)
 	mirror, err := rbdVol.ToMirror()
 	if err != nil {
 		log.ErrorLog(ctx, "failed to convert volume %q to mirror type: %v", rbdVol, err)
