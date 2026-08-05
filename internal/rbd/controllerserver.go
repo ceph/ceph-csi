@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 
 	osdAdmin "github.com/ceph/go-ceph/common/admin/osd"
@@ -159,27 +160,65 @@ func validateQoSParameters(mutableParams map[string]string, mounter string) erro
 		// NBD mounter: only NBD QoS params are valid.
 		// The shared keys (maxReadIops, etc.) serve as NBD max limits here.
 		if HasQoSParams(mutableParams) {
+			if unknown := unrecognizedKeys(mutableParams, nbdQoSKnownKeys); len(unknown) > 0 {
+				return fmt.Errorf("mutable parameters %v are not recognized QoS parameters for %q mounter",
+					unknown, mounter)
+			}
+
 			return validateNBDQoSParams(mutableParams)
 		}
 
-		return nil
+		keys := slices.Sorted(maps.Keys(mutableParams))
+
+		return fmt.Errorf("mutable parameters %v for %q mounter are missing required base QoS parameters",
+			keys, mounter)
 	}
 
 	// krbd mounter: only cgroup v2 QoS params are supported.
 	// Reject any NBD-specific params that won't be applied via cgroup.
 	if HasQoSParams(mutableParams) {
-		return fmt.Errorf(
-			"NBD QoS parameters (baseIops, baseReadIops, etc.) are not supported with %q mounter, "+
-				"use cgroup QoS parameters (maxReadIops, maxWriteIops, maxReadBps, maxWriteBps)", mounter)
+		keys := slices.Sorted(maps.Keys(mutableParams))
+
+		return fmt.Errorf("mutable parameters %v contain NBD-specific QoS parameters not supported with %q mounter",
+			keys, mounter)
 	}
 
 	if hasCgroupQoSParams(mutableParams) {
+		if unknown := unrecognizedKeys(mutableParams, cgroupQoSKnownKeys()); len(unknown) > 0 {
+			return fmt.Errorf("mutable parameters %v are not recognized QoS parameters for %q mounter",
+				unknown, mounter)
+		}
+
 		if err := validateCgroupQoSParams(mutableParams); err != nil {
 			return fmt.Errorf("invalid cgroup QoS parameters: %w", err)
 		}
+
+		return nil
 	}
 
-	return nil
+	keys := slices.Sorted(maps.Keys(mutableParams))
+
+	return fmt.Errorf("mutable parameters %v for %q mounter are missing required cgroup QoS parameters",
+		keys, mounter)
+}
+
+// unrecognizedKeys returns parameter keys not present in the known set.
+func unrecognizedKeys(params map[string]string, known []string) []string {
+	knownSet := make(map[string]struct{}, len(known))
+	for _, k := range known {
+		knownSet[k] = struct{}{}
+	}
+
+	var unknown []string
+	for k := range params {
+		if _, ok := knownSet[k]; !ok {
+			unknown = append(unknown, k)
+		}
+	}
+
+	slices.Sort(unknown)
+
+	return unknown
 }
 
 // parseVolCreateRequest take create volume `request` argument and make use of the
@@ -2075,8 +2114,10 @@ func (cs *ControllerServer) ControllerModifyVolume(
 		return nil, status.Errorf(codes.Internal, "failed to determine volume mounter type: %v", err)
 	}
 
-	if err = validateQoSParameters(mutableParameters, rbdVol.Mounter); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if len(mutableParameters) > 0 {
+		if err = validateQoSParameters(mutableParameters, rbdVol.Mounter); err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 	}
 
 	// set RequestedVolSize, because calcQosBasedOnCapacity use it.
@@ -2085,6 +2126,10 @@ func (cs *ControllerServer) ControllerModifyVolume(
 	err = rbdVol.modifyVolumeAttributes(ctx, mutableParameters)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to modify volume: %s with error: %v", rbdVol, err)
+
+		if errors.Is(err, rbderrors.ErrInvalidArgument) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}

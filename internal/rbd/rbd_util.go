@@ -2571,11 +2571,12 @@ func (rv *rbdVolume) modifyVolumeAttributes(
 	}
 
 	// Find and apply the QoS type present in the request.
+	// Unrecognized keys are already rejected by validateQoSParameters.
 	for _, handler := range handlers {
 		if handler.HasParams(newMutableParameters) {
 			// Validate parameters before applying.
 			if err := handler.Validate(newMutableParameters); err != nil {
-				return err
+				return fmt.Errorf("%w: %w", rbderrors.ErrInvalidArgument, err)
 			}
 
 			// Apply the QoS settings.

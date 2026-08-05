@@ -112,6 +112,15 @@ func newNBDQoSHandler(volume *rbdVolume) QoSHandler {
 	return &nbdQoSHandler{volume: volume}
 }
 
+// nbdQoSKnownKeys lists all parameter keys recognized by the NBD QoS handler.
+var nbdQoSKnownKeys = []string{
+	baseIops, maxIops, baseReadIops, maxReadIops, baseWriteIops, maxWriteIops,
+	baseBps, maxBps, baseReadBps, maxReadBps, baseWriteBps, maxWriteBps,
+	iopsPerGiB, readIopsPerGiB, writeIopsPerGiB,
+	bpsPerGiB, readBpsPerGiB, writeBpsPerGiB,
+	baseVolSizeBytes,
+}
+
 // HasParams checks if traditional NBD QoS parameters are present in the request.
 func (h *nbdQoSHandler) HasParams(params map[string]string) bool {
 	return HasQoSParams(params)
@@ -125,16 +134,7 @@ func (h *nbdQoSHandler) Validate(params map[string]string) error {
 // validateNBDQoSParams validates traditional NBD QoS parameters.
 // Ensures all numeric values are valid and positive.
 func validateNBDQoSParams(params map[string]string) error {
-	// All NBD QoS parameter keys that accept numeric values
-	numericParams := []string{
-		baseIops, maxIops, baseReadIops, maxReadIops, baseWriteIops, maxWriteIops,
-		baseBps, maxBps, baseReadBps, maxReadBps, baseWriteBps, maxWriteBps,
-		iopsPerGiB, readIopsPerGiB, writeIopsPerGiB,
-		bpsPerGiB, readBpsPerGiB, writeBpsPerGiB,
-		baseVolSizeBytes,
-	}
-
-	for _, key := range numericParams {
+	for _, key := range nbdQoSKnownKeys {
 		if val, ok := params[key]; ok && val != "" {
 			parsed, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
