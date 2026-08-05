@@ -122,9 +122,9 @@ func rbdOptions(pool string) string {
 
 // supportsVolumeAttributesClass returns true when both the Kubernetes cluster
 // (>= 1.34) and the deployed ceph-csi (>= 3.17) support VolumeAttributesClass.
-func supportsVolumeAttributesClass(c kubernetes.Interface, f *framework.Framework) bool {
+func supportsVolumeAttributesClass(c kubernetes.Interface, f *framework.Framework, daemonsetName string) bool {
 	return k8sVersionGreaterEquals(c, 1, 34) &&
-		cephcsiVersionGreaterEquals(f, rbdDaemonsetName, rbdContainerName, 3, 17)
+		cephcsiVersionGreaterEquals(f, daemonsetName, rbdContainerName, 3, 17)
 }
 
 func createRBDStorageClass(
@@ -2001,11 +2001,12 @@ func validateIOMax(
 	appPod *v1.Pod,
 	pvc *v1.PersistentVolumeClaim,
 	wants map[string]string,
+	daemonsetName string,
 ) error {
 	podUID := string(appPod.UID)
 	nodeName := appPod.Spec.NodeName
 
-	pluginPodName, err := getDaemonsetPodOnNode(f, rbdDaemonsetName, nodeName, cephCSINamespace)
+	pluginPodName, err := getDaemonsetPodOnNode(f, daemonsetName, nodeName, cephCSINamespace)
 	if err != nil {
 		return fmt.Errorf("failed to find csi-rbdplugin pod on node %s: %w", nodeName, err)
 	}
