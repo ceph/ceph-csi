@@ -66,36 +66,43 @@ func deleteVault() {
 }
 
 func createORDeleteVault(action kubectlAction) {
-	data, err := replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
+	serviceData, err := replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
 	if err != nil {
 		logAndFail("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
 	}
+	serviceData = strings.ReplaceAll(serviceData, "vault.default", "vault."+cephCSINamespace)
+	serviceData = strings.ReplaceAll(serviceData, "value: default", "value: "+cephCSINamespace)
 
-	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
-
-	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
-	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
-	if err != nil {
-		logAndFail("failed to %s vault statefulset %v", action, err)
-	}
-
-	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultRBACPath)
+	rbacData, err := replaceNamespaceInTemplate(vaultExamplePath + vaultRBACPath)
 	if err != nil {
 		logAndFail("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
-	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
-	if err != nil {
-		logAndFail("failed to %s vault statefulset %v", action, err)
-	}
 
-	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultConfigPath)
+	configData, err := replaceNamespaceInTemplate(vaultExamplePath + vaultConfigPath)
 	if err != nil {
 		logAndFail("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
 	}
-	data = strings.ReplaceAll(data, "default", cephCSINamespace)
-	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
-	if err != nil {
-		logAndFail("failed to %s vault configmap %v", action, err)
+	configData = strings.ReplaceAll(configData, "default", cephCSINamespace)
+
+	// On create: RBAC first so the ServiceAccount exists before the
+	// vault-init-job tries to use it. On delete: service before RBAC.
+	manifests := []struct {
+		data string
+		desc string
+	}{
+		{rbacData, "vault rbac"},
+		{serviceData, "vault service"},
+		{configData, "vault configmap"},
+	}
+	if action == kubectlDelete {
+		manifests[0], manifests[1] = manifests[1], manifests[0]
+	}
+
+	for _, m := range manifests {
+		err = retryKubectlInput(cephCSINamespace, action, m.data, deployTimeout)
+		if err != nil {
+			logAndFail("failed to %s %s: %v", action, m.desc, err)
+		}
 	}
 }
 
