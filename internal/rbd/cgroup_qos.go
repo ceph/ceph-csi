@@ -20,8 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -99,6 +101,11 @@ type cgroupQoSHandler struct {
 // newCgroupQoSHandler creates a new cgroup QoS handler.
 func newCgroupQoSHandler(volume *rbdVolume) QoSHandler {
 	return &cgroupQoSHandler{volume: volume}
+}
+
+// cgroupQoSKnownKeys returns the cgroup v2 QoS parameter keys.
+func cgroupQoSKnownKeys() []string {
+	return slices.Collect(maps.Keys(qosParamToMetadataKey))
 }
 
 // HasParams checks if cgroup v2 QoS parameters are present in the request.

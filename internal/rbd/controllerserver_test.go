@@ -17,6 +17,7 @@ limitations under the License.
 package rbd
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -203,7 +204,7 @@ func TestValidateQoSParameters(t *testing.T) {
 			name:    "krbd with empty params",
 			params:  map[string]string{},
 			mounter: rbdDefaultMounter,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "nbd with NBD params and max limits",
@@ -227,7 +228,37 @@ func TestValidateQoSParameters(t *testing.T) {
 			name:    "nbd with empty params",
 			params:  map[string]string{},
 			mounter: rbdNbdMounter,
-			wantErr: false,
+			wantErr: true,
+		},
+		{
+			name:    "krbd with misspelled cgroup param",
+			params:  map[string]string{"readIOPS": "1000"},
+			mounter: rbdDefaultMounter,
+			wantErr: true,
+		},
+		{
+			name:    "krbd with completely unknown param",
+			params:  map[string]string{"fooBar": "123"},
+			mounter: rbdDefaultMounter,
+			wantErr: true,
+		},
+		{
+			name:    "nbd with misspelled param",
+			params:  map[string]string{"readIOPS": "1000"},
+			mounter: rbdNbdMounter,
+			wantErr: true,
+		},
+		{
+			name:    "nbd with valid and unknown params",
+			params:  map[string]string{baseIops: "3000", "unknownKey": "value"},
+			mounter: rbdNbdMounter,
+			wantErr: true,
+		},
+		{
+			name:    "krbd with valid cgroup and unknown params",
+			params:  map[string]string{maxReadIops: "1000", "typoParam": "50"},
+			mounter: rbdDefaultMounter,
+			wantErr: true,
 		},
 	}
 
@@ -237,6 +268,67 @@ func TestValidateQoSParameters(t *testing.T) {
 			err := validateQoSParameters(tt.params, tt.mounter)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateQoSParameters() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUnrecognizedKeys(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		params   map[string]string
+		known    []string
+		expected []string
+	}{
+		{
+			name:     "all keys recognized",
+			params:   map[string]string{"a": "1", "b": "2"},
+			known:    []string{"a", "b", "c"},
+			expected: nil,
+		},
+		{
+			name:     "some keys unrecognized",
+			params:   map[string]string{"a": "1", "x": "2", "y": "3"},
+			known:    []string{"a", "b"},
+			expected: []string{"x", "y"},
+		},
+		{
+			name:     "all keys unrecognized",
+			params:   map[string]string{"x": "1", "y": "2"},
+			known:    []string{"a", "b"},
+			expected: []string{"x", "y"},
+		},
+		{
+			name:     "empty params",
+			params:   map[string]string{},
+			known:    []string{"a"},
+			expected: nil,
+		},
+		{
+			name:     "empty known list",
+			params:   map[string]string{"a": "1"},
+			known:    []string{},
+			expected: []string{"a"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := unrecognizedKeys(tt.params, tt.known)
+			slices.Sort(got)
+			slices.Sort(tt.expected)
+			if len(got) != len(tt.expected) {
+				t.Fatalf("unrecognizedKeys() = %v, expected %v", got, tt.expected)
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("unrecognizedKeys() = %v, expected %v", got, tt.expected)
+
+					break
+				}
 			}
 		})
 	}
