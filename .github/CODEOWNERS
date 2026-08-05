@@ -1,0 +1,14 @@
+# Ceph-CSI CODEOWNERS
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for all files
+# Maintainers:
+#   - Madhu-1
+#   - nixpanic
+#   - Rakshith-R
+# Contributors:
+#   - black-dragon74
+#   - gadididi
+#   - iPraveenParihar
+#   - Nikhil-Ladha
+*       @ceph/ceph-csi-maintainers @ceph/ceph-csi-contributors
