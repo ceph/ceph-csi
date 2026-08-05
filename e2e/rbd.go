@@ -5925,7 +5925,7 @@ var _ = Describe("RBD", func() {
 		})
 
 		It("validate rbd image qos by volumeattributesclass", func() {
-			if !supportsVolumeAttributesClass(c, f) {
+			if !supportsVolumeAttributesClass(c, f, rbdDeployment.getDaemonsetName()) {
 				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34 and ceph-csi >= 3.17")
 
 				return
@@ -6304,7 +6304,7 @@ var _ = Describe("RBD", func() {
 		})
 
 		It("validate cgroup v2 qos by volumeattributesclass", func() {
-			if !supportsVolumeAttributesClass(c, f) {
+			if !supportsVolumeAttributesClass(c, f, rbdDeployment.getDaemonsetName()) {
 				framework.Logf("skipping VolumeAttributesClass test, needs Kubernetes >= 1.34 and ceph-csi >= 3.17")
 
 				return
@@ -6435,7 +6435,7 @@ var _ = Describe("RBD", func() {
 			if err != nil {
 				logAndFail("failed to get app pod: %v", err)
 			}
-			err = validateIOMax(f, appPod, pvc, wantsMedium)
+			err = validateIOMax(f, appPod, pvc, wantsMedium, rbdDeployment.getDaemonsetName())
 			if err != nil {
 				logAndFail("failed to validate io.max for RWO filesystem: %v", err)
 			}
@@ -6493,7 +6493,7 @@ var _ = Describe("RBD", func() {
 			if err != nil {
 				logAndFail("failed to get block app pod: %v", err)
 			}
-			err = validateIOMax(f, appBlockPod, pvcBlock, wantsLow)
+			err = validateIOMax(f, appBlockPod, pvcBlock, wantsLow, rbdDeployment.getDaemonsetName())
 			if err != nil {
 				logAndFail("failed to validate io.max for RWO block: %v", err)
 			}
@@ -6559,7 +6559,7 @@ var _ = Describe("RBD", func() {
 			if err != nil {
 				logAndFail("failed to get RWOP app pod: %v", err)
 			}
-			err = validateIOMax(f, appRWOPPod, pvcRWOP, wantsHigh)
+			err = validateIOMax(f, appRWOPPod, pvcRWOP, wantsHigh, rbdDeployment.getDaemonsetName())
 			if err != nil {
 				logAndFail("failed to validate io.max for RWOP: %v", err)
 			}
