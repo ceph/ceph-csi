@@ -222,6 +222,9 @@ func GetFenceClients(
 	enableFencing bool,
 ) (*fence.GetFenceClientsResponse, error) {
 	options := req.GetParameters()
+	if options == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
 	clusterID, err := util.GetClusterID(options)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
