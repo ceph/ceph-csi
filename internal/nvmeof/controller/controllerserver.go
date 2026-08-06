@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"net"
+	"slices"
 	"strconv"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -39,6 +40,15 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
+
+// nvmeofMutableParams lists all NVMe-oF specific mutable parameters.
+var nvmeofMutableParams = []string{
+	nvmeof.RwIosPerSecond,
+	nvmeof.RwMbytesPerSecond,
+	nvmeof.RMbytesPerSecond,
+	nvmeof.WMbytesPerSecond,
+	nvmeof.AllowHostNQNs,
+}
 
 type Server struct {
 	csi.UnimplementedControllerServer
@@ -147,9 +157,22 @@ func (cs *Server) CreateVolume(
 		defer cs.volumeLocks.Release(sourceVolumeID)
 	}
 
-	// Step 1: Create RBD volume through backend. if exists, it is ok.
+	// Create a modified request without any mutable parameters for RBD
+	// NVMe-oF handles its own mutable parameters separately
+	rbdReq := &csi.CreateVolumeRequest{
+		Name:                      req.GetName(),
+		CapacityRange:             req.GetCapacityRange(),
+		VolumeCapabilities:        req.GetVolumeCapabilities(),
+		Parameters:                req.GetParameters(),
+		Secrets:                   req.GetSecrets(),
+		VolumeContentSource:       req.GetVolumeContentSource(),
+		AccessibilityRequirements: req.GetAccessibilityRequirements(),
+		// MutableParameters intentionally not set - NVMe-oF manages these separately
+	}
+
+	// Step 2: Create RBD volume through backend. if exists, it is ok.
 	// RBD backend automatically handles cloning when VolumeContentSource is present.
-	res, err := cs.backendServer.CreateVolume(ctx, req)
+	res, err := cs.backendServer.CreateVolume(ctx, rbdReq)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create RBD volume: %v", err)
 
@@ -182,7 +205,7 @@ func (cs *Server) CreateVolume(
 	// can be empty. if it was defined in config-map the rbd csi driver would have set it already
 	rbdRadosNameSpace := res.GetVolume().GetVolumeContext()["radosNamespace"]
 
-	// Step 2: Setup NVMe-oF resources
+	// Step 4: Setup NVMe-oF resources
 	var nvmeofData *nvmeof.NVMeoFVolumeData
 	// Defer: Cleanup NVMe-oF on any error (BEFORE the call!)
 	defer func() {
@@ -203,13 +226,13 @@ func (cs *Server) CreateVolume(
 
 		return nil, status.Errorf(codes.Internal, "NVMe-oF setup failed: %v", err)
 	}
-	// step 3: Populate volume context for NodeServer
+	// Step 5: Populate volume context for NodeServer
 	err = populateVolumeContext(backend, nvmeofData)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to populate volume context: %v", err)
 	}
 
-	// Step 4: Store NVMe-oF metadata in the volume context
+	// Step 6: Store NVMe-oF metadata in the volume context
 	err = cs.storeNVMeoFMetadata(ctx, req, volumeID, nvmeofData)
 	if err != nil {
 		return nil, err // Error already formatted with proper status code
@@ -370,13 +393,15 @@ func (cs *Server) ControllerModifyVolume(
 	}
 	defer cs.volumeLocks.Release(volumeID)
 
-	// Step 2: Parse QoS parameters from mutable_parameters
-	hasRBDQoS := rbd.HasQoSParams(params)
-	if hasRBDQoS {
-		log.ErrorLog(ctx, "Cannot set RBD QoS parameters on NVMe-oF volumes")
-
-		return nil, status.Error(codes.InvalidArgument, "cannot set RBD QoS parameters on NVMe-oF volumes")
+	// Step 2: Validate that only known parameters are provided
+	for param := range params {
+		if !slices.Contains(nvmeofMutableParams, param) {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"unknown mutable parameter: %s", param)
+		}
 	}
+
+	// Step 3: Parse QoS parameters from mutable_parameters
 	nvmeofQoS, err := nvmeof.NewNVMeoFQosVolumeFromParams(params)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to parse NVMe-oF QoS parameters: %v", err)
@@ -488,15 +513,19 @@ func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if countOfListeners > 0 && networkMask != "" {
 		return errors.New("must specify either 'listeners' xor 'networkMask', but got both")
 	}
-	// Validate QoS parameters - cannot mix RBD and NVMe-oF QoS
-	mutableParams := req.GetMutableParameters()
 
-	// check for RBD QoS parameters in both params and mutableParams
-	if hasRBDQoS := rbd.HasQoSParams(params); hasRBDQoS {
+	// Validate QoS parameters - cannot mix RBD and NVMe-oF QoS
+	// Check for RBD QoS parameters in regular params (not mutableParams - already validated above)
+	if rbd.HasQoSParams(params) {
 		return errors.New("setting RBD QoS parameters on NVMe-oF volumes is not supported")
 	}
-	if hasRBDQoS := rbd.HasQoSParams(mutableParams); hasRBDQoS {
-		return errors.New("setting RBD QoS parameters on NVMe-oF volumes is not supported")
+
+	// Validate that only known mutable parameters are provided
+	mutableParams := req.GetMutableParameters()
+	for param := range mutableParams {
+		if !slices.Contains(nvmeofMutableParams, param) {
+			return fmt.Errorf("unknown mutable parameter: %s", param)
+		}
 	}
 
 	// It take the mutableParams value from the volumeAttributesClassName in the PersistentVolumeClaim yaml.
