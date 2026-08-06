@@ -172,3 +172,98 @@ func TestGetGatewayConfigFromRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateCreateVolumeRequest(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		req              *csi.CreateVolumeRequest
+		shouldFail       bool
+		expectedErrorMsg string
+	}{
+		{
+			name: "valid request with supported mutable parameters",
+			req: &csi.CreateVolumeRequest{
+				Name: "test-volume",
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					"nvmeofGatewayAddress": "127.0.0.1",
+					"listeners":            `[{"hostname":"gateway-1","address":"192.168.1.1","port":4420}]`,
+				},
+				MutableParameters: map[string]string{
+					"rwIosPerSecond":    "1000",
+					"rwMbytesPerSecond": "100",
+					"rMbytesPerSecond":  "50",
+					"wMbytesPerSecond":  "50",
+				},
+			},
+			shouldFail: false,
+		},
+		{
+			name: "invalid request with unsupported mutable parameter",
+			req: &csi.CreateVolumeRequest{
+				Name: "test-volume",
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					"nvmeofGatewayAddress": "127.0.0.1",
+					"listeners":            `[{"hostname":"gateway-1","address":"192.168.1.1","port":4420}]`,
+				},
+				MutableParameters: map[string]string{
+					"unsupportedParam": "value",
+				},
+			},
+			shouldFail:       true,
+			expectedErrorMsg: "unknown mutable parameter: unsupportedParam",
+		},
+		{
+			name: "invalid request with RBD QoS parameters",
+			req: &csi.CreateVolumeRequest{
+				Name: "test-volume",
+				VolumeCapabilities: []*csi.VolumeCapability{
+					{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					},
+				},
+				Parameters: map[string]string{
+					"nvmeofGatewayAddress": "127.0.0.1",
+					"listeners":            `[{"hostname":"gateway-1","address":"192.168.1.1","port":4420}]`,
+					"baseReadIops":         "1000",
+				},
+			},
+			shouldFail:       true,
+			expectedErrorMsg: "setting RBD QoS parameters on NVMe-oF volumes is not supported",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateCreateVolumeRequest(test.req)
+			if test.shouldFail {
+				require.Error(t, err)
+				if test.expectedErrorMsg != "" {
+					require.Contains(t, err.Error(), test.expectedErrorMsg)
+				}
+
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
