@@ -265,7 +265,11 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	err = validateSchedulingDetails(ctx, req.GetParameters())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	err = validateSchedulingDetails(ctx, parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +281,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
+	mgr := rbd.NewManager(rs.driverInstance, parameters, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -349,7 +353,11 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	mgr := rbd.NewManager(rs.driverInstance, parameters, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -508,7 +516,11 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	mgr := rbd.NewManager(rs.driverInstance, parameters, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
@@ -626,7 +638,11 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
-	mgr := rbd.NewManager(rs.driverInstance, req.GetParameters(), req.GetSecrets())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	mgr := rbd.NewManager(rs.driverInstance, parameters, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	rbdVol, err := mgr.GetVolumeByID(ctx, volumeID)
