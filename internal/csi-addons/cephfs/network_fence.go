@@ -70,7 +70,11 @@ func (fcs *FenceControllerServer) FenceClusterNetwork(
 	ctx context.Context,
 	req *fence.FenceClusterNetworkRequest,
 ) (*fence.FenceClusterNetworkResponse, error) {
-	err := validateNetworkFenceReq(req.GetCidrs(), req.GetParameters())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	err := validateNetworkFenceReq(req.GetCidrs(), parameters)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -99,7 +103,11 @@ func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 	ctx context.Context,
 	req *fence.UnfenceClusterNetworkRequest,
 ) (*fence.UnfenceClusterNetworkResponse, error) {
-	err := validateNetworkFenceReq(req.GetCidrs(), req.GetParameters())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	err := validateNetworkFenceReq(req.GetCidrs(), parameters)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
