@@ -45,6 +45,14 @@ const (
 	// configured for the export in the NFS-server. It is not stored in
 	// the VolumeContext.
 	ParameterClients = "clients"
+
+	// ParameterCluster is set in the parameters on volume creation and in
+	// the VolumeContext.
+	ParameterCluster = "nfsCluster"
+
+	// ParameterSecTypes is set in the parameters on volume creation and in
+	// the VolumeContext.
+	ParameterSecTypes = "secTypes"
 )
 
 // NFSVolume presents the API for consumption by the CSI-controller to create,
@@ -139,10 +147,10 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	}
 	vctx := backend.GetVolumeContext()
 	fs := vctx["fsName"]
-	nfsCluster := vctx["nfsCluster"]
+	nfsCluster := vctx[ParameterCluster]
 	path := vctx["subvolumePath"]
-	secTypes := vctx["secTypes"]
-	clients := vctx["clients"]
+	secTypes := vctx[ParameterSecTypes]
+	clients := vctx[ParameterClients]
 
 	err := nv.setNFSCluster(nfsCluster)
 	if err != nil {
