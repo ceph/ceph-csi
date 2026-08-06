@@ -49,6 +49,8 @@ type VolumeOptions struct {
 	NamePrefix   string
 	ClusterID    string
 	MetadataPool string
+	// RADOS namespace assigned by Ceph for namespace-isolated subvolumes.
+	PoolNamespace string
 	// ReservedID represents the ID reserved for a subvolume
 	ReservedID           string
 	Monitors             string `json:"monitors"`
@@ -168,6 +170,14 @@ func validateMounter(m string) error {
 
 func (v *VolumeOptions) DetectMounter(options map[string]string) error {
 	return extractMounter(&v.Mounter, options)
+}
+
+// parseNamespaceIsolated returns true only when options contains
+// "namespaceIsolated" with value "true" (case-insensitive).
+func parseNamespaceIsolated(options map[string]string) bool {
+	v, ok := options["namespaceIsolated"]
+
+	return ok && strings.EqualFold(v, "true")
 }
 
 func extractMounter(dest *string, options map[string]string) error {
@@ -304,6 +314,8 @@ func NewVolumeOptions(
 	if err = extractOptionalOption(&opts.NamePrefix, "volumeNamePrefix", volOptions); err != nil {
 		return nil, err
 	}
+
+	opts.NamespaceIsolated = parseNamespaceIsolated(volOptions)
 
 	if err = extractOptionalOption(&backingSnapshotBool, "backingSnapshot", volOptions); err != nil {
 		return nil, err
@@ -537,6 +549,7 @@ func (vo *VolumeOptions) populateVolumeOptionsFromSubvolume(
 		vo.RootPath = info.Path
 		vo.Features = info.Features
 		vo.Size = info.BytesQuota
+		vo.PoolNamespace = info.PoolNamespace
 	}
 
 	if errors.Is(err, cerrors.ErrInvalidCommand) {

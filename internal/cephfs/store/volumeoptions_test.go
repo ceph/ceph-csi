@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsVolumeCreateRO(t *testing.T) {
@@ -217,4 +218,28 @@ func TestIsShallowVolumeSupported(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewVolumeOptions_NamespaceIsolated_True(t *testing.T) {
+	t.Parallel()
+	vo := map[string]string{"namespaceIsolated": "true"}
+	require.True(t, parseNamespaceIsolated(vo))
+}
+
+func TestNewVolumeOptions_NamespaceIsolated_False(t *testing.T) {
+	t.Parallel()
+	vo := map[string]string{"namespaceIsolated": "false"}
+	require.False(t, parseNamespaceIsolated(vo))
+}
+
+func TestNewVolumeOptions_NamespaceIsolated_Absent(t *testing.T) {
+	t.Parallel()
+	vo := map[string]string{}
+	require.False(t, parseNamespaceIsolated(vo))
+}
+
+func TestNewVolumeOptions_NamespaceIsolated_Invalid(t *testing.T) {
+	t.Parallel()
+	vo := map[string]string{"namespaceIsolated": "yes"}
+	require.False(t, parseNamespaceIsolated(vo))
 }

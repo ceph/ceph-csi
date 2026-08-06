@@ -52,6 +52,8 @@ type Subvolume struct {
 	BytesQuota int64
 	Path       string
 	Features   []string
+	// RADOS namespace assigned by Ceph when created with namespace_isolated=true. Empty for standard subvolumes.
+	PoolNamespace string
 }
 
 // SubVolumeClient is the interface that holds the signature of subvolume methods
@@ -107,6 +109,8 @@ type SubVolume struct {
 	Pool           string   // pool name where subvolume will be created.
 	Features       []string // subvolume features.
 	Size           int64    // subvolume size.
+	// Set to true to create the subvolume with a dedicated RADOS namespace.
+	NamespaceIsolated bool
 }
 
 // NewSubVolume returns a new subvolume client.
@@ -174,10 +178,17 @@ func (s *subVolumeClient) GetSubVolumeInfo(ctx context.Context) (*Subvolume, err
 		return nil, err
 	}
 
+	return subvolumeFromInfo(info, s.VolID)
+}
+
+// subvolumeFromInfo converts an fsAdmin.SubVolumeInfo to a Subvolume,
+// handling the polymorphic BytesQuota field.
+func subvolumeFromInfo(info *fsAdmin.SubVolumeInfo, volID string) (*Subvolume, error) {
 	subvol := Subvolume{
 		// only set BytesQuota when it is of type ByteCount
-		Path:     info.Path,
-		Features: make([]string, len(info.Features)),
+		Path:          info.Path,
+		PoolNamespace: info.PoolNamespace,
+		Features:      make([]string, len(info.Features)),
 	}
 	bc, ok := info.BytesQuota.(fsAdmin.ByteCount)
 	if !ok {
@@ -185,7 +196,7 @@ func (s *subVolumeClient) GetSubVolumeInfo(ctx context.Context) (*Subvolume, err
 		// or nil (in case the subvolume is in snapshot-retained state),
 		// just continue without returning quota information.
 		if !(info.BytesQuota == fsAdmin.Infinite || info.State == fsAdmin.StateSnapRetained) {
-			return nil, fmt.Errorf("subvolume %s has unsupported quota: %v", s.VolID, info.BytesQuota)
+			return nil, fmt.Errorf("subvolume %s has unsupported quota: %v", volID, info.BytesQuota)
 		}
 	} else {
 		subvol.BytesQuota = int64(bc)
@@ -221,6 +232,21 @@ func newLocalClusterState(clusterID string) {
 	}
 }
 
+// buildSubVolumeCreateOpts constructs the SubVolumeOptions from the SubVolume fields.
+func buildSubVolumeCreateOpts(sv *SubVolume) fsAdmin.SubVolumeOptions {
+	opts := fsAdmin.SubVolumeOptions{
+		Size: fsAdmin.ByteCount(sv.Size),
+	}
+	if sv.Pool != "" {
+		opts.PoolLayout = sv.Pool
+	}
+	if sv.NamespaceIsolated {
+		opts.NamespaceIsolated = true
+	}
+
+	return opts
+}
+
 // CreateVolume creates a subvolume.
 func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 	newLocalClusterState(s.clusterID)
@@ -232,12 +258,7 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 		return err
 	}
 
-	opts := fsAdmin.SubVolumeOptions{
-		Size: fsAdmin.ByteCount(s.Size),
-	}
-	if s.Pool != "" {
-		opts.PoolLayout = s.Pool
-	}
+	opts := buildSubVolumeCreateOpts(s.SubVolume)
 
 	// FIXME: check if the right credentials are used ("-n", cephEntityClientPrefix + cr.ID)
 	err = ca.CreateSubVolume(s.FsName, s.SubvolumeGroup, s.VolID, &opts)
