@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"errors"
+	"maps"
+	"slices"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -45,6 +47,21 @@ type nfsControllerServer struct {
 
 	// backendGroupServer handles the CephFS group controller requests
 	backendGroupServer csi.GroupControllerServer
+}
+
+// nfsParameters contains the list of parameters for NFS volumes. These
+// parameters should not be passed to the CephFS backend.
+var nfsParameters = []string{
+	nfs.ParameterCluster,
+	nfs.ParameterSecTypes,
+}
+
+// nfsMutableParameters contains the list of mutable parameters for NFS
+// volumes. These parameters are handled separately through
+// ControllerModifyVolume and should not be passed to the CephFS backend.
+var nfsMutableParameters = []string{
+	nfs.ParameterServer,
+	nfs.ParameterClients,
 }
 
 // Assert required implementation of CSI interfaces.
@@ -93,9 +110,47 @@ func (cs *nfsControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 ) (*csi.CreateVolumeResponse, error) {
+	// split NFS and CephFS parameters, the CephFS controller does not
+	// accept the NFS parameters and would report an error. The nfsParams
+	// need to be added to the VolumeContext for further consumption.
+	nfsParams := make(map[string]string)
+	cephfsParams := make(map[string]string)
+	for key, value := range req.GetParameters() {
+		if slices.Contains(nfsParameters, key) {
+			nfsParams[key] = value
+		} else {
+			cephfsParams[key] = value
+		}
+	}
+
 	// nfs does not supports shallow snapshots
-	req.Parameters["backingSnapshot"] = "false"
-	res, err := cs.backendServer.CreateVolume(ctx, req)
+	cephfsParams["backingSnapshot"] = "false"
+
+	// Filter out NFS-specific mutable parameters before passing to CephFS
+	// NFS handles mutable parameters separately through ControllerModifyVolume
+	nfsMutableParams := make(map[string]string)
+	cephfsMutableParams := make(map[string]string)
+	for key, value := range req.GetMutableParameters() {
+		if slices.Contains(nfsMutableParameters, key) {
+			nfsMutableParams[key] = value
+		} else {
+			cephfsMutableParams[key] = value
+		}
+	}
+
+	// Create a modified request without mutable parameters for CephFS
+	cephfsReq := &csi.CreateVolumeRequest{
+		Name:                      req.GetName(),
+		CapacityRange:             req.GetCapacityRange(),
+		VolumeCapabilities:        req.GetVolumeCapabilities(),
+		Parameters:                cephfsParams,
+		Secrets:                   req.GetSecrets(),
+		VolumeContentSource:       req.GetVolumeContentSource(),
+		AccessibilityRequirements: req.GetAccessibilityRequirements(),
+		MutableParameters:         cephfsMutableParams,
+	}
+
+	res, err := cs.backendServer.CreateVolume(ctx, cephfsReq)
 	if err != nil {
 		return nil, err
 	}
@@ -124,6 +179,11 @@ func (cs *nfsControllerServer) CreateVolume(
 	}
 	defer nfsVolume.Destroy()
 
+	// re-add the NFS parameters to the volume
+	vc := backend.GetVolumeContext()
+	maps.Copy(vc, nfsParams)
+	backend.VolumeContext = vc
+
 	err = nfsVolume.CreateExport(backend)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to create export: %v", err)
@@ -143,7 +203,7 @@ func (cs *nfsControllerServer) CreateVolume(
 			&csi.ControllerModifyVolumeRequest{
 				VolumeId:          backend.GetVolumeId(),
 				Secrets:           req.GetSecrets(),
-				MutableParameters: req.GetMutableParameters(),
+				MutableParameters: nfsMutableParams,
 			})
 		if err != nil {
 			return nil, err
@@ -276,6 +336,14 @@ func (cs *nfsControllerServer) ControllerModifyVolume(
 	ctx context.Context,
 	req *csi.ControllerModifyVolumeRequest,
 ) (*csi.ControllerModifyVolumeResponse, error) {
+	// Validate that only known parameters are provided (before any I/O)
+	for param := range req.GetMutableParameters() {
+		if !slices.Contains(nfsMutableParameters, param) {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"unknown mutable parameter: %s", param)
+		}
+	}
+
 	secret := req.GetSecrets()
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
