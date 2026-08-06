@@ -773,7 +773,11 @@ func (cs *cephfsControllerServer) CreateSnapshot(
 	}
 	defer cr.DeleteCredentials()
 
-	clusterData, err := store.GetClusterInformation(req.GetParameters())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	clusterData, err := store.GetClusterInformation(parameters)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
