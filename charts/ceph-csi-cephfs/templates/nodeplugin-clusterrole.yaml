@@ -18,7 +18,7 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get"]
-{{- if and .Values.encryptionKMSConfig .Values.encryptionKMSConfig.secretNamespace (not .Values.rbac.leastPrivileges) }}
+{{- if and .Values.encryptionKMSConfig (not .Values.rbac.leastPrivileges) }}
   # allow to read the encryption key used with the metadata KMS
   - apiGroups: [""]
     resources: ["secrets"]
