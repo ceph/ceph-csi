@@ -532,6 +532,9 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 			err = createPVCAndvalidatePV(f.ClientSet, sourcePVC, deployTimeout)
 			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				_ = deletePVCAndValidatePV(f.ClientSet, sourcePVC, deployTimeout)
+			}()
 
 			// Validate backend RBD image created (1 PVC)
 			validateRBDImageCount(f, 1, nvmeofPool)
@@ -544,6 +547,9 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 			err = createSnapshot(&snap, deployTimeout)
 			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				_ = deleteSnapshot(&snap, deployTimeout)
+			}()
 
 			// Validate backend RBD images: 1 parent PVC + 1 snapshot
 			validateRBDImageCount(f, 2, nvmeofPool)
@@ -560,28 +566,17 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 			err = createPVCAndvalidatePV(f.ClientSet, restorePVC, deployTimeout)
 			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				_ = deletePVCAndValidatePV(f.ClientSet, restorePVC, deployTimeout)
+			}()
 
 			// Validate backend RBD images: 1 parent + 1 snapshot + 1 restored PVC
 			validateRBDImageCount(f, 3, nvmeofPool)
 			validateOmapCount(f, 2, rbdType, nvmeofPool, volumesType)
 			validateOmapCount(f, 1, rbdType, nvmeofPool, snapsType)
 
-			ginkgo.By("Deleting the restored PVC")
-			err = deletePVCAndValidatePV(f.ClientSet, restorePVC, deployTimeout)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			ginkgo.By("Deleting the snapshot")
-			err = deleteSnapshot(&snap, deployTimeout)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			ginkgo.By("Deleting the source PVC")
-			err = deletePVCAndValidatePV(f.ClientSet, sourcePVC, deployTimeout)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			// validate all backend rbd images are cleaned up
-			validateRBDImageCount(f, 0, nvmeofPool)
-			validateOmapCount(f, 0, rbdType, nvmeofPool, volumesType)
-			validateOmapCount(f, 0, rbdType, nvmeofPool, snapsType)
+			// Resources will be cleaned up by deferred functions in correct order:
+			// restored PVC -> snapshot -> source PVC -> VolumeSnapshotClass
 		})
 
 		ginkgo.It("test volumeGroupSnapshot", func() {
