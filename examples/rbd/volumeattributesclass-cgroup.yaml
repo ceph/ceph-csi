@@ -10,11 +10,13 @@ parameters:
   # providing QoS for krbd-mapped volumes.
   #
   # Cgroup v2 io.max parameters:
-  # Format for each parameter is a positive integer representing
-  # the limit value.
+  # Each parameter accepts a non-negative integer or the special
+  # value "max". Use "max" to remove a previously applied limit
+  # (resets the device to unlimited). Use "0" to fully throttle I/O.
   #
   # (optional) Max read IOPS per second for the device.
   # Example: "1000" allows up to 1000 read operations per second.
+  # Use "max" to remove the read IOPS limit.
   maxReadIops: "1000"
   #
   # (optional) Max write IOPS per second for the device.
