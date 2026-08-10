@@ -267,7 +267,7 @@ func TestValidateCgroupQoSParams(t *testing.T) {
 			params: map[string]string{
 				maxReadIops: "0",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "negative maxWriteIops",
@@ -281,7 +281,7 @@ func TestValidateCgroupQoSParams(t *testing.T) {
 			params: map[string]string{
 				maxReadBps: "0",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "negative maxWriteBps",
@@ -289,6 +289,24 @@ func TestValidateCgroupQoSParams(t *testing.T) {
 				maxWriteBps: "-10485760",
 			},
 			wantErr: true,
+		},
+		{
+			name: "max value resets to unlimited",
+			params: map[string]string{
+				maxReadIops:  "max",
+				maxWriteIops: "max",
+				maxReadBps:   "max",
+				maxWriteBps:  "max",
+			},
+			wantErr: false,
+		},
+		{
+			name: "partial max values",
+			params: map[string]string{
+				maxReadIops: "max",
+				maxWriteBps: "1000",
+			},
+			wantErr: false,
 		},
 		{
 			name:    "empty parameters",

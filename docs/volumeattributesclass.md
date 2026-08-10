@@ -211,6 +211,20 @@ on systems with cgroup v2 enabled.
   (`csi.storage.k8s.io/node-publish-secret-name`) or CSI ConfigMap
   (`rbd.nodePublishSecretRef`)
 
+#### Cgroup v2 QoS Parameter Values
+
+Each parameter accepts a non-negative integer or the special value `"max"`:
+
+| Value            | Meaning                          |
+| ---------------- | -------------------------------- |
+| `"max"`          | Remove the limit (unlimited I/O) |
+| `"0"`            | Fully throttle I/O               |
+| positive integer | Set the limit to that value      |
+
+To revert all QoS limits applied by a VolumeAttributesClass, create a new
+VolumeAttributesClass with all values set to `"max"` and modify the PVC to
+reference it.
+
 #### Create a VolumeAttributesClass for Cgroup v2 QoS
 
 - Define a VolumeAttributesClass
@@ -223,7 +237,7 @@ metadata:
   name: cgroup-qos
 driverName: rbd.csi.ceph.com
 parameters:
-  # Cgroup v2 QoS parameters
+  # Cgroup v2 QoS parameters (non-negative integer or "max")
   maxReadIops: "1000"         # 1000 read IOPS
   maxWriteIops: "2000"        # 2000 write IOPS
   maxReadBps: "104857600"     # 100 MiB/s
