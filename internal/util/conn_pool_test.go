@@ -176,3 +176,25 @@ func TestConnPool(t *testing.T) {
 		}
 	})
 }
+
+//nolint:paralleltest // operates on the package-global connPool
+func TestCleanupConnections(t *testing.T) {
+	kf := t.TempDir() + "/cleanup_connections.keyfile"
+	if err := os.WriteFile(kf, []byte("key"), 0o600); err != nil {
+		t.Fatalf("failed to create keyfile: %v", err)
+	}
+	// CleanupConnections operates on the package-global connPool.
+	c, _, err := connPool.fakeGet("mon", "user", kf)
+	if err != nil {
+		t.Fatalf("fakeGet failed: %v", err)
+	}
+	_ = c
+	if len(connPool.conns) != 1 {
+		t.Fatalf("expected 1 conn, got %d", len(connPool.conns))
+	}
+	// CleanupConnections must not panic even with active users.
+	CleanupConnections()
+	if len(connPool.conns) != 0 {
+		t.Errorf("CleanupConnections should have removed all conns, got %d", len(connPool.conns))
+	}
+}

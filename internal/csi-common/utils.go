@@ -37,6 +37,7 @@ import (
 	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
 
+	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -469,6 +470,9 @@ func killOnSlowGRPCWithThreshold(
 		case <-timer.C:
 			log.ExtendedLog(ctx,
 				"gRPC call %s stuck for %s, restarting process", info.FullMethod, threshold)
+			if !util.CleanupConnections() {
+				log.ExtendedLog(ctx, "timed out closing Ceph connections, exiting anyway")
+			}
 			osExit(1)
 		case <-done:
 		}
