@@ -161,6 +161,23 @@ func (cc *ClusterConnection) GetNFSAdmin() (*nfs.Admin, error) {
 	return nfs.NewFromConn(cc.conn), nil
 }
 
+// CleanupConnections stops the garbage collector and forcefully closes all
+// pooled Ceph connections, regardless of whether they still have active
+// users. It is meant for unclean shutdown paths (e.g. stuck gRPC restart)
+// where the process is about to exit, in-flight operations cannot complete
+// anyway, and lingering RADOS sessions would cause the cluster to blocklist
+// the client IP.
+func CleanupConnections() {
+	connPool.timer.Stop()
+	connPool.lock.Lock()
+	defer connPool.lock.Unlock()
+
+	for key, ce := range connPool.conns {
+		ce.destroy()
+		delete(connPool.conns, key)
+	}
+}
+
 // GetAddrs returns the addresses of the RADOS session,
 // suitable for blocklisting.
 func (cc *ClusterConnection) GetAddrs() (string, error) {
