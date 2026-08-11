@@ -46,6 +46,10 @@ var (
 	cpInterval = 15 * time.Minute
 	cpExpiry   = 10 * time.Minute
 	connPool   = NewConnPool(cpInterval, cpExpiry)
+
+	// cpCleanupTimeout bounds CleanupConnections so a wedged rados_shutdown
+	// on an unresponsive connection cannot block the caller's process exit.
+	cpCleanupTimeout = 30 * time.Second
 )
 
 // rbdVol.Connect() connects to the Ceph cluster and sets rbdVol.conn for further usage.
@@ -159,6 +163,41 @@ func (cc *ClusterConnection) GetNFSAdmin() (*nfs.Admin, error) {
 	}
 
 	return nfs.NewFromConn(cc.conn), nil
+}
+
+// CleanupConnections stops the garbage collector and forcefully closes all
+// pooled Ceph connections, regardless of whether they still have active
+// users. It is meant for unclean shutdown paths (e.g. stuck gRPC restart)
+// where the process is about to exit, in-flight operations cannot complete
+// anyway, and lingering RADOS sessions would cause the cluster to blocklist
+// the client IP.
+//
+// The cleanup runs in a separate goroutine bounded by cpCleanupTimeout:
+// rados_shutdown can block indefinitely on the very unresponsive connection
+// that triggered this call, and the caller is about to exit the process, so
+// closing sessions is best-effort and must never wedge. It returns true when
+// all connections were closed within the timeout, false otherwise.
+func CleanupConnections() bool {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		connPool.timer.Stop()
+		connPool.lock.Lock()
+		defer connPool.lock.Unlock()
+
+		for key, ce := range connPool.conns {
+			ce.destroy()
+			delete(connPool.conns, key)
+		}
+	}()
+
+	select {
+	case <-done:
+		return true
+	case <-time.After(cpCleanupTimeout):
+		return false
+	}
 }
 
 // GetAddrs returns the addresses of the RADOS session,
