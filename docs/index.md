@@ -27,8 +27,14 @@ straightforward.
 
 ### Deployment
 
-- [RBD Deployment Guide](rbd/deploy.md) - Deploy the RBD CSI driver
-- [CephFS Deployment Guide](cephfs/deploy.md) - Deploy the CephFS CSI driver
+The preferred way to deploy Ceph-CSI on Kubernetes is via the
+[Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator), which manages
+the full lifecycle of the drivers including upgrades and configuration.
+
+- [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) - Operator-based
+  deployment (recommended)
+- [RBD Deployment Guide](rbd/deploy.md) - Deploy the RBD CSI driver manually
+- [CephFS Deployment Guide](cephfs/deploy.md) - Deploy the CephFS CSI driver manually
 
 ### Features
 

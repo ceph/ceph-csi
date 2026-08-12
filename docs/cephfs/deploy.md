@@ -1,6 +1,11 @@
 
 # CSI CephFS plugin
 
+> **Note:** The preferred deployment method for Kubernetes is the
+> [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator), which manages
+> driver lifecycle, upgrades, and configuration automatically. The manual steps
+> below are for advanced or non-operator deployments.
+
 The CSI CephFS plugin is able to both provision new CephFS volumes
 and attach and mount existing ones to workloads.
 
