@@ -1,5 +1,7 @@
 # Ceph CSI
 
+[![Ceph-CSI Documentation](https://badgen.net/static/docs/ceph-csi)](https://ceph.github.io/ceph-csi)
+[![Ceph-CSI Operator Documentation](https://badgen.net/static/docs/ceph-csi-operator)](https://ceph.github.io/ceph-csi-operator)
 [![GitHub release](https://img.shields.io/github/release/ceph/ceph-csi/all.svg)](https://github.com/ceph/ceph-csi/releases)
 [![Mergify Status](https://img.shields.io/endpoint.svg?url=https://api.mergify.com/v1/badges/ceph/ceph-csi&style=flat)](https://mergify.com)
 [![Go Report
