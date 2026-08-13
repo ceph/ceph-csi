@@ -989,8 +989,7 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 	}
 
 	if errors.Is(err, rbderrors.ErrImageNotFound) {
-		notFoundErr := rbdVol.ensureImageCleanup(ctx)
-		if notFoundErr != nil {
+		if notFoundErr := rbdVol.removeImageFromTrash(ctx); notFoundErr != nil {
 			return nil, status.Errorf(codes.Internal, "failed to cleanup image %q: %v", rbdVol, notFoundErr)
 		}
 	} else {
@@ -1162,7 +1161,9 @@ func cleanupRBDImage(ctx context.Context,
 	}
 
 	// delete the temporary rbd image created as part of volume clone during
-	// create volume
+	// create volume. This must run before rbdVol.Delete() so the volume
+	// image still exists and its parent info (ParentImageID) can identify
+	// a trashed temp clone without scanning the trash list.
 	err = rbdVol.DeleteTempImage(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete temporary rbd image: %v", err)
@@ -1641,9 +1642,9 @@ func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, c
 	defer rbdVol.Destroy(ctx)
 
 	// cleanup the image from trash if the error is image not found.
-	err = rbdVol.ensureImageCleanup(ctx)
+	err = rbdVol.removeImageFromTrash(ctx)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to delete rbd image: %q with error: %v", rbdVol.Pool, rbdVol.VolName, err)
+		log.ErrorLog(ctx, "failed to delete rbd image %q: %v", rbdVol, err)
 
 		return status.Error(codes.Internal, err.Error())
 	}
