@@ -720,29 +720,47 @@ func isCephMgrSupported(ctx context.Context, clusterID string, err error) (bool,
 	return true, nil
 }
 
-// ensureImageCleanup finds image in trash and if found removes it
-// from trash.
+// ensureImageCleanup removes the image from trash using its ImageID.
+// Returns nil when the image is not found in trash (already cleaned up).
 func (ri *rbdImage) ensureImageCleanup(ctx context.Context) error {
+	if ri.ImageID == "" {
+		return fmt.Errorf("ImageID is not set for image %q", ri)
+	}
+
 	err := ri.openIoctx()
 	if err != nil {
 		return err
 	}
 
-	trashInfoList, err := librbd.GetTrashList(ri.ioctx)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to list images in trash: %v", err)
-
-		return err
+	err = ri.trashRemoveImage(ctx)
+	if errors.Is(err, librbd.ErrNotExist) {
+		return nil
 	}
-	for _, val := range trashInfoList {
-		if val.Name == ri.RbdImageName {
-			ri.ImageID = val.Id
 
-			return ri.trashRemoveImage(ctx)
+	return err
+}
+
+// findImageIDInTrash searches the trash list by name and populates ImageID when found.
+// Used as a fallback when ImageID is not known (e.g. image already in trash from a prior attempt).
+func (ri *rbdImage) findImageIDInTrash() (bool, error) {
+	if err := ri.openIoctx(); err != nil {
+		return false, err
+	}
+
+	trashList, err := librbd.GetTrashList(ri.ioctx)
+	if err != nil {
+		return false, err
+	}
+
+	for _, t := range trashList {
+		if t.Name == ri.RbdImageName {
+			ri.ImageID = t.Id
+
+			return true, nil
 		}
 	}
 
-	return nil
+	return false, nil
 }
 
 // Delete deletes a ceph image with provision and volume options.
@@ -848,12 +866,23 @@ func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
 
 	err = tempClone.Delete(ctx)
 	if err != nil {
-		if errors.Is(err, rbderrors.ErrImageNotFound) {
-			return tempClone.ensureImageCleanup(ctx)
-		} else {
-			// return error if it is not ErrImageNotFound
+		if !errors.Is(err, rbderrors.ErrImageNotFound) {
 			return err
 		}
+
+		if tempClone.ImageID == "" {
+			// The image was not accessible by name (likely already in trash from a
+			// previous attempt). Search the trash list by name to get its ID.
+			found, idErr := tempClone.findImageIDInTrash()
+			if idErr != nil {
+				return idErr
+			} else if !found {
+				// image is not in the trash, no need to delete it
+				return nil
+			}
+		}
+
+		return tempClone.ensureImageCleanup(ctx)
 	}
 
 	return nil
