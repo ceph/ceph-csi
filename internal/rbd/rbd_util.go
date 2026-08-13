@@ -723,31 +723,6 @@ func isCephMgrSupported(ctx context.Context, clusterID string, err error) (bool,
 	return true, nil
 }
 
-// ensureImageCleanup finds image in trash and if found removes it
-// from trash.
-func (ri *rbdImage) ensureImageCleanup(ctx context.Context) error {
-	err := ri.openIoctx()
-	if err != nil {
-		return err
-	}
-
-	trashInfoList, err := librbd.GetTrashList(ri.ioctx)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to list images in trash: %v", err)
-
-		return err
-	}
-	for _, val := range trashInfoList {
-		if val.Name == ri.RbdImageName {
-			ri.ImageID = val.Id
-
-			return ri.trashRemoveImage(ctx)
-		}
-	}
-
-	return nil
-}
-
 // Delete deletes a ceph image with provision and volume options.
 func (ri *rbdImage) Delete(ctx context.Context) error {
 	image := ri.RbdImageName
@@ -876,11 +851,20 @@ func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
 	err = tempClone.Delete(ctx)
 	if err != nil {
 		if errors.Is(err, rbderrors.ErrImageNotFound) {
-			return tempClone.ensureImageCleanup(ctx)
-		} else {
-			// return error if it is not ErrImageNotFound
-			return err
+			if rv.ParentInTrash &&
+				rv.ParentName == tempClone.RbdImageName &&
+				rv.ParentImageID != "" {
+				tempClone.ImageID = rv.ParentImageID
+
+				return tempClone.removeImageFromTrash(ctx)
+			}
+
+			log.DebugLog(ctx, "temp clone %s not found and not in trash, already removed", tempClone)
+
+			return nil
 		}
+
+		return err
 	}
 
 	return nil
