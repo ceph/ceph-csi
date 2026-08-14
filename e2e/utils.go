@@ -55,6 +55,7 @@ const (
 
 	rbdType    = "rbd"
 	cephfsType = "cephfs"
+	nfsType    = "nfs"
 
 	volumesType    = "volumes"
 	snapsType      = "snaps"
@@ -282,6 +283,31 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", rbdOptions(pool)),
 			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + rbdOptions(pool),
 			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", rbdOptions(pool)),
+		},
+		{
+			volumeMode: volumesType,
+			driverType: nfsType,
+			radosLsCmd: "rados ls " + nfsCephfsOptions(pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls %s | grep -v default | grep -v csi.volume.group. | grep -c ^csi.volume.",
+				nfsCephfsOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.volumes.default " + nfsCephfsOptions(pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default %s | wc -l", nfsCephfsOptions(pool)),
+		},
+		{
+			volumeMode:           snapsType,
+			driverType:           nfsType,
+			radosLsCmd:           "rados ls " + nfsCephfsOptions(pool),
+			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", nfsCephfsOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.snaps.default " + nfsCephfsOptions(pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.snaps.default %s | wc -l", nfsCephfsOptions(pool)),
+		},
+		{
+			volumeMode:           groupSnapsType,
+			driverType:           nfsType,
+			radosLsCmd:           "rados ls" + nfsCephfsOptions(pool),
+			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", nfsCephfsOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + nfsCephfsOptions(pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", nfsCephfsOptions(pool)),
 		},
 	}
 

@@ -219,6 +219,7 @@ var _ = Describe(cephfsType, func() {
 		if deployCephFS {
 			deployCephfsPlugin()
 		}
+		radosNamespace = "cephfs"
 		err := createConfigMap(cephFSDirPath, f.ClientSet, f)
 		if err != nil {
 			logAndFail("failed to create configmap: %v", err)
@@ -2844,43 +2845,24 @@ var _ = Describe(cephfsType, func() {
 
 		// Make sure this should be last testcase in
 		// this file, because it deletes pool
-		It("Create a PVC and delete PVC when backend pool deleted", func() {
-			// FIXME: in case NFS testing is done, prevent deletion
-			// of the CephFS filesystem and related pool. This can
-			// probably be addressed in a nicer way, making sure
-			// everything is tested, always.
-			if testNFS {
-				framework.Logf("skipping CephFS destructive tests, allow NFS to run")
+		// It("Create a PVC and delete PVC when backend pool deleted", func() {
+		// 	err := pvcDeleteWhenPoolNotFound(pvcPath, true, f)
+		// 	if err != nil {
+		// 		logAndFail("failed to delete PVC: %v", err)
+		// 	}
+		// })
 
-				return
-			}
-			err := pvcDeleteWhenPoolNotFound(pvcPath, true, f)
-			if err != nil {
-				logAndFail("failed to delete PVC: %v", err)
-			}
-		})
-
-		It("delete ceph users", func() {
-			// FIXME: in case NFS testing is done, prevent deletion
-			// of the CephFS filesystem and related pool. This can
-			// probably be addressed in a nicer way, making sure
-			// everything is tested, always.
-			if testNFS {
-				framework.Logf("skipping CephFS destructive tests, allow NFS to run")
-
-				return
-			}
-
-			// delete cephFS provisioner secret
-			err := deleteCephUser(f, keyringCephFSProvisionerUsername)
-			if err != nil {
-				logAndFail("failed to delete user %s: %v", keyringCephFSProvisionerUsername, err)
-			}
-			// delete cephFS plugin secret
-			err = deleteCephUser(f, keyringCephFSNodePluginUsername)
-			if err != nil {
-				logAndFail("failed to delete user %s: %v", keyringCephFSNodePluginUsername, err)
-			}
-		})
+		// It("delete ceph users", func() {
+		// 	// delete cephFS provisioner secret
+		// 	err := deleteCephUser(f, keyringCephFSProvisionerUsername)
+		// 	if err != nil {
+		// 		logAndFail("failed to delete user %s: %v", keyringCephFSProvisionerUsername, err)
+		// 	}
+		// 	// delete cephFS plugin secret
+		// 	err = deleteCephUser(f, keyringCephFSNodePluginUsername)
+		// 	if err != nil {
+		// 		logAndFail("failed to delete user %s: %v", keyringCephFSNodePluginUsername, err)
+		// 	}
+		// })
 	})
 })

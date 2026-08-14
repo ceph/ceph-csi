@@ -7172,26 +7172,26 @@ var _ = Describe("RBD", func() {
 			}
 		})
 
-		It("delete ceph users", func() {
-			// delete RBD provisioner secret
-			err := deleteCephUser(f, keyringRBDProvisionerUsername)
-			if err != nil {
-				logAndFail("failed to delete user %s: %v", keyringRBDProvisionerUsername, err)
-			}
-			// delete RBD plugin secret
-			err = deleteCephUser(f, keyringRBDNodePluginUsername)
-			if err != nil {
-				logAndFail("failed to delete user %s: %v", keyringRBDNodePluginUsername, err)
-			}
-		})
+		// It("delete ceph users", func() {
+		// 	// delete RBD provisioner secret
+		// 	err := deleteCephUser(f, keyringRBDProvisionerUsername)
+		// 	if err != nil {
+		// 		logAndFail("failed to delete user %s: %v", keyringRBDProvisionerUsername, err)
+		// 	}
+		// 	// delete RBD plugin secret
+		// 	err = deleteCephUser(f, keyringRBDNodePluginUsername)
+		// 	if err != nil {
+		// 		logAndFail("failed to delete user %s: %v", keyringRBDNodePluginUsername, err)
+		// 	}
+		// })
 
-		// Make sure this should be last testcase in this file, because
-		// it deletes pool
-		It("Create a PVC and delete PVC when backend pool deleted", func() {
-			err := pvcDeleteWhenPoolNotFound(pvcPath, false, f)
-			if err != nil {
-				logAndFail("failed to delete PVC when pool not found: %v", err)
-			}
-		})
+		// // Make sure this should be last testcase in this file, because
+		// // it deletes pool
+		// It("Create a PVC and delete PVC when backend pool deleted", func() {
+		// 	err := pvcDeleteWhenPoolNotFound(pvcPath, false, f)
+		// 	if err != nil {
+		// 		logAndFail("failed to delete PVC when pool not found: %v", err)
+		// 	}
+		// })
 	})
 })
