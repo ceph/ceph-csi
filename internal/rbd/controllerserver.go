@@ -712,7 +712,9 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			rbdVol.RadosNamespace,
 			rbdVol.RbdImageName,
 			cr)
-		if err != nil {
+		if errors.Is(err, rbderrors.ErrFlattenInProgress) {
+			return status.Error(codes.Aborted, err.Error())
+		} else if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
 
@@ -1158,7 +1160,7 @@ func cleanupRBDImage(ctx context.Context,
 	if inUse {
 		log.ErrorLog(ctx, "rbd %s is still being used", rbdVol)
 
-		return nil, status.Errorf(codes.Aborted, "rbd %s is still being used", rbdVol.RbdImageName)
+		return nil, status.Errorf(codes.FailedPrecondition, "rbd %s is still being used", rbdVol.RbdImageName)
 	}
 
 	// delete the temporary rbd image created as part of volume clone during
@@ -1170,9 +1172,10 @@ func cleanupRBDImage(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Deleting rbd image
+	// Deleting rbd image, it isn't a failure if the image was deleted already.
 	log.DebugLog(ctx, "deleting image %s", rbdVol.RbdImageName)
-	if err = rbdVol.Delete(ctx); err != nil {
+	err = rbdVol.Delete(ctx)
+	if err != nil && !errors.Is(err, librbd.ErrNotFound) {
 		log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v",
 			rbdVol, err)
 
@@ -1318,12 +1321,13 @@ func (cs *ControllerServer) CreateSnapshot(
 	}()
 
 	vol, err := cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
-	if err != nil {
+	if err != nil && !errors.Is(err, rbderrors.ErrFlattenInProgress) {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Update the metadata on snapshot not on the original image
 	rbdVol.RbdImageName = rbdSnap.RbdSnapName
+	rbdVol.ImageID = vol.ImageID
 	rbdVol.ClusterName = cs.ClusterName
 
 	defer func() {

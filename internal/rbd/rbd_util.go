@@ -133,6 +133,8 @@ type rbdImage struct {
 	NamePrefix  string
 	// ParentName represents the parent image name of the image.
 	ParentName string
+	// ParentID represents the parent image ID of the image.
+	ParentID string
 	// Parent Pool is the pool that contains the parent image.
 	ParentPool string
 	// Cluster name
@@ -595,7 +597,14 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 		return nil, err
 	}
 
-	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	var image *librbd.Image
+
+	// try to open by id, that works for images in trash too
+	if ri.ImageID != "" {
+		image, err = librbd.OpenImageById(ri.ioctx, ri.ImageID, librbd.NoSnapshot)
+	} else {
+		image, err = librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	}
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
 			err = fmt.Errorf("Failed as %w (internal %w)", rbderrors.ErrImageNotFound, err)
@@ -859,47 +868,87 @@ func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
 	return nil
 }
 
-func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
-	var depth uint
-	vol := rbdVolume{}
+// getCloneDepth walks the parents of the image and returns the number of
+// images in the chain. The `maxDepth` argument to the function is used to
+// specify a limit of the depth to check. When `maxDepth` depth is reached, no
+// further traversing of the depth is required.
+//
+// This function reuses the ioctx of the image to open all images in the
+// chain. There is no need to open new ioctx's for every image.
+func (ri *rbdImage) getCloneDepth(maxDepth uint) (uint, error) {
+	var (
+		depth uint
+		info  *librbd.ParentInfo
+	)
 
-	vol.Pool = ri.Pool
-	vol.Monitors = ri.Monitors
-	vol.RbdImageName = ri.RbdImageName
-	vol.RadosNamespace = ri.RadosNamespace
-	vol.conn = ri.conn.Copy()
+	image, err := ri.open()
+	if err != nil {
+		return 0, fmt.Errorf("failed to open image %s: %w", ri, err)
+	}
+
+	// get the librbd.ImageSpec of the parent
+	info, err = image.GetParent()
+
+	// Close this image, it is not used anymore. Using defer to close it
+	// and replacing the image with an other image can result in resource
+	// leaks according to golangci-lint.
+	cErr := image.Close()
+	if cErr != nil {
+		log.WarningLogMsg("failed to close image %s: %v", ri, cErr)
+	}
 
 	for {
-		if vol.RbdImageName == "" {
-			return depth, nil
-		}
-		err := vol.openIoctx()
-		if err != nil {
-			return depth, err
+		if errors.Is(err, librbd.ErrNotFound) {
+			// image does not have a parent
+			break
+		} else if err != nil {
+			return 0, fmt.Errorf("failed to get parent of image %s at depth %d: %w", ri, depth, err)
 		}
 
-		err = vol.getImageInfo()
-		// FIXME: create and destroy the vol inside the loop.
-		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
-		vol.ioctx.Destroy()
-		vol.ioctx = nil
-		if err != nil {
-			// if the parent image is moved to trash the name will be present
-			// in rbd image info but the image will be in trash, in that case
-			// return the found depth
-			if errors.Is(err, rbderrors.ErrImageNotFound) {
-				return depth, nil
+		// if the parent is in trash, return maxDepth to trigger
+		// flattening
+		if info.Image.Trash {
+			return maxDepth, nil
+		}
+
+		// if there is a parent, count it to the depth
+		depth++
+
+		// if maxDepth (usually hard-limit) is reached, further
+		// traversing parents is not needed, some action (flattening)
+		// will be triggered regardless of deeper depth
+		if depth == maxDepth {
+			break
+		}
+
+		// open the parent image, so that the for-loop can continue
+		// with checking for the parent of the parent
+		imageID := info.Image.ImageID
+		image, err = librbd.OpenImageByIdReadOnly(ri.ioctx, imageID, librbd.NoSnapshot)
+		if err != nil && errors.Is(err, librbd.ErrNotFound) {
+			// parent image does not exist, no parent after all
+			break
+		} else if err != nil {
+			imageSpec := info.Image.ImageID
+			if info.Snap.SnapName != librbd.NoSnapshot {
+				imageSpec += "@" + info.Snap.SnapName
 			}
-			log.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
 
-			return depth, err
+			return 0, fmt.Errorf("failed to open parent image ID %q, at depth %d: %w", imageSpec, depth, err)
 		}
-		if vol.ParentName != "" {
-			depth++
+
+		info, err = image.GetParent()
+		// info and err checking is done in the top of the for loop
+
+		// Using defer in a for loop seems to be problematic. Just
+		// always close the image.
+		cErr = image.Close()
+		if cErr != nil {
+			log.WarningLogMsg("failed to close image with id %s: %v", imageID, cErr)
 		}
-		vol.RbdImageName = vol.ParentName
-		vol.Pool = vol.ParentPool
 	}
+
+	return depth, nil
 }
 
 func flattenClonedRbdImages(
@@ -945,7 +994,7 @@ func (ri *rbdImage) flattenRbdImage(
 
 	// skip clone depth check if request is for force flatten
 	if !forceFlatten {
-		depth, err = ri.getCloneDepth(ctx)
+		depth, err = ri.getCloneDepth(hardlimit)
 		if err != nil {
 			return err
 		}
@@ -972,7 +1021,9 @@ func (ri *rbdImage) flattenRbdImage(
 	_, err = ta.AddFlatten(admin.NewImageSpec(ri.Pool, ri.RadosNamespace, ri.RbdImageName))
 	rbdCephMgrSupported, knownErr := isCephMgrSupported(ctx, ri.ClusterID, err)
 	if rbdCephMgrSupported {
-		if err != nil {
+		// it is not possible to flatten an image that is in trash (ErrNotFound)
+		switch {
+		case err != nil && !errors.Is(err, rados.ErrNotFound):
 			// discard flattening error if the image does not have any parent
 			rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", ri.Pool, ri.RbdImageName)
 			if strings.Contains(err.Error(), rbdFlattenNoParent) {
@@ -981,11 +1032,11 @@ func (ri *rbdImage) flattenRbdImage(
 			log.ErrorLog(ctx, "failed to add task flatten for %s : %v", ri, err)
 
 			return err
-		}
-		if forceFlatten || depth >= hardlimit {
+		case forceFlatten || depth >= hardlimit:
 			return fmt.Errorf("%w: flatten is in progress for image %s", rbderrors.ErrFlattenInProgress, ri.RbdImageName)
+		default:
+			log.DebugLog(ctx, "successfully added task to flatten image %q", ri)
 		}
-		log.DebugLog(ctx, "successfully added task to flatten image %q", ri)
 	}
 	if !rbdCephMgrSupported && knownErr != nil {
 		log.ErrorLog(
@@ -1020,6 +1071,9 @@ func (ri *rbdImage) getParentName() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	ri.ParentName = parentInfo.Image.ImageName
+	ri.ParentID = parentInfo.Image.ImageID
 
 	return parentInfo.Image.ImageName, nil
 }
@@ -1801,6 +1855,11 @@ func (ri *rbdImage) getImageInfo() error {
 	// TODO: can rv.VolSize not be a uint64? Or initialize it to -1?
 	ri.VolSize = int64(imageInfo.Size)
 
+	ri.ImageID, err = image.GetId()
+	if err != nil {
+		return err
+	}
+
 	features, err := image.GetFeatures()
 	if err != nil {
 		return err
@@ -1814,11 +1873,13 @@ func (ri *rbdImage) getImageInfo() error {
 		// the parent is an error or not.
 		if errors.Is(err, librbd.ErrNotFound) {
 			ri.ParentName = ""
+			ri.ParentID = ""
 		} else {
 			return err
 		}
 	} else {
 		ri.ParentName = parentInfo.Image.ImageName
+		ri.ParentID = parentInfo.Image.ImageID
 		ri.ParentPool = parentInfo.Image.PoolName
 		ri.ParentInTrash = parentInfo.Image.Trash
 	}
@@ -1853,6 +1914,7 @@ func (ri *rbdImage) getParent() (*rbdImage, error) {
 	parentImage.Pool = ri.ParentPool
 	parentImage.RadosNamespace = ri.RadosNamespace
 	parentImage.RbdImageName = ri.ParentName
+	parentImage.ImageID = ri.ParentID
 
 	err = parentImage.getImageInfo()
 	if err != nil {
@@ -1910,6 +1972,7 @@ type rbdImageMetadataStash struct {
 	Pool           string `json:"pool"`
 	RadosNamespace string `json:"radosNamespace"`
 	ImageName      string `json:"image"`
+	ImageID        string `json:"imageID"`
 	UnmapOptions   string `json:"unmapOptions"`
 	NbdAccess      bool   `json:"accessType"`
 	Encrypted      bool   `json:"encrypted"`
@@ -1939,6 +2002,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 		Pool:           volOptions.Pool,
 		RadosNamespace: volOptions.RadosNamespace,
 		ImageName:      volOptions.RbdImageName,
+		ImageID:        volOptions.ImageID,
 		Encrypted:      volOptions.isBlockEncrypted(),
 		UnmapOptions:   volOptions.UnmapOptions,
 	}

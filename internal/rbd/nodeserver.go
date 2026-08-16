@@ -753,7 +753,7 @@ func flattenImageBeforeMapping(
 		if err != nil {
 			return err
 		}
-		depth, err = volOptions.getCloneDepth(ctx)
+		depth, err = volOptions.getCloneDepth(rbdHardMaxCloneDepth + 1)
 		if err != nil {
 			return err
 		}
