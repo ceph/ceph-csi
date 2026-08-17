@@ -11,6 +11,8 @@ import "C"
 
 import (
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/retry"
 )
 
 // LockMode represents a group of configurable lock modes.
@@ -75,21 +77,26 @@ func (image *Image) LockGetOwners() ([]*LockOwner, error) {
 	}
 
 	var (
-		maxLockOwners  = C.size_t(8)
-		cLockOwners    = make([]*C.char, 8)
+		err            error
+		ret            C.int
+		maxLockOwners  C.size_t
+		cLockOwners    []*C.char
 		lockMode       LockMode
 		lockOwnersList []*LockOwner
 	)
 
-	for {
-		ret := C.rbd_lock_get_owners(image.image, (*C.rbd_lock_mode_t)(&lockMode), &cLockOwners[0], &maxLockOwners)
-		if ret >= 0 {
-			break
-		} else if ret == -C.ENOENT {
+	retry.WithSizes(8, 4096, func(size int) retry.Hint {
+		maxLockOwners = C.size_t(size)
+		cLockOwners = make([]*C.char, maxLockOwners)
+		ret = C.rbd_lock_get_owners(image.image, (*C.rbd_lock_mode_t)(&lockMode), &cLockOwners[0], &maxLockOwners)
+		err = getErrorIfNegative(ret)
+		return retry.Size(int(maxLockOwners)).If(err == errRange)
+	})
+	if err != nil {
+		if ret == -C.ENOENT {
 			return nil, nil
-		} else if ret != -C.ERANGE {
-			return nil, getError(ret)
 		}
+		return nil, err
 	}
 
 	defer C.rbd_lock_get_owners_cleanup(&cLockOwners[0], maxLockOwners)
