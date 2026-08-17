@@ -892,6 +892,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.RbdImageName = ri.RbdImageName
 	vol.RadosNamespace = ri.RadosNamespace
 	vol.conn = ri.conn.Copy()
+	defer vol.Destroy(ctx)
 
 	for {
 		if vol.RbdImageName == "" {
