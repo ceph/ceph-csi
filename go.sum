@@ -485,8 +485,8 @@ github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
 github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260706125253-734ddd0a44b2 h1:3320KYuBfjdm/PDOy9KPgQMIVuIaU7AWHB9ZOKayX80=
 github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260706125253-734ddd0a44b2/go.mod h1:5dz0xWrM9f/BURZBDuTLXr463mEXhSoIAG88LG1IkJw=
-github.com/ceph/go-ceph v0.40.0 h1:Wz9WOX6i73Hz74mpwhTO9S6IyX3eFPv88VUc7FRMPRk=
-github.com/ceph/go-ceph v0.40.0/go.mod h1:1oFtT/x/4y+teLsNiogdd/Kj81Gmrw6JM5w1bWnZoc4=
+github.com/ceph/go-ceph v0.41.0 h1:uATh5+zR1KWOQCoBYj4uEfuAPsSccajOGXWW8u8UTgA=
+github.com/ceph/go-ceph v0.41.0/go.mod h1:8tvljRxQ65aEtRt7aCxzuPpN7tiwPHCPPSuAqQ5teCY=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
@@ -611,8 +611,8 @@ github.com/go-test/deep v1.0.2/go.mod h1:wGDj63lr65AM2AQyKZd/NYHGb0R+1RLqB8NKt3a
 github.com/go-test/deep v1.0.8/go.mod h1:5C2ZWiW0ErCdrYzpqxLbTX7MG14M9iiw8DgHncVwcsE=
 github.com/go-test/deep v1.1.1 h1:0r/53hagsehfO4bzD2Pgr/+RgHqhmf+k1Bpse2cTu1U=
 github.com/go-test/deep v1.1.1/go.mod h1:5C2ZWiW0ErCdrYzpqxLbTX7MG14M9iiw8DgHncVwcsE=
-github.com/gofrs/uuid/v5 v5.4.0 h1:EfbpCTjqMuGyq5ZJwxqzn3Cbr2d0rUZU7v5ycAk/e/0=
-github.com/gofrs/uuid/v5 v5.4.0/go.mod h1:CDOjlDMVAtN56jqyRUZh58JT31Tiw7/oQyEXZV+9bD8=
+github.com/gofrs/uuid/v5 v5.5.0 h1:FkPv6jYQRbZtH3bD8yC7106u+CedTCLF8+t7CLHSZNo=
+github.com/gofrs/uuid/v5 v5.5.0/go.mod h1:bbAA98EoIlxyRHIVg6ektCSsZ5n8mSbwgEhvhMYlZgg=
 github.com/gogo/protobuf v1.3.2 h1:Ov1cvc58UF3b5XjBnZv7+opcTcQFZebYjWzi34vdm4Q=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
 github.com/golang-jwt/jwt/v4 v4.0.0/go.mod h1:/xlHOz8bRuivTWchD4jCa+NbatV+wEUSzwAxVc6locg=
