@@ -45,7 +45,7 @@ func (rv *rbdVolume) HandleParentImageExistence(
 	if mode == types.FlattenModeForce {
 		// Delete temp image that exists for volume datasource since
 		// it is no longer required when the live image is flattened.
-		err := rv.DeleteTempImage(ctx)
+		err := rv.deleteTempImage(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to delete temporary rbd image %s: %w", rv, err)
 		}

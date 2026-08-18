@@ -32,6 +32,53 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
+func TestIsClone(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		imageName  string
+		parentName string
+		want       bool
+	}{
+		{
+			name:       "no parent",
+			imageName:  "myimage",
+			parentName: "",
+			want:       false,
+		},
+		{
+			name:       "parent is the temp clone of this image",
+			imageName:  "myimage",
+			parentName: (&rbdVolume{rbdImage: rbdImage{RbdImageName: "myimage"}}).generateTempCloneName(),
+			want:       true,
+		},
+		{
+			name:       "parent is a different image",
+			imageName:  "myimage",
+			parentName: "otherimage",
+			want:       false,
+		},
+		{
+			name:       "parent ends with temp suffix but belongs to a different image",
+			imageName:  "myimage",
+			parentName: (&rbdVolume{rbdImage: rbdImage{RbdImageName: "otherimage"}}).generateTempCloneName(),
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			rv := &rbdVolume{
+				rbdImage: rbdImage{
+					RbdImageName: tt.imageName,
+					ParentName:   tt.parentName,
+				},
+			}
+			assert.Equal(t, tt.want, rv.isClone())
+		})
+	}
+}
+
 func TestHasSnapshotFeature(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

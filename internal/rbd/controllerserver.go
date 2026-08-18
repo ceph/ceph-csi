@@ -1160,17 +1160,6 @@ func cleanupRBDImage(ctx context.Context,
 		return nil, status.Errorf(codes.Aborted, "rbd %s is still being used", rbdVol.RbdImageName)
 	}
 
-	// delete the temporary rbd image created as part of volume clone during
-	// create volume. This must run before rbdVol.Delete() so the volume
-	// image still exists and its parent info (ParentImageID) can identify
-	// a trashed temp clone without scanning the trash list.
-	err = rbdVol.DeleteTempImage(ctx)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to delete temporary rbd image: %v", err)
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	// Deleting rbd image
 	log.DebugLog(ctx, "deleting image %s", rbdVol.RbdImageName)
 	if err = rbdVol.Delete(ctx); err != nil {
