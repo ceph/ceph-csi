@@ -307,14 +307,14 @@ func (cs *Server) ControllerPublishVolume(
 	}
 	defer cs.hostLocks.Release(nodeID)
 
-	// Publish NVMe-oF resources
-	hostNqn, err := cs.publishResources(ctx, req)
+	// Publish NVMe-oF resources (add host, get listeners)
+	result, err := cs.publishResources(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to publish resources: %v", err)
 	}
 
-	// populate publish context
-	publishContext := populatePublishContext(req, hostNqn)
+	// Populate publish context with hostNQN and reconciled listeners
+	publishContext := populatePublishContext(req, result.hostNQN, result.listeners)
 
 	// Delegate to RBD backend to get service account restriction from image metadata.
 	rbdResp, err := cs.backendServer.ControllerPublishVolume(ctx, req)
@@ -952,15 +952,6 @@ func (cs *Server) createNVMeoFResources(
 			}
 		}
 	}
-	// Step 6: If using auto-listeners, query them back for storing in metadata
-	if networkMask != "" {
-		autoListeners, err := gateway.ListListeners(ctx, nvmeofData.SubsystemNQN)
-		if err != nil {
-			return nvmeofData, fmt.Errorf("failed to list auto-created listeners: %w", err)
-		}
-		nvmeofData.ListenerInfo = nvmeof.ConvertListenersFromProto(autoListeners.GetListeners())
-		log.DebugLog(ctx, "Retrieved %d auto-created listeners", len(nvmeofData.ListenerInfo))
-	}
 
 	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
 	if err != nil {
@@ -1021,43 +1012,57 @@ func (cs *Server) cleanupNVMeoFResources(
 	return nil
 }
 
-// publishResources publishes the HostNQN to be allowed to see the Volume.
-func (cs *Server) publishResources(ctx context.Context,
+// publishResult holds the result of publishing a volume to a host.
+type publishResult struct {
+	hostNQN   string
+	listeners []nvmeof.ListenerDetails
+}
+
+// reconcileListeners ensures we have up-to-date listener information.
+// This handles gateway scale-up/scale-down scenarios where listeners may change.
+// Returns the current listeners from the gateway.
+func (cs *Server) reconcileListeners(
+	ctx context.Context,
+	gateway *nvmeof.GatewayRpcClient,
+	subsystemNQN string,
+) ([]nvmeof.ListenerDetails, error) {
+	// Get current listeners from gateway
+	log.DebugLog(ctx, "Fetching current listeners for subsystem %s", subsystemNQN)
+	autoListeners, err := gateway.ListListeners(ctx, subsystemNQN)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list auto-created listeners: %w", err)
+	}
+	currentListeners := nvmeof.ConvertListenersFromProto(autoListeners.GetListeners())
+
+	if len(currentListeners) == 0 {
+		return nil, fmt.Errorf("no listeners found for subsystem %s", subsystemNQN)
+	}
+
+	log.DebugLog(ctx, "Found %d listener(s) for subsystem %s", len(currentListeners), subsystemNQN)
+
+	return currentListeners, nil
+}
+
+// publishHost adds the host to the subsystem with DH-CHAP authentication.
+// Returns the hostNQN that was added.
+func (cs *Server) publishHost(
+	ctx context.Context,
 	req *csi.ControllerPublishVolumeRequest,
+	gateway *nvmeof.GatewayRpcClient,
+	subsystemNQN string,
 ) (string, error) {
 	nodeID := req.GetNodeId()
+
+	// Get hostNQN from nodeID
 	hostNQN, err := getHostNQNFromNodeID(nodeID)
 	if err != nil {
 		return "", status.Errorf(codes.InvalidArgument, "invalid nodeID format: %v", err)
 	}
-	// Get volume context from the volume (contains subsystem info from CreateVolume)
-	volumeContext := req.GetVolumeContext()
-	subsystemNQN := volumeContext[vcSubsystemNQN]
-	gatewayAddr := volumeContext[vcGatewayAddress]
-	gatewayPortStr := volumeContext[vcGatewayPort]
-
-	// Convert gateway port from string to uint32
-	gatewayPort, err := strconv.ParseUint(gatewayPortStr, 10, 32)
-	if err != nil {
-		return "", fmt.Errorf("invalid gateway port %s: %w", gatewayPortStr, err)
-	}
-	// Connect to gateway and add host
-	config := &nvmeof.GatewayConfig{
-		Address: gatewayAddr,
-		Port:    uint32(gatewayPort),
-	}
-	gateway, err := connectGateway(ctx, config)
-	if err != nil {
-		return "", fmt.Errorf("gateway connection failed: %w", err)
-	}
-	defer func() {
-		if closeErr := gateway.Destroy(); closeErr != nil {
-			log.ErrorLog(ctx, "Warning: failed to close gateway connection: %v", closeErr)
-		}
-	}()
 
 	// Get DH-CHAP configuration from volume context
+	volumeContext := req.GetVolumeContext()
 	dhchapMode := volumeContext[vcDHCHAPMode] // "none", "unidirectional", "bidirectional", or empty
+
 	var dhchapKeys nvmeof.DHCHAPKeys
 	dhchapKeys, err = cs.setupDHCHAPKeys(ctx, req, nodeID, subsystemNQN, hostNQN, dhchapMode)
 	if err != nil {
@@ -1072,6 +1077,64 @@ func (cs *Server) publishResources(ctx context.Context,
 	log.DebugLog(ctx, "Host %s successfully added to subsystem %s", hostNQN, subsystemNQN)
 
 	return hostNQN, nil
+}
+
+// publishResources publishes the HostNQN to be allowed to see the Volume.
+// It manages gateway connection, publishes the host, and reconciles listeners.
+// Returns publishResult containing hostNQN and updated listeners.
+func (cs *Server) publishResources(
+	ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+) (*publishResult, error) {
+	// Get volume context from the volume (contains subsystem info from CreateVolume)
+	volumeContext := req.GetVolumeContext()
+	subsystemNQN := volumeContext[vcSubsystemNQN]
+	gatewayAddr := volumeContext[vcGatewayAddress]
+	gatewayPortStr := volumeContext[vcGatewayPort]
+
+	// Convert gateway port from string to uint32
+	gatewayPort, err := strconv.ParseUint(gatewayPortStr, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalid gateway port %s: %w", gatewayPortStr, err)
+	}
+
+	// Connect to gateway
+	config := &nvmeof.GatewayConfig{
+		Address: gatewayAddr,
+		Port:    uint32(gatewayPort),
+	}
+	gateway, err := connectGateway(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("gateway connection failed: %w", err)
+	}
+	defer func() {
+		if closeErr := gateway.Destroy(); closeErr != nil {
+			log.ErrorLog(ctx, "Warning: failed to close gateway connection: %v", closeErr)
+		}
+	}()
+
+	// Publish host to subsystem
+	hostNQN, err := cs.publishHost(ctx, req, gateway, subsystemNQN)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reconcile listeners
+	listeners, err := cs.reconcileListeners(ctx, gateway, subsystemNQN)
+	if err != nil {
+		// Log warning but don't fail - use listeners from volumeContext as fallback
+		log.WarningLog(ctx, "Failed to reconcile listeners (continuing with stored listeners): %v", err)
+		// Parse stored listeners from volumeContext
+		listenersJSON := volumeContext[vcListeners]
+		if err := json.Unmarshal([]byte(listenersJSON), &listeners); err != nil {
+			return nil, fmt.Errorf("failed to parse stored listeners: %w", err)
+		}
+	}
+
+	return &publishResult{
+		hostNQN:   hostNQN,
+		listeners: listeners,
+	}, nil
 }
 
 // unpublishResources removes the host from the NVMe-oF subsystem.
@@ -1206,10 +1269,28 @@ func populateVolumeContext(volume *csi.Volume, data *nvmeof.NVMeoFVolumeData) er
 }
 
 // populatePublishContext creates a publish context for the volume.
-func populatePublishContext(req *csi.ControllerPublishVolumeRequest, hostNqn string) map[string]string {
+// It takes the hostNQN and listeners from publishResources and builds the context.
+func populatePublishContext(
+	req *csi.ControllerPublishVolumeRequest,
+	hostNQN string,
+	listeners []nvmeof.ListenerDetails,
+) map[string]string {
 	publishContext := make(map[string]string)
+
+	// Copy all volume context fields to publish context
 	maps.Copy(publishContext, req.GetVolumeContext())
-	publishContext[vcHostNQN] = hostNqn
+
+	// Marshal listeners to JSON
+	listenersJSON, err := json.Marshal(listeners)
+	if err != nil {
+		// Should never happen with valid ListenerDetails, but log and use empty
+		log.ErrorLogMsg("failed to marshal listeners (using empty): %v", err)
+		listenersJSON = []byte("[]")
+	}
+
+	// Override/add publish-specific fields
+	publishContext[vcHostNQN] = hostNQN
+	publishContext[vcListeners] = string(listenersJSON) // Override with reconciled listeners
 
 	return publishContext
 }
