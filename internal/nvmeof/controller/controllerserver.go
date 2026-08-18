@@ -788,19 +788,21 @@ func ensureSubsystem(
 			return err
 		}
 	}
-	// if the subsystem exists, we need to ensure the listeners are created. (if exists, it is OK)
 
-	// if networkMask is not provided, listeners are not created automatically by gateway,
-	// should create them manually one by one.
-	if networkMask == "" {
-		// Create all listeners
-		for i, listener := range listeners {
-			log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
-			if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
-				return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
-			}
+	// Listeners already created automatically by the gateway when subsystem is created with networkMask
+	if networkMask != "" {
+		return nil
+	}
+
+	// if the subsystem exists, we need to ensure the listeners are created. (if exists, it is OK)
+	// Create all listeners
+	for i, listener := range listeners {
+		log.DebugLog(ctx, "Creating listener %d: %s", i, listener.String())
+		if err := gateway.CreateListener(ctx, subsystemNQN, listener); err != nil {
+			return fmt.Errorf("failed to create listener %d (%s): %w", i, listener.String(), err)
 		}
 	}
+	log.DebugLog(ctx, "Listener %v for the subsystem %s were created", listeners, subsystemNQN)
 
 	return nil
 }
@@ -923,9 +925,6 @@ func (cs *Server) createNVMeoFResources(
 		return nvmeofData, fmt.Errorf("subsystem setup failed: %w", err)
 	}
 
-	log.DebugLog(ctx, "subsystem %s and Listener %s for the subsystem were created", nvmeofData.SubsystemNQN,
-		nvmeofData.ListenerInfo)
-
 	// Step 4: Create namespace and set its uuid
 	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdRadosNameSpace, rbdImageName)
 	if err != nil {
@@ -942,6 +941,7 @@ func (cs *Server) createNVMeoFResources(
 			return nvmeofData, fmt.Errorf("setting QoS limits failed: %w", err)
 		}
 	}
+	// these hosts are for external clients, and they come from the VAC parameters.
 	if hostsList != nil {
 		log.DebugLog(ctx, "Adding hosts to subsystem: %s", hostsList)
 		for _, host := range hostsList.HostNQNs {
