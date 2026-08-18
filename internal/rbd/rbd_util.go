@@ -831,8 +831,21 @@ func (ri *rbdImage) removeImageFromTrash(ctx context.Context) error {
 	return ri.trashRemoveImage(ctx)
 }
 
-// DeleteTempImage deletes the temporary image created for volume datasource.
-func (rv *rbdVolume) DeleteTempImage(ctx context.Context) error {
+// Delete deletes the rbd volume. If the volume is a clone (its parent name
+// ends with the temp image suffix), the temporary clone image is cleaned up
+// first so that the parent image info is still accessible for trash lookup.
+func (rv *rbdVolume) Delete(ctx context.Context) error {
+	if rv.isClone() {
+		if err := rv.deleteTempImage(ctx); err != nil {
+			return fmt.Errorf("failed to delete temporary rbd image: %w", err)
+		}
+	}
+
+	return rv.rbdImage.Delete(ctx)
+}
+
+// deleteTempImage deletes the temporary image created for volume datasource.
+func (rv *rbdVolume) deleteTempImage(ctx context.Context) error {
 	tempClone := rv.generateTempClone()
 	snap := &rbdSnapshot{}
 	defer snap.Destroy(ctx)
@@ -1612,6 +1625,12 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 // hasSnapshotFeature checks if Layering is enabled for this image.
 func (ri *rbdImage) hasSnapshotFeature() bool {
 	return (uint64(ri.ImageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
+}
+
+// isClone returns true when the volume's parent image is the temporary clone
+// image that was created as datasource for this volume.
+func (rv *rbdVolume) isClone() bool {
+	return rv.ParentName == rv.generateTempCloneName()
 }
 
 func (ri *rbdImage) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {

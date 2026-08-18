@@ -106,6 +106,12 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	return true, nil
 }
 
+// generateTempCloneName returns the name of the temporary clone image for
+// this volume.
+func (rv *rbdVolume) generateTempCloneName() string {
+	return rv.RbdImageName + tempImageSuffix
+}
+
 func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	tempClone := rbdVolume{}
 	tempClone.conn = rv.conn.Copy()
@@ -121,7 +127,7 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	// The temp cloned image name will be always (rbd image name + "-temp")
 	// this name will be always unique, as cephcsi never creates an image with
 	// this format for new rbd images
-	tempClone.RbdImageName = rv.RbdImageName + tempImageSuffix
+	tempClone.RbdImageName = rv.generateTempCloneName()
 
 	return &tempClone
 }
