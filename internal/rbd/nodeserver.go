@@ -1547,6 +1547,13 @@ func (ns *NodeServer) NodeGetCapabilities(
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_HEALTH,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
 					},
 				},
@@ -1878,6 +1885,80 @@ func getBlockMetrics(
 				Total: m.Capacity.Value(),
 				Unit:  csi.VolumeUsage_BYTES,
 			},
+		},
+	}, nil
+}
+
+// NodeGetVolumeHealth returns the health of the volume.
+func (ns *NodeServer) NodeGetVolumeHealth(
+	ctx context.Context,
+	req *csi.NodeGetVolumeHealthRequest,
+) (*csi.NodeGetVolumeHealthResponse, error) {
+	volumeID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	targetPath := req.GetVolumePublishPath()
+
+	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
+
+	if healthy && msg != nil {
+		var checkerType hc.CheckerType = hc.StatCheckerType
+		info, lookupErr := lookupVolumeInfo(volumeID)
+		if lookupErr == nil && info.IsBlockMode {
+			checkerType = hc.NoOpCheckerType
+		} else if lookupErr != nil {
+			log.WarningLog(ctx, "could not lookup volume info for %s: %v", volumeID, lookupErr)
+		}
+		if err := ns.healthChecker.StartChecker(volumeID, targetPath, checkerType); err != nil {
+			log.WarningLog(ctx, "failed to start healthchecker: %v", err)
+		}
+
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+			},
+		}, nil
+	}
+
+	if !healthy {
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+				HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+					{
+						Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+						Reason:  "VolumeInaccessible",
+						Message: msg.Error(),
+					},
+				},
+			},
+		}, nil
+	}
+
+	if targetPath != "" {
+		if _, err := os.Stat(targetPath); err != nil && util.IsCorruptedMountError(err) {
+			log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
+
+			return &csi.NodeGetVolumeHealthResponse{
+				VolumeHealth: &csi.VolumeHealth{
+					VolumeId: volumeID,
+					HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+						{
+							Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+							Reason:  "CorruptedMount",
+							Message: err.Error(),
+						},
+					},
+				},
+			}, nil
+		}
+	}
+
+	return &csi.NodeGetVolumeHealthResponse{
+		VolumeHealth: &csi.VolumeHealth{
+			VolumeId: volumeID,
 		},
 	}, nil
 }
