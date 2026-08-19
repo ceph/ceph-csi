@@ -971,6 +971,13 @@ func (ns *cephfsNodeServer) NodeGetCapabilities(
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_HEALTH,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 					},
 				},
@@ -1063,6 +1070,97 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
 }
 
+// NodeGetVolumeHealth returns the health of the volume.
+func (ns *cephfsNodeServer) NodeGetVolumeHealth(
+	ctx context.Context,
+	req *csi.NodeGetVolumeHealthRequest,
+) (*csi.NodeGetVolumeHealthResponse, error) {
+	volumeID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	targetPath := req.GetVolumePublishPath()
+	if targetPath != "" && !strings.HasPrefix(targetPath, "/") {
+		return nil, status.Errorf(codes.InvalidArgument, "volume_publish_path %q must be an absolute path", targetPath)
+	}
+
+	stagingTargetPath := req.GetStagingTargetPath()
+	if stagingTargetPath != "" && !strings.HasPrefix(stagingTargetPath, "/") {
+		return nil, status.Errorf(codes.InvalidArgument, "staging_target_path %q must be an absolute path", stagingTargetPath)
+	}
+
+	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
+
+	// healthy && msg != nil means the checker has not started yet.
+	if healthy && msg != nil {
+		if targetPath != "" {
+			if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+				return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+			}
+			defer ns.VolumeLocks.Release(targetPath)
+
+			if err := ns.healthChecker.StartChecker(volumeID, targetPath, hc.StatCheckerType); err != nil {
+				log.WarningLog(ctx, "failed to start healthchecker: %v", err)
+			}
+		}
+
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+			},
+		}, nil
+	}
+
+	if !healthy {
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+				HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+					{
+						Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+						Reason:  "VolumeInaccessible",
+						Message: msg.Error(),
+					},
+				},
+			},
+		}, nil
+	}
+
+	if targetPath != "" {
+		if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+			return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+		}
+		defer ns.VolumeLocks.Release(targetPath)
+
+		if _, err := os.Stat(targetPath); err != nil {
+			if util.IsCorruptedMountError(err) {
+				log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
+			} else {
+				log.WarningLog(ctx, "stat failed for %q: %v", targetPath, err)
+			}
+
+			return &csi.NodeGetVolumeHealthResponse{
+				VolumeHealth: &csi.VolumeHealth{
+					VolumeId: volumeID,
+					HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+						{
+							Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+							Reason:  "CorruptedMount",
+							Message: err.Error(),
+						},
+					},
+				},
+			}, nil
+		}
+	}
+
+	return &csi.NodeGetVolumeHealthResponse{
+		VolumeHealth: &csi.VolumeHealth{
+			VolumeId: volumeID,
+		},
+	}, nil
+}
 
 // setMountOptions updates the kernel/fuse mount options from CSI config file if it exists.
 // If not, it falls back to returning the kernelMountOptions/fuseMountOptions from the command line.
