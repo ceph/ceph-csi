@@ -191,6 +191,13 @@ func (ns *nfsNodeServer) NodeGetCapabilities(
 					},
 				},
 			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_HEALTH,
+					},
+				},
+			},
 		},
 	}, nil
 }
@@ -247,6 +254,73 @@ func (ns *nfsNodeServer) NodeGetVolumeStats(
 	}
 
 	return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
+}
+
+// NodeGetVolumeHealth returns the health of the volume.
+func (ns *nfsNodeServer) NodeGetVolumeHealth(
+	ctx context.Context,
+	req *csi.NodeGetVolumeHealthRequest,
+) (*csi.NodeGetVolumeHealthResponse, error) {
+	volumeID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	targetPath := req.GetVolumePublishPath()
+
+	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
+
+	if healthy && msg != nil {
+		if err := ns.healthChecker.StartChecker(volumeID, targetPath, hc.StatCheckerType); err != nil {
+			log.WarningLog(ctx, "failed to start healthchecker: %v", err)
+		}
+
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+			},
+		}, nil
+	}
+
+	if !healthy {
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+				HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+					{
+						Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+						Reason:  "VolumeInaccessible",
+						Message: msg.Error(),
+					},
+				},
+			},
+		}, nil
+	}
+
+	if targetPath != "" {
+		if _, err := os.Stat(targetPath); err != nil && util.IsCorruptedMountError(err) {
+			log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
+
+			return &csi.NodeGetVolumeHealthResponse{
+				VolumeHealth: &csi.VolumeHealth{
+					VolumeId: volumeID,
+					HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+						{
+							Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+							Reason:  "CorruptedMount",
+							Message: err.Error(),
+						},
+					},
+				},
+			}, nil
+		}
+	}
+
+	return &csi.NodeGetVolumeHealthResponse{
+		VolumeHealth: &csi.VolumeHealth{
+			VolumeId: volumeID,
+		},
+	}, nil
 }
 
 // mountNFS mounts nfs volumes.
