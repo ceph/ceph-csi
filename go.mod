@@ -55,8 +55,6 @@ require (
 
 replace k8s.io/client-go => k8s.io/client-go v0.37.0
 
-replace github.com/container-storage-interface/spec => github.com/container-storage-interface/spec v1.12.0
-
 exclude (
 	// missing tag, referred to by github.com/hashicorp/go-kms-wrapping@v0.5.1
 	github.com/hashicorp/vault/sdk v0.1.14-0.20191229212425-c478d00be0d6
