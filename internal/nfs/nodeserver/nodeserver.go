@@ -195,13 +195,6 @@ func (ns *nfsNodeServer) NodeGetCapabilities(
 					},
 				},
 			},
-			{
-				Type: &csi.NodeServiceCapability_Rpc{
-					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
-					},
-				},
-			},
 		},
 	}, nil
 }
@@ -237,12 +230,7 @@ func (ns *nfsNodeServer) NodeGetVolumeStats(
 	}
 
 	if !healthy {
-		return &csi.NodeGetVolumeStatsResponse{
-			VolumeCondition: &csi.VolumeCondition{
-				Abnormal: true,
-				Message:  msg.Error(),
-			},
-		}, nil
+		return nil, status.Error(codes.Unavailable, msg.Error())
 	}
 
 	stat, err := os.Stat(targetPath)
@@ -250,12 +238,7 @@ func (ns *nfsNodeServer) NodeGetVolumeStats(
 		if util.IsCorruptedMountError(err) {
 			log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
 
-			return &csi.NodeGetVolumeStatsResponse{
-				VolumeCondition: &csi.VolumeCondition{
-					Abnormal: true,
-					Message:  err.Error(),
-				},
-			}, nil
+			return nil, status.Error(codes.Unavailable, err.Error())
 		}
 
 		return nil, status.Errorf(codes.InvalidArgument,
