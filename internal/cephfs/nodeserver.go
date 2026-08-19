@@ -766,7 +766,7 @@ func (ns *cephfsNodeServer) NodeUnpublishVolume(
 	}
 	defer ns.VolumeLocks.Release(targetPath)
 
-	// stop the health-checker that may have been started in NodeGetVolumeStats()
+	// stop the health-checker that may have been started in NodeGetVolumeHealth()
 	ns.healthChecker.StopChecker(volID, targetPath)
 
 	isMnt, err := ns.Mounter.IsMountPoint(targetPath)
@@ -900,13 +900,6 @@ func (ns *cephfsNodeServer) NodeGetCapabilities(
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
-					},
-				},
-			},
-			{
-				Type: &csi.NodeServiceCapability_Rpc{
-					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 					},
 				},
@@ -955,34 +948,23 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 		// NOTE: rbd.getStagingPath() uses os.Stat() internally which
 		// if called synchronously, could block indefinitely.
 
-		// Start the background checker but return
-		// immediately instead of calling os.Stat() on this goroutine.
-		// If the mount is unresponsive, os.Stat() would block,
-		// holding the VolumeLock (acquired above) and preventing all future
-		// calls for this path from reaching isHealthy().
-		// The background checker will do the stat(), the next periodic
-		// call will pick up the result (or detect the timeout).
+		// Start the background checker but return immediately. If the mount
+		// is unresponsive, os.Stat() would block, holding the VolumeLock
+		// (acquired above) and preventing all future calls for this path
+		// from reaching isHealthy(). The background checker will do the
+		// stat(), the next periodic call will pick up the result (or detect
+		// the timeout).
 		err = ns.healthChecker.StartChecker(req.GetVolumeId(), targetPath, hc.StatCheckerType)
 		if err != nil {
 			log.WarningLog(ctx, "failed to start healthchecker: %v", err)
 		}
 
-		return &csi.NodeGetVolumeStatsResponse{
-			VolumeCondition: &csi.VolumeCondition{
-				Abnormal: false,
-				Message:  "health checker started, status not yet available",
-			},
-		}, nil
+		return nil, status.Error(codes.Unavailable, "health check not yet available, retry")
 	}
 
 	// !healthy indicates a problem with the volume
 	if !healthy {
-		return &csi.NodeGetVolumeStatsResponse{
-			VolumeCondition: &csi.VolumeCondition{
-				Abnormal: true,
-				Message:  msg.Error(),
-			},
-		}, nil
+		return nil, status.Error(codes.Unavailable, msg.Error())
 	}
 
 	// warning: reaching here should mean that synchronous os.Stat()
@@ -992,12 +974,7 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 		if util.IsCorruptedMountError(err) {
 			log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
 
-			return &csi.NodeGetVolumeStatsResponse{
-				VolumeCondition: &csi.VolumeCondition{
-					Abnormal: true,
-					Message:  err.Error(),
-				},
-			}, nil
+			return nil, status.Error(codes.Unavailable, err.Error())
 		}
 
 		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
@@ -1009,6 +986,7 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
 }
+
 
 // setMountOptions updates the kernel/fuse mount options from CSI config file if it exists.
 // If not, it falls back to returning the kernelMountOptions/fuseMountOptions from the command line.
