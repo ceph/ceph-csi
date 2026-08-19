@@ -33,10 +33,23 @@ parameters:
   # nvmeofGatewayPort is optional, defaults to 5500
   # nvmeofGatewayPort: "5500"
 
-  # connection details for the listeners (NVMe-oF data protocol)
-  listeners: |
-    [{
-      "address": "10.242.64.32",
-      "port": "4420",
-      "hostname": "cephnvme-vm9"
-    }]
+  # Listener discovery: specify EITHER listeners OR networkMask (XOR),not both.
+  #
+  # Option A — explicit listener list
+  # (static, defined at StorageClass creation time).
+  # Note: StorageClass is immutable; if gateways scale up/down, listeners
+  # here will be stale.
+  # listeners: |
+  #   [{
+  #     "address": "10.242.64.32",
+  #     "port": "4420",
+  #     "hostname": "cephnvme-vm9"
+  #   }]
+
+  # Option B — networkMask (recommended). CIDR of the cluster
+  # network\nvmeof deployment network.
+  # The NVMe-oF gateway scans this subnet and automatically creates listeners
+  # for every gateway it discovers. The listener list is fetched live at
+  # ControllerPublishVolume time, so it stays accurate across gateway
+  # scale-up/down.
+  networkMask: "10.128.0.0/14"
