@@ -1075,21 +1075,6 @@ func (ri *rbdImage) flattenRbdImage(
 	return nil
 }
 
-func (ri *rbdImage) getParentName() (string, error) {
-	rbdImage, err := ri.openReadOnly()
-	if err != nil {
-		return "", err
-	}
-	defer rbdImage.Close() //nolint:errcheck // not a critical failure
-
-	parentInfo, err := rbdImage.GetParent()
-	if err != nil {
-		return "", err
-	}
-
-	return parentInfo.Image.ImageName, nil
-}
-
 func (ri *rbdImage) flatten() error {
 	rbdImage, err := ri.open()
 	if err != nil {
@@ -1100,13 +1085,16 @@ func (ri *rbdImage) flatten() error {
 	err = rbdImage.Flatten()
 	if err != nil {
 		// rbd image flatten will fail if the rbd image does not have a parent
-		parent, pErr := ri.getParentName()
-		if pErr != nil {
-			return fmt.Errorf("Failed as %w (internal %w)", err, pErr)
-		}
-		if parent == "" {
+		_, pErr := rbdImage.GetParent()
+		if errors.Is(pErr, librbd.ErrNotFound) {
 			return nil
 		}
+
+		if pErr != nil {
+			return fmt.Errorf("failed to flatten: (%w) and get parent: (%w)", err, pErr)
+		}
+
+		return fmt.Errorf("failed to flatten image: %w", err)
 	}
 
 	return nil
