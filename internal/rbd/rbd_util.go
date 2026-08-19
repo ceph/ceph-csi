@@ -991,11 +991,11 @@ func (ri *rbdImage) flattenRbdImage(
 			err)
 		if forceFlatten || depth >= hardlimit {
 			flattenImageErr := ri.flatten()
-			if err != nil {
-				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", ri.Pool, ri.RbdImageName, err)
+			if flattenImageErr != nil {
+				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", ri.Pool, ri.RbdImageName, flattenImageErr)
 
 				return fmt.Errorf(
-					"failed to add task to remove image: %w, failed to flatten image: %w",
+					"failed to add task to flatten image: %w, failed to flatten image: %w",
 					knownErr,
 					flattenImageErr,
 				)
