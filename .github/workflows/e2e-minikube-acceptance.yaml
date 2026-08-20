@@ -81,7 +81,7 @@ jobs:
           CONTAINER_CMD: docker
 
       - name: Build e2e.test
-        run: make e2e.test
+        run: make containerized-build TARGET=e2e.test
 
       - name: Load ceph-csi image
         run: scripts/minikube.sh cephcsi
