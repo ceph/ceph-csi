@@ -23,7 +23,7 @@ RUN source /build.env \
 RUN dnf -y remove protobuf
 
 RUN source /build.env \
-    && rpm -ivh https://download.ceph.com/rpm-${CEPH_VERSION}/el10/noarch/ceph-release-1-0.el10.noarch.rpm \
+    && rpm -ivh ${CEPH_RELEASE_RPM} \
     && dnf -y install epel-release \
     && dnf -y --nobest update \
     && dnf -y install --enablerepo=crb \
