@@ -75,20 +75,13 @@ jobs:
         run: >-
           docker pull "$ROOK_CEPH_CLUSTER_IMAGE"
 
-      - name: Deploy Rook + Ceph
-        run: scripts/minikube.sh deploy-rook
-        env:
-          ROOK_DEPLOY_TIMEOUT: "600"
-          KUBECTL_RETRY_DELAY: "5"
-
-      - name: Install snapshot controller
-        run: >-
-          scripts/minikube.sh install-snapshotter
-
       - name: Build ceph-csi image
         run: make image-cephcsi
         env:
           CONTAINER_CMD: docker
+
+      - name: Build e2e.test
+        run: make e2e.test
 
       - name: Load ceph-csi image
         run: scripts/minikube.sh cephcsi
@@ -100,8 +93,15 @@ jobs:
         run: >-
           scripts/deploy-ceph-csi-operator.sh deploy
 
-      - name: Build e2e.test
-        run: make e2e.test
+      - name: Install snapshot controller
+        run: >-
+          scripts/minikube.sh install-snapshotter
+
+      - name: Deploy Rook + Ceph
+        run: scripts/minikube.sh deploy-rook
+        env:
+          ROOK_DEPLOY_TIMEOUT: "600"
+          KUBECTL_RETRY_DELAY: "5"
 
       - name: Run acceptance e2e
         run: |
