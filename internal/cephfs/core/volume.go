@@ -18,7 +18,6 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -334,42 +333,19 @@ func checkSubvolumeHasFeature(feature string, subVolFeatures []string) bool {
 }
 
 // PinVolume sets an MDS pinning policy on the subvolume.
-// pinType can be "export", "distributed" or "random".
-// pinSetting is the value for the pin (e.g. MDS rank "2", "true"/"false").
-//
-// go-ceph's typed PinSubVolume helper does not accept a subvolume group, so it
-// would always target Ceph's default group and fail for subvolumes created in
-// a non-default group (as ceph-csi does). To support any group, the "fs
-// subvolume pin" manager command is issued directly with the group_name set.
-//
-// Similar To:
-//
-//	ceph fs subvolume pin <vol_name> <sub_name> <pin_type> <pin_setting> \
-//	  --group_name=<group>
 func (s *subVolumeClient) PinVolume(ctx context.Context, pinType, pinSetting string) error {
-	cmd := map[string]string{
-		"prefix":      "fs subvolume pin",
-		"format":      "json",
-		"vol_name":    s.FsName,
-		"sub_name":    s.VolID,
-		"group_name":  s.SubvolumeGroup,
-		"pin_type":    pinType,
-		"pin_setting": pinSetting,
+	fsa, err := s.conn.GetFSAdmin()
+	if err != nil {
+		log.ErrorLog(ctx, "could not get FSAdmin, can not pin subvolume %s: %s", s.VolID, err)
+
+		return err
 	}
 
-	buf, err := json.Marshal(cmd)
+	_, err = fsa.PinSubVolumeInGroup(s.FsName, s.SubvolumeGroup, s.VolID, pinType, pinSetting)
 	if err != nil {
-		return fmt.Errorf("failed to marshal pin command for subvolume %s: %w", s.VolID, err)
-	}
-
-	out, status, err := s.conn.MgrCommand([][]byte{buf})
-	if err != nil {
-		return fmt.Errorf("failed to pin subvolume %s in fs %s (group %s): %w",
+		log.ErrorLog(ctx, "failed to pin subvolume %s in fs %s (group %s): %s",
 			s.VolID, s.FsName, s.SubvolumeGroup, err)
 	}
 
-	log.DebugLog(ctx, "cephfs: pinned subvolume %s in fs %s (group %s), type=%s setting=%s: status=%q output=%q",
-		s.VolID, s.FsName, s.SubvolumeGroup, pinType, pinSetting, status, string(out))
-
-	return nil
+	return err
 }
