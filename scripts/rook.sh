@@ -154,6 +154,11 @@ function check_ceph_cluster_health() {
 				echo "Creating CEPH cluster is done. [$CEPH_HEALTH]"
 				break
 			fi
+			if [ "$CEPH_HEALTH" = "HEALTH_WARN" ]; then
+				echo "Creating CEPH cluster is done, with warnings!"
+				kubectl_retry -n rook-ceph get cephclusters -o jsonpath='{.items[0].status.ceph.details}'
+				break
+			fi
 		fi
 	done
 
