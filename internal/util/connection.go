@@ -170,14 +170,3 @@ func (cc *ClusterConnection) GetAddrs() (string, error) {
 
 	return cc.conn.GetAddrs()
 }
-
-// MgrCommand sends a raw JSON-encoded command to the Ceph manager and returns
-// its output. It is used for manager commands that are not (yet) exposed by a
-// typed go-ceph helper.
-func (cc *ClusterConnection) MgrCommand(args [][]byte) ([]byte, string, error) {
-	if cc.conn == nil {
-		return nil, "", errors.New("cluster is not connected yet")
-	}
-
-	return cc.conn.MgrCommand(args)
-}
