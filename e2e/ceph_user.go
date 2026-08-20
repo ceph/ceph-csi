@@ -25,6 +25,8 @@ import (
 
 //nolint:gosec // secret for test
 const (
+	// Linux kernel clients < 7.0 require "aes", do not support default "aes256k"
+	defaultCipher = "aes"
 	// ceph user names.
 	keyringRBDProvisionerUsername          = "cephcsi-rbd-provisioner"
 	keyringRBDNodePluginUsername           = "cephcsi-rbd-node"
@@ -97,7 +99,7 @@ func cephFSProvisionerCaps() []string {
 }
 
 func createCephUser(f *framework.Framework, user string, caps []string) (string, error) {
-	cmd := fmt.Sprintf("ceph auth get-or-create-key client.%s %s", user, strings.Join(caps, " "))
+	cmd := fmt.Sprintf("ceph auth get-or-create-key --key-type=%s client.%s %s", defaultCipher, user, strings.Join(caps, " "))
 	stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
 		return "", err
