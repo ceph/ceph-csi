@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/pkg/xattr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -57,6 +58,14 @@ type cephfsNodeServer struct {
 
 // Assert required implementation of CSI interfaces.
 var _ csi.NodeServer = &cephfsNodeServer{}
+
+func refreshRStats(targetPath string) error {
+	// Reading ceph.dir.rbytes forces the kernel CephFS client to refresh its
+	// cached recursive statistics.
+	_, err := xattr.Get(targetPath, "ceph.dir.rbytes")
+
+	return err
+}
 
 func getCredentialsForVolume(
 	volOptions *store.VolumeOptions,
@@ -1004,6 +1013,11 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
+		err = refreshRStats(targetPath)
+		if err != nil {
+			log.WarningLog(ctx, "failed to refresh CephFS rstats for %q: %v", targetPath, err)
+		}
+
 		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
 	}
 

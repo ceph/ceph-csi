@@ -408,21 +408,25 @@ func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolum
 	return nil
 }
 
-func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t int) error {
+func waitForVolumeStatsMetrics(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	timeoutMinutes int,
+	condition func(map[string]float64) (bool, error),
+) (map[string]float64, error) {
 	kubelet, err := getKubeletIP(f.ClientSet)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	isBlock := pvc.Spec.VolumeMode != nil && *pvc.Spec.VolumeMode == v1.PersistentVolumeBlock
 
 	// kubelet needs to be started with --read-only-port=10255
 	cmd := fmt.Sprintf("curl --silent 'http://%s:10255/metrics'", kubelet)
 
 	// retry as kubelet does not immediately have the metrics available
-	timeout := time.Duration(t) * time.Minute
+	timeout := time.Duration(timeoutMinutes) * time.Minute
+	var matchingMetrics map[string]float64
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 		if err != nil {
 			framework.Logf("failed to get metrics for pvc %q (%v): %v", pvc.Name, err, stdErr)
@@ -446,8 +450,25 @@ func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t i
 			framework.Logf("found metric for pvc %s/%s: %s = %f", pvc.Namespace, pvc.Name, name, value)
 		}
 
+		matched, err := condition(metrics)
+		if matched {
+			matchingMetrics = metrics
+		}
+
+		return matched, err
+	})
+
+	return matchingMetrics, err
+}
+
+func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t int) error {
+	isBlock := pvc.Spec.VolumeMode != nil && *pvc.Spec.VolumeMode == v1.PersistentVolumeBlock
+
+	_, err := waitForVolumeStatsMetrics(f, pvc, t, func(metrics map[string]float64) (bool, error) {
 		return validateVolumeStatsMetrics(metrics, isBlock)
 	})
+
+	return err
 }
 
 // parseVolumeStatsMetrics extracts kubelet_volume_stats_* metric values for a
