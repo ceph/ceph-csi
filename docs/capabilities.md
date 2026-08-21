@@ -49,7 +49,7 @@ they have similar capability requirements.
 ```bash
 USER=csi-rbd
 POOL=csi
-ceph auth get-or-create client.$USER \
+ceph auth get-or-create --key-type=aes client.$USER \
   mgr "profile rbd pool=$POOL" \
   osd "profile rbd pool=$POOL"
   mon "profile rbd"
@@ -61,7 +61,7 @@ ceph auth get-or-create client.$USER \
 USER=csi-cephfs
 FS_NAME=cephfs
 SUB_VOL=csi
-ceph auth get-or-create client.$USER \
+ceph auth get-or-create --key-type=aes client.$USER \
   mgr "allow rw" \
   osd "allow rwx tag cephfs metadata=$FS_NAME, allow rw tag cephfs data=$FS_NAME" \
   mds "allow r fsname=$FS_NAME path=/volumes, allow rws fsname=$FS_NAME path=/volumes/$SUB_VOL" \
