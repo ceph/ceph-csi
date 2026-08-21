@@ -131,7 +131,7 @@ fetch_template_values() {
     # fetch fsid to populate the clusterID in storageclass
     FS_ID=$(kubectl_retry -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
     # fetch the admin key corresponding to the adminID
-    ADMIN_KEY=$(kubectl_retry -n rook-ceph exec "${TOOLBOX_POD}" -- ceph auth get-key client.admin)
+    ADMIN_KEY=$(kubectl_retry -n rook-ceph exec "${TOOLBOX_POD}" -- ceph auth get-or-create-key --key-type=aes client.csiadmin mon 'allow all' mgr 'allow all' osd 'allow all' mds 'allow all')
 }
 
 install() {
@@ -172,8 +172,8 @@ install_cephcsi_helm_charts() {
     # deploy secret if DEPLOY_SECRET flag is set
     if [ "${DEPLOY_SECRET}" -eq 1 ]; then
         fetch_template_values
-        RBD_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=admin --set secret.userKey=${ADMIN_KEY}"
-        CEPHFS_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=admin --set secret.userKey=${ADMIN_KEY}"
+        RBD_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=csiadmin --set secret.userKey=${ADMIN_KEY}"
+        CEPHFS_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=csiadmin --set secret.userKey=${ADMIN_KEY}"
     fi
     # enable read affinity
     if [ "${ENABLE_READ_AFFINITY}" -eq 1 ]; then
