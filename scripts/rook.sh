@@ -56,6 +56,10 @@ function deploy_rook() {
 		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
 	fi
 
+	curl -o "${TEMP_DIR}/nvmeof-test.yaml" "${ROOK_URL}/nvmeof-test.yaml"
+	sed -i 's|pool: nvmeof|pool: replicapool|g' "${TEMP_DIR}/nvmeof-test.yaml"
+	kubectl_retry create -f "${TEMP_DIR}/nvmeof-test.yaml"
+
 	rm -rf "${TEMP_DIR}"
 
 	kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
@@ -85,6 +89,7 @@ function deploy_rook() {
 
 function teardown_rook() {
 	create_or_delete_subvolumegroup "delete"
+	kubectl delete -f "${ROOK_URL}/nvmeof-test.yaml"
 	kubectl delete -f "${ROOK_URL}/pool-test.yaml"
 	kubectl delete -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl delete -f "${ROOK_URL}/toolbox.yaml"

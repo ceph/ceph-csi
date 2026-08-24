@@ -30,8 +30,9 @@ import (
 	"k8s.io/pod-security-admission/api"
 )
 
-const (
-	nvmeofPool = "nvmeofpool"
+var (
+	// FIXME: if this tests runs parallel with RBD, a dedicated pool is needed
+	nvmeofPool = defaultRBDPool
 )
 
 var _ = ginkgo.Describe("nvmeof", func() {
@@ -69,9 +70,6 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		}
 
 		framework.Logf("NVMe-oF testing supported, Ceph version: %s", version)
-
-		// FIXME: gateway should get deployed by Rook
-		deployGateway(f, deployTimeout)
 
 		// No need to create the namespace if ceph-csi is deployed via helm or operator.
 		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
@@ -123,7 +121,6 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		}
 
 		deleteNVMeoFPlugin()
-		deleteGateway(f)
 		deleteNVMeofStorageClass(f, nvmeofStorageClass)
 	}, ginkgo.OncePerOrdered)
 
