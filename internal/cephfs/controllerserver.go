@@ -565,6 +565,13 @@ func (cs *cephfsControllerServer) DeleteVolume(
 
 		log.ErrorLog(ctx, "Error returned from newVolumeOptionsFromVolID: %v", err)
 
+		if errors.Is(err, cerrors.ErrInvalidVolID) {
+			// likely a static provisioned volume with a volume handle that
+			// was never encoded by ceph-csi; retrying will never succeed,
+			// so return a terminal error instead of codes.Internal.
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
 		if !errors.Is(err, cerrors.ErrVolumeNotFound) {
 			return nil, status.Error(codes.Internal, err.Error())
