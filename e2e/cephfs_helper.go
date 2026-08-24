@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	adminUser = "admin"
+	adminUser = "csiadmin"
 )
 
 // validateSubvolumegroup validates whether subvolumegroup is present.
