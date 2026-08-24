@@ -988,6 +988,13 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
+	if errors.Is(err, rbderrors.ErrInvalidVolID) {
+		// likely a static provisioned volume with a volume handle that was
+		// never encoded by ceph-csi; retrying will never succeed, so return
+		// a terminal error instead of codes.Internal.
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	if errors.Is(err, rbderrors.ErrImageNotFound) {
 		if notFoundErr := rbdVol.removeImageFromTrash(ctx); notFoundErr != nil {
 			return nil, status.Errorf(codes.Internal, "failed to cleanup image %q: %v", rbdVol, notFoundErr)
