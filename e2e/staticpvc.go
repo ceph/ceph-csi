@@ -394,7 +394,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath, fsName stri
 	if err != nil {
 		return err
 	}
-	adminKey, e, err := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &listOpt)
+	adminKey, e, err := execCommandInPod(f, fmt.Sprintf("ceph auth get-or-create-key --key-type=aes client.%s mon 'allow all' mgr 'allow all' osd 'allow all' mds 'allow all'", adminUser), rookNamespace, &listOpt)
 	if err != nil {
 		return err
 	}
@@ -569,7 +569,7 @@ func validateCephFsMonitorListPV(f *framework.Framework, appPath, scPath, fsName
 	if err != nil {
 		return err
 	}
-	adminKey, e, err := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &listOpt)
+	adminKey, e, err := execCommandInPod(f, fmt.Sprintf("ceph auth get-or-create-key --key-type=aes client.%s mon 'allow all' mgr 'allow all' osd 'allow all' mds 'allow all'", adminUser), rookNamespace, &listOpt)
 	if err != nil {
 		return err
 	}
