@@ -75,7 +75,7 @@ func stripSecret(out []string) bool {
 
 		out[i] = before + strippedSecret
 		if end != -1 {
-			out[i] += arg[end+len(secretArg):]
+			out[i] += after[end:]
 		}
 
 		return true
