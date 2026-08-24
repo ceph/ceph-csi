@@ -207,6 +207,9 @@ func (cs *cephfsControllerServer) checkContentSource(
 			if errors.Is(err, cerrors.ErrSnapNotFound) {
 				return nil, nil, nil, status.Error(codes.NotFound, err.Error())
 			}
+			if errors.Is(err, cerrors.ErrInvalidVolID) {
+				return nil, nil, nil, status.Error(codes.InvalidArgument, err.Error())
+			}
 
 			return nil, nil, nil, status.Error(codes.Internal, err.Error())
 		}
@@ -1081,6 +1084,11 @@ func (cs *cephfsControllerServer) DeleteSnapshot(
 			}
 
 			return &csi.DeleteSnapshotResponse{}, nil
+		case errors.Is(err, cerrors.ErrInvalidVolID):
+			// likely a static provisioned snapshot with a snapshot handle
+			// that was never encoded by ceph-csi; retrying will never
+			// succeed, so return a terminal error instead of codes.Internal.
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		case errors.Is(err, cerrors.ErrVolumeNotFound):
 			// if the error is ErrVolumeNotFound, the subvolume is already deleted
 			// from backend, Hence undo the omap entries and return success
@@ -1672,6 +1680,12 @@ func (cs *cephfsControllerServer) ControllerModifyVolume(
 		if errors.Is(err, cerrors.ErrVolumeNotFound) || errors.Is(err, util.ErrKeyNotFound) ||
 			errors.Is(err, util.ErrPoolNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
+		}
+
+		if errors.Is(err, cerrors.ErrInvalidVolID) {
+			// likely a static provisioned volume
+			// InvalidArgument indicates that the CO has specified capabilities not supported by the volume
+			return nil, status.Errorf(codes.InvalidArgument, "volume ID %s does not support modify", volID)
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
