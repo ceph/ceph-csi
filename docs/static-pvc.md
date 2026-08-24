@@ -268,7 +268,7 @@ spec:
       # node stage secret namespace where above secret is created
       namespace: default
     volumeAttributes:
-      # optional file system to be mounted
+      # Required: CephFS filesystem name to be mounted
       "fsName": "myfs"
       # Required options from storageclass parameters need to be added in volumeAttributes
       "clusterID": "ba68226a-672f-4ba5-97bc-22840318b2ec"
@@ -298,7 +298,7 @@ static CephFS PV
 |  Attributes  |                                                                     Description                                                                      | Required |
 | :----------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: | :------: |
 |  clusterID   | The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment) |   Yes    |
-|    fsName    |                                      CephFS filesystem name to be mounted. Not passing this option mounts the default file system.                                       |   No    |
+|    fsName    |                                      CephFS filesystem name to be mounted                                       |   Yes    |
 | staticVolume |                                           Value must be set to `true` to mount and unmount static cephFS PVC                                         |   Yes    |
 |   rootPath   |                     Actual path of the subvolume in ceph cluster which can be retrieved by issuing getpath command as described above, or folder path of the volume                    |   Yes    |
 
