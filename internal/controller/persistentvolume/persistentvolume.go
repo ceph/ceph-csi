@@ -151,6 +151,7 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 			pv.Spec.ClaimRef.Name,
 			pvcNamespace,
 			r.config.ClusterName,
+			r.config.InstanceID,
 			cr)
 		if err != nil {
 			log.ErrorLogMsg("failed to set CephFS subvolume metadata %s", err)

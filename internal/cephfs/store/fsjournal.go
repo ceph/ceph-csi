@@ -471,6 +471,62 @@ func CheckSnapExists(
 	return sid, nil
 }
 
+// getSubvolumeNameFromID derives the subvolume name from volumeID by querying the RADOS journal.
+// The journal stores the actual subvolumeName (including custom prefix) and fallback
+// to "csi-vol-<uuid>" for very old volumes that predate imageName tracking.
+func getSubvolumeNameFromID(
+	ctx context.Context,
+	vi *util.CSIIdentifier,
+	monitors string,
+	radosNamespace string,
+	instanceID string,
+	cr *util.Credentials,
+) (string, error) {
+	volOptions := &VolumeOptions{
+		ClusterID: vi.ClusterID,
+		FscID:     vi.LocationID,
+	}
+
+	volOptions.Monitors = monitors
+	volOptions.RadosNamespace = radosNamespace
+
+	// Connect to cluster to get metadata pool
+	err := volOptions.Connect(cr)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to cluster: %w", err)
+	}
+	defer volOptions.Destroy()
+
+	fs := core.NewFileSystem(volOptions.conn)
+	fsName, err := fs.GetFsName(ctx, volOptions.FscID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get filesystem name: %w", err)
+	}
+
+	metadataPool, err := fs.GetMetadataPool(ctx, fsName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get metadata pool: %w", err)
+	}
+
+	VolJournal = journal.NewCSIVolumeJournal(instanceID)
+	j, err := VolJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to journal: %w", err)
+	}
+	defer j.Destroy()
+
+	// Get image attributes from journal
+	imageAttributes, err := j.GetImageAttributes(ctx, metadataPool, vi.ObjectUUID, false)
+	if err != nil {
+		return "", fmt.Errorf("failed to get image attributes from journal: %w", err)
+	}
+
+	log.DebugLog(ctx, "cephfs: resolved subvolumeName %s for volumeID %s",
+		imageAttributes.ImageName, vi.ObjectUUID)
+
+	return imageAttributes.ImageName, nil
+}
+
 // SetSubVolCSIMetadata sets CSI metadata (PV/PVC info) on a CephFS subvolume.
 func SetSubVolCSIMetadata(
 	ctx context.Context,
@@ -479,7 +535,8 @@ func SetSubVolCSIMetadata(
 	pvName,
 	pvcName,
 	pvcNamespace,
-	clusterName string,
+	clusterName,
+	instanceID string,
 	cr *util.Credentials,
 ) error {
 	var vi util.CSIIdentifier
@@ -504,9 +561,27 @@ func SetSubVolCSIMetadata(
 	}
 	defer conn.Destroy()
 
-	fsName := volumeAttributes["fsName"]
+	// Newer PVs (v3.0.0+) carry the subvolumeName in their volume attributes;
+	// use it directly to avoid extra RADOS/manager calls
+	// on every reconcile.
 	subvolName := volumeAttributes["subvolumeName"]
+	if subvolName == "" {
+		// Legacy PVs predate the subvolumeName attribute, so derive it from
+		// the volumeID through the RADOS journal.
+		radosNamespace, nsErr := util.GetCephFSRadosNamespace(util.CsiConfigFile, vi.ClusterID)
+		if nsErr != nil {
+			return fmt.Errorf("failed to fetch rados namespace using clusterID (%s): %w", vi.ClusterID, nsErr)
+		}
+		subvolName, err = getSubvolumeNameFromID(ctx, &vi, monitors, radosNamespace, instanceID, cr)
+		if err != nil {
+			return fmt.Errorf("failed to get subvolume name: %w", err)
+		}
+	}
+	if subvolName == "" {
+		return fmt.Errorf("failed to resolve subvolume name for volumeID %s", volumeID)
+	}
 
+	fsName := volumeAttributes["fsName"]
 	subVol := &core.SubVolume{
 		VolID:          subvolName,
 		FsName:         fsName,
