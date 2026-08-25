@@ -40,4 +40,8 @@ var (
 	// ErrFilesystemNotFound is returned in case the filesystem
 	// does not exist.
 	ErrFilesystemNotFound = fmt.Errorf("filesystem %w", ErrNotFound)
+
+	// ErrExportNameConflict is returned when an export's pseudo-path is
+	// already in use by a different volume's subvolume.
+	ErrExportNameConflict = errors.New("export name conflict")
 )
