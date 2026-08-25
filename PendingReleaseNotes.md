@@ -22,6 +22,11 @@
    default, and gated behind the parameter rather than the provisioner flag
    alone, since CephFS already reads that same metadata unconditionally for
    per-tenant KMS scoping.  Existing StorageClasses keep today's export
-   names unless they opt in explicitly.
+   names unless they opt in explicitly. Unlike the generated volume ID,
+   `<namespace>/<pvc-name>` is not guaranteed unique over time (e.g. a PVC
+   recreated under the same name before its old export was cleaned up);
+   `CreateVolume` now fails with `AlreadyExists` rather than silently
+   reusing another volume's export if the name is already claimed by a
+   different subvolume.
 
 ## NOTE

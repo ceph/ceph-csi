@@ -217,6 +217,20 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	case err == nil:
 		return nil
 	case strings.Contains(err.Error(), "Export already exists"):
+		// Only an idempotent retry if the existing export still points
+		// at this volume's subvolume path; a friendly export name isn't
+		// guaranteed unique the way a volume-ID derived one is.
+		existing, infoErr := nfsa.ExportInfo(nfsCluster, nv.GetExportPath())
+		if infoErr != nil {
+			return fmt.Errorf("export %q already exists in NFS-cluster %q, but failed to verify "+
+				"it belongs to this volume: %w", nv, nfsCluster, infoErr)
+		}
+		if existing.Path != path {
+			return fmt.Errorf("export path %q in NFS-cluster %q is already in use by a different "+
+				"volume (subvolume %q, expected %q): %w", nv.GetExportPath(), nfsCluster, existing.Path,
+				path, ErrExportNameConflict)
+		}
+
 		return nil
 	case strings.Contains(err.Error(), "rados: ret=-2"): // try with the old command
 		log.ErrorLogMsg("going to fallback to cli, "+

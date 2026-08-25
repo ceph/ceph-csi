@@ -231,6 +231,10 @@ func (cs *nfsControllerServer) CreateVolume(
 
 	err = nfsVolume.CreateExport(backend)
 	if err != nil {
+		if errors.Is(err, nfs.ErrExportNameConflict) {
+			return nil, status.Errorf(codes.AlreadyExists, "failed to create export: %v", err)
+		}
+
 		return nil, status.Errorf(codes.InvalidArgument, "failed to create export: %v", err)
 	}
 

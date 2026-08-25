@@ -70,6 +70,10 @@ parameters:
   # unrelated reason on this provisioner, leave this parameter unset unless
   # friendly names are actually wanted: enabling it changes the export path
   # of every volume this StorageClass provisions.
+  # Unlike the generated volume ID, "<namespace>/<pvc-name>" is not
+  # guaranteed unique over time: recreating a PVC under the same name
+  # before its old export is cleaned up will fail CreateVolume with
+  # AlreadyExists rather than silently reusing the old export.
   # friendlyExportNames: "true"
 
 reclaimPolicy: Delete
