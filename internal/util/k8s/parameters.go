@@ -54,6 +54,11 @@ func GetOwner(param map[string]string) string {
 	return param[pvcNamespaceKey]
 }
 
+// GetPVCName returns the pvc name from the parameter.
+func GetPVCName(param map[string]string) string {
+	return param[pvcNameKey]
+}
+
 // GetVolumeMetadata filter parameters, only return PV/PVC/PVCNamespace metadata.
 func GetVolumeMetadata(parameters map[string]string) map[string]string {
 	keys := []string{pvcNameKey, pvcNamespaceKey, pvNameKey}

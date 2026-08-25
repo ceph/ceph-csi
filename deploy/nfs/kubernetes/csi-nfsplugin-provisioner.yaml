@@ -81,6 +81,7 @@ spec:
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
             - "--prevent-volume-mode-conversion=true"
+            - "--extra-create-metadata=true"
             - "--http-endpoint=$(POD_IP):8090"
           env:
             - name: ADDRESS

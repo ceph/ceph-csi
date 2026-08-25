@@ -64,5 +64,13 @@ parameters:
   # VolumeAttributesClass (see volumeattributesclass.yaml example).
   # clients: <client-list>
 
+  # (optional) Name NFS-exports "<namespace>/<pvc-name>" instead of the
+  # generated volume ID. Requires the external-provisioner sidecar to run
+  # with --extra-create-metadata=true. If that flag is already set for an
+  # unrelated reason on this provisioner, leave this parameter unset unless
+  # friendly names are actually wanted: enabling it changes the export path
+  # of every volume this StorageClass provisions.
+  # friendlyExportNames: "true"
+
 reclaimPolicy: Delete
 allowVolumeExpansion: true
