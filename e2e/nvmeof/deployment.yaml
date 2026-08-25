@@ -72,7 +72,18 @@ spec:
               keyring = /etc/ceph/keyring
               EOF
 
-              cp /tmp/ceph/keyring /etc/ceph
+              # Create csiadmin user with AES key for kernel client
+              # compatibility. Use admin keyring temporarily.
+              CSIADMIN_KEY=$(ceph --keyring /tmp/ceph/keyring \
+                auth get-or-create-key --key-type=aes client.csiadmin \
+                mon 'allow all' mgr 'allow all' \
+                osd 'allow all' mds 'allow all')
+
+              # Create keyring file with csiadmin credentials
+              cat << EOF > /etc/ceph/keyring
+              [client.csiadmin]
+                  key = ${CSIADMIN_KEY}
+              EOF
 
               chmod 444 /etc/ceph/ceph.conf
               chmod 440 /etc/ceph/keyring
@@ -85,9 +96,12 @@ spec:
                   -e "s/@@POD_IP@@/${POD_IP}/g" \
                   < /config/ceph-nvmeof.conf > /etc/ceph/nvmeof.conf
 
-              # add the gateway to the Ceph configuration
-              ceph nvme-gw create ${POD_NAME} nvmeofpool ${ANA_GROUP}
-              ceph nvme-gw show nvmeofpool ${ANA_GROUP}
+              # Add the gateway to the Ceph configuration
+              # (use admin keyring for this)
+              ceph --keyring /tmp/ceph/keyring \
+                nvme-gw create ${POD_NAME} nvmeofpool ${ANA_GROUP}
+              ceph --keyring /tmp/ceph/keyring \
+                nvme-gw show nvmeofpool ${ANA_GROUP}
           env:
             - name: CEPH_MON_HOST
               valueFrom:
