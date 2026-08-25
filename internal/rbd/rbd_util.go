@@ -631,6 +631,27 @@ func (ri *rbdImage) openReadOnly() (*librbd.Image, error) {
 	return image, nil
 }
 
+// openReadOnlyByID opens the rbdImage by image ID in read-only mode. This is
+// useful when the image name no longer identifies the image, for example after
+// a parent image has moved to trash.
+func (ri *rbdImage) openReadOnlyByID() (*librbd.Image, error) {
+	err := ri.openIoctx()
+	if err != nil {
+		return nil, err
+	}
+
+	image, err := librbd.OpenImageByIdReadOnly(ri.ioctx, ri.ImageID, librbd.NoSnapshot)
+	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			err = fmt.Errorf("Failed as %w (internal %w)", rbderrors.ErrImageNotFound, err)
+		}
+
+		return nil, err
+	}
+
+	return image, nil
+}
+
 // isInUse checks if there is a watcher on the image. It returns true if there
 // is a watcher on the image, otherwise returns false.
 // In case of mirroring, the image should be primary to check watchers if the
@@ -897,20 +918,38 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 		if vol.RbdImageName == "" {
 			return depth, nil
 		}
-		err := vol.openIoctx()
-		if err != nil {
-			return depth, err
+		var err error
+		// The first image may not have ImageID populated, so open it by name.
+		// ParentImageID is filled from image metadata and used for later
+		// iterations to traverse parents that may already be in trash.
+		if vol.ImageID != "" {
+			err = func() error {
+				image, err := vol.openReadOnlyByID()
+				if err != nil {
+					return err
+				}
+				defer func() {
+					if cErr := image.Close(); cErr != nil {
+						log.WarningLog(ctx, "resource leak, failed to close image: %v", cErr)
+					}
+				}()
+
+				return vol.setImageInfo(image)
+			}()
+		} else {
+			err = vol.getImageInfo()
 		}
 
-		err = vol.getImageInfo()
 		// FIXME: create and destroy the vol inside the loop.
 		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
-		vol.ioctx.Destroy()
-		vol.ioctx = nil
+		if vol.ioctx != nil {
+			vol.ioctx.Destroy()
+			vol.ioctx = nil
+		}
 		if err != nil {
-			// if the parent image is moved to trash the name will be present
-			// in rbd image info but the image will be in trash, in that case
-			// return the found depth
+			// Parent images in trash are opened by image ID when the ID is
+			// available. If the parent can no longer be opened by name or ID,
+			// return the depth found so far.
 			if errors.Is(err, rbderrors.ErrImageNotFound) {
 				return depth, nil
 			}
@@ -922,6 +961,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 			depth++
 		}
 		vol.RbdImageName = vol.ParentName
+		vol.ImageID = vol.ParentImageID
 		vol.Pool = vol.ParentPool
 	}
 }
@@ -1823,6 +1863,16 @@ func (ri *rbdImage) getImageInfo() error {
 		return err
 	}
 	defer image.Close() //nolint:errcheck // not a critical failure
+
+	return ri.setImageInfo(image)
+}
+
+// setImageInfo updates rbdImage metadata from an already opened RBD image.
+// The caller must pass a non-nil image and remains responsible for closing it.
+func (ri *rbdImage) setImageInfo(image *librbd.Image) error {
+	if image == nil {
+		return errors.New("failed to set image info: image is nil")
+	}
 
 	imageInfo, err := image.Stat()
 	if err != nil {
