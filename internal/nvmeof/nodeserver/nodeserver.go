@@ -344,8 +344,15 @@ func (ns *NodeServer) NodeUnpublishVolume(
 
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
+		if !util.IsCorruptedMountError(err) {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 
-		return nil, status.Error(codes.NotFound, err.Error())
+		// Corrupted mounts need to be unmounted properly too.
+		log.DebugLog(ctx,
+			"nvmeof: detected corrupted mount in publish target path %s, trying to unmount anyway",
+			targetPath)
+		isMnt = true
 	}
 	if !isMnt {
 		if err = os.Remove(targetPath); err != nil {
