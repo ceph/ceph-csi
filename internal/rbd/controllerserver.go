@@ -597,7 +597,11 @@ func flattenParentImage(
 			softLimit = rbdSoftMaxCloneDepth - depthToAvoidFlatten
 		}
 
-		err = rbdSnap.flattenRbdImage(ctx, false, hardLimit, softLimit)
+		snapVol := rbdSnap.toVolume()
+		snapVol.conn = rbdSnap.conn.Copy()
+		defer snapVol.Destroy(ctx)
+
+		err = snapVol.flattenRbdImage(ctx, false, hardLimit, softLimit)
 		if err != nil {
 			return getGRPCErrorForCreateVolume(err)
 		}
