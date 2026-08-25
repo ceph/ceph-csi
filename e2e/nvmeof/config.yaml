@@ -79,8 +79,8 @@ data:
     port = 8009
 
     [ceph]
-    # TODO: create a dedicated user, make pool dynamic/replaceable.
-    id = admin
+    # Use csiadmin with AES key-type for compatibility with kernel clients
+    id = csiadmin
     pool = nvmeofpool
     config_file = /etc/ceph/ceph.conf
 
