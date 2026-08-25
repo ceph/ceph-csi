@@ -19,8 +19,10 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -33,6 +35,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/journal"
 	nfs "github.com/ceph/ceph-csi/internal/nfs/types"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -54,6 +57,7 @@ type nfsControllerServer struct {
 var nfsParameters = []string{
 	nfs.ParameterCluster,
 	nfs.ParameterSecTypes,
+	nfs.ParameterFriendlyExportNames,
 }
 
 // nfsMutableParameters contains the list of mutable parameters for NFS
@@ -104,6 +108,32 @@ func (cs *nfsControllerServer) ValidateVolumeCapabilities(
 	return cs.backendServer.ValidateVolumeCapabilities(ctx, req)
 }
 
+// friendlyExportName returns the "<namespace>/<pvc-name>" export name to
+// use, or "" if ParameterFriendlyExportNames is unset or "false".
+func friendlyExportName(nfsParams, csiParams map[string]string) (string, error) {
+	friendlyExportNames := false
+	if v, ok := nfsParams[nfs.ParameterFriendlyExportNames]; ok {
+		var err error
+		friendlyExportNames, err = strconv.ParseBool(v)
+		if err != nil {
+			return "", fmt.Errorf("invalid %s: %w", nfs.ParameterFriendlyExportNames, err)
+		}
+	}
+
+	if !friendlyExportNames {
+		return "", nil
+	}
+
+	pvcNamespace := k8s.GetOwner(csiParams)
+	pvcName := k8s.GetPVCName(csiParams)
+	if pvcNamespace == "" || pvcName == "" {
+		return "", fmt.Errorf("%s requires the external-provisioner to run with --extra-create-metadata=true",
+			nfs.ParameterFriendlyExportNames)
+	}
+
+	return pvcNamespace + "/" + pvcName, nil
+}
+
 // CreateVolume creates the backing subvolume and on any error cleans up any
 // created entities.
 func (cs *nfsControllerServer) CreateVolume(
@@ -136,6 +166,14 @@ func (cs *nfsControllerServer) CreateVolume(
 		} else {
 			cephfsMutableParams[key] = value
 		}
+	}
+
+	// Validate friendlyExportNames before creating the backend volume: on
+	// error there is nothing to clean up yet, whereas validating after
+	// backendServer.CreateVolume would orphan the just-created subvolume.
+	exportName, err := friendlyExportName(nfsParams, req.GetParameters())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// Create a modified request without mutable parameters for CephFS
@@ -183,6 +221,13 @@ func (cs *nfsControllerServer) CreateVolume(
 	vc := backend.GetVolumeContext()
 	maps.Copy(vc, nfsParams)
 	backend.VolumeContext = vc
+
+	if exportName != "" {
+		err = nfsVolume.SetExportName(exportName)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to set export name: %v", err)
+		}
+	}
 
 	err = nfsVolume.CreateExport(backend)
 	if err != nil {

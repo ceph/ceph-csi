@@ -2117,6 +2117,27 @@ func checkExports(f *framework.Framework, clusterID, clientString string) bool {
 	return true
 }
 
+// checkExportPseudoPath confirms an export with the given pseudo-path exists
+// for a cluster_id, for asserting on friendlyExportNames-derived paths.
+func checkExportPseudoPath(f *framework.Framework, clusterID, pseudoPath string) bool {
+	exportList, err := listExports(f, clusterID)
+	if err != nil {
+		framework.Logf("failed to fetch list of exports: %v", err)
+
+		return false
+	}
+
+	for i := range len(*exportList) {
+		if (*exportList)[i].Pseudo == pseudoPath {
+			return true
+		}
+	}
+
+	framework.Logf("Could not find an export with pseudo-path %q in the list of exports (%+v)", pseudoPath, exportList)
+
+	return false
+}
+
 // createSubvolumegroup creates a subvolumegroup.
 func createSubvolumegroup(f *framework.Framework, fileSystemName, subvolumegroup string) error {
 	cmd := fmt.Sprintf("ceph fs subvolumegroup create %s %s", fileSystemName, subvolumegroup)
