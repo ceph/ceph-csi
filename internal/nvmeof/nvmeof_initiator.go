@@ -255,7 +255,7 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 }
 
 // DisconnectIfLastMount disconnects from ALL NVMe controllers for the given device path,
-// but only if NO controller has other mounted namespaces.
+// but only if NO other mounted namespace is served by any of those controllers.
 //
 // In NVMe-oF multipath, all namespaces in a subsystem are accessible through all controllers.
 // This means if any namespace is mounted, it's using ALL controllers. Therefore, we use an
@@ -266,55 +266,73 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 // - mountedDevices: a map of currently MOUNTED device paths for quick lookup
 //
 // Algorithm:
-// 1. Check each controller to see if it has other mounted namespaces
-// 2. If ANY controller has other mounted namespaces, return early (don't disconnect anything)
-// 3. If NO controllers have other mounted namespaces, disconnect ALL controllers
+//  1. Resolve the controllers that serve devPath.
+//  2. For every OTHER mounted device, resolve its controllers and check for overlap.
+//  3. If any other mounted device shares a controller, return early (don't disconnect anything).
+//  4. Otherwise, disconnect ALL controllers of devPath.
 //
-// Example: Device /dev/nvme0n1 is connected via controllers nvme0 and nvme1
+// Note on device naming: with NVMe-oF native multipath the namespace block device is named
+// after the subsystem head instance (e.g. /dev/nvme0n1), which differs from the fabric
+// controller instance (e.g. /dev/nvme1). Comparing actual mounted devices via list-subsys
+// avoids reconstructing device names from controller names + nsid, which would never match a
+// head device and would wrongly disconnect a controller still in use by other volumes.
+//
+// Example: Devices /dev/nvme0n1 and /dev/nvme0n2 are both served by controller nvme1.
 //
 // Case 1 - Other namespace mounted:
-//   - Controller nvme0 has namespaces: [nvme0n1 (being unstaged), nvme0n2 (mounted)]
-//   - Controller nvme1 has namespaces: [nvme0n1 (being unstaged), nvme0n2 (mounted)]
-//   - Decision: nvme0n2 is still using both controllers -> Don't disconnect ANY controller
+//   - Unstaging /dev/nvme0n1 while /dev/nvme0n2 is still mounted.
+//   - /dev/nvme0n2 is served by nvme1 -> Don't disconnect ANY controller.
 //
 // Case 2 - No other namespaces mounted:
-//   - Controller nvme0 has namespaces: [nvme0n1 (being unstaged)]
-//   - Controller nvme1 has namespaces: [nvme0n1 (being unstaged)]
-//   - Decision: No other namespaces using the controllers -> Disconnect BOTH controllers
+//   - Unstaging /dev/nvme0n1 and no other mounted device is served by nvme1.
+//   - Decision: No other namespaces using the controllers -> Disconnect nvme1.
 func (ni *nvmeInitiator) DisconnectIfLastMount(ctx context.Context, devPath string,
 	mountedDevices map[string]string,
 ) error {
-	controllers, err := getControllersForDevice(ctx, devPath)
+	return disconnectIfLastMount(ctx, devPath, mountedDevices, getControllersForDevice, disconnectController)
+}
+
+// disconnectIfLastMount holds the decision logic for DisconnectIfLastMount with its system
+// dependencies injected (controllersFor resolves a device's controllers, disconnect tears a
+// controller down), so the full flow can be exercised without invoking the nvme binary.
+func disconnectIfLastMount(ctx context.Context, devPath string,
+	mountedDevices map[string]string,
+	controllersFor func(context.Context, string) ([]string, error),
+	disconnect func(context.Context, string) error,
+) error {
+	controllers, err := controllersFor(ctx, devPath)
 	if err != nil {
 		return fmt.Errorf("failed to get controllers for %s: %w", devPath, err)
 	}
-
-	// PASS 1: Check if ANY controller has other mounted namespaces
-	for _, ctrl := range controllers {
-		hasOtherMounted, err := hasOtherMountedNamespaces(ctx, ctrl, devPath, mountedDevices)
-		if err != nil {
-			log.WarningLog(ctx, "Failed to check mounted namespaces for %s: %v (skipping disconnect)",
-				ctrl, err)
-
-			return nil // Safe: don't disconnect if we can't verify
-		}
-
-		if hasOtherMounted {
-			log.DebugLog(ctx, "Controller %s has other mounted namespaces, skipping disconnect for all controllers",
-				ctrl)
-
-			return nil // EXIT early, don't disconnect ANYTHING
-		}
+	if len(controllers) == 0 {
+		// Device already disconnected, nothing to do (idempotent).
+		return nil
 	}
-	// PASS 2: No mounted namespaces found, disconnect ALL controllers
+
+	ctrlSet := make(map[string]struct{}, len(controllers))
+	for _, ctrl := range controllers {
+		ctrlSet[ctrl] = struct{}{}
+	}
+
+	shared, err := hasSharedControllers(ctx, devPath, ctrlSet, mountedDevices, controllersFor)
+	if err != nil {
+		log.WarningLog(ctx, "failed to check controllers of other mounted devices for %s: %v (skipping disconnect)",
+			devPath, err)
+
+		return nil // Safe: don't disconnect if we can't verify
+	}
+	if shared {
+		log.DebugLog(ctx, "controllers of %s still serve other mounted namespaces, skipping disconnect", devPath)
+
+		return nil // EXIT early, don't disconnect ANYTHING
+	}
+
 	log.DebugLog(ctx, "No other mounted namespaces found, disconnecting all controllers")
 
 	var disconnectErrors []string
 	for _, ctrl := range controllers {
 		log.DebugLog(ctx, "Disconnecting controller %s", ctrl)
-		_, _, err = util.ExecCommandWithTimeout(ctx, connectTimeout,
-			"nvme", "disconnect", "-d", "/dev/"+ctrl)
-		if err != nil {
+		if err := disconnect(ctx, ctrl); err != nil {
 			disconnectErrors = append(disconnectErrors, fmt.Sprintf("%s: %v", ctrl, err))
 
 			continue
@@ -328,6 +346,14 @@ func (ni *nvmeInitiator) DisconnectIfLastMount(ctx context.Context, devPath stri
 	}
 
 	return nil
+}
+
+// disconnectController tears down a single NVMe controller via the nvme binary.
+func disconnectController(ctx context.Context, controllerName string) error {
+	_, _, err := util.ExecCommandWithTimeout(ctx, connectTimeout,
+		"nvme", "disconnect", "-d", "/dev/"+controllerName)
+
+	return err
 }
 
 // GetNamespaceDeviceByUUID tries to find the path of the block device for the
@@ -492,60 +518,45 @@ func getControllersForDevice(ctx context.Context, devPath string) ([]string, err
 	return controllers, nil
 }
 
-// hasOtherMountedNamespaces checks if a controller has any mounted
-// namespaces OTHER than the one we're about to unstage.
-func hasOtherMountedNamespaces(ctx context.Context, controllerName, currentDevPath string,
-	mountedDevices map[string]string,
+// hasSharedControllers reports whether any mounted device OTHER than currentDevPath is
+// served by one of the controllers in ctrlSet (the controllers of the device being unstaged).
+//
+// It resolves the controllers of each other mounted device via controllersFor (injectable
+// for testing) and checks for overlap with ctrlSet. This compares real mounted head devices
+// against real controllers, so it works regardless of the head-vs-controller instance naming
+// difference in NVMe-oF native multipath.
+//
+// mountedDevices is expected to hold currently mounted namespaces, so every other device must
+// resolve to at least one controller. An empty controller list is therefore treated as a
+// verification failure (returning an error), not as "no overlap" - the caller then fails safe
+// and skips the disconnect rather than risk tearing down a controller still in use.
+func hasSharedControllers(ctx context.Context, currentDevPath string,
+	ctrlSet map[string]struct{}, mountedDevices map[string]string,
+	controllersFor func(context.Context, string) ([]string, error),
 ) (bool, error) {
-	// Get all namespaces on this controller
-	nsids, err := getNamespacesForController(ctx, controllerName)
-	if err != nil {
-		return false, err
-	}
-
-	// Check if any OTHER namespace on this controller is mounted
-	for _, nsid := range nsids {
-		nsDevice := fmt.Sprintf("/dev/%sn%d", controllerName, nsid)
-
-		// Skip the device we're about to unmount
-		if nsDevice == currentDevPath {
+	for dev := range mountedDevices {
+		// Skip the device we're about to unmount.
+		if dev == currentDevPath {
 			continue
 		}
 
-		// If any other namespace is mounted, return true
-		if _, ok := mountedDevices[nsDevice]; ok {
-			log.DebugLog(ctx, "Found other mounted namespace %s on controller %s", nsDevice, controllerName)
+		ctrls, err := controllersFor(ctx, dev)
+		if err != nil {
+			return false, fmt.Errorf("failed to get controllers for %s: %w", dev, err)
+		}
+		if len(ctrls) == 0 {
+			return false, fmt.Errorf("no controllers found for mounted device %s", dev)
+		}
 
-			return true, nil
+		for _, ctrl := range ctrls {
+			if _, ok := ctrlSet[ctrl]; ok {
+				log.DebugLog(ctx, "mounted device %s shares controller %s with %s",
+					dev, ctrl, currentDevPath)
+
+				return true, nil
+			}
 		}
 	}
 
 	return false, nil
-}
-
-// getNamespacesForController returns list of namespace IDs on a controller.
-func getNamespacesForController(ctx context.Context, controllerName string) ([]int, error) {
-	controllerPath := "/dev/" + controllerName
-	stdout, _, err := util.ExecCommandWithTimeout(ctx, connectTimeout,
-		"nvme", "list-ns", controllerPath, "-o", "json")
-	if err != nil {
-		return nil, fmt.Errorf("list-ns failed for %s: %w", controllerPath, err)
-	}
-
-	// output: {"nsid_list":[{"nsid":1},{"nsid":2}]}
-	var result struct {
-		NSIDList []struct {
-			NSID int `json:"nsid"`
-		} `json:"nsid_list"`
-	}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse list-ns output: %w", err)
-	}
-
-	nsids := make([]int, len(result.NSIDList))
-	for i, ns := range result.NSIDList {
-		nsids[i] = ns.NSID
-	}
-
-	return nsids, nil
 }
