@@ -340,6 +340,9 @@ func (ni *nvmeInitiator) GetNamespaceDeviceByUUID(ctx context.Context, uuid stri
 				}
 			}
 
+			stdout, stderr, err := util.ExecCommandWithTimeout(ctx, listSubsysTimeout, "nvme", "list")
+			log.DebugLog(ctx, "nvme list (uuid %s not found): stdout=%q stderr=%q err=%v", uuid, stdout, stderr, err)
+
 			return "", fmt.Errorf("device path with uuid: %s not found", uuid)
 		},
 		// BackOffDelay is the default, starts at 100ms

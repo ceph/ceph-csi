@@ -1118,11 +1118,11 @@ func (cs *Server) unpublishResources(ctx context.Context,
 	}
 
 	// Remove host from subsystem
-	if err := gateway.RemoveHost(ctx, subsystemNQN, hostNQN); err != nil {
-		return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
-			hostNQN, subsystemNQN, err)
-	}
-	log.DebugLog(ctx, "Host %s removed from subsystem %s", hostNQN, subsystemNQN)
+	// if err := gateway.RemoveHost(ctx, subsystemNQN, hostNQN); err != nil {
+	// 	return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
+	// 		hostNQN, subsystemNQN, err)
+	// }
+	// log.DebugLog(ctx, "Host %s removed from subsystem %s", hostNQN, subsystemNQN)
 
 	// Cleanup DH-CHAP keys if any
 	if data.Security.DhchapMode == nvmeof.DHCHAPModeUniDirectional ||
