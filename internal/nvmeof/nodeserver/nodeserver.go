@@ -442,10 +442,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		ns.mountCache.RemoveByDevice(devPath)
 
 		// Get remaining devices
-		remainingDevices := ns.mountCache.GetCopyAllDevices()
-		if err := ns.initiator.DisconnectIfLastMount(ctx, devPath, remainingDevices); err != nil {
-			log.WarningLog(ctx, "failed to disconnect controller for device %s: %v", devPath, err)
-		}
+		log.DebugLog(ctx, "commented the DisconnectIfLastMount")
 	}
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
@@ -610,11 +607,7 @@ func (ns *NodeServer) undoStagingTransaction(
 	// if devicePath is not empty, it means we connected to the subsystem,
 	// so we should try to disconnect if this was the last mount
 	if transaction.devicePath != "" {
-		mountedDevices := ns.mountCache.GetCopyAllDevices()
-		if err := ns.initiator.DisconnectIfLastMount(ctx, transaction.devicePath, mountedDevices); err != nil {
-			log.WarningLog(ctx, "failed to disconnect during rollback for device %s: %v",
-				transaction.devicePath, err)
-		}
+		log.DebugLog(ctx, "commented the DisconnectIfLastMount")
 	}
 }
 
@@ -764,12 +757,16 @@ func (ns *NodeServer) connectToSubsystem(
 	connectReq.Listeners = validListeners
 	// Connect to subsystem
 	_, err = ns.initiator.ConnectSubsystem(ctx, connectReq)
+	log.DebugLog(ctx, "nvmeof: ConnectSubsystem subsystemNQN=%s hostNQN=%s listeners=%v: err=%v",
+		connectReq.SubsystemNQN, connectReq.HostNQN, connectReq.Listeners, err)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to subsystem: %w", err)
 	}
 
 	// Get namespace device path by uuid
 	devicePath, err := ns.initiator.GetNamespaceDeviceByUUID(ctx, info.NamespaceUUID)
+	log.DebugLog(ctx, "nvmeof: GetNamespaceDeviceByUUID uuid=%s: devicePath=%q err=%v",
+		info.NamespaceUUID, devicePath, err)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get namespace uuid %s: %v", info.NamespaceUUID, err)
 

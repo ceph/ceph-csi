@@ -184,32 +184,11 @@ func (ni *nvmeInitiator) LoadKernelModules(ctx context.Context) error {
 
 // ConnectSubsystem connects to an NVMe-oF subsystem.
 func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectRequest) (bool, error) {
-	// Get existing subsystem connections once to avoid repeated nvme list-subsys calls
-	var existingConnections nvmeHostConnections
-	if req.HostNQN != "" {
-		connections, err := listSubsystems(ctx)
-		if err != nil {
-			log.WarningLog(ctx, "Failed to list existing subsystems: %v (continuing anyway)", err)
-		} else {
-			existingConnections = connections
-		}
-	}
-	// Try connecting to each address until one succeeds
+	// Try connecting to each address until one succeeds.
+	// If nvme connect reports "already connected" that is fine — treat it as success.
 	var success bool
 	for _, listener := range req.Listeners {
 		portStr := strconv.FormatUint(uint64(listener.Port), 10)
-
-		// Check if already connected to this specific gateway
-		if req.HostNQN != "" && existingConnections != nil {
-			if existingConnections.hasPathToGateway(
-				req.SubsystemNQN, req.HostNQN, listener.Address, portStr) {
-				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s with HostNQN %s",
-					req.SubsystemNQN, listener.Address, portStr, req.HostNQN)
-				success = true
-
-				continue
-			}
-		}
 
 		log.DebugLog(ctx, "Connecting to NVMe-oF subsystem %s at %v:%s",
 			req.SubsystemNQN, listener.Address, portStr)
@@ -237,8 +216,16 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 			args = append(args, "--dhchap-ctrl-secret", req.SubsystemDhchapKey)
 		}
 		stdout, stderr, err := util.ExecCommandWithTimeout(ctx, connectTimeout, "nvme", args...)
-		// Execute connection
+		log.DebugLog(ctx, "nvme connect %v: stdout=%q stderr=%q err=%v", args, stdout, stderr, err)
 		if err != nil {
+			// "already connected" means someone else beat us to it — that is fine.
+			if strings.Contains(stderr, "already connected") {
+				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s",
+					req.SubsystemNQN, listener.Address, portStr)
+				success = true
+
+				continue
+			}
 			log.WarningLog(ctx, "Failed to connect to %s - stdout: %s, stderr: %s", listener, stdout, stderr)
 
 			continue
@@ -312,10 +299,12 @@ func (ni *nvmeInitiator) DisconnectIfLastMount(ctx context.Context, devPath stri
 	var disconnectErrors []string
 	for _, ctrl := range controllers {
 		log.DebugLog(ctx, "Disconnecting controller %s", ctrl)
-		_, _, err = util.ExecCommandWithTimeout(ctx, connectTimeout,
+		disconnectStdout, disconnectStderr, disconnectErr := util.ExecCommandWithTimeout(ctx, connectTimeout,
 			"nvme", "disconnect", "-d", "/dev/"+ctrl)
-		if err != nil {
-			disconnectErrors = append(disconnectErrors, fmt.Sprintf("%s: %v", ctrl, err))
+		log.DebugLog(ctx, "nvme disconnect -d /dev/%s: stdout=%q stderr=%q err=%v",
+			ctrl, disconnectStdout, disconnectStderr, disconnectErr)
+		if disconnectErr != nil {
+			disconnectErrors = append(disconnectErrors, fmt.Sprintf("%s: %v", ctrl, disconnectErr))
 
 			continue
 		}
@@ -360,7 +349,8 @@ func (ni *nvmeInitiator) GetNamespaceDeviceByUUID(ctx context.Context, uuid stri
 
 // listSubsystems retrieves current NVMe subsystem connections.
 func listSubsystems(ctx context.Context) (nvmeHostConnections, error) {
-	stdout, _, err := util.ExecCommandWithTimeout(ctx, listSubsysTimeout, "nvme", "list-subsys", "-o", "json")
+	stdout, stderr, err := util.ExecCommandWithTimeout(ctx, listSubsysTimeout, "nvme", "list-subsys", "-o", "json")
+	log.DebugLog(ctx, "nvme list-subsys -o json: stdout=%q stderr=%q err=%v", stdout, stderr, err)
 	if err != nil {
 		return nil, err
 	}
@@ -461,8 +451,9 @@ func ResolveListeners(ctx context.Context, listeners []ListenerDetails) ([]Liste
 // device (e.g. /dev/nvme0n1 -> ["nvme0", "nvme1"]).
 // Uses nvme list-subsys <device> which is multipath-aware.
 func getControllersForDevice(ctx context.Context, devPath string) ([]string, error) {
-	stdout, _, err := util.ExecCommandWithTimeout(ctx, listSubsysTimeout,
+	stdout, stderr, err := util.ExecCommandWithTimeout(ctx, listSubsysTimeout,
 		"nvme", "list-subsys", devPath, "-o", "json")
+	log.DebugLog(ctx, "nvme list-subsys %s -o json: stdout=%q stderr=%q err=%v", devPath, stdout, stderr, err)
 	if err != nil {
 		return nil, fmt.Errorf("list-subsys failed for %s: %w", devPath, err)
 	}
@@ -526,8 +517,9 @@ func hasOtherMountedNamespaces(ctx context.Context, controllerName, currentDevPa
 // getNamespacesForController returns list of namespace IDs on a controller.
 func getNamespacesForController(ctx context.Context, controllerName string) ([]int, error) {
 	controllerPath := "/dev/" + controllerName
-	stdout, _, err := util.ExecCommandWithTimeout(ctx, connectTimeout,
+	stdout, stderr, err := util.ExecCommandWithTimeout(ctx, connectTimeout,
 		"nvme", "list-ns", controllerPath, "-o", "json")
+	log.DebugLog(ctx, "nvme list-ns %s -o json: stdout=%q stderr=%q err=%v", controllerPath, stdout, stderr, err)
 	if err != nil {
 		return nil, fmt.Errorf("list-ns failed for %s: %w", controllerPath, err)
 	}
