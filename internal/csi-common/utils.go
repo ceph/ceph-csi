@@ -578,12 +578,6 @@ func FilesystemNodeGetVolumeStats(
 		})
 	}
 
-	// include marker for a healthy volume by default
-	res.VolumeCondition = &csi.VolumeCondition{
-		Abnormal: false,
-		Message:  "volume is in a healthy condition",
-	}
-
 	return res, nil
 }
 
