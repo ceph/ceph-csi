@@ -5,11 +5,6 @@
 > Enabling encryption for storage class that has PVs created without encryption
 > is **not supported**
 
-## RBD volume encryption
-
-Volumes provisioned with Ceph RBD do not have encryption by default. It is
-possible to encrypt them with ceph-csi by using LUKS encryption.
-
 ## Life-cycle for encrypted volumes
 
 **Create volume**:
@@ -36,9 +31,25 @@ possible to encrypt them with ceph-csi by using LUKS encryption.
 
 * mapper device closed and device path changed to original volume path
 * volume is detached as usual
+
+**Delete volume**:
+
 * passphrase removed from KMS if needed (with failures ignored)
 
-## Encryption configuration
+## RBD volume encryption
+
+Volumes provisioned with Ceph RBD do not have encryption by default. It is
+possible to encrypt them with ceph-csi by using LUKS encryption.
+
+### Encryption prerequisites
+
+In order for encryption to work you need to make sure that `dm-crypt` kernel
+module is enabled on the nodes running ceph-csi attachers.
+
+If custom image is built for the rbd-plugin instance, make sure that it contains
+`cryptsetup` tool installed to be able to use encryption.
+
+### Encryption configuration
 
 To encrypt RBD volumes with LUKS you need to set `encrypted: "true"` and
 `encryptionKMSID` in the StorageClass. `encryptionKMSID` is a StorageClass
@@ -68,9 +79,77 @@ KMS:
   `encryptionPassphrase` is fetched from that secret; `"secretNamespace"` is
   used for the namespace if specified, otherwise the Tenant/Kubernetes namespace
   (i.e., the namespace where the PVC was created) is used.
-* if `"secretName"` is not specified, the passphrase is fetched from the
-  StorageClass provisioner and node-stage secrets
-  (`secret.encryptionPassphrase`).
+* if `"secretName"` is not specified, the credentials referenced in the
+  StorageClass (the provisioner secret and the node-stage secret) are used as a
+  fallback, and the passphrase is fetched from their `encryptionPassphrase`
+  key.
+
+## CephFS volume encryption
+
+CephFS volumes use [fscrypt](https://www.kernel.org/doc/html/latest/filesystems/fscrypt.html),
+the Linux kernel filesystem-level encryption feature, rather than LUKS block
+device encryption. The `fscrypt` userspace tool is used for key and policy
+management.
+
+> Enabling encryption on CephFS volumes created without encryption is
+> **not supported**
+
+### CephFS encryption prerequisites
+
+* Linux kernel >= v5.4 with `CONFIG_FS_ENCRYPTION=y`
+* CephFS kernel client with fscrypt support
+  ([Ceph tracker #46690](https://tracker.ceph.com/issues/46690))
+
+### Enabling CephFS encryption
+
+Set `encrypted: "true"` and `encryptionKMSID` in the CephFS StorageClass,
+the same parameters used for RBD:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-cephfs-sc-encrypted
+provisioner: cephfs.csi.ceph.com
+parameters:
+  clusterID: <cluster-id>
+  fsName: cephfs
+  encrypted: "true"
+  encryptionKMSID: "user-ns-secrets-metadata"
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+reclaimPolicy: Delete
+```
+
+### KMS compatibility
+
+The KMS configuration is shared with RBD encryption and the same
+`ceph-csi-encryption-kms-config` ConfigMap is used. However, not all KMS
+backends are supported for fscrypt. Only KMS backends that expose the raw
+passphrase or secret directly to the driver work:
+
+* `metadata` type (`encryptionKMSType: "metadata"` in the ConfigMap) — the
+  passphrase is fetched from the Kubernetes Secret identified by `secretName`
+  in the ConfigMap entry (or from the provisioner/node-stage secrets when
+  `secretName` is omitted)
+
+KMS backends that store or wrap keys without exposing a raw passphrase (e.g.
+AWS KMS, HashiCorp Vault) are **not** compatible with fscrypt. Azure Key Vault
+uses `DEKStoreIntegrated` which stores the DEK in the volume metadata and is
+therefore compatible.
+
+### Volume layout
+
+Due to how `fscrypt` stores its metadata, the subvolume root is not mounted
+directly into the Pod. Instead:
+
+* `/.fscrypt/` — managed by `fscrypt`, contains protector and policy metadata
+* `/ceph-csi-encrypted/` — the fscrypt-enabled directory exposed to the Pod
+
+See the [CephFS fscrypt design proposal](design/proposals/cephfs-fscrypt.md)
+for the full key-management architecture and implementation details.
 
 ## Encryption KMS configuration
 
@@ -291,14 +370,6 @@ the KMIP KMS is expected to contain:
 1. `CLIENT_KEY`: Client key that will be used to connect to KMIP server.
 1. `UNIQUE_IDENTIFIER`: Unique ID of the key to use for encrypting/decrypting.
 
-## Encryption prerequisites
-
-In order for encryption to work you need to make sure that `dm-crypt` kernel
-module is enabled on the nodes running ceph-csi attachers.
-
-If custom image is built for the rbd-plugin instance, make sure that it contains
-`cryptsetup` tool installed to be able to use encryption.
-
 ## Design proposals
 
 The following design proposals document the motivation and implementation
@@ -307,6 +378,8 @@ details behind each encryption feature:
 | Proposal | Description |
 | -------- | ----------- |
 | [Encrypted Persistent Volume Claims](design/proposals/encrypted-pvc.md) | Original proposal for LUKS-based RBD volume encryption, including the `EncryptionKMS` / `DEKStore` interfaces and StorageClass parameters |
+| [CephFS fscrypt Support](design/proposals/cephfs-fscrypt.md) | Filesystem-level encryption for CephFS volumes using the fscrypt kernel feature and the `fscrypt` userspace tool |
+| [Encryption Key Rotation](design/proposals/rbd-pv-key-rotation.md) | Rotation of LUKS Key-Encryption-Keys (KEKs) for encrypted RBD volumes via the CSI-Addons `EncryptionKeyRotation` service |
 | [Multi-tenancy with Vault Tokens](design/proposals/encryption-with-vault-tokens.md) | Per-tenant Vault Token support, enabling each tenant to supply their own token from a Kubernetes Secret |
 | [Vault ServiceAccount per Tenant](design/proposals/encryption-with-vault-sa.md) | Per-tenant Vault access using a Kubernetes ServiceAccount instead of a token |
 | [Azure Key Vault](design/proposals/encryption-with-azure-keyvault.md) | Storing volume passphrases in Azure Key Vault using certificate-based authentication |
