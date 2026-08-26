@@ -1,0 +1,2430 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Container Storage Interface (CSI) drivers for Ceph storage">
+      
+      
+        <meta name="author" content="Ceph-CSI Contributors">
+      
+      
+        <link rel="canonical" href="https://ceph.github.io/ceph-csi/ceph-csi-upgrade/">
+      
+      
+        <link rel="prev" href="../cephfs/deploy/">
+      
+      
+        <link rel="next" href="../intree-migrate/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Upgrade - Ceph-CSI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ceph-csi-upgrade" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Ceph-CSI Documentation" class="md-header__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ceph-CSI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Upgrade
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../capabilities/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../rbd/deploy/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../csi-addons/disaster-recovery/" class="md-tabs__link">
+          
+  
+  
+  CSI Addons
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development-guide/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Ceph-CSI Documentation" class="md-nav__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ceph-CSI Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snap-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Snapshots and Clones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expand-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Expansion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../volumeattributesclass/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Attributes Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RBD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rbd/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CephFS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CephFS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cephfs/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pre-upgrade-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-upgrade considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pre-upgrade considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#snapshot-controller-and-snapshot-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapshot-controller and snapshot crd
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading-from-previous-releases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from previous releases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading-from-v316-to-v317" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from v3.16 to v3.17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading from v3.16 to v3.17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-cephfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading CephFS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading CephFS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-upgrade-cephfs-provisioner-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Upgrade CephFS Provisioner resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Upgrade CephFS Provisioner resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-update-the-cephfs-provisioner-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Update the CephFS Provisioner RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-update-the-cephfs-provisioner-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Update the CephFS Provisioner deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-upgrade-cephfs-nodeplugin-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Upgrade CephFS Nodeplugin resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Upgrade CephFS Nodeplugin resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-update-the-cephfs-nodeplugin-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Update the CephFS Nodeplugin RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-update-the-cephfs-nodeplugin-daemonset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Update the CephFS Nodeplugin daemonset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Manual deletion of CephFS Nodeplugin daemonset pods
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-rbd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading RBD
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading RBD">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#3-upgrade-rbd-provisioner-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upgrade RBD Provisioner resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Upgrade RBD Provisioner resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-update-the-rbd-provisioner-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Update the RBD Provisioner RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-update-the-rbd-provisioner-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Update the RBD Provisioner deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-upgrade-rbd-nodeplugin-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Upgrade RBD Nodeplugin resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Upgrade RBD Nodeplugin resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-update-the-rbd-nodeplugin-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Update the RBD Nodeplugin RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-update-the-rbd-nodeplugin-daemonset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Update the RBD Nodeplugin daemonset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-nfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading NFS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading NFS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5-upgrade-nfs-provisioner-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Upgrade NFS Provisioner resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Upgrade NFS Provisioner resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-update-the-nfs-provisioner-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Update the NFS Provisioner RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-update-the-nfs-provisioner-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Update the NFS Provisioner deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-upgrade-nfs-nodeplugin-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Upgrade NFS Nodeplugin resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Upgrade NFS Nodeplugin resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-update-the-nfs-nodeplugin-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Update the NFS Nodeplugin RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-update-the-nfs-nodeplugin-daemonset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Update the NFS Nodeplugin daemonset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csi-sidecar-containers-consideration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CSI Sidecar containers consideration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intree-migrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In-tree Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../resource-cleanup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CSI Addons
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CSI Addons
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../csi-addons/disaster-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coding Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pre-upgrade-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-upgrade considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pre-upgrade considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#snapshot-controller-and-snapshot-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapshot-controller and snapshot crd
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading-from-previous-releases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from previous releases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading-from-v316-to-v317" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from v3.16 to v3.17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading from v3.16 to v3.17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-cephfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading CephFS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading CephFS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-upgrade-cephfs-provisioner-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Upgrade CephFS Provisioner resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Upgrade CephFS Provisioner resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-update-the-cephfs-provisioner-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Update the CephFS Provisioner RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-update-the-cephfs-provisioner-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Update the CephFS Provisioner deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-upgrade-cephfs-nodeplugin-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Upgrade CephFS Nodeplugin resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Upgrade CephFS Nodeplugin resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-update-the-cephfs-nodeplugin-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Update the CephFS Nodeplugin RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-update-the-cephfs-nodeplugin-daemonset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Update the CephFS Nodeplugin daemonset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Manual deletion of CephFS Nodeplugin daemonset pods
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-rbd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading RBD
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading RBD">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#3-upgrade-rbd-provisioner-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upgrade RBD Provisioner resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Upgrade RBD Provisioner resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-update-the-rbd-provisioner-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Update the RBD Provisioner RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-update-the-rbd-provisioner-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Update the RBD Provisioner deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-upgrade-rbd-nodeplugin-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Upgrade RBD Nodeplugin resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Upgrade RBD Nodeplugin resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-update-the-rbd-nodeplugin-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Update the RBD Nodeplugin RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-update-the-rbd-nodeplugin-daemonset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Update the RBD Nodeplugin daemonset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-nfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading NFS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrading NFS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5-upgrade-nfs-provisioner-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Upgrade NFS Provisioner resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Upgrade NFS Provisioner resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-update-the-nfs-provisioner-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Update the NFS Provisioner RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-update-the-nfs-provisioner-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Update the NFS Provisioner deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-upgrade-nfs-nodeplugin-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Upgrade NFS Nodeplugin resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Upgrade NFS Nodeplugin resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-update-the-nfs-nodeplugin-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Update the NFS Nodeplugin RBAC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-update-the-nfs-nodeplugin-daemonset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Update the NFS Nodeplugin daemonset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csi-sidecar-containers-consideration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CSI Sidecar containers consideration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="ceph-csi-upgrade">Ceph-csi Upgrade<a class="headerlink" href="#ceph-csi-upgrade" title="Permanent link">&para;</a></h1>
+<ul>
+<li><a href="#ceph-csi-upgrade">Ceph-csi Upgrade</a></li>
+<li><a href="#pre-upgrade-considerations">Pre-upgrade considerations</a><ul>
+<li><a href="#snapshot-controller-and-snapshot-crd">Snapshot-controller and snapshot crd</a></li>
+</ul>
+</li>
+<li><a href="#upgrading-from-previous-releases">Upgrading from previous releases</a></li>
+<li><a href="#upgrading-from-v316-to-v317">Upgrading from v3.16 to v3.17</a><ul>
+<li><a href="#upgrading-cephfs">Upgrading CephFS</a><ul>
+<li><a href="#1-upgrade-cephfs-provisioner-resources">1. Upgrade CephFS Provisioner resources</a><ul>
+<li><a href="#11-update-the-cephfs-provisioner-rbac">1.1 Update the CephFS Provisioner RBAC</a></li>
+<li><a href="#12-update-the-cephfs-provisioner-deployment">1.2 Update the CephFS Provisioner deployment</a></li>
+</ul>
+</li>
+<li><a href="#2-upgrade-cephfs-nodeplugin-resources">2. Upgrade CephFS Nodeplugin resources</a><ul>
+<li><a href="#21-update-the-cephfs-nodeplugin-rbac">2.1 Update the CephFS Nodeplugin RBAC</a></li>
+<li><a href="#22-update-the-cephfs-nodeplugin-daemonset">2.2 Update the CephFS Nodeplugin daemonset</a></li>
+<li><a href="#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods">2.3 Manual deletion of CephFS Nodeplugin daemonset pods</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#upgrading-rbd">Upgrading RBD</a><ul>
+<li><a href="#3-upgrade-rbd-provisioner-resources">3. Upgrade RBD Provisioner resources</a><ul>
+<li><a href="#31-update-the-rbd-provisioner-rbac">3.1 Update the RBD Provisioner RBAC</a></li>
+<li><a href="#32-update-the-rbd-provisioner-deployment">3.2 Update the RBD Provisioner deployment</a></li>
+</ul>
+</li>
+<li><a href="#4-upgrade-rbd-nodeplugin-resources">4. Upgrade RBD Nodeplugin resources</a><ul>
+<li><a href="#41-update-the-rbd-nodeplugin-rbac">4.1 Update the RBD Nodeplugin RBAC</a></li>
+<li><a href="#42-update-the-rbd-nodeplugin-daemonset">4.2 Update the RBD Nodeplugin daemonset</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#upgrading-nfs">Upgrading NFS</a><ul>
+<li><a href="#5-upgrade-nfs-provisioner-resources">5. Upgrade NFS Provisioner resources</a><ul>
+<li><a href="#51-update-the-nfs-provisioner-rbac">5.1 Update the NFS Provisioner RBAC</a></li>
+<li><a href="#52-update-the-nfs-provisioner-deployment">5.2 Update the NFS Provisioner deployment</a></li>
+</ul>
+</li>
+<li><a href="#6-upgrade-nfs-nodeplugin-resources">6. Upgrade NFS Nodeplugin resources</a><ul>
+<li><a href="#61-update-the-nfs-nodeplugin-rbac">6.1 Update the NFS Nodeplugin RBAC</a></li>
+<li><a href="#62-update-the-nfs-nodeplugin-daemonset">6.2 Update the NFS Nodeplugin daemonset</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#csi-sidecar-containers-consideration">CSI Sidecar containers consideration</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="pre-upgrade-considerations">Pre-upgrade considerations<a class="headerlink" href="#pre-upgrade-considerations" title="Permanent link">&para;</a></h2>
+<p>In some scenarios there is an issue in the CSI driver that will cause
+application pods to be disconnected from their mounts when the CSI driver is
+restarted. Since the upgrade would cause the CSI driver to restart if it is
+updated, you need to be aware of whether this affects your applications. This
+issue will happen when using the Ceph fuse client.</p>
+<p>If you provision volumes for CephFS and have a kernel less than version 4.17,
+the CSI driver will fall back to use the FUSE client.</p>
+<p>If you are affected by this issue, you will need to proceed carefully during
+the upgrade to restart your application pods. The recommended step is to modify
+the update strategy of the CSI nodeplugin daemonsets to OnDelete so that you
+can control when the CSI driver pods are restarted on each node.</p>
+<p>To avoid this issue in future upgrades, we recommend that you do not use the
+fuse client as of now.</p>
+<p>This guide will walk you through the steps to upgrade the software in a cluster
+from v3.12 to v3.13</p>
+<h3 id="snapshot-controller-and-snapshot-crd">Snapshot-controller and snapshot crd<a class="headerlink" href="#snapshot-controller-and-snapshot-crd" title="Permanent link">&para;</a></h3>
+<p>Its kubernetes distributor responsibility to install new snapshot
+controller and snapshot CRD. more info can be found
+<a href="https://github.com/kubernetes-csi/external-snapshotter/tree/master#usage">here</a></p>
+<p><strong>Note:</strong> We recommend to use {sidecar, controller, crds} of same version</p>
+<h2 id="upgrading-from-previous-releases">Upgrading from previous releases<a class="headerlink" href="#upgrading-from-previous-releases" title="Permanent link">&para;</a></h2>
+<p>To upgrade from previous releases, refer to the following:</p>
+<ul>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.3.1/docs/ceph-csi-upgrade.md">upgrade-from-v3.2-v3.3</a>
+  to upgrade from cephcsi v3.2 to v3.3</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.4.0/docs/ceph-csi-upgrade.md">upgrade-from-v3.3-v3.4</a>
+  to upgrade from cephcsi v3.3 to v3.4</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.5.1/docs/ceph-csi-upgrade.md">upgrade-from-v3.4-v3.5</a>
+  to upgrade from cephcsi v3.4 to v3.5</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.6.1/docs/ceph-csi-upgrade.md">upgrade-from-v3.5-v3.6</a>
+  to upgrade from cephcsi v3.5 to v3.6</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.7.2/docs/ceph-csi-upgrade.md">upgrade-from-v3.6-v3.7</a>
+  to upgrade from cephcsi v3.6 to v3.7</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.8.0/docs/ceph-csi-upgrade.md">upgrade-from-v3.7-v3.8</a>
+  to upgrade from cephcsi v3.7 to v3.8</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.9.0/docs/ceph-csi-upgrade.md">upgrade-from-v3.8-v3.9</a>
+  to upgrade from cephcsi v3.8 to v3.9</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.10.0/docs/ceph-csi-upgrade.md">upgrade-from-v3.9-v3.10</a>
+  to upgrade from cephcsi v3.9 to v3.10</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.11.0/docs/ceph-csi-upgrade.md">upgrade-from-v3.10-v3.11</a>
+  to upgrade from cephcsi v3.10 to v3.11</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.12.3/docs/ceph-csi-upgrade.md">upgrade-from-v3.11-v3.12</a>
+  to upgrade from cephcsi v3.11 to v3.12</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.13.1/docs/ceph-csi-upgrade.md">upgrade-from-v3.12-v3.13</a>
+  to upgrade from cephcsi v3.12 to v3.13</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.14.2/docs/ceph-csi-upgrade.md">upgrade-from-v3.13-v3.14</a>
+  to upgrade from cephcsi v3.13 to v3.14</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.15.0/docs/ceph-csi-upgrade.md">upgrade-from-v3.14-v3.15</a>
+  to upgrade from cephcsi v3.14 to v3.15</li>
+<li><a href="https://github.com/ceph/ceph-csi/blob/v3.16.2/docs/ceph-csi-upgrade.md">upgrade-from-v3.15-v3.16</a>
+  to upgrade from cephcsi v3.15 to v3.16</li>
+</ul>
+<h2 id="upgrading-from-v316-to-v317">Upgrading from v3.16 to v3.17<a class="headerlink" href="#upgrading-from-v316-to-v317" title="Permanent link">&para;</a></h2>
+<p><strong>Ceph-csi releases from devel are expressly unsupported.</strong> It is strongly
+recommended that you use <a href="https://github.com/ceph/ceph-csi/releases">official
+releases</a> of Ceph-csi. Unreleased
+versions from the devel branch are subject to changes and incompatibilities
+that will not be supported in the official releases. Builds from the devel
+branch can have functionality changed and even removed at any time without
+compatibility support and without prior notice.</p>
+<p><strong>Also, we do not recommend any direct upgrades to 3.17 except from 3.16 to 3.17.</strong>
+For example, upgrading from 3.14 to 3.17 is not recommended.</p>
+<p><strong>Refer to the Breaking Changes Section in the
+<a href="https://github.com/ceph/ceph-csi/releases/tag/v3.17.1">release notes</a> before
+proceeding further.</strong></p>
+<p>git checkout v3.17.1 tag</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ceph/ceph-csi.git
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>./ceph-csi
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git<span class="w"> </span>checkout<span class="w"> </span>v3.17.1
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">Warning: kubectl apply should be used on resource created by either kubectl create --save-config or kubectl apply</span>
+</code></pre></div>
+<p><strong>Note:</strong> While upgrading please Ignore above warning messages from kubectl output</p>
+<h3 id="upgrading-cephfs">Upgrading CephFS<a class="headerlink" href="#upgrading-cephfs" title="Permanent link">&para;</a></h3>
+<p>Upgrading cephfs csi includes upgrade of cephfs driver and as well as
+kubernetes sidecar containers and also the permissions required for the
+kubernetes sidecar containers, lets upgrade the things one by one</p>
+<h4 id="1-upgrade-cephfs-provisioner-resources">1. Upgrade CephFS Provisioner resources<a class="headerlink" href="#1-upgrade-cephfs-provisioner-resources" title="Permanent link">&para;</a></h4>
+<p>Upgrade provisioner resources include updating the provisioner RBAC and
+Provisioner deployment</p>
+<h5 id="11-update-the-cephfs-provisioner-rbac">1.1 Update the CephFS Provisioner RBAC<a class="headerlink" href="#11-update-the-cephfs-provisioner-rbac" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/cephfs/kubernetes/csi-provisioner-rbac.yaml
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>serviceaccount/cephfs-csi-provisioner<span class="w"> </span>configured
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>clusterrole.rbac.authorization.k8s.io/cephfs-external-provisioner-runner<span class="w"> </span>configured
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>clusterrole.rbac.authorization.k8s.io/cephfs-external-provisioner-runner-rules<span class="w"> </span>configured
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>clusterrolebinding.rbac.authorization.k8s.io/cephfs-csi-provisioner-role<span class="w"> </span>configured
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>role.rbac.authorization.k8s.io/cephfs-external-provisioner-cfg<span class="w"> </span>configured
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>rolebinding.rbac.authorization.k8s.io/cephfs-csi-provisioner-role-cfg<span class="w"> </span>configured
+</code></pre></div>
+<h5 id="12-update-the-cephfs-provisioner-deployment">1.2 Update the CephFS Provisioner deployment<a class="headerlink" href="#12-update-the-cephfs-provisioner-deployment" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/cephfs/kubernetes/csi-cephfsplugin-provisioner.yaml
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>service/csi-cephfsplugin-provisioner<span class="w"> </span>configured
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>deployment.apps/csi-cephfsplugin-provisioner<span class="w"> </span>configured
+</code></pre></div>
+<p>wait for the deployment to complete</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>deployment
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>NAME<span class="w">                           </span>READY<span class="w">   </span>UP-TO-DATE<span class="w">   </span>AVAILABLE<span class="w">   </span>AGE
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>csi-cephfsplugin-provisioner<span class="w">   </span><span class="m">3</span>/3<span class="w">     </span><span class="m">1</span><span class="w">            </span><span class="m">3</span><span class="w">           </span>104m
+</code></pre></div>
+<p>deployment UP-TO-DATE value must be same as READY</p>
+<h4 id="2-upgrade-cephfs-nodeplugin-resources">2. Upgrade CephFS Nodeplugin resources<a class="headerlink" href="#2-upgrade-cephfs-nodeplugin-resources" title="Permanent link">&para;</a></h4>
+<p>Upgrading nodeplugin resources include updating the nodeplugin RBAC and
+nodeplugin daemonset</p>
+<h5 id="21-update-the-cephfs-nodeplugin-rbac">2.1 Update the CephFS Nodeplugin RBAC<a class="headerlink" href="#21-update-the-cephfs-nodeplugin-rbac" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/cephfs/kubernetes/csi-nodeplugin-rbac.yaml
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>serviceaccount/cephfs-csi-nodeplugin<span class="w"> </span>configured
+</code></pre></div>
+<p>If you determined in <a href="#pre-upgrade-considerations">Pre-upgrade considerations</a>
+that you were affected by the CSI driver restart issue that disconnects the
+application pods from their mounts, continue with this section. Otherwise, you
+can skip to step 2.2</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">vi deploy/cephfs/kubernetes/csi-cephfsplugin.yaml</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DaemonSet</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-cephfsplugin</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-cephfsplugin</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span><span class="nt">updateStrategy</span><span class="p">:</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">OnDelete</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">  </span><span class="nt">template</span><span class="p">:</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">    </span><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">      </span><span class="nt">labels</span><span class="p">:</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-cephfsplugin</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">    </span><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">      </span><span class="nt">serviceAccountName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs-csi-nodeplugin</span>
+</code></pre></div>
+<p>in the above template we have added <code>updateStrategy</code> and its <code>type</code> to the
+daemonset spec</p>
+<h5 id="22-update-the-cephfs-nodeplugin-daemonset">2.2 Update the CephFS Nodeplugin daemonset<a class="headerlink" href="#22-update-the-cephfs-nodeplugin-daemonset" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/cephfs/kubernetes/csi-cephfsplugin.yaml
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>daemonset.apps/csi-cephfsplugin<span class="w"> </span>configured
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>service/csi-metrics-cephfsplugin<span class="w"> </span>configured
+</code></pre></div>
+<h5 id="23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods">2.3 Manual deletion of CephFS Nodeplugin daemonset pods<a class="headerlink" href="#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods" title="Permanent link">&para;</a></h5>
+<p>If you determined in <a href="#pre-upgrade-considerations">Pre-upgrade considerations</a>
+that you were affected by the CSI driver restart issue that disconnects the
+application pods from their mounts, continue with this section. Otherwise, you
+can skip this section.</p>
+<p>As we have set the updateStrategy to OnDelete the CSI driver pods will not be
+updated until you delete them manually. This allows you to control when your
+application pods will be affected by the CSI driver restart.</p>
+<p>For each node:</p>
+<ul>
+<li>Drain your application pods from the node</li>
+<li>Delete the CSI driver pods on the node</li>
+<li>The pods to delete will be named with a csi-cephfsplugin prefix and have a
+     random suffix on each node. However, no need to delete the provisioner
+     pods: csi-cephfsplugin-provisioner-* .</li>
+<li>The pod deletion causes the pods to be restarted and updated automatically
+     on the node.</li>
+</ul>
+<p>we have successfully upgraded cephfs csi from v3.16 to v3.17</p>
+<h3 id="upgrading-rbd">Upgrading RBD<a class="headerlink" href="#upgrading-rbd" title="Permanent link">&para;</a></h3>
+<p>Upgrading rbd csi includes upgrade of rbd driver and as well as kubernetes
+sidecar containers and also the permissions required for the kubernetes sidecar
+containers, lets upgrade the things one by one</p>
+<h4 id="3-upgrade-rbd-provisioner-resources">3. Upgrade RBD Provisioner resources<a class="headerlink" href="#3-upgrade-rbd-provisioner-resources" title="Permanent link">&para;</a></h4>
+<p>Upgrading provisioner resources include updating the provisioner RBAC and
+Provisioner deployment</p>
+<h5 id="31-update-the-rbd-provisioner-rbac">3.1 Update the RBD Provisioner RBAC<a class="headerlink" href="#31-update-the-rbd-provisioner-rbac" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/rbd/kubernetes/csi-provisioner-rbac.yaml
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>serviceaccount/rbd-csi-provisioner<span class="w"> </span>configured
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>clusterrole.rbac.authorization.k8s.io/rbd-external-provisioner-runner<span class="w"> </span>configured
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>clusterrolebinding.rbac.authorization.k8s.io/rbd-csi-provisioner-role<span class="w"> </span>configured
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>role.rbac.authorization.k8s.io/rbd-external-provisioner-cfg<span class="w"> </span>configured
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>rolebinding.rbac.authorization.k8s.io/rbd-csi-provisioner-role-cfg<span class="w"> </span>configured
+</code></pre></div>
+<h5 id="32-update-the-rbd-provisioner-deployment">3.2 Update the RBD Provisioner deployment<a class="headerlink" href="#32-update-the-rbd-provisioner-deployment" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/rbd/kubernetes/csi-rbdplugin-provisioner.yaml
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>service/csi-rbdplugin-provisioner<span class="w"> </span>configured
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>deployment.apps/csi-rbdplugin-provisioner<span class="w"> </span>configured
+</code></pre></div>
+<p>wait for the deployment to complete</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>deployments
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>NAME<span class="w">                           </span>READY<span class="w">   </span>UP-TO-DATE<span class="w">   </span>AVAILABLE<span class="w">   </span>AGE
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>csi-rbdplugin-provisioner<span class="w">      </span><span class="m">3</span>/3<span class="w">     </span><span class="m">3</span><span class="w">            </span><span class="m">3</span><span class="w">           </span>139m
+</code></pre></div>
+<p>deployment UP-TO-DATE value must be same as READY</p>
+<h4 id="4-upgrade-rbd-nodeplugin-resources">4. Upgrade RBD Nodeplugin resources<a class="headerlink" href="#4-upgrade-rbd-nodeplugin-resources" title="Permanent link">&para;</a></h4>
+<p>Upgrading nodeplugin resources include updating the nodeplugin RBAC and
+nodeplugin daemonset</p>
+<h5 id="41-update-the-rbd-nodeplugin-rbac">4.1 Update the RBD Nodeplugin RBAC<a class="headerlink" href="#41-update-the-rbd-nodeplugin-rbac" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/rbd/kubernetes/csi-nodeplugin-rbac.yaml
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>serviceaccount/rbd-csi-nodeplugin<span class="w"> </span>configured
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>clusterrole.rbac.authorization.k8s.io/rbd-csi-nodeplugin<span class="w"> </span>configured
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>clusterrolebinding.rbac.authorization.k8s.io/rbd-csi-nodeplugin<span class="w"> </span>configured
+</code></pre></div>
+<h5 id="42-update-the-rbd-nodeplugin-daemonset">4.2 Update the RBD Nodeplugin daemonset<a class="headerlink" href="#42-update-the-rbd-nodeplugin-daemonset" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/rbd/kubernetes/csi-rbdplugin.yaml
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>daemonset.apps/csi-rbdplugin<span class="w"> </span>configured
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>service/csi-metrics-rbdplugin<span class="w"> </span>configured
+</code></pre></div>
+<p>we have successfully upgraded RBD csi from v3.16 to v3.17</p>
+<h3 id="upgrading-nfs">Upgrading NFS<a class="headerlink" href="#upgrading-nfs" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>Note:</strong> Only for upgrade from v3.16 to v3.17, old NFS csidriver
+object will need to be deleted and created again since
+the <code>spec.attachRequired</code> field is being updated to <code>true</code> in
+v3.17 release. Refer to v3.17 release notes for more details.</p>
+</blockquote>
+<p>Upgrading nfs csi includes upgrade of nfs driver and as well as
+kubernetes sidecar containers and also the permissions required for the
+kubernetes sidecar containers, lets upgrade the things one by one</p>
+<h4 id="5-upgrade-nfs-provisioner-resources">5. Upgrade NFS Provisioner resources<a class="headerlink" href="#5-upgrade-nfs-provisioner-resources" title="Permanent link">&para;</a></h4>
+<p>Upgrade provisioner resources include updating the provisioner RBAC and
+Provisioner deployment</p>
+<h5 id="51-update-the-nfs-provisioner-rbac">5.1 Update the NFS Provisioner RBAC<a class="headerlink" href="#51-update-the-nfs-provisioner-rbac" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/nfs/kubernetes/csi-provisioner-rbac.yaml
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>serviceaccount/nfs-csi-provisioner<span class="w"> </span>configured
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>clusterrole.rbac.authorization.k8s.io/nfs-external-provisioner-runner<span class="w"> </span>configured
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>clusterrolebinding.rbac.authorization.k8s.io/nfs-csi-provisioner-role<span class="w"> </span>configured
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>role.rbac.authorization.k8s.io/nfs-external-provisioner-cfg<span class="w"> </span>configured
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>rolebinding.rbac.authorization.k8s.io/nfs-csi-provisioner-role-cfg<span class="w"> </span>configured
+</code></pre></div>
+<h5 id="52-update-the-nfs-provisioner-deployment">5.2 Update the NFS Provisioner deployment<a class="headerlink" href="#52-update-the-nfs-provisioner-deployment" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/nfs/kubernetes/csi-nfsplugin-provisioner.yaml
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>service/csi-nfsplugin-provisioner<span class="w"> </span>configured
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>deployment.apps/csi-nfsplugin-provisioner<span class="w"> </span>configured
+</code></pre></div>
+<p>wait for the deployment to complete</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>deployment
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>NAME<span class="w">                           </span>READY<span class="w">   </span>UP-TO-DATE<span class="w">   </span>AVAILABLE<span class="w">   </span>AGE
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>csi-nfsplugin-provisioner<span class="w">      </span><span class="m">5</span>/5<span class="w">     </span><span class="m">1</span><span class="w">            </span><span class="m">5</span><span class="w">           </span>104m
+</code></pre></div>
+<p>deployment UP-TO-DATE value must be same as READY</p>
+<h4 id="6-upgrade-nfs-nodeplugin-resources">6. Upgrade NFS Nodeplugin resources<a class="headerlink" href="#6-upgrade-nfs-nodeplugin-resources" title="Permanent link">&para;</a></h4>
+<p>Upgrading nodeplugin resources include updating the nodeplugin RBAC and
+nodeplugin daemonset</p>
+<h5 id="61-update-the-nfs-nodeplugin-rbac">6.1 Update the NFS Nodeplugin RBAC<a class="headerlink" href="#61-update-the-nfs-nodeplugin-rbac" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/nfs/kubernetes/csi-nodeplugin-rbac.yaml
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>serviceaccount/nfs-csi-nodeplugin<span class="w"> </span>configured
+</code></pre></div>
+<h5 id="62-update-the-nfs-nodeplugin-daemonset">6.2 Update the NFS Nodeplugin daemonset<a class="headerlink" href="#62-update-the-nfs-nodeplugin-daemonset" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/nfs/kubernetes/csi-nfsplugin.yaml
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>daemonset.apps/csi-nfsplugin<span class="w"> </span>configured
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>service/csi-metrics-nfsplugin<span class="w"> </span>configured
+</code></pre></div>
+<p>we have successfully upgraded nfs csi from v3.16 to v3.17</p>
+<h3 id="csi-sidecar-containers-consideration">CSI Sidecar containers consideration<a class="headerlink" href="#csi-sidecar-containers-consideration" title="Permanent link">&para;</a></h3>
+<p>With 3.2.0 version of ceph-csi we have updated the versions of CSI sidecar
+containers. These versions are generally compatible with kubernetes
+version&gt;=1.17 but based on the kubernetes version you are using, you need to
+update the templates with required sidecar versions.
+You also might need to update or remove a few arguments based on the sidecar
+versions you are using.
+Refer
+<a href="https://kubernetes-csi.github.io/docs/sidecar-containers.html">sidecar-compatibility</a>
+for more details.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2116 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Container Storage Interface (CSI) drivers for Ceph storage">
+      
+      
+        <meta name="author" content="Ceph-CSI Contributors">
+      
+      
+        <link rel="canonical" href="https://ceph.github.io/ceph-csi/csi-addons/reclaimspace/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Reclaim Space - Ceph-CSI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#reclaim-space" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Ceph-CSI Documentation" class="md-header__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ceph-CSI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Reclaim Space
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../capabilities/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../rbd/deploy/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ceph-csi-upgrade/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../disaster-recovery/" class="md-tabs__link">
+          
+  
+  
+  CSI Addons
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development-guide/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Ceph-CSI Documentation" class="md-nav__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ceph-CSI Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../snap-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Snapshots and Clones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../expand-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Expansion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../static-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../volumeattributesclass/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Attributes Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RBD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rbd/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CephFS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CephFS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cephfs/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ceph-csi-upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../intree-migrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In-tree Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../resource-cleanup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CSI Addons
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CSI Addons
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../disaster-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coding Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nodereclaimspace-filesystem-volumes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodeReclaimSpace (Filesystem Volumes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controllerreclaimspace-block-level-sparsification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ControllerReclaimSpace (Block-Level Sparsification)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#csi-addons-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CSI-Addons Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CSI-Addons Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nodereclaimspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodeReclaimSpace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controllerreclaimspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ControllerReclaimSpace
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use Cases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use Cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regular-storage-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regular Storage Maintenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#application-lifecycle-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Application Lifecycle Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cost-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cost Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enabling-space-reclamation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enabling Space Reclamation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volume-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volume Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations-and-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations and Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Limitations and Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nodereclaimspace-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodeReclaimSpace Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controllerreclaimspace-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ControllerReclaimSpace Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#general-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Considerations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#checking-space-reclamation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking Space Reclamation Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verifying-filesystem-trim-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verifying Filesystem TRIM Support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-space-reclamation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Space Reclamation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#impact-on-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Impact on Applications
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="reclaim-space">Reclaim Space<a class="headerlink" href="#reclaim-space" title="Permanent link">&para;</a></h1>
+<p>Reclaim Space is a <a href="https://csi-addons.github.io/">CSI-Addons</a> feature that
+enables the recovery of unused storage space from provisioned volumes. This
+capability is essential for optimizing storage utilization, particularly for
+filesystem volumes where deleted files may not immediately release space back
+to the underlying storage system.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Space reclamation in Ceph-CSI provides two complementary operations:</p>
+<ol>
+<li>
+<p><strong>NodeReclaimSpace</strong>: Reclaims space on filesystem volumes by running
+   <code>fstrim</code> on mounted volumes. This is the primary and most effective method
+   for freeing unused space.</p>
+</li>
+<li>
+<p><strong>ControllerReclaimSpace</strong>: Attempts to sparsify RBD images at the storage
+   layer. However, this operation has limited effectiveness in typical
+   deployments.</p>
+</li>
+</ol>
+<p>The reclaim space feature is implemented through the CSI-Addons specification
+and currently supports RBD (RADOS Block Device) storage with filesystem
+volumes.</p>
+<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<h3 id="nodereclaimspace-filesystem-volumes">NodeReclaimSpace (Filesystem Volumes)<a class="headerlink" href="#nodereclaimspace-filesystem-volumes" title="Permanent link">&para;</a></h3>
+<p>NodeReclaimSpace operates on mounted filesystem volumes by:</p>
+<ol>
+<li>
+<p><strong>Identifying the Mount Point</strong>: Locating the volume's staging path or
+   volume path where the filesystem is mounted.</p>
+</li>
+<li>
+<p><strong>Running fstrim</strong>: Executing the <code>fstrim</code> command on the mounted
+   filesystem, which:</p>
+</li>
+<li>Identifies unused blocks in the filesystem</li>
+<li>Issues TRIM/DISCARD commands to the underlying block device</li>
+<li>
+<p>Allows the storage backend to reclaim the freed space</p>
+</li>
+<li>
+<p><strong>Updating Storage</strong>: The TRIM commands propagate through the storage stack
+   (RBD → Ceph OSD), allowing the Ceph cluster to mark the corresponding
+   objects as unused and reclaim the space.</p>
+</li>
+</ol>
+<p><strong>Example workflow:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Application deletes files → Filesystem marks blocks as free →
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>NodeReclaimSpace runs fstrim → TRIM commands sent to RBD →
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Ceph OSDs reclaim space → Storage capacity freed
+</code></pre></div>
+<h3 id="controllerreclaimspace-block-level-sparsification">ControllerReclaimSpace (Block-Level Sparsification)<a class="headerlink" href="#controllerreclaimspace-block-level-sparsification" title="Permanent link">&para;</a></h3>
+<p>ControllerReclaimSpace attempts to sparsify RBD images at the storage layer:</p>
+<ol>
+<li>
+<p><strong>Volume Validation</strong>: Verifies the volume exists and is accessible.</p>
+</li>
+<li>
+<p><strong>Sparsify Operation</strong>: Attempts to run the RBD sparsify operation, which
+   scans the image for zero-filled regions and removes them from storage.</p>
+</li>
+<li>
+<p><strong>In-Use Detection</strong>: If the volume is currently in use (mounted), the
+   operation is treated as a no-op and returns successfully without making
+   changes.</p>
+</li>
+</ol>
+<p><strong>Important:</strong> This operation has limited practical use because:</p>
+<ul>
+<li>Applications using block devices (like KubeVirt/QEMU) already discard freed
+  blocks automatically</li>
+<li>Volumes are typically mounted and in use, preventing sparsification</li>
+<li>The operation only works on unmounted, detached volumes</li>
+<li>Filesystem-level space reclamation (NodeReclaimSpace) is more effective for
+  active volumes</li>
+</ul>
+<h2 id="csi-addons-operations">CSI-Addons Operations<a class="headerlink" href="#csi-addons-operations" title="Permanent link">&para;</a></h2>
+<h3 id="nodereclaimspace">NodeReclaimSpace<a class="headerlink" href="#nodereclaimspace" title="Permanent link">&para;</a></h3>
+<p>Reclaims space on a mounted filesystem volume by running <code>fstrim</code>. This is the
+<strong>recommended and most effective</strong> method for space reclamation.</p>
+<p><strong>Request Parameters:</strong></p>
+<ul>
+<li><code>volume_id</code>: The ID of the volume to reclaim space from (required)</li>
+<li><code>staging_target_path</code>: The staging path where the volume is mounted (optional)</li>
+<li><code>volume_path</code>: The path where the volume is mounted in the application
+  container (optional, used if staging_target_path is not provided)</li>
+<li><code>volume_capability</code>: The volume capability (required for validation)</li>
+</ul>
+<p><strong>Supported Configurations:</strong></p>
+<ul>
+<li>✅ Single-node filesystem volumes (ReadWriteOnce)</li>
+<li>❌ Multi-node filesystem volumes (ReadWriteMany) - not supported to prevent
+  data corruption</li>
+<li>❌ Block-mode volumes - not supported (no filesystem to trim)</li>
+</ul>
+<p><strong>Example ReclaimSpaceJob:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csiaddons.openshift.io/v1alpha1</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReclaimSpaceJob</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reclaimspace-pvc-example</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">target</span><span class="p">:</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="nt">persistentVolumeClaim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-pvc</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">backOffLimit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">retryDeadlineSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">900</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+</code></pre></div>
+<p><strong>Example ReclaimSpaceCronJob:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csiaddons.openshift.io/v1alpha1</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReclaimSpaceCronJob</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reclaimspace-cronjob-example</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">"@weekly"</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">jobSpec</span><span class="p">:</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="nt">target</span><span class="p">:</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">      </span><span class="nt">persistentVolumeClaim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-pvc</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="nt">backOffLimit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="nt">retryDeadlineSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">900</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+</code></pre></div>
+<h3 id="controllerreclaimspace">ControllerReclaimSpace<a class="headerlink" href="#controllerreclaimspace" title="Permanent link">&para;</a></h3>
+<p>Attempts to sparsify an RBD image at the storage layer. This operation is
+<strong>not expected to free space in most environments</strong> because volumes are
+typically in use.</p>
+<p><strong>Request Parameters:</strong></p>
+<ul>
+<li><code>volume_id</code>: The ID of the volume to sparsify (required)</li>
+<li><code>secrets</code>: Ceph credentials for authentication (required)</li>
+</ul>
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>If the volume is in use (mounted), the operation returns successfully without
+  making changes (treated as a no-op)</li>
+<li>If the volume is not in use, attempts to run RBD sparsify</li>
+<li>Only effective for volumes that are detached and unmounted</li>
+</ul>
+<p><strong>Note:</strong> For active volumes, use NodeReclaimSpace instead, as it is more
+effective and works on mounted filesystems.</p>
+<h2 id="use-cases">Use Cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h2>
+<h3 id="regular-storage-maintenance">Regular Storage Maintenance<a class="headerlink" href="#regular-storage-maintenance" title="Permanent link">&para;</a></h3>
+<p>Periodic space reclamation helps maintain optimal storage utilization:</p>
+<ol>
+<li>
+<p><strong>Scheduled Cleanup</strong>: Use ReclaimSpaceCronJob to automatically reclaim
+   space on a regular schedule (e.g., weekly or monthly)</p>
+</li>
+<li>
+<p><strong>Post-Deletion Cleanup</strong>: Run space reclamation after bulk file deletions
+   to immediately free storage capacity</p>
+</li>
+<li>
+<p><strong>Capacity Management</strong>: Prevent storage exhaustion by regularly reclaiming
+   unused space from active volumes</p>
+</li>
+</ol>
+<h3 id="application-lifecycle-management">Application Lifecycle Management<a class="headerlink" href="#application-lifecycle-management" title="Permanent link">&para;</a></h3>
+<p>Space reclamation is valuable during application operations:</p>
+<ol>
+<li>
+<p><strong>Log Rotation</strong>: After log files are rotated and deleted, reclaim the
+   freed space</p>
+</li>
+<li>
+<p><strong>Cache Cleanup</strong>: When applications clear caches or temporary files,
+   recover the storage capacity</p>
+</li>
+<li>
+<p><strong>Database Maintenance</strong>: After database vacuum or cleanup operations,
+   reclaim freed space</p>
+</li>
+</ol>
+<h3 id="cost-optimization">Cost Optimization<a class="headerlink" href="#cost-optimization" title="Permanent link">&para;</a></h3>
+<p>For cloud or thin-provisioned storage:</p>
+<ol>
+<li>
+<p><strong>Reduce Storage Costs</strong>: Free unused space to reduce storage consumption
+   and associated costs</p>
+</li>
+<li>
+<p><strong>Improve Thin Provisioning</strong>: Allow thin-provisioned volumes to return
+   space to the storage pool</p>
+</li>
+<li>
+<p><strong>Optimize Capacity Planning</strong>: Maintain accurate storage utilization
+   metrics for capacity planning</p>
+</li>
+</ol>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="enabling-space-reclamation">Enabling Space Reclamation<a class="headerlink" href="#enabling-space-reclamation" title="Permanent link">&para;</a></h3>
+<p>Space reclamation is enabled through the CSI-Addons endpoint configuration in
+the Ceph-CSI driver deployment.</p>
+<p><strong>Example deployment configuration:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">args</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"--csi-addons-endpoint=unix:///tmp/csi-addons.sock"</span>
+</code></pre></div>
+<h3 id="volume-requirements">Volume Requirements<a class="headerlink" href="#volume-requirements" title="Permanent link">&para;</a></h3>
+<p>For NodeReclaimSpace to work effectively:</p>
+<ol>
+<li>
+<p><strong>Filesystem Support</strong>: The filesystem must support TRIM/DISCARD operations
+   (ext4, xfs, btrfs, etc.)</p>
+</li>
+<li>
+<p><strong>Mount Options</strong>: Ensure the filesystem is mounted with appropriate options
+   (most modern filesystems enable TRIM by default)</p>
+</li>
+<li>
+<p><strong>Volume Capability</strong>: The volume must be a filesystem volume (not
+   block-mode) with single-node access (ReadWriteOnce)</p>
+</li>
+</ol>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>CSI-Addons Controller</strong>: The CSI-Addons controller must be deployed in
+   the Kubernetes cluster. See the <a href="https://csi-addons.github.io/">CSI-Addons documentation</a>
+   for installation instructions.</p>
+</li>
+<li>
+<p><strong>ReclaimSpace CRDs</strong>: The ReclaimSpace Custom Resource Definitions must
+   be installed:</p>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/csi-addons/kubernetes-csi-addons/v0.10.0/deploy/controller/crds.yaml
+</code></pre></div>
+<ol>
+<li>
+<p><strong>RBAC Permissions</strong>: Appropriate RBAC rules must be configured for the
+   CSI-Addons operator to manage space reclamation jobs.</p>
+</li>
+<li>
+<p><strong>Filesystem Support</strong>: The filesystem on the volume must support
+   TRIM/DISCARD operations (ext4, xfs, btrfs, etc.).</p>
+</li>
+<li>
+<p><strong>Ceph Credentials</strong>: Valid Ceph credentials with permissions to access
+   and manage volumes (required for ControllerReclaimSpace).</p>
+</li>
+</ol>
+<h2 id="limitations-and-considerations">Limitations and Considerations<a class="headerlink" href="#limitations-and-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="nodereclaimspace-limitations">NodeReclaimSpace Limitations<a class="headerlink" href="#nodereclaimspace-limitations" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Multi-Node Volumes Not Supported</strong>: ReadWriteMany (RWX) volumes are not
+   supported to prevent potential data corruption from concurrent trim
+   operations.</p>
+</li>
+<li>
+<p><strong>Block-Mode Not Supported</strong>: Block-mode volumes cannot be trimmed as they
+   have no filesystem layer.</p>
+</li>
+<li>
+<p><strong>Filesystem Dependency</strong>: The effectiveness of space reclamation depends
+   on the filesystem's TRIM implementation and the underlying storage's
+   support for DISCARD operations.</p>
+</li>
+<li>
+<p><strong>Performance Impact</strong>: Running <code>fstrim</code> on large filesystems can be
+   I/O-intensive and may temporarily impact application performance.</p>
+</li>
+</ol>
+<h3 id="controllerreclaimspace-limitations">ControllerReclaimSpace Limitations<a class="headerlink" href="#controllerreclaimspace-limitations" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Limited Effectiveness</strong>: This operation rarely frees space because:</li>
+<li>Applications using block devices (like KubeVirt/QEMU) already discard
+     freed blocks automatically</li>
+<li>Volumes are typically mounted and in use</li>
+<li>Sparsify only works on detached, unmounted volumes</li>
+<li>
+<p>The operation is treated as a no-op when volumes are in use</p>
+</li>
+<li>
+<p><strong>Use NodeReclaimSpace Instead</strong>: For active volumes, NodeReclaimSpace is
+   the recommended and more effective approach.</p>
+</li>
+</ol>
+<h3 id="general-considerations">General Considerations<a class="headerlink" href="#general-considerations" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Volume Locking</strong>: Space reclamation operations acquire a volume lock to
+   prevent concurrent operations on the same volume.</p>
+</li>
+<li>
+<p><strong>Operation Timeout</strong>: Configure appropriate timeout values in
+   ReclaimSpaceJob specifications to account for large volumes.</p>
+</li>
+<li>
+<p><strong>Scheduling</strong>: When using ReclaimSpaceCronJob, schedule operations during
+   low-activity periods to minimize performance impact.</p>
+</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="checking-space-reclamation-status">Checking Space Reclamation Status<a class="headerlink" href="#checking-space-reclamation-status" title="Permanent link">&para;</a></h3>
+<p>To verify space reclamation job status:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># List ReclaimSpaceJobs</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>reclaimspacejob<span class="w"> </span>-A
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Check job details</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>kubectl<span class="w"> </span>describe<span class="w"> </span>reclaimspacejob<span class="w"> </span>&lt;job-name&gt;<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># View job logs</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>&lt;csi-addons-namespace&gt;<span class="w"> </span>&lt;csi-addons-controller-pod&gt;
+</code></pre></div>
+<h3 id="verifying-filesystem-trim-support">Verifying Filesystem TRIM Support<a class="headerlink" href="#verifying-filesystem-trim-support" title="Permanent link">&para;</a></h3>
+<p>To check if a filesystem supports TRIM:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Check mount options</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>mount<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>&lt;mount-point&gt;
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Manually test fstrim (requires root access on the node)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>fstrim<span class="w"> </span>-v<span class="w"> </span>&lt;mount-point&gt;
+</code></pre></div>
+<h3 id="common-issues">Common Issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>"multi-node space reclaim is not supported" error</strong>: The volume has
+   ReadWriteMany (RWX) access mode. Space reclamation is only supported for
+   ReadWriteOnce (RWO) volumes to prevent data corruption.</li>
+</ol>
+<p><strong>Solution</strong>: Ensure the PVC uses ReadWriteOnce access mode.</p>
+<ol>
+<li><strong>"block-mode space reclaim is not supported" error</strong>: The volume is
+   configured in block mode without a filesystem.</li>
+</ol>
+<p><strong>Solution</strong>: Use filesystem mode (volumeMode: Filesystem) for volumes that
+   need space reclamation.</p>
+<ol>
+<li><strong>"volume operation already exists" error</strong>: Another operation is currently
+   running on the same volume.</li>
+</ol>
+<p><strong>Solution</strong>: Wait for the current operation to complete, or check for
+   stuck operations that may need manual intervention.</p>
+<ol>
+<li><strong>fstrim fails with "operation not supported"</strong>: The filesystem or
+   underlying storage does not support TRIM/DISCARD operations.</li>
+</ol>
+<p><strong>Solution</strong>: Verify filesystem type and storage backend support for TRIM.
+   Some older filesystems or storage systems may not support this feature.</p>
+<ol>
+<li><strong>ControllerReclaimSpace doesn't free space</strong>: This is expected behavior
+   when volumes are in use (mounted).</li>
+</ol>
+<p><strong>Solution</strong>: Use NodeReclaimSpace for active volumes, as it is designed to
+   work on mounted filesystems and is more effective for space reclamation.</p>
+<ol>
+<li><strong>Space reclamation job times out</strong>: The operation is taking longer than
+   the configured timeout.</li>
+</ol>
+<p><strong>Solution</strong>: Increase the <code>timeout</code> value in the ReclaimSpaceJob
+   specification, especially for large volumes.</p>
+<h3 id="manual-space-reclamation">Manual Space Reclamation<a class="headerlink" href="#manual-space-reclamation" title="Permanent link">&para;</a></h3>
+<p>If needed, you can manually reclaim space on a node:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># SSH to the node where the volume is mounted</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># Find the mount point</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>mount<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>&lt;volume-id&gt;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># Run fstrim manually (requires root)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>fstrim<span class="w"> </span>-v<span class="w"> </span>/path/to/mount/point
+</code></pre></div>
+<h2 id="performance-considerations">Performance Considerations<a class="headerlink" href="#performance-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="impact-on-applications">Impact on Applications<a class="headerlink" href="#impact-on-applications" title="Permanent link">&para;</a></h3>
+<ul>
+<li>
+<p><strong>I/O Overhead</strong>: <code>fstrim</code> operations can generate significant I/O activity,
+  potentially impacting application performance during execution.</p>
+</li>
+<li>
+<p><strong>Scheduling</strong>: Schedule space reclamation during maintenance windows or
+  low-activity periods when possible.</p>
+</li>
+<li>
+<p><strong>Frequency</strong>: Balance reclamation frequency against performance impact.
+  Weekly or monthly schedules are often sufficient for most workloads.</p>
+</li>
+</ul>
+<h3 id="optimization-tips">Optimization Tips<a class="headerlink" href="#optimization-tips" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Batch Operations</strong>: If reclaiming space on multiple volumes, stagger the
+   operations to avoid overwhelming the storage system.</p>
+</li>
+<li>
+<p><strong>Monitor Performance</strong>: Track application performance metrics during space
+   reclamation to identify any adverse effects.</p>
+</li>
+<li>
+<p><strong>Adjust Timeout</strong>: Set appropriate timeout values based on volume size and
+   storage performance characteristics.</p>
+</li>
+</ol>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Use NodeReclaimSpace for Active Volumes</strong>: NodeReclaimSpace is the
+   recommended method for reclaiming space on mounted, active volumes.</li>
+<li><strong>Schedule Regular Reclamation</strong>: Use ReclaimSpaceCronJob to automate
+   periodic space reclamation, preventing storage exhaustion.</li>
+<li><strong>Monitor Storage Utilization</strong>: Track storage usage before and after
+   reclamation to measure effectiveness and adjust schedules accordingly.</li>
+<li><strong>Test Before Production</strong>: Test space reclamation on non-production
+   volumes first to understand performance impact and effectiveness.</li>
+<li><strong>Document Schedules</strong>: Maintain documentation of reclamation schedules and
+   their rationale for operational clarity.</li>
+<li><strong>Avoid Multi-Node Volumes</strong>: Use ReadWriteOnce (RWO) access mode for
+   volumes that require space reclamation, as ReadWriteMany (RWX) is not
+   supported.</li>
+</ol>
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://csi-addons.github.io/">CSI-Addons Documentation</a></li>
+<li><a href="https://github.com/csi-addons/spec">CSI-Addons Specification</a></li>
+<li><a href="https://man7.org/linux/man-pages/man8/fstrim.8.html">Linux fstrim Manual</a></li>
+<li><a href="https://docs.ceph.com/en/latest/man/8/rbd/#commands">Ceph RBD Sparsify Documentation</a></li>
+<li><a href="https://github.com/csi-addons/kubernetes-csi-addons">Kubernetes CSI-Addons Operator</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
