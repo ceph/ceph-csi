@@ -17,10 +17,14 @@ limitations under the License.
 package nvmeof
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 	"github.com/google/uuid"
 )
 
@@ -57,4 +61,12 @@ func ResolveIPAddress(host string) (string, error) {
 	}
 
 	return addrs[0], nil
+}
+
+func DumpConntrackState(ctx context.Context) {
+	stdout, stderr, err := util.ExecCommandWithTimeout(ctx, 5*time.Second, "conntrack", "-L")
+	log.DebugLog(ctx, "conntrack -L: stdout=%s stderr=%s err=%v", stdout, stderr, err)
+
+	stdout2, stderr2, err2 := util.ExecCommandWithTimeout(ctx, 5*time.Second, "iptables", "-t", "nat", "-L", "-n", "-v")
+	log.DebugLog(ctx, "iptables -t nat -L: stdout=%s stderr=%s err=%v", stdout2, stderr2, err2)
 }

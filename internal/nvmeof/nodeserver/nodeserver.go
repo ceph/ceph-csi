@@ -229,7 +229,7 @@ func (ns *NodeServer) NodeStageVolume(
 
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
-
+	nvmeof.DumpConntrackState(ctx)
 	// Parse volume context
 	connectionInfo, err := ns.getNvmeConnection(volumeContext, req.GetPublishContext())
 	if err != nil {
@@ -421,7 +421,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		log.DebugLog(ctx, "successfully unmounted volume (%s) from staging path (%s)",
 			req.GetVolumeId(), stagingTargetPath)
 	}
-
+	nvmeof.DumpConntrackState(ctx)
 	if err = os.Remove(stagingTargetPath); err != nil {
 		// Any error is critical as Staging path is expected to be empty by Kubernetes, it otherwise
 		// keeps invoking Unstage. Hence any errors removing files within this path is a critical

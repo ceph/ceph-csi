@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -339,9 +340,12 @@ func (ni *nvmeInitiator) GetNamespaceDeviceByUUID(ctx context.Context, uuid stri
 					}
 				}
 			}
-
+			DumpConntrackState(ctx)
 			stdout, stderr, err := util.ExecCommandWithTimeout(ctx, listSubsysTimeout, "nvme", "list")
 			log.DebugLog(ctx, "nvme list (uuid %s not found): stdout=%q stderr=%q err=%v", uuid, stdout, stderr, err)
+
+			matches, _ := filepath.Glob("/dev/disk/by-id/nvme-uuid*")
+			log.DebugLog(ctx, "ls /dev/disk/by-id/nvme-uuid* (uuid %s not found): %v", uuid, matches)
 
 			return "", fmt.Errorf("device path with uuid: %s not found", uuid)
 		},
