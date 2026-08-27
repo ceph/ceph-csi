@@ -37,8 +37,8 @@ var (
 )
 
 func deployVault(c kubernetes.Interface, deployTimeout int) {
-	// hack to make helm E2E pass as helm charts creates this configmap as part
-	// of cephcsi deployment
+	// hack to make operator E2E pass as deploy-ceph-csi-operaotr
+	// creates this configmap as part of cephcsi deployment
 	err := retryKubectlArgs(
 		cephCSINamespace,
 		kubectlDelete,
