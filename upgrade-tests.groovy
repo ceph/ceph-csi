@@ -201,9 +201,9 @@ node('cico-workspace') {
 		}
 		stage("run ${test_type} upgrade tests") {
 			timeout(time: 120, unit: 'MINUTES') {
-				upgrade_args = "--test-cephfs=false --test-rbd=true --upgrade-testing=true"
+				upgrade_args = "--test-cephfs=false --test-rbd=true --upgrade-testing=true --test-nvmeof=false"
 				if ("${test_type}" == "cephfs"){
-					upgrade_args = "--test-cephfs=true --test-rbd=false --upgrade-testing=true"
+					upgrade_args = "--test-cephfs=true --test-rbd=false --upgrade-testing=true --test-nvmeof=false"
 				}
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e E2E_ARGS=\"--upgrade-version=${csi_upgrade_version} ${upgrade_args}\""
 			}
