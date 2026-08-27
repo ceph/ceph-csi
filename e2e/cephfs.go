@@ -50,8 +50,6 @@ var (
 	fileSystemPoolName    = "myfs-replicated"
 	metadataPool          = "" // will be set in BeforeAll
 
-	helmCephFSPodsLabel = "ceph-csi-cephfs"
-
 	operatorCephFSDeploymentName = "cephfs.csi.ceph.com-ctrlplugin"
 	operatorCephFSDaemonsetName  = "cephfs.csi.ceph.com-nodeplugin"
 
@@ -187,7 +185,6 @@ func NewCephFSDeployment(c clientset.Interface) CephFSDeploymentMethod {
 			clientSet:        c,
 			deploymentName:   cephFSDeploymentName,
 			daemonsetName:    cephFSDeamonSetName,
-			helmPodLabelName: helmCephFSPodsLabel,
 			driverContainers: []string{cephFSContainerName},
 		},
 	}
@@ -208,8 +205,8 @@ var _ = Describe(cephfsType, func() {
 			cephFSDeployment = NewCephFSOperatorDeployment(c)
 		}
 
-		// No need to create the namespace if ceph-csi is deployed via helm or operator.
-		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+		// No need to create the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err := createNamespace(c, cephCSINamespace)
 			if err != nil {
 				logAndFail("failed to create namespace %s: %v", cephCSINamespace, err)
@@ -277,8 +274,6 @@ var _ = Describe(cephfsType, func() {
 		}
 
 		if CurrentSpecReport().Failed() {
-			// log pods created by helm chart
-			logsCSIPods("app="+helmCephFSPodsLabel, c)
 			// log provisioner
 			logsCSIPods("app="+cephFSDeployment.getDeploymentName(), c)
 			// log node plugin
@@ -319,8 +314,8 @@ var _ = Describe(cephfsType, func() {
 		if deployCephFS {
 			deleteCephfsPlugin()
 		}
-		// No need to delete the namespace if ceph-csi is deployed via helm or operator.
-		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+		// No need to delete the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err = deleteNamespace(c, cephCSINamespace)
 			if err != nil {
 				logAndFail("failed to delete namespace %s: %v", cephCSINamespace, err)
@@ -354,25 +349,6 @@ var _ = Describe(cephfsType, func() {
 				deployTimeout,
 			)).ShouldNot(HaveOccurred())
 		})
-
-		// test only if ceph-csi is deployed via helm
-		if helmTest {
-			It("verify PVC and app binding on helm installation", func() {
-				err := validatePVCAndAppBinding(pvcPath, appPath, f)
-				if err != nil {
-					logAndFail("failed to validate CephFS pvc and application binding: %v", err)
-				}
-				//  Deleting the storageclass and secret created by helm
-				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
-				if err != nil {
-					logAndFail("failed to delete CephFS storageclass: %v", err)
-				}
-				err = deleteResource(cephFSExamplePath + "secret.yaml")
-				if err != nil {
-					logAndFail("failed to delete CephFS storageclass: %v", err)
-				}
-			})
-		}
 
 		It("verify userId mapping metadata exists", func() {
 			err := createCephfsStorageClass(f.ClientSet, f, true, nil)

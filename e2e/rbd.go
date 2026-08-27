@@ -113,8 +113,6 @@ var (
 	volSnapNamespaceKey   = "csi.storage.k8s.io/volumesnapshot/namespace"
 	volSnapContentNameKey = "csi.storage.k8s.io/volumesnapshotcontent/name"
 
-	helmRBDPodsLabel = "ceph-csi-rbd"
-
 	operatorRBDDeploymentName = "rbd.csi.ceph.com-ctrlplugin"
 	operatorRBDDaemonsetName  = "rbd.csi.ceph.com-nodeplugin"
 	rbdContainersName         = []string{"csi-rbdplugin", "csi-rbdplugin-controller"}
@@ -338,7 +336,6 @@ func NewRBDDeployment(c clientset.Interface) RBDDeploymentMethod {
 			clientSet:        c,
 			deploymentName:   rbdDeploymentName,
 			daemonsetName:    rbdDaemonsetName,
-			helmPodLabelName: helmRBDPodsLabel,
 			driverContainers: rbdContainersName,
 		},
 	}
@@ -360,39 +357,32 @@ var _ = Describe("RBD", func() {
 			rbdDeployment = NewRBDOperatorDeployment(c)
 		}
 
-		// No need to create the namespace if ceph-csi is deployed via helm or operator.
-		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+		// No need to create the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err := createNamespace(c, cephCSINamespace)
 			if err != nil {
 				logAndFail("failed to create namespace: %v", err)
 			}
 		}
-		// helm script already adds node labels
-		if !helmTest {
-			err := addLabelsToNodes(f, map[string]string{
-				nodeRegionLabel:          regionValue,
-				nodeZoneLabel:            zoneValue,
-				crushLocationRegionLabel: crushLocationRegionValue,
-				crushLocationZoneLabel:   crushLocationZoneValue,
-			})
-			if err != nil {
-				logAndFail("failed to add node labels: %v", err)
-			}
+		err := addLabelsToNodes(f, map[string]string{
+			nodeRegionLabel:          regionValue,
+			nodeZoneLabel:            zoneValue,
+			crushLocationRegionLabel: crushLocationRegionValue,
+			crushLocationZoneLabel:   crushLocationZoneValue,
+		})
+		if err != nil {
+			logAndFail("failed to add node labels: %v", err)
 		}
-		err := createConfigMap(rbdDirPath, f.ClientSet, f)
+		err = createConfigMap(rbdDirPath, f.ClientSet, f)
 		if err != nil {
 			logAndFail("failed to create configmap: %v", err)
 		}
 		if deployRBD {
 			deployRBDPlugin()
 		}
-		// Since helm deploys storageclass, skip storageclass creation if
-		// ceph-csi is deployed via helm.
-		if !helmTest {
-			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-			if err != nil {
-				logAndFail("failed to create storageclass: %v", err)
-			}
+		err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+		if err != nil {
+			logAndFail("failed to create storageclass: %v", err)
 		}
 		// create rbd provisioner secret
 		key, err := createCephUser(f, keyringRBDProvisionerUsername, rbdProvisionerCaps("", ""))
@@ -460,8 +450,6 @@ var _ = Describe("RBD", func() {
 		}
 
 		if CurrentSpecReport().Failed() {
-			// log pods created by helm chart
-			logsCSIPods("app="+helmRBDPodsLabel, c)
 			// log provisioner
 			logsCSIPods("app="+rbdDeployment.getDeploymentName(), c)
 			// log node plugin
@@ -498,8 +486,8 @@ var _ = Describe("RBD", func() {
 		if deployRBD {
 			deleteRBDPlugin()
 		}
-		// No need to delete the namespace if ceph-csi is deployed via helm or operator.
-		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+		// No need to delete the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err = deleteNamespace(c, cephCSINamespace)
 			if err != nil {
 				logAndFail("failed to delete namespace: %v", err)
@@ -521,33 +509,6 @@ var _ = Describe("RBD", func() {
 	Context("Test RBD CSI", Ordered, func() {
 		if !testRBD || upgradeTesting {
 			return
-		}
-
-		// test only if ceph-csi is deployed via helm
-		if helmTest {
-			It("verify PVC and app binding on helm installation", func() {
-				err := validatePVCAndAppBinding(pvcPath, appPath, f)
-				if err != nil {
-					logAndFail("failed to validate RBD pvc and application binding: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				//  Deleting the storageclass and secret created by helm
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					logAndFail("failed to delete storageclass: %v", err)
-				}
-				err = deleteResource(rbdExamplePath + "secret.yaml")
-				if err != nil {
-					logAndFail("failed to delete secret: %v", err)
-				}
-				// Re-create the RBD storageclass
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					logAndFail("failed to create storageclass: %v", err)
-				}
-			})
 		}
 
 		It("verify userId mapping metadata exists", func() {

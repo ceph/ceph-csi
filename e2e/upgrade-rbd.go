@@ -61,8 +61,8 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if operatorDeployment {
 			rbdDeployment = NewRBDOperatorDeployment(c)
 		}
-		// No need to create the namespace if ceph-csi is deployed via helm or operator.
-		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+		// No need to create the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err := createNamespace(c, cephCSINamespace)
 			if err != nil {
 				logAndFail("failed to create namespace: %v", err)
@@ -127,8 +127,6 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			Skip("Skipping RBD Upgrade Testing")
 		}
 		if CurrentSpecReport().Failed() {
-			// log pods created by helm chart
-			logsCSIPods("app=ceph-csi-rbd", c)
 			// log provisoner
 			logsCSIPods("app=csi-rbdplugin-provisioner", c)
 			// log node plugin
@@ -168,8 +166,8 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if deployRBD {
 			deleteRBDPlugin()
 		}
-		// No need to delete the namespace if ceph-csi is deployed via helm or operator.
-		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+		// No need to delete the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err = deleteNamespace(c, cephCSINamespace)
 			if err != nil {
 				logAndFail("failed to delete namespace: %v", err)
