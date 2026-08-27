@@ -379,12 +379,12 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to add node labels: %v", err)
 			}
 		}
-		if deployRBD {
-			deployRBDPlugin()
-		}
 		err := createConfigMap(rbdDirPath, f.ClientSet, f)
 		if err != nil {
 			logAndFail("failed to create configmap: %v", err)
+		}
+		if deployRBD {
+			deployRBDPlugin()
 		}
 		// Since helm deploys storageclass, skip storageclass creation if
 		// ceph-csi is deployed via helm.

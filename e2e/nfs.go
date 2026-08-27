@@ -386,15 +386,14 @@ var _ = Describe("nfs", func() {
 		}
 
 		createNFSPool(f)
-		if deployNFS {
-			deployNFSPlugin()
-		}
-
 		// cephfs testing might have changed the default subvolumegroup
 		subvolumegroup = defaultSubvolumegroup
 		err := createConfigMap(nfsDirPath, f.ClientSet, f)
 		if err != nil {
 			logAndFail("failed to create configmap: %v", err)
+		}
+		if deployNFS {
+			deployNFSPlugin()
 		}
 		// create nfs provisioner secret
 		key, err := createCephUser(f, keyringCephFSProvisionerUsername, cephFSProvisionerCaps())

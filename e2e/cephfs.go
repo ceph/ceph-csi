@@ -216,12 +216,12 @@ var _ = Describe(cephfsType, func() {
 			}
 		}
 
-		if deployCephFS {
-			deployCephfsPlugin()
-		}
 		err := createConfigMap(cephFSDirPath, f.ClientSet, f)
 		if err != nil {
 			logAndFail("failed to create configmap: %v", err)
+		}
+		if deployCephFS {
+			deployCephfsPlugin()
 		}
 		// create cephFS provisioner secret
 		key, err := createCephUser(f, keyringCephFSProvisionerUsername, cephFSProvisionerCaps())
