@@ -62,7 +62,8 @@ jobs:
       - name: >
           Add comment to trigger helm E2E tests for Kubernetes
           ${{ matrix.k8s }}
-        if: ${{ github.base_ref == matrix.branch }}
+        # Helm is deprecated on devel and no longer tested there.
+        if: ${{ github.base_ref == matrix.branch && matrix.branch != 'devel' }}
         # yamllint disable-line rule:line-length
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
         with:
