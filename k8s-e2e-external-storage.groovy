@@ -183,6 +183,14 @@ node('cico-workspace') {
 			podman_pull(ci_registry, "docker.io", "library/busybox:1.29")
 			ssh "./podman2minikube.sh docker.io/library/busybox:1.29"
 		}
+		stage("create ConfigMap & StorageClasses") {
+			timeout(time: 5, unit: 'MINUTES') {
+				ssh "kubectl create namespace '${namespace}'"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-configmap.sh '${namespace}'"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-storageclasses.sh '${namespace}'"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-volumesnapshotclasses.sh '${namespace}'"
+			}
+		}
 		stage('deploy ceph-csi through operator') {
 			def operator_version = sh(
 				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${CEPH_CSI_OPERATOR_VERSION}\'',
@@ -193,15 +201,7 @@ node('cico-workspace') {
 			ssh "./podman2minikube.sh quay.io/cephcsi/ceph-csi-operator:${operator_version}"
 
 			timeout(time: 30, unit: 'MINUTES') {
-				ssh "kubectl create namespace '${namespace}'"
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && OPERATOR_NAMESPACE='${namespace}' ./scripts/deploy-ceph-csi-operator.sh deploy"
-			}
-		}
-		stage("create ConfigMap & StorageClasses") {
-			timeout(time: 5, unit: 'MINUTES') {
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-configmap.sh '${namespace}'"
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-storageclasses.sh '${namespace}'"
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/ && ./create-volumesnapshotclasses.sh '${namespace}'"
 			}
 		}
 		stage('run e2e') {
