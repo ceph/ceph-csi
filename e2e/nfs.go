@@ -56,8 +56,6 @@ var (
 	// FIXME: some tests change the subvolumegroup to "e2e".
 	defaultSubvolumegroup = "csi"
 
-	helmNFSPodsLabel = "ceph-csi-nfs"
-
 	operatorNFSDeploymentName = "nfs.csi.ceph.com-ctrlplugin"
 	operatorNFSDaemonsetName  = "nfs.csi.ceph.com-nodeplugin"
 
@@ -354,7 +352,7 @@ var _ = Describe("nfs", func() {
 	var c clientset.Interface
 	// deploy CephFS CSI
 	BeforeEach(func() {
-		if !testNFS || upgradeTesting || helmTest {
+		if !testNFS || upgradeTesting {
 			Skip("Skipping NFS E2E")
 		}
 		c = f.ClientSet
@@ -372,7 +370,6 @@ var _ = Describe("nfs", func() {
 					clientSet:        c,
 					deploymentName:   operatorNFSDeploymentName,
 					daemonsetName:    operatorNFSDaemonsetName,
-					helmPodLabelName: helmNFSPodsLabel,
 					driverContainers: []string{nfsContainerName},
 				},
 			}
@@ -430,8 +427,6 @@ var _ = Describe("nfs", func() {
 		}
 
 		if CurrentSpecReport().Failed() {
-			// log pods created by helm chart
-			logsCSIPods("app="+helmNFSPodsLabel, c)
 			// log provisioner
 			logsCSIPods("app="+nfsDeployment.getDeploymentName(), c)
 			// log node plugin

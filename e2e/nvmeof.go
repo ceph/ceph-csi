@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 	}
 
 	// only support deployment through YAML files (for now)
-	if helmTest || operatorDeployment {
+	if operatorDeployment {
 		framework.Logf("Skipping NVMe-oF E2E (simple deployment only)")
 
 		return
@@ -73,8 +73,8 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		// FIXME: gateway should get deployed by Rook
 		deployGateway(f, deployTimeout)
 
-		// No need to create the namespace if ceph-csi is deployed via helm or operator.
-		if cephCSINamespace != defaultNs && !(helmTest || operatorDeployment) {
+		// No need to create the namespace if ceph-csi is deployed via operator.
+		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err := createNamespace(f.ClientSet, cephCSINamespace)
 			if err != nil {
 				logAndFail("failed to create namespace: %v", err)
@@ -104,8 +104,6 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		}
 
 		if ginkgo.CurrentSpecReport().Failed() {
-			// log pods created by helm chart
-			//logsCSIPods("app="+helmNFSPodsLabel, c)
 			// log provisioner
 			logsCSIPods("app="+nvmeofDeploymentName, f.ClientSet)
 			// log node plugin
