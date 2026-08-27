@@ -43,6 +43,7 @@ var (
 	cephFSDeploymentName  = "csi-cephfsplugin-provisioner"
 	cephFSDeamonSetName   = "csi-cephfsplugin"
 	cephFSContainerName   = "csi-cephfsplugin"
+	cephFSContainersName  = []string{cephFSContainerName, "csi-cephfsplugin-controller", "csi-omap-generator"}
 	cephFSDirPath         = "../deploy/cephfs/kubernetes/"
 	cephFSExamplePath     = examplePath + "cephfs/"
 	subvolumegroup        = "e2e"
@@ -188,7 +189,7 @@ func NewCephFSDeployment(c clientset.Interface) CephFSDeploymentMethod {
 			deploymentName:   cephFSDeploymentName,
 			daemonsetName:    cephFSDeamonSetName,
 			helmPodLabelName: helmCephFSPodsLabel,
-			driverContainers: []string{cephFSContainerName},
+			driverContainers: cephFSContainersName,
 		},
 	}
 }
@@ -729,6 +730,19 @@ var _ = Describe(cephfsType, func() {
 			if err != nil {
 				logAndFail("failed to delete CephFS storageclass: %v", err)
 			}
+		})
+
+		// Regression test for legacy PVs (created before v3.0.0) that lack the
+		// "subvolumeName" volume attribute. The omap-generator controller must
+		// derive the subvolume name from the volumeID instead of operating on an
+		// empty name, which used to corrupt the parent subvolumegroup.
+		It("set metadata on a legacy PV without the subvolumeName attribute", func() {
+			err := validateCephFSController(f, pvcPath, appPath)
+			if err != nil {
+				logAndFail("failed to validate CephFS controller: %v", err)
+			}
+			validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+			validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 		})
 
 		It("create PVC in storageClass with volumeNamePrefix", func() {
