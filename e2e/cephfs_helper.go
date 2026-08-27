@@ -732,6 +732,198 @@ func removeCephFSSubvolumeMetadata(
 	return nil
 }
 
+// createCephFSStorageClassWithPolicy creates a CephFS StorageClass with the
+// given reclaim policy. createCephfsStorageClass always uses the default
+// (Delete) policy, so tests that need a Retain policy build the StorageClass
+// through this helper.
+func createCephFSStorageClassWithPolicy(
+	f *framework.Framework,
+	params map[string]string,
+	policy v1.PersistentVolumeReclaimPolicy,
+) error {
+	scPath := fmt.Sprintf("%s/%s", cephFSExamplePath, "storageclass.yaml")
+	sc, err := getStorageClass(scPath)
+	if err != nil {
+		return err
+	}
+	err = updateStorageClassParameters(&sc, params, true, f)
+	if err != nil {
+		return err
+	}
+	sc.ReclaimPolicy = &policy
+
+	return createStorageClass(f.ClientSet, &sc)
+}
+
+// waitForCephFSSubvolumeMetadata polls the metadata of the given subvolume
+// until it matches the expected PVC/PV identifiers, or the deploy timeout is
+// reached. It is used to observe the omap-generator controller (asynchronously)
+// setting metadata on a subvolume.
+func waitForCephFSSubvolumeMetadata(
+	f *framework.Framework,
+	subvolume,
+	pvcName,
+	pvcNamespace,
+	pvName string,
+) error {
+	timeout := time.Duration(deployTimeout) * time.Minute
+	ctx := context.TODO()
+
+	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(_ context.Context) (bool, error) {
+		metadata, err := listCephFSSubvolumeMetadata(f, fileSystemName, subvolume, subvolumegroup)
+		if err != nil {
+			framework.Logf("failed to list metadata for subvolume %s: %v", subvolume, err)
+
+			return false, nil
+		}
+		if metadata.PVCNameKey != pvcName ||
+			metadata.PVCNamespaceKey != pvcNamespace ||
+			metadata.PVNameKey != pvName ||
+			metadata.ClusterNameKey != defaultClusterName {
+			framework.Logf("waiting for controller to set metadata on subvolume %s, current: %+v",
+				subvolume, metadata)
+
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+// validateCephFSController verifies that the omap-generator controller can set
+// metadata on a CephFS subvolume even when the PV predates ceph-csi v3.0.0 and
+// therefore lacks the "subvolumeName" volume attribute. For such legacy PVs an
+// unchecked lookup of volumeAttributes["subvolumeName"] returned an empty
+// string, which Ceph resolved to the parent subvolumegroup (/volumes/<group>)
+// and marked as a subvolume, breaking all further provisioning cluster-wide.
+//
+// The flow mirrors validateController (RBD) but deliberately keeps the RADOS
+// journal intact, because the fix derives the subvolume name from the volumeID
+// through the journal:
+//   - create a StorageClass with Retain policy and provision a PVC
+//   - record the bound PVC/PV objects and delete them (subvolume is retained)
+//   - clear the subvolume metadata so the controller has to re-set it
+//   - drop the "subvolumeName" attribute from the PV (legacy PV) and recreate
+//     the PVC/PV as a static binding so the controller reconciles it
+//   - confirm the controller sets metadata on the correct subvolume
+//   - mount the volume to an app (NodeStage resolves the name from the journal)
+//   - confirm a fresh PVC can still be provisioned (parent group not corrupted)
+func validateCephFSController(f *framework.Framework, pvcPath, appPath string) error {
+	// Retain policy keeps the backend subvolume and its journal after the
+	// PVC/PV are deleted below.
+	err := createCephFSStorageClassWithPolicy(f, nil, retainPolicy)
+	if err != nil {
+		return fmt.Errorf("failed to create storageclass: %w", err)
+	}
+
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC: %w", err)
+	}
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC: %w", err)
+	}
+	validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+	validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
+
+	// back up the bound PVC and PV objects for the static re-binding.
+	pvc, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PVC and PV: %w", err)
+	}
+	subVols, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+	if err != nil {
+		return fmt.Errorf("failed to list subvolumes: %w", err)
+	}
+	if len(subVols) != 1 {
+		return fmt.Errorf("expected 1 subvolume, got %d", len(subVols))
+	}
+	subVolName := subVols[0].Name
+
+	// delete the PVC/PV; Retain policy keeps the subvolume and its journal.
+	err = deletePVCAndPV(f.ClientSet, pvc, pv, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC or PV: %w", err)
+	}
+	validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+
+	// clear the metadata that provisioning set, so its reappearance proves the
+	// controller re-derived the subvolume name and set it again.
+	metadataKeys := []string{
+		"csi.storage.k8s.io/pvc/name",
+		"csi.storage.k8s.io/pvc/namespace",
+		"csi.storage.k8s.io/pv/name",
+		"csi.ceph.com/cluster/name",
+	}
+	for _, key := range metadataKeys {
+		err = removeCephFSSubvolumeMetadata(f, fileSystemName, subVolName, subvolumegroup, key)
+		if err != nil {
+			return fmt.Errorf("failed to clear subvolume metadata %q: %w", key, err)
+		}
+	}
+
+	// simulate a legacy PV: drop the subvolumeName attribute and recreate the
+	// PVC/PV as a static binding with Delete policy for cleanup.
+	delete(pv.Spec.CSI.VolumeAttributes, "subvolumeName")
+	pv.Spec.ClaimRef = nil
+	pv.Spec.PersistentVolumeReclaimPolicy = deletePolicy
+	pvc.ResourceVersion = ""
+	pv.ResourceVersion = ""
+	err = createPVCAndPV(f.ClientSet, pvc, pv)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC or PV: %w", err)
+	}
+
+	// the controller reconciles the recreated PV and must set metadata on the
+	// correct subvolume (name derived from the volumeID), not the parent group.
+	err = waitForCephFSSubvolumeMetadata(f, subVolName, pvc.Name, pvc.Namespace, pv.Name)
+	if err != nil {
+		return fmt.Errorf("controller failed to set metadata on legacy PV subvolume: %w", err)
+	}
+
+	// mount the volume; NodeStage resolves the subvolume from the journal, so
+	// the missing subvolumeName attribute must not break mounting.
+	app, err := loadApp(appPath)
+	if err != nil {
+		return err
+	}
+	app.Namespace = f.UniqueName
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create app: %w", err)
+	}
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC and app: %w", err)
+	}
+	validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+	validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+	// recreate the StorageClass with Delete policy so the fresh PVC provisioned
+	// below is cleaned up automatically.
+	err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to delete storageclass: %w", err)
+	}
+	err = createCephFSStorageClassWithPolicy(f, nil, deletePolicy)
+	if err != nil {
+		return fmt.Errorf("failed to create storageclass: %w", err)
+	}
+
+	// finally, confirm provisioning still works. Had the parent subvolumegroup
+	// been corrupted into a subvolume, this would fail with EINVAL.
+	err = validatePVCAndAppBinding(pvcPath, appPath, f)
+	if err != nil {
+		return fmt.Errorf("failed to provision new PVC after legacy PV reconcile: %w", err)
+	}
+	validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+	validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+	return deleteResource(cephFSExamplePath + "storageclass.yaml")
+}
+
 // validateCephFSServiceAccountVolumeRestriction tests that CephFS volume access
 // can be restricted to a specific Kubernetes service account. It creates a PVC,
 // sets the given saMetadataKey metadata on the backing CephFS subvolume, then

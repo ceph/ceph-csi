@@ -117,7 +117,7 @@ var (
 
 	operatorRBDDeploymentName = "rbd.csi.ceph.com-ctrlplugin"
 	operatorRBDDaemonsetName  = "rbd.csi.ceph.com-nodeplugin"
-	rbdContainersName         = []string{"csi-rbdplugin", "csi-rbdplugin-controller"}
+	rbdContainersName         = []string{"csi-rbdplugin", "csi-rbdplugin-controller", "csi-omap-generator"}
 
 	rbdDeployment RBDDeploymentMethod
 )
