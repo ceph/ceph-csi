@@ -25,6 +25,7 @@ function log_errors() {
 	kubectl -n rook-ceph get CephClusters -oyaml
 	kubectl -n rook-ceph get CephFilesystems -oyaml
 	kubectl -n rook-ceph get CephBlockPools -oyaml
+	kubectl -n rook-ceph get CephNFSes -oyaml
 
 	# this function should not return, a fatal error was caught!
 	exit 1
@@ -61,7 +62,8 @@ function deploy_rook() {
 	kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
 	kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl_retry create -f "${ROOK_URL}/pool-test.yaml"
-	
+	kubectl_retry create -f "${ROOK_URL}/nfs-test.yaml"
+
 	create_or_delete_subvolumegroup "create"
 
 	# Check if CephCluster is empty
@@ -81,10 +83,16 @@ function deploy_rook() {
 	if ! kubectl_retry -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
 		check_rbd_stat "replicapool"
 	fi
+
+	# Check if CephNFS is empty
+	if ! kubectl_retry -n rook-ceph get cephnfses -oyaml | grep 'items: \[\]' &>/dev/null; then
+		check_nfs_stat
+	fi
 }
 
 function teardown_rook() {
 	create_or_delete_subvolumegroup "delete"
+	kubectl delete -f "${ROOK_URL}/nfs-test.yaml"
 	kubectl delete -f "${ROOK_URL}/pool-test.yaml"
 	kubectl delete -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl delete -f "${ROOK_URL}/toolbox.yaml"
@@ -231,6 +239,23 @@ function check_rbd_stat() {
 
 	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
 		echo "[Timeout] Failed to get RBD pool Ready"
+		return 1
+	fi
+	echo ""
+}
+
+function check_nfs_stat() {
+	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
+		echo "Waiting for NFS server... ${retry}s" && sleep 5
+
+		if kubectl_retry -n rook-ceph get pod -l app=rook-ceph-nfs | grep Running &>/dev/null; then
+			echo "NFS server is successfully created..."
+			break
+		fi
+	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[Timeout] Failed to get NFS server pod Running"
 		return 1
 	fi
 	echo ""
