@@ -246,6 +246,12 @@ func (kms *kmipKMS) GetSecret(_ context.Context, _ string) (string, error) {
 	return base64.StdEncoding.EncodeToString(key), nil
 }
 
+func IsKMIP(ekms EncryptionKMS) bool {
+	_, ok := ekms.(*kmipKMS)
+
+	return ok
+}
+
 // encryptDEKUsingEncryptRPC uses the KMIP encrypt operation to encrypt the DEK.
 func (kms *kmipKMS) encryptDEKUsingEncryptRPC(_ context.Context, _, plainDEK string) (string, error) {
 	conn, err := kms.connect()
