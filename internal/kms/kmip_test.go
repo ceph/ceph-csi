@@ -125,6 +125,12 @@ func TestKMIPConnectTLSMinVersion(t *testing.T) {
 	}
 }
 
+func TestIsKMIP(t *testing.T) {
+	t.Parallel()
+	require.True(t, IsKMIP(&kmipKMS{}))
+	require.False(t, IsKMIP(secretsMetadataKMS{}))
+}
+
 func TestKMIPGetSecretUnsupportedWithCryptoRPC(t *testing.T) {
 	t.Parallel()
 
