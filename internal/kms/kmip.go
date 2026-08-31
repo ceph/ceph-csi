@@ -24,6 +24,7 @@ import (
 	"crypto/cipher"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -230,8 +231,19 @@ func (kms *kmipKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 
-func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
-	return "", ErrGetSecretUnsupported
+// GetSecret gets the raw secret via KMIP.
+func (kms *kmipKMS) GetSecret(_ context.Context, _ string) (string, error) {
+	if kms.useCryptoRPC {
+		return "", fmt.Errorf("%w: fscrypt requires the key material, set %q to false",
+			ErrGetSecretUnsupported, kmipUseCryptoRPC)
+	}
+
+	key, err := kms.getKey(kms.uniqueIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("failed to get key %q: %w", kms.uniqueIdentifier, err)
+	}
+
+	return base64.StdEncoding.EncodeToString(key), nil
 }
 
 // encryptDEKUsingEncryptRPC uses the KMIP encrypt operation to encrypt the DEK.
