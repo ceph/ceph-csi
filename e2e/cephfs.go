@@ -241,6 +241,9 @@ var _ = Describe(cephfsType, func() {
 		}
 		if !skipVault {
 			deployVault(f.ClientSet, deployTimeout)
+			if testCephFSFscrypt {
+				deployKMIP(f, deployTimeout)
+			}
 		} else {
 			err = createEmptyKMSConfigMap(f.ClientSet, cephCSINamespace)
 			if err != nil {
@@ -305,6 +308,9 @@ var _ = Describe(cephfsType, func() {
 		}
 		if !skipVault {
 			deleteVault()
+			if testCephFSFscrypt {
+				deleteKMIP()
+			}
 		}
 
 		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
@@ -595,6 +601,7 @@ var _ = Describe(cephfsType, func() {
 				"vault-test":            vaultKMS,
 				"vault-tokens-test":     vaultTokensKMS,
 				"vault-tenant-sa-test":  vaultTenantSAKMS,
+				"kmip-fscrypt-test":     kmipKMS,
 			}
 
 			for kmsID, kmsConf := range kmsToTest {
