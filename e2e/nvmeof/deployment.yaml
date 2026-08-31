@@ -29,7 +29,7 @@ spec:
                   name: rook-ceph-config
             - name: CEPH_ARGS
               value: --mon-host $(CEPH_MON_HOST) --keyring /etc/ceph/keyring
-          image: quay.io/ceph/nvmeof:1.5
+          image: quay.io/ceph/nvmeof:1.6
           imagePullPolicy: IfNotPresent
           name: nvmeof-gateway
           securityContext:
