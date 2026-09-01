@@ -19,9 +19,9 @@ import requests
 from requests.auth import HTTPBasicAuth
 import sys
 
-RELEASE_URL = 'https://api.github.com/repos/kubernetes/kubernetes/releases'
+RELEASE_URL = 'https://api.github.com/repos/kubernetes/kubernetes/releases?per_page=50'
 '''
-URL for fetching the releases. Add '?per_num=50' to increase the number of
+URL for fetching the releases. Add '?per_page=50' to increase the number of
 returned releases from default 30 to 50 (max 100).
 '''
 
