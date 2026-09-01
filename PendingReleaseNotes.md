@@ -37,3 +37,10 @@
    different subvolume.
 
 ## NOTE
+
+- The RADOS lock that serializes fscrypt setup for encrypted CephFS volumes
+  is now taken in the CephFS RADOS namespace instead of the default
+  namespace of the metadata pool. This applies to every deployment with
+  encrypted volumes. `cephFS.radosNamespace` defaults to `csi`, so the lock
+  moves to this namespace even when the option was never directly
+  configured.

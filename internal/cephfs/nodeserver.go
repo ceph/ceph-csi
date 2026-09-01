@@ -166,6 +166,8 @@ func maybeUnlockFileEncryption(
 	}
 	defer ioctx.Destroy()
 
+	ioctx.SetNamespace(volOptions.RadosNamespace)
+
 	lock := iolock.NewLock(ioctx, objectUUID, lockName, lockCookie, lockDesc, lockDuration)
 	err = lock.LockExclusive(ctx)
 	if err != nil {
