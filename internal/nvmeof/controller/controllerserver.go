@@ -910,11 +910,11 @@ func (cs *Server) createNVMeoFResources(
 		}
 	}()
 
-	// TODO: replace util.VolumeOperationAlreadyExistsFmt
-	if acquired := cs.subsystemLocks.TryAcquire(nvmeofData.SubsystemNQN); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+	if acquiredErr := cs.subsystemLocks.Acquire(ctx, nvmeofData.SubsystemNQN); acquiredErr != nil {
+		log.ErrorLog(ctx, "failed to acquire subsystem lock for %s: %v", nvmeofData.SubsystemNQN, acquiredErr)
+		grpcErr := status.FromContextError(acquiredErr).Err()
 
-		return nil, fmt.Errorf(util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+		return nil, grpcErr
 	}
 	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 
@@ -992,10 +992,11 @@ func (cs *Server) cleanupNVMeoFResources(
 		}
 	}()
 
-	if acquired := cs.subsystemLocks.TryAcquire(nvmeofData.SubsystemNQN); !acquired {
-		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+	if acquiredErr := cs.subsystemLocks.Acquire(ctx, nvmeofData.SubsystemNQN); acquiredErr != nil {
+		log.ErrorLog(ctx, "failed to acquire subsystem lock for %s: %v", nvmeofData.SubsystemNQN, acquiredErr)
+		grpcErr := status.FromContextError(acquiredErr).Err()
 
-		return fmt.Errorf(util.VolumeOperationAlreadyExistsFmt, nvmeofData.SubsystemNQN)
+		return grpcErr
 	}
 	defer cs.subsystemLocks.Release(nvmeofData.SubsystemNQN)
 

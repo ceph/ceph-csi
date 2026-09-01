@@ -14,8 +14,10 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -65,6 +67,26 @@ func (vl *IDLocker) TryAcquire(id string) bool {
 	vl.locks.Insert(id)
 
 	return true
+}
+
+func (vl *IDLocker) Acquire(ctx context.Context, id string) error {
+	if vl.TryAcquire(id) {
+		return nil
+	}
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if vl.TryAcquire(id) {
+				return nil
+			}
+		}
+	}
 }
 
 // Release deletes the lock on an ID.
