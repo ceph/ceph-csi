@@ -824,11 +824,7 @@ var _ = Describe("nfs", func() {
 			}
 		})
 
-		skipResize := true // fails with: expected size 1Gi found 35G
 		It("Resize PVC and check application directory size", func() {
-			if skipResize {
-				return
-			}
 			err := resizePVCAndValidateSize(pvcPath, appPath, f)
 			if err != nil {
 				logAndFail("failed to resize PVC: %v", err)
