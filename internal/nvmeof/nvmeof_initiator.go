@@ -184,32 +184,11 @@ func (ni *nvmeInitiator) LoadKernelModules(ctx context.Context) error {
 
 // ConnectSubsystem connects to an NVMe-oF subsystem.
 func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectRequest) (bool, error) {
-	// Get existing subsystem connections once to avoid repeated nvme list-subsys calls
-	var existingConnections nvmeHostConnections
-	if req.HostNQN != "" {
-		connections, err := listSubsystems(ctx)
-		if err != nil {
-			log.WarningLog(ctx, "Failed to list existing subsystems: %v (continuing anyway)", err)
-		} else {
-			existingConnections = connections
-		}
-	}
-	// Try connecting to each address until one succeeds
+	// Try connecting to each address until one succeeds.
+	// If nvme connect reports "already connected" that is fine — treat it as success.
 	var success bool
 	for _, listener := range req.Listeners {
 		portStr := strconv.FormatUint(uint64(listener.Port), 10)
-
-		// Check if already connected to this specific gateway
-		if req.HostNQN != "" && existingConnections != nil {
-			if existingConnections.hasPathToGateway(
-				req.SubsystemNQN, req.HostNQN, listener.Address, portStr) {
-				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s with HostNQN %s",
-					req.SubsystemNQN, listener.Address, portStr, req.HostNQN)
-				success = true
-
-				continue
-			}
-		}
 
 		log.DebugLog(ctx, "Connecting to NVMe-oF subsystem %s at %v:%s",
 			req.SubsystemNQN, listener.Address, portStr)
@@ -237,8 +216,16 @@ func (ni *nvmeInitiator) ConnectSubsystem(ctx context.Context, req *ConnectReque
 			args = append(args, "--dhchap-ctrl-secret", req.SubsystemDhchapKey)
 		}
 		stdout, stderr, err := util.ExecCommandWithTimeout(ctx, connectTimeout, "nvme", args...)
-		// Execute connection
+		log.DebugLog(ctx, "nvme connect %v: stdout=%q stderr=%q err=%v", args, stdout, stderr, err)
 		if err != nil {
+			// "already connected" means someone else beat us to it — that is fine.
+			if strings.Contains(stderr, "already connected") {
+				log.DebugLog(ctx, "Already connected to subsystem %s via %s:%s",
+					req.SubsystemNQN, listener.Address, portStr)
+				success = true
+
+				continue
+			}
 			log.WarningLog(ctx, "Failed to connect to %s - stdout: %s, stderr: %s", listener, stdout, stderr)
 
 			continue
