@@ -233,7 +233,7 @@ func (cs *Server) CreateVolume(
 	if err != nil {
 		log.ErrorLog(ctx, "NVMe-oF resource setup failed for volumeID %s: %v", volumeID, err)
 
-		return nil, status.Errorf(codes.Internal, "NVMe-oF setup failed: %v", err)
+		return nil, err
 	}
 	// Step 5: Populate volume context for NodeServer
 	err = populateVolumeContext(backend, nvmeofData)
@@ -873,7 +873,7 @@ func (cs *Server) createNVMeoFResources(
 	nvmeofData := &nvmeof.NVMeoFVolumeData{}
 
 	if err := nvmeofData.SetFromParameters(params, volumeID); err != nil {
-		return nil, fmt.Errorf("failed to set NVMe-oF volume data: %w", err)
+		return nil, status.Errorf(codes.InvalidArgument, "failed to set NVMe-oF volume data: %v", err)
 	}
 
 	// extract Qos parameters if any
@@ -884,7 +884,7 @@ func (cs *Server) createNVMeoFResources(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to parse NVMe-oF QoS parameters: %v", err)
 
-		return nil, fmt.Errorf("failed to parse QoS parameters: %w", err)
+		return nil, status.Errorf(codes.InvalidArgument, "failed to parse QoS parameters: %v", err)
 	}
 	// If VAC with hosts list is given (for external client)
 	// We need to parse the hosts list and pass it to the gateway for creating host entries
@@ -893,16 +893,16 @@ func (cs *Server) createNVMeoFResources(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to parse NVMe-oF hosts parameters: %v", err)
 
-		return nil, fmt.Errorf("failed to parse hosts parameters: %w", err)
+		return nil, status.Errorf(codes.InvalidArgument, "failed to parse hosts parameters: %v", err)
 	}
 	// Step 2: Connect to gateway
 	config, err := getGatewayConfigFromRequest(params)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "invalid gateway config: %v", err)
 	}
 	gateway, err := connectGateway(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("gateway connection failed: %w", err)
+		return nil, status.Errorf(codes.Internal, "gateway connection failed: %v", err)
 	}
 	defer func() {
 		if closeErr := gateway.Destroy(); closeErr != nil {
@@ -920,7 +920,7 @@ func (cs *Server) createNVMeoFResources(
 
 	// Step 3: Ensure subsystem exists (and listener)
 	if err := ensureSubsystem(ctx, gateway, nvmeofData.SubsystemNQN, networkMask, nvmeofData.ListenerInfo); err != nil {
-		return nvmeofData, fmt.Errorf("subsystem setup failed: %w", err)
+		return nvmeofData, status.Errorf(codes.Internal, "subsystem setup failed: %v", err)
 	}
 
 	log.DebugLog(ctx, "subsystem %s and Listener %s for the subsystem were created", nvmeofData.SubsystemNQN,
@@ -929,7 +929,7 @@ func (cs *Server) createNVMeoFResources(
 	// Step 4: Create namespace and set its uuid
 	nsid, err := gateway.CreateNamespace(ctx, nvmeofData.SubsystemNQN, rbdPoolName, rbdRadosNameSpace, rbdImageName)
 	if err != nil {
-		return nvmeofData, fmt.Errorf("namespace creation failed: %w", err)
+		return nvmeofData, status.Errorf(codes.Internal, "namespace creation failed: %v", err)
 	}
 	log.DebugLog(ctx, "Namespace created: %s/%s with NSID: %d", rbdPoolName, rbdImageName, nsid)
 	nvmeofData.NamespaceID = nsid
@@ -939,7 +939,7 @@ func (cs *Server) createNVMeoFResources(
 		log.DebugLog(ctx, "Setting QoS limits: %s", nvmeofQoS)
 		if err := gateway.SetQoSLimitsForNamespace(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID,
 			*nvmeofQoS); err != nil {
-			return nvmeofData, fmt.Errorf("setting QoS limits failed: %w", err)
+			return nvmeofData, status.Errorf(codes.Internal, "setting QoS limits failed: %v", err)
 		}
 	}
 	if hostsList != nil {
@@ -948,7 +948,7 @@ func (cs *Server) createNVMeoFResources(
 			// TODO - for now we create host with empty DH-CHAP keys,
 			// in the future we can extend the VAC parameters to allow passing DH-CHAP keys for each host if needed??
 			if err := gateway.AddHost(ctx, nvmeofData.SubsystemNQN, host, nvmeof.DHCHAPKeys{}); err != nil {
-				return nvmeofData, fmt.Errorf("adding host %s to subsystem failed: %w", host, err)
+				return nvmeofData, status.Errorf(codes.Internal, "adding host %s to subsystem failed: %v", host, err)
 			}
 		}
 	}
@@ -956,7 +956,7 @@ func (cs *Server) createNVMeoFResources(
 	if networkMask != "" {
 		autoListeners, err := gateway.ListListeners(ctx, nvmeofData.SubsystemNQN)
 		if err != nil {
-			return nvmeofData, fmt.Errorf("failed to list auto-created listeners: %w", err)
+			return nvmeofData, status.Errorf(codes.Internal, "failed to list auto-created listeners: %v", err)
 		}
 		nvmeofData.ListenerInfo = nvmeof.ConvertListenersFromProto(autoListeners.GetListeners())
 		log.DebugLog(ctx, "Retrieved %d auto-created listeners", len(nvmeofData.ListenerInfo))
@@ -964,7 +964,7 @@ func (cs *Server) createNVMeoFResources(
 
 	uuid, err := gateway.GetUUIDBySubsystemAndNameSpaceID(ctx, nvmeofData.SubsystemNQN, nvmeofData.NamespaceID)
 	if err != nil {
-		return nvmeofData, fmt.Errorf("get namespace uuid failed: %w", err)
+		return nvmeofData, status.Errorf(codes.Internal, "get namespace uuid failed: %v", err)
 	}
 	nvmeofData.NamespaceUUID = uuid
 
