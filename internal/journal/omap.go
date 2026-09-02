@@ -56,8 +56,7 @@ func getOMapValuesByKeys(
 	step := op.GetOmapValuesByKeys(keys)
 	err = op.Operate(ioctx, oid, rados.OperationNoFlag)
 	if err != nil {
-		var opErr rados.OperationError
-		if errors.As(err, &opErr) {
+		if opErr, ok := errors.AsType[rados.OperationError](err); ok {
 			err = opErr.OpError
 		}
 		if errors.Is(err, rados.ErrNotFound) {
