@@ -1018,11 +1018,11 @@ func (ri *rbdImage) flattenRbdImage(
 			err)
 		if forceFlatten || depth >= hardlimit {
 			flattenImageErr := ri.flatten()
-			if err != nil {
-				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", ri.Pool, ri.RbdImageName, err)
+			if flattenImageErr != nil {
+				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", ri.Pool, ri.RbdImageName, flattenImageErr)
 
 				return fmt.Errorf(
-					"failed to add task to remove image: %w, failed to flatten image: %w",
+					"failed to add task to flatten image: %w, failed to flatten image: %w",
 					knownErr,
 					flattenImageErr,
 				)
@@ -1031,21 +1031,6 @@ func (ri *rbdImage) flattenRbdImage(
 	}
 
 	return nil
-}
-
-func (ri *rbdImage) getParentName() (string, error) {
-	rbdImage, err := ri.open()
-	if err != nil {
-		return "", err
-	}
-	defer rbdImage.Close() //nolint:errcheck // not a critical failure
-
-	parentInfo, err := rbdImage.GetParent()
-	if err != nil {
-		return "", err
-	}
-
-	return parentInfo.Image.ImageName, nil
 }
 
 func (ri *rbdImage) flatten() error {
@@ -1058,13 +1043,16 @@ func (ri *rbdImage) flatten() error {
 	err = rbdImage.Flatten()
 	if err != nil {
 		// rbd image flatten will fail if the rbd image does not have a parent
-		parent, pErr := ri.getParentName()
-		if pErr != nil {
-			return fmt.Errorf("Failed as %w (internal %w)", err, pErr)
-		}
-		if parent == "" {
+		_, pErr := rbdImage.GetParent()
+		if errors.Is(pErr, librbd.ErrNotFound) {
 			return nil
 		}
+
+		if pErr != nil {
+			return fmt.Errorf("failed to flatten: (%w) and get parent: (%w)", err, pErr)
+		}
+
+		return fmt.Errorf("failed to flatten image: %w", err)
 	}
 
 	return nil
