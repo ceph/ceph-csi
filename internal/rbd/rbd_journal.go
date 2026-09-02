@@ -580,7 +580,7 @@ func RegenerateJournal(
 	clusterName,
 	instanceID string,
 	cr *util.Credentials,
-) (string, error) {
+) (*rbdVolume, error) {
 	ctx := context.Background()
 	var (
 		vi             util.CSIIdentifier
@@ -597,7 +597,7 @@ func RegenerateJournal(
 
 	err = vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
-		return "", fmt.Errorf("%w: error decoding volume ID (%w) (%s)",
+		return nil, fmt.Errorf("%w: error decoding volume ID (%w) (%s)",
 			rbderrors.ErrInvalidVolID, err, rbdVol.VolID)
 	}
 
@@ -605,25 +605,32 @@ func RegenerateJournal(
 
 	kmsID, encryptionType, err = ParseEncryptionOpts(volumeAttributes, rbdDefaultEncryptionType)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	rbdVol.Monitors, rbdVol.ClusterID, err = util.FetchMappedClusterIDAndMons(ctx, vi.ClusterID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	rbdVol.RadosNamespace, err = util.GetRBDRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if rbdVol.Pool, ok = volumeAttributes["pool"]; !ok {
-		return "", errors.New("required 'pool' parameter missing in volume attributes")
+		return nil, errors.New("required 'pool' parameter missing in volume attributes")
 	}
 	err = rbdVol.Connect(cr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	// On any error after a successful Connect(), release the connection so it is
+	// not leaked; on success the caller owns rbdVol and must call Destroy().
+	defer func() {
+		if err != nil {
+			rbdVol.Destroy(ctx)
+		}
+	}()
 	rbdVol.JournalPool = volumeAttributes["journalPool"]
 	if rbdVol.JournalPool == "" {
 		rbdVol.JournalPool = rbdVol.Pool
@@ -631,13 +638,13 @@ func RegenerateJournal(
 	volJournal = journal.NewCSIVolumeJournal(instanceID)
 	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer j.Destroy()
 
 	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdVol.Monitors, rbdVol.JournalPool, rbdVol.Pool, cr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	rbdVol.RequestName = requestName
@@ -646,7 +653,7 @@ func RegenerateJournal(
 	imageData, err := j.CheckReservation(
 		ctx, rbdVol.JournalPool, rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, encryptionType)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if imageData != nil {
@@ -657,36 +664,36 @@ func RegenerateJournal(
 		if rbdVol.ImageID == "" {
 			err = rbdVol.storeImageID(ctx, j)
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 		}
 		if rbdVol.Owner != owner {
 			err = j.ResetVolumeOwner(ctx, rbdVol.JournalPool, rbdVol.ReservedID, owner)
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 		}
 		// Update Metadata on reattach of the same old PV
 		parameters := k8s.PrepareVolumeMetadata(claimName, owner, requestName)
 		err = rbdVol.setAllMetadata(parameters)
 		if err != nil {
-			return "", fmt.Errorf("failed to set volume metadata: %w", err)
+			return nil, fmt.Errorf("failed to set volume metadata: %w", err)
 		}
 		// As the omap already exists for this image ID return nil.
 		rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
 			rbdVol.ClusterID, rbdVol.ReservedID)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return rbdVol.VolID, nil
+		return rbdVol, nil
 	}
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
 		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID, rbdVol.Owner, "", encryptionType)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	defer func() {
@@ -701,7 +708,7 @@ func RegenerateJournal(
 	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
 		rbdVol.ClusterID, rbdVol.ReservedID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	log.DebugLog(ctx, "re-generated Volume ID (%s) and image name (%s) for request name (%s)",
@@ -709,11 +716,11 @@ func RegenerateJournal(
 	if rbdVol.ImageID == "" {
 		err = rbdVol.storeImageID(ctx, j)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
-	return rbdVol.VolID, nil
+	return rbdVol, nil
 }
 
 // storeImageID retrieves the image ID and stores it in OMAP.

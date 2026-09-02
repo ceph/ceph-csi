@@ -424,6 +424,57 @@ func TestPodCgroupCandidatesUIDNormalization(t *testing.T) {
 	}
 }
 
+// TestRegenerateCgroupQoSNoParams verifies that (*rbdVolume).RegenerateCgroupQoS
+// is a no-op (returns nil without touching the RBD image) when the
+// VolumeAttributesClass carries no cgroup QoS parameters. The image is only
+// accessed when there is cgroup QoS to restore, so these paths need no cluster.
+func TestRegenerateCgroupQoSNoParams(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name          string
+		vacParameters map[string]string
+	}{
+		{
+			name:          "nil parameters",
+			vacParameters: nil,
+		},
+		{
+			name:          "empty parameters",
+			vacParameters: map[string]string{},
+		},
+		{
+			name: "no cgroup QoS keys",
+			vacParameters: map[string]string{
+				"unrelated": "value",
+			},
+		},
+		{
+			name: "cgroup QoS keys present but empty",
+			vacParameters: map[string]string{
+				maxReadIops: "",
+				maxWriteBps: "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// An unconnected volume is safe here because the method must
+			// return before touching the cluster.
+			rv := &rbdVolume{}
+			err := rv.RegenerateCgroupQoS(ctx, tt.vacParameters)
+			if err != nil {
+				t.Errorf("RegenerateCgroupQoS() error = %v, want nil", err)
+			}
+		})
+	}
+}
+
 func TestWriteIOMax(t *testing.T) {
 	t.Parallel()
 
