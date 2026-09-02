@@ -172,7 +172,7 @@ func (cp *ConnPool) gc() {
 
 	now := time.Now()
 	for key, ce := range cp.conns {
-		if ce.users == 0 && (now.Sub(ce.lastUsed)) > cp.expiry {
+		if ce.users == 0 && now.Sub(ce.lastUsed) > cp.expiry {
 			ce.destroy()
 			delete(cp.conns, key)
 		}

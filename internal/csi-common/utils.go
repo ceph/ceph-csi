@@ -527,17 +527,17 @@ func FilesystemNodeGetVolumeStats(
 		return nil, status.Error(codes.Internal, volMetErr.Error())
 	}
 
-	available, ok := (*(volMetrics.Available)).AsInt64()
+	available, ok := (*volMetrics.Available).AsInt64()
 	if !ok {
 		log.ErrorLog(ctx, "failed to fetch available bytes")
 	}
-	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
+	capacity, ok := (*volMetrics.Capacity).AsInt64()
 	if !ok {
 		log.ErrorLog(ctx, "failed to fetch capacity bytes")
 
 		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
 	}
-	used, ok := (*(volMetrics.Used)).AsInt64()
+	used, ok := (*volMetrics.Used).AsInt64()
 	if !ok {
 		log.ErrorLog(ctx, "failed to fetch used bytes")
 	}
@@ -554,18 +554,18 @@ func FilesystemNodeGetVolumeStats(
 	}
 
 	if includeInodes {
-		inodes, ok := (*(volMetrics.Inodes)).AsInt64()
+		inodes, ok := (*volMetrics.Inodes).AsInt64()
 		if !ok {
 			log.ErrorLog(ctx, "failed to fetch available inodes")
 
 			return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
 		}
-		inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
+		inodesFree, ok := (*volMetrics.InodesFree).AsInt64()
 		if !ok {
 			log.ErrorLog(ctx, "failed to fetch free inodes")
 		}
 
-		inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
+		inodesUsed, ok := (*volMetrics.InodesUsed).AsInt64()
 		if !ok {
 			log.ErrorLog(ctx, "failed to fetch used inodes")
 		}
