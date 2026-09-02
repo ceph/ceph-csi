@@ -7122,6 +7122,184 @@ var _ = Describe("RBD", func() {
 			}
 		})
 
+		// Verify that the PersistentVolume controller restores the cgroup v2
+		// QoS image metadata when it regenerates the omap. The cgroup QoS keys
+		// are prefixed with `.` so they are intentionally not propagated during
+		// clone/snapshot/mirroring and are lost once the omap is regenerated
+		// (for example during disaster-recovery failover). The controller must
+		// re-apply them from the PV's VolumeAttributesClass.
+		It("validate cgroup v2 qos regeneration by the PV controller", func() {
+			if !supportsVolumeAttributesClass(c, f, rbdDeployment.getDaemonsetName()) {
+				framework.Logf("skipping cgroup QoS regeneration test, needs Kubernetes >= 1.34 and ceph-csi >= 3.17")
+
+				return
+			}
+
+			vacName := "cgroup-qos-regen"
+			qosParams := map[string]string{
+				"maxReadIops":  "1000",
+				"maxWriteIops": "1000",
+				"maxReadBps":   "104857600", // 100 MB/s
+				"maxWriteBps":  "104857600",
+			}
+
+			// Create a VolumeAttributesClass carrying cgroup QoS parameters.
+			err := createRBDVolumeAttributesClass(f.ClientSet, vacName, qosParams)
+			if err != nil {
+				logAndFail("failed to create volumeattributesclass %q: %v", vacName, err)
+			}
+			defer func() {
+				if dErr := deleteRBDVolumeAttributesClass(f.ClientSet, f, vacName); dErr != nil {
+					logAndFail("failed to delete volumeattributesclass %q: %v", vacName, dErr)
+				}
+			}()
+
+			// StorageClass parameters for krbd mounter with the
+			// controller-modify-secret required by VolumeAttributesClass.
+			scParams := map[string]string{
+				// Empty mounter = krbd (default mounter), required for cgroup QoS.
+				"mounter": "",
+				"csi.storage.k8s.io/controller-modify-secret-namespace": cephCSINamespace,
+				"csi.storage.k8s.io/controller-modify-secret-name":      rbdProvisionerSecretName,
+			}
+
+			// Recreate the StorageClass with Retain policy so the backing PV and
+			// image survive PVC deletion, allowing the PV to be statically
+			// rebound to re-trigger the controller.
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete storageclass: %v", err)
+			}
+			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scParams, retainPolicy)
+			if err != nil {
+				logAndFail("failed to create storageclass with retain policy: %v", err)
+			}
+			defer func() {
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+			}()
+
+			By("creating a PVC referencing the cgroup QoS VolumeAttributesClass")
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			pvc.Spec.VolumeAttributesClassName = &vacName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool)
+			validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+			// Confirm cgroup QoS metadata is present after provisioning.
+			err = validateCgroupQoS(f, pvc, qosParams)
+			if err != nil {
+				logAndFail("failed to validate cgroup QoS after provisioning: %v", err)
+			}
+
+			// Capture PVC/PV so they can be statically rebound later.
+			pvc, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+			if err != nil {
+				logAndFail("failed to get PVC and PV: %v", err)
+			}
+
+			// Resolve the backing image to manipulate its metadata directly.
+			imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+			if err != nil {
+				logAndFail("failed to get image info from PVC: %v", err)
+			}
+			rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+
+			By("simulating disaster-recovery loss of cgroup QoS metadata and omap")
+			// Remove the cgroup QoS image metadata, mirroring how the
+			// `.`-prefixed keys are not propagated during clone/snapshot/mirroring.
+			cgroupMetaKeys := []string{
+				".rbd.csi.ceph.com/cgroup_qos_max_read_iops",
+				".rbd.csi.ceph.com/cgroup_qos_max_write_iops",
+				".rbd.csi.ceph.com/cgroup_qos_max_read_bps",
+				".rbd.csi.ceph.com/cgroup_qos_max_write_bps",
+			}
+			for _, k := range cgroupMetaKeys {
+				if rErr := removeImageMeta(rbdImageSpec, k, f); rErr != nil {
+					logAndFail("failed to remove image metadata %q: %v", k, rErr)
+				}
+			}
+			// Verify the cgroup QoS metadata is gone.
+			err = validateCgroupQoS(f, pvc, map[string]string{})
+			if err != nil {
+				logAndFail("cgroup QoS metadata still present after removal: %v", err)
+			}
+
+			// Recreate the StorageClass with Delete policy so the rebound PV is
+			// cleaned up on deletion, then drop the omap to mimic metadata loss.
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
+			if err != nil {
+				logAndFail("failed to delete storageclass: %v", err)
+			}
+			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scParams, deletePolicy)
+			if err != nil {
+				logAndFail("failed to create storageclass with delete policy: %v", err)
+			}
+			err = deleteJournalInfoInPool(f, pvc, defaultRBDPool)
+			if err != nil {
+				logAndFail("failed to delete omap data: %v", err)
+			}
+
+			By("statically rebinding the PV to let the controller regenerate omap and QoS")
+			err = deletePVCAndPV(f.ClientSet, pvc, pv, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC and PV: %v", err)
+			}
+			// Recreate the PVC and PV as a static binding; the controller
+			// reconciles the new PV and regenerates the omap and cgroup QoS.
+			pv.Spec.ClaimRef = nil
+			pv.Spec.PersistentVolumeReclaimPolicy = deletePolicy
+			pvc.ResourceVersion = ""
+			pv.ResourceVersion = ""
+			err = createPVCAndPV(f.ClientSet, pvc, pv)
+			if err != nil {
+				logAndFail("failed to recreate PVC and PV: %v", err)
+			}
+
+			By("verifying the controller restored cgroup QoS after regeneration")
+			// The reconcile runs asynchronously on PV creation, so poll until the
+			// cgroup QoS metadata is re-applied from the VolumeAttributesClass.
+			err = wait.PollUntilContextTimeout(
+				context.TODO(),
+				poll,
+				time.Duration(deployTimeout)*time.Minute,
+				true,
+				func(_ context.Context) (bool, error) {
+					vErr := validateCgroupQoS(f, pvc, qosParams)
+					if vErr != nil {
+						framework.Logf("cgroup QoS not yet restored, retrying: %v", vErr)
+
+						return false, nil
+					}
+
+					return true, nil
+				})
+			if err != nil {
+				logAndFail("cgroup QoS was not restored after regeneration: %v", err)
+			}
+
+			// Cleanup: deleting the PVC removes the bound PV (Delete policy) and image.
+			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+		})
+
 		It("create a PVC and bind it to an app with encrypted RBD volume (default type setting)", func() {
 			err := deleteResource(rbdExamplePath + "storageclass.yaml")
 			if err != nil {
