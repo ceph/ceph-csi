@@ -17,13 +17,13 @@ limitations under the License.
 package nodeserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	mount "k8s.io/mount-utils"
