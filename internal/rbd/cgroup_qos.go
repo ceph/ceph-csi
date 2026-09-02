@@ -30,6 +30,7 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 	"golang.org/x/sys/unix"
 
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -373,6 +374,57 @@ func (rv *rbdVolume) getCgroupQoS(ctx context.Context) (map[string]string, error
 	}
 
 	return qosParams, nil
+}
+
+// RegenerateCgroupQoS restores the cgroup v2 QoS metadata on this RBD image
+// using the parameters from the volume's VolumeAttributesClass.
+//
+// Cgroup QoS metadata keys are prefixed with `.rbd.csi.ceph.com/` so they are
+// intentionally not propagated during clone, snapshot or mirroring operations.
+// Consequently, once the journal/omap is regenerated (for example during a
+// disaster-recovery failover), the cgroup QoS limits are missing on the image.
+// This re-applies them from the VolumeAttributesClass so the volume keeps the
+// same QoS after regeneration.
+//
+// The receiver is expected to be an already-connected volume (for example the
+// one returned by RegenerateJournal); this metadata-only operation does not
+// require image encryption to be configured.
+//
+// It is a no-op when vacParameters carries no cgroup QoS keys or when the
+// volume uses the rbd-nbd mounter (cgroup QoS applies only to krbd).
+func (rv *rbdVolume) RegenerateCgroupQoS(
+	ctx context.Context,
+	vacParameters map[string]string,
+) error {
+	if !hasCgroupQoSParams(vacParameters) {
+		return nil
+	}
+
+	// Resolve the mounter from image metadata; cgroup QoS applies only to the
+	// krbd mounter. A volume created before mounter tracking is treated as krbd,
+	// matching ControllerModifyVolume.
+	_, err := rv.UsesNBDMounter(ctx)
+	if err != nil && !errors.Is(err, rbderrors.ErrMounterUnknown) {
+		return fmt.Errorf("failed to determine mounter type for volume %s: %w", rv.VolID, err)
+	}
+
+	handler := newCgroupQoSHandler(rv)
+	// HasParams gates on the mounter, so rbd-nbd volumes (whose NBD QoS keys
+	// overlap with the cgroup keys) are correctly skipped here.
+	if !handler.HasParams(vacParameters) {
+		return nil
+	}
+
+	if err := handler.Validate(vacParameters); err != nil {
+		return fmt.Errorf("invalid cgroup QoS parameters for volume %s: %w", rv.VolID, err)
+	}
+
+	err = handler.Apply(ctx, vacParameters)
+	if err != nil {
+		return fmt.Errorf("failed to apply cgroup QoS for volume %s: %w", rv.VolID, err)
+	}
+
+	return nil
 }
 
 // applyCgroupQoSForVolume applies cgroup v2 QoS limits to the pod mounting this volume.

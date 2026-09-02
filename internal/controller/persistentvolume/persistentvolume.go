@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -159,7 +160,18 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 			return err
 		}
 	} else {
-		rbdVolID, err := rbd.RegenerateJournal(
+		// The cgroup v2 QoS metadata is intentionally not propagated during
+		// clone/snapshot/mirroring, so it is lost once the omap is regenerated.
+		// Restore it from the PV's VolumeAttributesClass, reusing the connected
+		// volume returned by RegenerateJournal.
+		vacParams, err := r.getVolumeAttributesClassParameters(ctx, pv)
+		if err != nil {
+			log.ErrorLogMsg("failed to get VolumeAttributesClass parameters %v", err)
+
+			return err
+		}
+
+		rbdVol, err := rbd.RegenerateJournal(
 			pv.Spec.CSI.VolumeAttributes,
 			pv.Spec.ClaimRef.Name,
 			volumeHandler,
@@ -173,12 +185,46 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 
 			return err
 		}
-		if rbdVolID != volumeHandler {
-			log.DebugLog(ctx, "volumeHandler changed from %s to %s", volumeHandler, rbdVolID)
+		defer rbdVol.Destroy(ctx)
+
+		if rbdVol.VolID != volumeHandler {
+			log.DebugLog(ctx, "volumeHandler changed from %s to %s", volumeHandler, rbdVol.VolID)
+		}
+
+		err = rbdVol.RegenerateCgroupQoS(ctx, vacParams)
+		if err != nil {
+			log.ErrorLogMsg("failed to regenerate cgroup QoS %s", err)
+
+			return err
 		}
 	}
 
 	return nil
+}
+
+// getVolumeAttributesClassParameters returns the parameters of the
+// VolumeAttributesClass referenced by the PV, or nil when the PV does not
+// reference one.
+func (r *ReconcilePersistentVolume) getVolumeAttributesClassParameters(
+	ctx context.Context,
+	pv *corev1.PersistentVolume,
+) (map[string]string, error) {
+	if pv.Spec.VolumeAttributesClassName == nil || *pv.Spec.VolumeAttributesClassName == "" {
+		return nil, nil
+	}
+
+	vacName := *pv.Spec.VolumeAttributesClassName
+	vac := &storagev1.VolumeAttributesClass{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: vacName}, vac)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VolumeAttributesClass %s: %w", vacName, err)
+	}
+
+	if pv.Spec.CSI.Driver != vac.DriverName {
+		return nil, errors.New("driver name in VAC and PV are not matching")
+	}
+
+	return vac.Parameters, nil
 }
 
 // newReconciler returns a ReconcilePersistentVolume.
