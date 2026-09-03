@@ -94,6 +94,7 @@ const (
 	staticVol        = "staticVolume"
 	volHealerCtx     = "volumeHealerContext"
 	tryOtherMounters = "tryOtherMounters"
+	xfsFilesystem    = "xfs"
 )
 
 var (
@@ -121,7 +122,7 @@ var (
 	}
 
 	mountDefaultOpts = map[string][]string{
-		"xfs": {"nouuid"},
+		xfsFilesystem: {"nouuid"},
 	}
 )
 
@@ -1124,7 +1125,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 			if fileEncryption {
 				args = append(args, "-Oencrypt")
 			}
-		case "xfs":
+		case xfsFilesystem:
 			// always disable reflink
 			// TODO: make enabling an option, see ceph/ceph-csi#1256
 			if ns.xfsSupportsReflink() {
@@ -1942,7 +1943,7 @@ func (ns *NodeServer) getMkfsArgs(fsType string) []string {
 		}
 
 		return []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1"}
-	case "xfs":
+	case xfsFilesystem:
 		return []string{"-K"}
 	default:
 		log.WarningLogMsg("unknown fsType: %q, using default mkfs options", fsType)
