@@ -63,8 +63,7 @@ func NewCephFSOperatorDeployment(c clientset.Interface) CephFSDeploymentMethod {
 }
 
 func (r *OperatorDeployment) getPodSelector() string {
-	return fmt.Sprintf("app in (%s, %s, %s, %s, %s)", helmRBDPodsLabel, helmCephFSPodsLabel, helmNFSPodsLabel,
-		r.deploymentName, r.daemonsetName)
+	return fmt.Sprintf("app in (%s, %s)", r.deploymentName, r.daemonsetName)
 }
 
 func (OperatorDeployment) setClusterName(value string) error {

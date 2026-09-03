@@ -2,6 +2,13 @@
 
 ## Breaking changes
 
+## Deprecations
+
+1. Helm chart deployments are no longer validated by the e2e test suite. Helm
+   charts will be deprecated in v3.18 in favor of the
+   [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) and to be
+   removed in v3.19
+
 ## Features
 
 1. Added `GetReplicationDestinationInfo` RPC to map source volume/volume

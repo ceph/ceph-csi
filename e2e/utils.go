@@ -90,7 +90,6 @@ var (
 	testNBD            bool
 	testNFS            bool
 	testNVMeoF         bool
-	helmTest           bool
 	upgradeTesting     bool
 	upgradeVersion     string
 	cephCSINamespace   string
@@ -136,7 +135,6 @@ type DriverInfo struct {
 	clientSet        kubernetes.Interface
 	deploymentName   string
 	daemonsetName    string
-	helmPodLabelName string
 	driverContainers []string
 }
 
@@ -149,7 +147,7 @@ func (d *DriverInfo) getDaemonsetName() string {
 }
 
 func (d *DriverInfo) getPodSelector() string {
-	return fmt.Sprintf("app in (%s, %s, %s)", d.helmPodLabelName, d.deploymentName, d.daemonsetName)
+	return fmt.Sprintf("app in (%s, %s)", d.deploymentName, d.daemonsetName)
 }
 
 func (d *DriverInfo) setClusterName(clusterName string) error {

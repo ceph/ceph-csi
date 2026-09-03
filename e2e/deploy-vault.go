@@ -37,17 +37,6 @@ var (
 )
 
 func deployVault(c kubernetes.Interface, deployTimeout int) {
-	// hack to make helm E2E pass as helm charts creates this configmap as part
-	// of cephcsi deployment
-	err := retryKubectlArgs(
-		cephCSINamespace,
-		kubectlDelete,
-		deployTimeout,
-		"cm",
-		"ceph-csi-encryption-kms-config",
-		"--ignore-not-found=true")
-	Expect(err).ShouldNot(HaveOccurred())
-
 	createORDeleteVault(kubectlCreate)
 	opt := metav1.ListOptions{
 		LabelSelector: "app=vault",
