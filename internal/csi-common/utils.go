@@ -657,6 +657,30 @@ func IsReaderOnly(caps []*csi.VolumeCapability) bool {
 	return false
 }
 
+// AreAllCapabilitiesReaderOnly returns true when all capabilities use a reader-only access mode.
+func AreAllCapabilitiesReaderOnly(caps []*csi.VolumeCapability) bool {
+	if len(caps) == 0 {
+		return false
+	}
+
+	for _, cap := range caps {
+		accessMode := cap.GetAccessMode()
+		if accessMode == nil {
+			return false
+		}
+
+		switch accessMode.GetMode() { //nolint:exhaustive // only check what we want
+		case csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+			csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY:
+			continue
+		default:
+			return false
+		}
+	}
+
+	return true
+}
+
 // IsBlockMultiWriter validates the volume capability slice against the access modes and access type.
 // if the capability is of multi write the first return value will be set to true and if the request
 // is of type block, the second return value will be set to true.
