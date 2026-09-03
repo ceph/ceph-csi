@@ -76,6 +76,7 @@ linters:
     # TODO enable linters added in golangci-lint 1.46
     - maintidx
     - exhaustruct
+    - exhaustruct_v5
     - containedctx
     # TODO: depguard requires a list of (un)acceptable imports
     - depguard
@@ -104,6 +105,7 @@ linters:
     goconst:
       min-len: 3
       min-occurrences: 3
+      ignore-tests: true
     gocritic:
       disabled-checks:
         - sloppyReassign
