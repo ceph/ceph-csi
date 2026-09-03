@@ -16,6 +16,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"runtime"
 
 	"k8s.io/klog/v2"
 )
@@ -153,4 +154,16 @@ func TraceLog(ctx context.Context, message string, args ...any) {
 	if klog.V(Trace).Enabled() {
 		klog.InfoDepth(1, logMessage)
 	}
+}
+
+// TraceStacks logs all goroutine stacks when klog.level is set to 5.
+func TraceStacks(ctx context.Context) {
+	if !klog.V(Trace).Enabled() {
+		return
+	}
+
+	buf := make([]byte, 1<<16)
+	size := runtime.Stack(buf, true)
+
+	klog.InfoDepth(1, Log(ctx, string(buf[:size])))
 }
