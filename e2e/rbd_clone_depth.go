@@ -19,8 +19,11 @@ package e2e
 import (
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
+
+const parentRetentionTimeout = 1
 
 func validateCloneDepthFlattenWithTrashedParents(f *framework.Framework) {
 	err := createRBDSnapshotClass(f)
@@ -111,17 +114,38 @@ func validateCloneDepthFlattenWithTrashedParents(f *framework.Framework) {
 	}
 
 	// Restoring the second snapshot reaches the soft clone-depth limit only if
-	// clone depth is counted through the parents that are already in trash.
-	pvcClone2, err := loadPVC(pvcClonePath)
+	// clone depth is counted through the parents that are already in trash. A
+	// ROX restore must preserve this chain instead of flattening it.
+	pvcCloneROX, err := loadPVC(pvcClonePath)
 	if err != nil {
-		logAndFail("failed to load second PVC clone: %v", err)
+		logAndFail("failed to load ROX PVC clone: %v", err)
 	}
-	pvcClone2.Name = fmt.Sprintf("%s-trash-depth-1", pvcClone2.Name)
-	pvcClone2.Namespace = f.UniqueName
-	pvcClone2.Spec.DataSource.Name = snap2.Name
-	err = createPVCAndvalidatePV(f.ClientSet, pvcClone2, deployTimeout)
+	pvcCloneROX.Name = fmt.Sprintf("%s-trash-depth-1-rox", pvcCloneROX.Name)
+	pvcCloneROX.Namespace = f.UniqueName
+	pvcCloneROX.Spec.DataSource.Name = snap2.Name
+	pvcCloneROX.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+	err = createPVCAndvalidatePV(f.ClientSet, pvcCloneROX, deployTimeout)
 	if err != nil {
-		logAndFail("failed to create PVC from second snapshot: %v", err)
+		logAndFail("failed to create ROX PVC from second snapshot: %v", err)
+	}
+
+	err = ensureRBDImageHasParent(f, defaultRBDPool, snap2ImageName, parentRetentionTimeout)
+	if err != nil {
+		logAndFail("failed to validate second snapshot backing image retains its parent: %v", err)
+	}
+
+	// A RW restore from the same snapshot must retain the existing depth-based
+	// flattening behavior.
+	pvcCloneRW, err := loadPVC(pvcClonePath)
+	if err != nil {
+		logAndFail("failed to load RW PVC clone: %v", err)
+	}
+	pvcCloneRW.Name = fmt.Sprintf("%s-trash-depth-1-rw", pvcCloneRW.Name)
+	pvcCloneRW.Namespace = f.UniqueName
+	pvcCloneRW.Spec.DataSource.Name = snap2.Name
+	err = createPVCAndvalidatePV(f.ClientSet, pvcCloneRW, deployTimeout)
+	if err != nil {
+		logAndFail("failed to create RW PVC from second snapshot: %v", err)
 	}
 
 	err = waitForRBDImageFlattened(f, defaultRBDPool, snap2ImageName, deployTimeout)
@@ -133,9 +157,13 @@ func validateCloneDepthFlattenWithTrashedParents(f *framework.Framework) {
 	if err != nil {
 		logAndFail("failed to delete second snapshot: %v", err)
 	}
-	err = deletePVCAndValidatePV(f.ClientSet, pvcClone2, deployTimeout)
+	err = deletePVCAndValidatePV(f.ClientSet, pvcCloneRW, deployTimeout)
 	if err != nil {
-		logAndFail("failed to delete second PVC clone: %v", err)
+		logAndFail("failed to delete RW PVC clone: %v", err)
+	}
+	err = deletePVCAndValidatePV(f.ClientSet, pvcCloneROX, deployTimeout)
+	if err != nil {
+		logAndFail("failed to delete ROX PVC clone: %v", err)
 	}
 	err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
 	if err != nil {

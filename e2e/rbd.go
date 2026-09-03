@@ -4607,9 +4607,12 @@ var _ = Describe("RBD", func() {
 			validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 		})
 
-		It("validate clone depth triggers flatten when parents are in trash", func() {
-			validateCloneDepthFlattenWithTrashedParents(f)
-		})
+		It(
+			"validate ROX restore skips flatten and RW restore flattens with trashed parents",
+			func() {
+				validateCloneDepthFlattenWithTrashedParents(f)
+			},
+		)
 
 		It(
 			"validate PVC mounting if snapshot and parent PVC are deleted chained with depth 2",

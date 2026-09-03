@@ -491,9 +491,15 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
-	err = flattenParentImage(ctx, parentVol, rbdSnap, cr)
-	if err != nil {
-		return nil, err
+	// Avoid flattening the snapshot for ROX restores so that rbd diff can use
+	// the parent chain for changed block tracking during incremental backups.
+	isROXSnapshotRestore := rbdSnap != nil &&
+		csicommon.AreAllCapabilitiesReaderOnly(req.GetVolumeCapabilities())
+	if !isROXSnapshotRestore {
+		err = flattenParentImage(ctx, parentVol, rbdSnap, cr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = reserveVol(ctx, rbdVol, cr)
