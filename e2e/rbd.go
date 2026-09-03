@@ -4609,6 +4609,7 @@ var _ = Describe("RBD", func() {
 
 		It(
 			"validate ROX restore skips flatten and RW restore flattens with trashed parents",
+			Label("acceptance"),
 			func() {
 				validateCloneDepthFlattenWithTrashedParents(f)
 			},
