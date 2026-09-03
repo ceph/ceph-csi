@@ -32,6 +32,9 @@ var (
 	ErrMetadataNotFound = errors.New("metadata not found")
 	// ErrMetadataCorrupted is returned when NVMe-oF volume metadata(=rbd metadata) is corrupted or invalid.
 	ErrMetadataCorrupted = errors.New("metadata corrupted or invalid")
+	// ErrSubsystemHasNamespaces is returned when the user tries to delete a subsystem that
+	// still has namespaces.
+	ErrSubsystemHasNamespaces = errors.New("subsystem has namespaces")
 )
 
 // errorToGRPCCode maps custom errors to gRPC status codes.

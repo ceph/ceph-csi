@@ -415,8 +415,13 @@ func (gw *GatewayRpcClient) DeleteSubsystem(ctx context.Context, subsystemNQN st
 	case err != nil:
 		return fmt.Errorf("failed to delete subsystem %s: %w", subsystemNQN, err)
 	case status.GetStatus() == int32(syscall.ENOENT):
-		// the subsystem was removed already
+		log.DebugLog(ctx, "Subsystem %s already deleted (not found)", subsystemNQN)
+
 		return nil
+	case status.GetStatus() == int32(syscall.EBUSY):
+		log.DebugLog(ctx, "subsystem %s has namespaces and cannot be deleted: %s", subsystemNQN, status.GetErrorMessage())
+
+		return fmt.Errorf("%w: %s", nvmeoferrors.ErrSubsystemHasNamespaces, status.GetErrorMessage())
 	case status.GetStatus() != 0:
 		return fmt.Errorf("gateway DeleteSubsystem returned error: %s", status.GetErrorMessage())
 	}
