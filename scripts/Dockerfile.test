@@ -31,6 +31,7 @@ RUN dnf -y install \
 	ShellCheck \
 	yamllint \
 	npm \
+	openssl \
     && dnf -y update \
     && dnf -y clean all \
     && gem install mdl \
