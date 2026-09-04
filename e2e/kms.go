@@ -65,6 +65,13 @@ var (
 		provider: "secrets-metadata",
 	}
 
+	// kmipKMS relies on one static key shared by all volumes of the KMS
+	// configuration, so there is no per-volume passphrase to read back
+	// or to destroy.
+	kmipKMS = &simpleKMS{
+		provider: "kmip",
+	}
+
 	vaultKMS = &vaultConfig{
 		simpleKMS: &simpleKMS{
 			provider: "vault",

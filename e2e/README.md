@@ -226,3 +226,21 @@ You can also invoke functional tests with `make` command
 ```console
 make func-test TESTOPTIONS="-deploy-timeout=10 -timeout=30m -v"
 ```
+
+## KMS services for the encryption tests
+
+The encryption tests read the KMS configurations from
+`examples/kms/vault/kms-config.yaml` and deploy the KMS services they
+need into the ceph-csi namespace:
+
+- HashiCorp Vault is deployed for every run, unless `--skip-vault=true`
+  is set.
+- A PyKMIP server is deployed in addition when
+  `--test-cephfs-fscrypt=true` is set, to serve the `kmip-fscrypt-test`
+  configuration. The e2e tests generate the TLS certificates, create an
+  AES key on the server and store its unique identifier in the
+  `ceph-csi-kmip-credentials` Secret, see `e2e/deploy-kmip.go`.
+
+The PyKMIP Pod installs PyKMIP at startup. Its version and dependency
+pins, and the reasons for them, are documented in
+`examples/kms/vault/pykmip.yaml`.

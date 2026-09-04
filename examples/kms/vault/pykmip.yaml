@@ -1,0 +1,129 @@
+# PyKMIP server configuration for minikube
+# This is not part of ceph-csi project, used only
+# for e2e testing of integration with a KMIP KMS.
+#
+# The TLS certificates in the ceph-csi-kmip-certs Secret and the
+# ceph-csi-kmip-credentials Secret with the created key are generated
+# by the e2e tests, see e2e/deploy-kmip.go.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pykmip-config
+data:
+  server.conf: |
+    [server]
+    hostname=0.0.0.0
+    port=5696
+    certificate_path=/etc/pykmip/certs/server.crt
+    key_path=/etc/pykmip/certs/server.key
+    ca_path=/etc/pykmip/certs/ca.crt
+    auth_suite=TLS1.2
+    enable_tls_client_auth=True
+    logging_level=DEBUG
+    database_path=/tmp/pykmip.sqlite
+  pykmip.conf: |
+    [client]
+    host=127.0.0.1
+    port=5696
+    certfile=/etc/pykmip/certs/client.crt
+    keyfile=/etc/pykmip/certs/client.key
+    ca_certs=/etc/pykmip/certs/ca.crt
+    cert_reqs=CERT_REQUIRED
+    ssl_version=PROTOCOL_TLSv1_2
+    do_handshake_on_connect=True
+    suppress_ragged_eofs=True
+  create_key.py: |
+    # Creates the AES key served to ceph-csi and prints its unique
+    # identifier. The client certificate is the same one ceph-csi uses,
+    # so the created key is owned by the identity that later fetches it.
+    from kmip.pie.client import ProxyKmipClient
+    from kmip.core import enums
+
+    client = ProxyKmipClient(config_file='/etc/pykmip/pykmip.conf')
+    with client:
+        uid = client.create(
+            enums.CryptographicAlgorithm.AES,
+            256,
+            name='ceph-csi-fscrypt',
+            cryptographic_usage_mask=[
+                enums.CryptographicUsageMask.ENCRYPT,
+                enums.CryptographicUsageMask.DECRYPT,
+            ])
+        client.activate(uid)
+    print(uid)
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kmip
+  labels:
+    app: kmip
+spec:
+  ports:
+    - name: kmip
+      port: 5696
+  selector:
+    app: kmip
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kmip
+  labels:
+    app: kmip
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kmip
+  template:
+    metadata:
+      labels:
+        app: kmip
+    spec:
+      containers:
+        - name: pykmip
+          image: docker.io/library/python:3.11-slim
+          imagePullPolicy: "IfNotPresent"
+          # PyKMIP 0.10.0 is the last release and every dependency is
+          # pinned to the last version it works with:
+          # - Python <= 3.11: ssl.wrap_socket is gone in 3.12
+          # - SQLAlchemy < 2.0: PyKMIP uses the 1.x query API
+          # - cryptography 41.0.7: later releases removed the legacy
+          #   ciphers (TripleDES) that PyKMIP imports, and starting the
+          #   server dies with SIGILL
+          # Bump these pins only together with a PyKMIP release that
+          # supports them.
+          command:
+            - sh
+            - -c
+            - >-
+              pip install --no-cache-dir pykmip==0.10.0 'SQLAlchemy<2.0'
+              cryptography==41.0.7 &&
+              exec pykmip-server -f /etc/pykmip/server.conf
+              -l /tmp/pykmip-server.log
+          ports:
+            - containerPort: 5696
+              name: kmip
+          readinessProbe:
+            tcpSocket:
+              port: 5696
+            # the pip install runs before the server starts listening
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: pykmip-config
+              mountPath: /etc/pykmip
+            - name: pykmip-certs
+              mountPath: /etc/pykmip/certs
+      volumes:
+        - name: pykmip-config
+          configMap:
+            name: pykmip-config
+        - name: pykmip-certs
+          secret:
+            secretName: ceph-csi-kmip-certs
