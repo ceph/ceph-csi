@@ -33,7 +33,7 @@ func TestGroupLock_MultipleGroupA(t *testing.T) {
 	gl := NewGroupLock()
 	const numGoroutines = 10
 
-	var activeCount int32
+	var activeCount atomic.Int32
 	var maxConcurrent int32
 	var wg sync.WaitGroup
 	for range numGoroutines {
@@ -42,8 +42,8 @@ func TestGroupLock_MultipleGroupA(t *testing.T) {
 			defer gl.ReleaseGroupA()
 
 			// Track concurrent executions
-			current := atomic.AddInt32(&activeCount, 1)
-			defer atomic.AddInt32(&activeCount, -1)
+			current := activeCount.Add(1)
+			defer activeCount.Add(-1)
 
 			// Update the maximum concurrent operations count.
 			// This uses a compare-and-swap loop to handle race conditions:
@@ -204,9 +204,9 @@ func TestGroupLock_MutualExclusion(t *testing.T) {
 	gl := NewGroupLock()
 	const duration = 500 * time.Millisecond
 
-	var groupAActive int32 // How many Group A threads are currently working
-	var groupBActive int32 // How many Group B threads are currently working
-	var violations int32   // How many times we caught both groups active together
+	var groupAActive atomic.Int32 // How many Group A threads are currently working
+	var groupBActive atomic.Int32 // How many Group B threads are currently working
+	var violations atomic.Int32   // How many times we caught both groups active together
 
 	done := make(chan bool)
 
@@ -220,10 +220,10 @@ func TestGroupLock_MutualExclusion(t *testing.T) {
 			case <-done:
 				return // Test finished, stop monitoring
 			case <-ticker.C: // Every 1ms
-				a := atomic.LoadInt32(&groupAActive)
-				b := atomic.LoadInt32(&groupBActive)
+				a := groupAActive.Load()
+				b := groupBActive.Load()
 				if a > 0 && b > 0 {
-					atomic.AddInt32(&violations, 1)
+					violations.Add(1)
 					t.Errorf("VIOLATION: Group A (%d) and Group B (%d) active simultaneously!", a, b)
 				}
 			}
@@ -238,11 +238,11 @@ func TestGroupLock_MutualExclusion(t *testing.T) {
 			start := time.Now()
 			for time.Since(start) < duration { // Run for 500ms
 				gl.AcquireGroupA()
-				atomic.AddInt32(&groupAActive, 1)
+				groupAActive.Add(1)
 
 				time.Sleep(5 * time.Millisecond)
 
-				atomic.AddInt32(&groupAActive, -1)
+				groupAActive.Add(-1)
 				gl.ReleaseGroupA()
 
 				time.Sleep(time.Millisecond)
@@ -256,11 +256,11 @@ func TestGroupLock_MutualExclusion(t *testing.T) {
 			start := time.Now()
 			for time.Since(start) < duration { // Run for 500ms
 				gl.AcquireGroupB()
-				atomic.AddInt32(&groupBActive, 1)
+				groupBActive.Add(1)
 
 				time.Sleep(5 * time.Millisecond)
 
-				atomic.AddInt32(&groupBActive, -1)
+				groupBActive.Add(-1)
 				gl.ReleaseGroupB()
 
 				time.Sleep(time.Millisecond)
@@ -272,7 +272,7 @@ func TestGroupLock_MutualExclusion(t *testing.T) {
 	close(done) // Tell the monitoring goroutine to stop
 
 	// Check if any violations were detected
-	if v := atomic.LoadInt32(&violations); v > 0 {
+	if v := violations.Load(); v > 0 {
 		t.Errorf("Found %d mutual exclusion violations", v)
 	} else {
 		t.Log("No mutual exclusion violations detected")

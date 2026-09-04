@@ -174,8 +174,7 @@ func (s *subVolumeClient) GetSubVolumeInfo(ctx context.Context) (*Subvolume, err
 			return nil, cerrors.ErrVolumeNotFound
 		}
 		// In case the error is invalid command return error to the caller.
-		var invalid fsAdmin.NotImplementedError
-		if errors.As(err, &invalid) {
+		if _, ok := errors.AsType[fsAdmin.NotImplementedError](err); ok {
 			return nil, cerrors.ErrInvalidCommand
 		}
 

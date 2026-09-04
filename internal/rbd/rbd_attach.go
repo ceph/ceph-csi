@@ -517,7 +517,7 @@ func waitForrbdImage(ctx context.Context, volOptions *rbdVolume) error {
 			if err != nil {
 				return fmt.Errorf("fail to check rbd image status: (%w)", err)
 			}
-			if (volOptions.DisableInUseChecks) && (used) {
+			if volOptions.DisableInUseChecks && used {
 				log.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
 
 				return nil

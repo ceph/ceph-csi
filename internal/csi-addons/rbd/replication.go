@@ -975,7 +975,7 @@ func getCurrentReplicationStatus(ctx context.Context, mirrorGlobalStatus types.G
 
 	// parse only the message from the description of the image/group status
 	statusDesc := localStatus.GetDescription()
-	desc := strings.SplitN(statusDesc, ",", 2)[0]
+	desc, _, _ := strings.Cut(statusDesc, ",")
 
 	// check if mirroring state is up/down
 	isUp := localStatus.IsUP()
