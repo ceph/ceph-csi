@@ -913,6 +913,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.RbdImageName = ri.RbdImageName
 	vol.RadosNamespace = ri.RadosNamespace
 	vol.conn = ri.conn.Copy()
+	defer vol.Destroy(ctx)
 
 	for {
 		if vol.RbdImageName == "" {
@@ -1114,6 +1115,109 @@ func (ri *rbdImage) hasFeature(feature uint64) bool {
 	return (uint64(ri.ImageFeatureSet) & feature) == feature
 }
 
+// parentImageInfo holds the parent image details returned by checkFeatureOnImage.
+type parentImageInfo struct {
+	name    string
+	pool    string
+	imageID string
+	trash   bool
+}
+
+// imageChainHasFeature returns true only if every image in the clone chain
+// (starting from ri and walking up through parents) has the given feature
+// enabled. This is useful for operations like DiffIterate that traverse the
+// full parent chain and require a feature (e.g. object-map) on all ancestors.
+func (ri *rbdImage) imageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
+	rbdImg := rbdImage{}
+
+	rbdImg.Pool = ri.Pool
+	rbdImg.RadosNamespace = ri.RadosNamespace
+	rbdImg.Monitors = ri.Monitors
+	rbdImg.RbdImageName = ri.RbdImageName
+	rbdImg.conn = ri.conn.Copy()
+	defer rbdImg.Destroy(ctx)
+
+	var parentID string
+	for {
+		if rbdImg.RbdImageName == "" && parentID == "" {
+			return true, nil
+		}
+
+		has, parent, err := rbdImg.checkFeatureOnImage(feature, parentID)
+		if rbdImg.ioctx != nil {
+			rbdImg.ioctx.Destroy()
+			rbdImg.ioctx = nil
+		}
+		if err != nil {
+			if errors.Is(err, rbderrors.ErrImageNotFound) {
+				return false, nil
+			}
+			log.ErrorLog(ctx, "failed to check feature on image %s: %s", rbdImg.String(), err)
+
+			return false, err
+		}
+		if !has {
+			log.DebugLog(ctx, "image %s in chain lacks feature %d", rbdImg.String(), feature)
+
+			return false, nil
+		}
+		rbdImg.RbdImageName = parent.name
+		rbdImg.Pool = parent.pool
+		parentID = ""
+		if parent.trash {
+			parentID = parent.imageID
+		}
+	}
+}
+
+// checkFeatureOnImage opens the image read-only and checks whether the given
+// feature is enabled. It also returns parent image details so the caller can
+// walk the chain. When imageID is set, the image is opened by ID (needed for
+// trashed parents).
+func (ri *rbdImage) checkFeatureOnImage(feature uint64, imageID string) (bool, *parentImageInfo, error) {
+	err := ri.openIoctx()
+	if err != nil {
+		return false, nil, err
+	}
+
+	var img *librbd.Image
+	if imageID != "" {
+		img, err = librbd.OpenImageByIdReadOnly(ri.ioctx, imageID, librbd.NoSnapshot)
+	} else {
+		img, err = librbd.OpenImageReadOnly(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	}
+	if err != nil {
+		if errors.Is(err, librbd.ErrNotFound) {
+			err = fmt.Errorf("failed as %w (internal %w)", rbderrors.ErrImageNotFound, err)
+		}
+
+		return false, nil, err
+	}
+	defer img.Close() //nolint:errcheck // not a critical failure
+
+	features, err := img.GetFeatures()
+	if err != nil {
+		return false, nil, err
+	}
+
+	has := (features & feature) == feature
+
+	parent := &parentImageInfo{}
+	parentInfo, err := img.GetParent()
+	if err != nil {
+		if !errors.Is(err, librbd.ErrNotFound) {
+			return false, nil, err
+		}
+	} else {
+		parent.name = parentInfo.Image.ImageName
+		parent.pool = parentInfo.Image.PoolName
+		parent.imageID = parentInfo.Image.ImageID
+		parent.trash = parentInfo.Image.Trash
+	}
+
+	return has, parent, nil
+}
+
 func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
 	rbdImg := rbdImage{}
 
@@ -1122,6 +1226,7 @@ func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint6
 	rbdImg.Monitors = ri.Monitors
 	rbdImg.RbdImageName = ri.RbdImageName
 	rbdImg.conn = ri.conn.Copy()
+	defer rbdImg.Destroy(ctx)
 
 	for {
 		if rbdImg.RbdImageName == "" {
@@ -1940,6 +2045,9 @@ func (ri *rbdImage) getParent() (*rbdImage, error) {
 
 	err = parentImage.getImageInfo()
 	if err != nil {
+		parentImage.conn.Destroy()
+		parentImage.conn = nil
+
 		return nil, err
 	}
 

@@ -450,6 +450,46 @@ func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t i
 	})
 }
 
+// getVolumeStatsMetrics scrapes kubelet metrics and returns the parsed
+// kubelet_volume_stats_* metrics for the given PVC once they appear.
+func getVolumeStatsMetrics(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	t int,
+) (map[string]float64, error) {
+	kubelet, err := getKubeletIP(f.ClientSet)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := fmt.Sprintf("curl --silent 'http://%s:10255/metrics'", kubelet)
+	timeout := time.Duration(t) * time.Minute
+
+	var result map[string]float64
+	err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
+		stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+		if err != nil {
+			framework.Logf("failed to get metrics for pvc %q (%v): %v", pvc.Name, err, stdErr)
+
+			return false, nil
+		}
+		if stdOut == "" {
+			return false, nil
+		}
+
+		metrics := parseVolumeStatsMetrics(stdOut, pvc.Namespace, pvc.Name)
+		if len(metrics) == 0 {
+			return false, nil
+		}
+
+		result = metrics
+
+		return true, nil
+	})
+
+	return result, err
+}
+
 // parseVolumeStatsMetrics extracts kubelet_volume_stats_* metric values for a
 // specific PVC from the kubelet metrics output.
 func parseVolumeStatsMetrics(metricsOutput, namespace, pvcName string) map[string]float64 {

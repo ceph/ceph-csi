@@ -1998,6 +1998,85 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
+		It("verify block volume stats work without object-map feature",
+			Label("acceptance"), func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{
+						"imageFeatures": "layering",
+					},
+					deletePolicy)
+				if err != nil {
+					logAndFail("failed to create storageclass: %v", err)
+				}
+				defer func() {
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						logAndFail("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						logAndFail("failed to create storageclass: %v", err)
+					}
+				}()
+
+				pvc, err := loadPVC(rawPvcPath)
+				if err != nil {
+					logAndFail("failed to load raw block PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create raw block PVC: %v", err)
+				}
+
+				app, err := loadApp(rawAppPath)
+				if err != nil {
+					logAndFail("failed to load raw block app: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				err = createApp(f.ClientSet, app, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create raw block app: %v", err)
+				}
+
+				if !isOpenShift {
+					metrics, mErr := getVolumeStatsMetrics(f, pvc, deployTimeout)
+					if mErr != nil {
+						logAndFail("failed to get volume stats metrics: %v", mErr)
+					}
+
+					capacity := metrics["kubelet_volume_stats_capacity_bytes"]
+					used := metrics["kubelet_volume_stats_used_bytes"]
+
+					expectedCapacity := float64(pvc.Spec.Resources.Requests.Storage().Value())
+					if capacity != expectedCapacity {
+						logAndFail("expected capacity_bytes=%f, got %f", expectedCapacity, capacity)
+					}
+					if used != 0 {
+						logAndFail("expected used_bytes=0 without object-map, got %f", used)
+					}
+				}
+
+				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete app: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete PVC: %v", err)
+				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
 		It("create PVC without layering,deep-flatten image-features and bind it to an app",
 			func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
