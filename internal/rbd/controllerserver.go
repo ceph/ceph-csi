@@ -81,6 +81,9 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 		return status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty")
 	}
 	options := req.GetParameters()
+	if options == nil {
+		return status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
 	if value, ok := options["clusterID"]; !ok || value == "" {
 		return status.Error(codes.InvalidArgument, "empty cluster ID to provision volume from")
 	}
@@ -1432,6 +1435,9 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	}
 
 	options := req.GetParameters()
+	if options == nil {
+		return status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
 	if value, ok := options["snapshotNamePrefix"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty snapshot name prefix to provision snapshot from")
 	}

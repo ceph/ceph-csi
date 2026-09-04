@@ -532,6 +532,9 @@ func validateDHCHAPParameter(dhchapMode string) error {
 func validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	// Validate required parameters
 	params := req.GetParameters()
+	if params == nil {
+		return errors.New("parameters cannot be nil")
+	}
 	if params["nvmeofGatewayAddress"] == "" {
 		return errors.New("missing required parameter nvmeofGatewayAddress")
 	}
@@ -868,6 +871,9 @@ func (cs *Server) createNVMeoFResources(
 ) (*nvmeof.NVMeoFVolumeData, error) {
 	// Step 1: Extract parameters (already validated)
 	params := req.GetParameters()
+	if params == nil {
+		return nil, errors.New("parameters cannot be nil")
+	}
 
 	networkMask := params["networkMask"]
 	nvmeofData := &nvmeof.NVMeoFVolumeData{}
