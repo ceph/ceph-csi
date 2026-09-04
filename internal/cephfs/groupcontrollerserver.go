@@ -119,6 +119,10 @@ func (cs *cephfsControllerServer) CreateVolumeGroupSnapshot(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get fs names and subvolume from volume ids: %v", err)
 
+		if errors.Is(err, cerrors.ErrInvalidVolID) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer destroyFSConnections(fsMap)
@@ -725,6 +729,13 @@ func (cs *cephfsControllerServer) DeleteVolumeGroupSnapshot(ctx context.Context,
 
 	vgo, vgsi, err := store.NewVolumeGroupOptionsFromID(ctx, req.GetGroupSnapshotId(), cr)
 	if err != nil {
+		if errors.Is(err, cerrors.ErrInvalidVolID) {
+			// likely a static provisioned volume group snapshot with a handle
+			// that was never encoded by ceph-csi; retrying will never
+			// succeed, so return a terminal error instead of codes.Internal.
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
 		if !errors.Is(err, cerrors.ErrGroupNotFound) {
 			log.ErrorLog(ctx, "failed to get volume group options: %v", err)
 			err = extractDeleteVolumeGroupError(err)

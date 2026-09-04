@@ -931,6 +931,9 @@ func checkContentSource(
 		if err != nil {
 			rbdSnap.Destroy(ctx)
 			log.ErrorLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)
+			if errors.Is(err, rbderrors.ErrInvalidVolID) {
+				return nil, nil, status.Error(codes.InvalidArgument, err.Error())
+			}
 			if !errors.Is(err, rbderrors.ErrSnapNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
 			}
@@ -952,6 +955,9 @@ func checkContentSource(
 		if err != nil {
 			rbdvol.Destroy(ctx)
 			log.ErrorLog(ctx, "failed to get backend image for %s: %v", volID, err)
+			if errors.Is(err, rbderrors.ErrInvalidVolID) {
+				return nil, nil, status.Error(codes.InvalidArgument, err.Error())
+			}
 			if !errors.Is(err, rbderrors.ErrImageNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
 			}
@@ -990,6 +996,13 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 		log.WarningLog(ctx, "failed to volume options for %s: %v", volumeID, err)
 
 		return &csi.DeleteVolumeResponse{}, nil
+	}
+
+	if errors.Is(err, rbderrors.ErrInvalidVolID) {
+		// likely a static provisioned volume with a volume handle that was
+		// never encoded by ceph-csi; retrying will never succeed, so return
+		// a terminal error instead of codes.Internal.
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if errors.Is(err, rbderrors.ErrImageNotFound) {
@@ -1241,6 +1254,8 @@ func (cs *ControllerServer) CreateSnapshot(
 		case errors.Is(err, util.ErrPoolNotFound):
 			log.ErrorLog(ctx, "failed to get backend volume for %s: %v", req.GetSourceVolumeId(), err)
 			err = status.Error(codes.NotFound, err.Error())
+		case errors.Is(err, rbderrors.ErrInvalidVolID):
+			err = status.Error(codes.InvalidArgument, err.Error())
 		default:
 			err = status.Error(codes.Internal, err.Error())
 		}
@@ -1568,6 +1583,13 @@ func (cs *ControllerServer) DeleteSnapshot(
 	if err != nil {
 		rbdSnap.Destroy(ctx)
 
+		if errors.Is(err, rbderrors.ErrInvalidVolID) {
+			// likely a static provisioned snapshot with a snapshot handle
+			// that was never encoded by ceph-csi; retrying will never
+			// succeed, so return a terminal error instead of codes.Internal.
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
 		// if error is ErrPoolNotFound, the pool is already deleted we don't
 		// need to worry about deleting snapshot or omap data, return success
 		if errors.Is(err, util.ErrPoolNotFound) {
@@ -1806,6 +1828,10 @@ func (cs *ControllerServer) getServiceAccountRestriction(
 			rv.Destroy(ctx)
 		}
 
+		if errors.Is(err, rbderrors.ErrInvalidVolID) {
+			return "", status.Errorf(codes.InvalidArgument, "volume ID %s does not support publish: %v", volumeID, err)
+		}
+
 		return "", status.Errorf(codes.Internal,
 			"failed to find volume %q for service account check: %v", volumeID, err)
 	}
@@ -1865,6 +1891,11 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	rv, err := GenVolFromVolID(ctx, volumeId, credentials, secrets)
 	if err != nil {
 		rv.Destroy(ctx)
+
+		if errors.Is(err, rbderrors.ErrInvalidVolID) {
+			return nil, status.Errorf(codes.InvalidArgument, "volume ID %s does not support unpublish: %v",
+				volumeId, err)
+		}
 
 		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v",
 			volumeId, err)
