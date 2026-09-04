@@ -113,6 +113,10 @@ func (ns *nfsNodeServer) NodePublishVolume(
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+		if netNamespaceFilePath != "" {
+			log.WarningLog(ctx, "netNamespaceFilePath is deprecated and will be removed in a future version. "+
+				"Please migrate to using host networking for CSI plugin pods.")
+		}
 	}
 
 	err = ns.mountNFS(ctx,
