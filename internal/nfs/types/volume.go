@@ -37,6 +37,11 @@ const (
 	// NFS-cluster. It will be prefixed with the journal configuration.
 	clusterNameKey = "nfs.cluster"
 
+	// exportNameKey is the key in OMAP that contains a friendly export
+	// name, when one was set. It will be prefixed with the journal
+	// configuration, same as clusterNameKey.
+	exportNameKey = "nfs.exportName"
+
 	// ParameterServer is set in the parameters on volume creation and in
 	// the VolumeContext.
 	ParameterServer = "server"
@@ -53,6 +58,12 @@ const (
 	// ParameterSecTypes is set in the parameters on volume creation and in
 	// the VolumeContext.
 	ParameterSecTypes = "secTypes"
+
+	// ParameterFriendlyExportNames opts a StorageClass in to naming
+	// exports "<namespace>/<pvc-name>" instead of the generated volume
+	// ID. Requires the external-provisioner to run with
+	// --extra-create-metadata=true.
+	ParameterFriendlyExportNames = "friendlyExportNames"
 )
 
 // NFSVolume presents the API for consumption by the CSI-controller to create,
@@ -67,6 +78,9 @@ type NFSVolume struct {
 	mons       string
 	fscID      int64
 	objectUUID string
+
+	// exportName, when set, replaces volumeID in the export's pseudo-path.
+	exportName string
 
 	// TODO: drop in favor of a go-ceph connection
 	cr        *util.Credentials
@@ -134,9 +148,27 @@ func (nv *NFSVolume) Destroy() {
 }
 
 // GetExportPath returns the path on the NFS-server that can be used for
-// mounting.
+// mounting. Falls back to the volumeID when no friendly name was set
+// (SetExportName) or resolved (resolveExportName).
 func (nv *NFSVolume) GetExportPath() string {
+	if nv.exportName != "" {
+		return "/" + nv.exportName
+	}
+
 	return "/" + nv.volumeID
+}
+
+// SetExportName sets a friendly export name and persists it in the CephFS
+// journal.
+func (nv *NFSVolume) SetExportName(name string) error {
+	err := nv.setAttribute(exportNameKey, name)
+	if err != nil {
+		return fmt.Errorf("failed to store export name %q for %q: %w", name, nv, err)
+	}
+
+	nv.exportName = name
+
+	return nil
 }
 
 // CreateExport takes the (CephFS) CSI-volume and instructs Ceph Mgr to create
@@ -185,6 +217,20 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	case err == nil:
 		return nil
 	case strings.Contains(err.Error(), "Export already exists"):
+		// Only an idempotent retry if the existing export still points
+		// at this volume's subvolume path; a friendly export name isn't
+		// guaranteed unique the way a volume-ID derived one is.
+		existing, infoErr := nfsa.ExportInfo(nfsCluster, nv.GetExportPath())
+		if infoErr != nil {
+			return fmt.Errorf("export %q already exists in NFS-cluster %q, but failed to verify "+
+				"it belongs to this volume: %w", nv, nfsCluster, infoErr)
+		}
+		if existing.Path != path {
+			return fmt.Errorf("export path %q in NFS-cluster %q is already in use by a different "+
+				"volume (subvolume %q, expected %q): %w", nv.GetExportPath(), nfsCluster, existing.Path,
+				path, ErrExportNameConflict)
+		}
+
 		return nil
 	case strings.Contains(err.Error(), "rados: ret=-2"): // try with the old command
 		log.ErrorLogMsg("going to fallback to cli, "+
@@ -215,6 +261,10 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 func (nv *NFSVolume) DeleteExport() error {
 	if !nv.connected {
 		return fmt.Errorf("can not delete export for %q: not connected", nv)
+	}
+
+	if err := nv.resolveExportName(); err != nil {
+		return err
 	}
 
 	nfsCluster, err := nv.getNFSCluster()
@@ -270,6 +320,10 @@ func (nv *NFSVolume) SetClients(clients string) error {
 		return fmt.Errorf("can not set clients for %q: %w", nv, ErrNotConnected)
 	}
 
+	if err := nv.resolveExportName(); err != nil {
+		return err
+	}
+
 	nfsCluster, err := nv.getNFSCluster()
 	if err != nil {
 		return fmt.Errorf("failed to identify NFS cluster: %w", err)
@@ -302,6 +356,19 @@ func (nv *NFSVolume) SetClients(clients string) error {
 	if err != nil {
 		return fmt.Errorf("failed to update export %q with new clients: %w", nv.GetExportPath(), err)
 	}
+
+	return nil
+}
+
+// resolveExportName loads a previously persisted friendly export name
+// (SetExportName) from the CephFS journal into nv.exportName.
+func (nv *NFSVolume) resolveExportName() error {
+	name, err := nv.getAttribute(exportNameKey)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return fmt.Errorf("failed to get export name for %q: %w", nv, err)
+	}
+
+	nv.exportName = name
 
 	return nil
 }

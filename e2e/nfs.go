@@ -658,6 +658,34 @@ var _ = Describe("nfs", func() {
 			}
 		})
 
+		It("create a storageclass with friendly export names and a PVC then bind it to an app", func() {
+			err := createNFSStorageClass(f.ClientSet, f, false, map[string]string{
+				"friendlyExportNames": "true",
+			})
+			if err != nil {
+				logAndFail("failed to create NFS storageclass: %v", err)
+			}
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("Could not create PVC: 1 %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			expectedPseudoPath := fmt.Sprintf("/%s/%s", pvc.Namespace, pvc.Name)
+			if !checkExportPseudoPath(f, "my-nfs", expectedPseudoPath) {
+				logAndFail("failed to find export with friendly pseudo-path %q", expectedPseudoPath)
+			}
+
+			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete PVC: %v", err)
+			}
+		})
+
 		It("create a PVC and bind it to an app", Label("acceptance"), func() {
 			err := createNFSStorageClass(f.ClientSet, f, false, nil)
 			if err != nil {
