@@ -30,7 +30,8 @@
       - github-pull-request:
           status-url: $RUN_DISPLAY_URL
           status-context: ci/centos/jjb-validate
-          trigger-phrase: "/(re)?test ((all)|(ci/centos/jjb-validate))"
+          # yamllint disable-line rule:line-length
+          trigger-phrase: '(?s)(^|.*\n)\s*/(re)?test ((all)|(ci/centos/jjb-validate))\s*($|\n.*)'
           permit-all: true
           github-hooks: true
           white-list-target-branches:
