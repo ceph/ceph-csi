@@ -428,7 +428,7 @@ func (rbdSnap *rbdSnapshot) getRBDSnapID(ctx context.Context) (uint64, error) {
 	vol.conn = rbdSnap.conn.Copy()
 	defer vol.Destroy(ctx)
 
-	image, err := vol.open()
+	image, err := vol.openReadOnly()
 	if err != nil {
 		return 0, err
 	}

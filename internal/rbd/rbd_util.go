@@ -551,7 +551,7 @@ func (ri *rbdImage) getImageID() error {
 // For an image with an erasure-coded data pool, this returns the EC poolID.
 // For an image without a separate data pool, this returns the regular poolID.
 func (ri *rbdImage) getDataPoolID() (int64, error) {
-	image, err := ri.open()
+	image, err := ri.openReadOnly()
 	if err != nil {
 		return util.InvalidPoolID, err
 	}
@@ -1034,7 +1034,7 @@ func (ri *rbdImage) flattenRbdImage(
 }
 
 func (ri *rbdImage) getParentName() (string, error) {
-	rbdImage, err := ri.open()
+	rbdImage, err := ri.openReadOnly()
 	if err != nil {
 		return "", err
 	}
@@ -1918,7 +1918,7 @@ ErrImageNotFound if provided image is not found, and ErrSnapNotFound if
 provided snap is not found in the images snapshot list.
 */
 func (ri *rbdImage) checkSnapExists(rbdSnap *rbdSnapshot) error {
-	image, err := ri.open()
+	image, err := ri.openReadOnly()
 	if err != nil {
 		return err
 	}
@@ -2273,7 +2273,7 @@ type snapAndChildrenInfo struct {
 // listSnapAndChildren returns list of snapshot names, volume snapshot images and
 // child temp clone images. Only child images which are not in trash are returned.
 func (ri *rbdImage) listSnapAndChildren() (*snapAndChildrenInfo, error) {
-	image, err := ri.open()
+	image, err := ri.openReadOnly()
 	if err != nil {
 		return nil, err
 	}

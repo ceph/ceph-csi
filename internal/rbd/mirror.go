@@ -149,7 +149,7 @@ func (rm *rbdMirror) DisableMirroring(ctx context.Context, force bool) error {
 
 // GetMirroringInfo gets mirroring information of an image.
 func (rm *rbdMirror) GetMirroringInfo(ctx context.Context) (types.MirrorInfo, error) {
-	image, err := rm.open()
+	image, err := rm.openReadOnly()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}
@@ -283,7 +283,7 @@ func (rm *rbdMirror) Resync(ctx context.Context) error {
 
 // GetGlobalMirroringStatus get the mirroring status of an image.
 func (rm *rbdMirror) GetGlobalMirroringStatus(ctx context.Context) (types.GlobalStatus, error) {
-	image, err := rm.open()
+	image, err := rm.openReadOnly()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", rm, err)
 	}

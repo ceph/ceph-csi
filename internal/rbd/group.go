@@ -42,7 +42,7 @@ func (rv *rbdVolume) AddToGroup(ctx context.Context, vg types.VolumeGroup) error
 
 	// check if the image is already part of a group
 	// "rbd: ret=-17, File exists" is returned if the image is part of ANY group
-	image, err := rv.open()
+	image, err := rv.openReadOnly()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q: %w", rv, err)
 	}
@@ -90,7 +90,7 @@ func (rv *rbdVolume) RemoveFromGroup(ctx context.Context, vg types.VolumeGroup) 
 // belongs to. If the rbdVolume does not belong to a VolumeGroup, a
 // rbderrors.ErrGroupNotFound is returned.
 func (rv *rbdVolume) GetVolumeGroupID(ctx context.Context, resolver types.VolumeGroupResolver) (string, error) {
-	image, err := rv.open()
+	image, err := rv.openReadOnly()
 	if err != nil {
 		return "", fmt.Errorf("failed to open image %q: %w", rv, err)
 	}
