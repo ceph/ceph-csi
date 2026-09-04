@@ -66,6 +66,7 @@ func (rv *rbdVolume) HandleParentImageExistence(
 	if err != nil {
 		return fmt.Errorf("failed to get parent of image %s: %w", rv, err)
 	}
+	defer parent.Destroy(ctx)
 
 	pm, err := parent.ToMirror()
 	if err != nil {
