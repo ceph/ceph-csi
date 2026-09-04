@@ -46,6 +46,12 @@ csiConfig: []
 #     vaultPassphraseRoot: /v1/secret
 #     vaultPassphrasePath: ceph-csi/
 #     vaultCAVerify: "true"
+#     # Optional mTLS: all three values are Kubernetes Secret names in the
+#     # CSI pod namespace. The CA cert is read from the "cert" field of the
+#     # named Secret; the client cert from "cert" and the key from "key".
+#     vaultCAFromSecret: vault-ca-secret
+#     vaultClientCertFromSecret: vault-client-tls-secret
+#     vaultClientCertKeyFromSecret: vault-client-tls-secret
 encryptionKMSConfig: {}
 
 # Labels to apply to all resources
