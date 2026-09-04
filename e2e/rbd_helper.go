@@ -1267,18 +1267,11 @@ func waitForRBDImageFlattened(f *framework.Framework, poolName, imageName string
 	var errReason error
 	timeout := time.Duration(t) * time.Minute
 	err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		imgInfoStr, err := getImageInfo(f, imageName, poolName)
+		parent, hasParent, err := getRBDImageParent(f, poolName, imageName)
 		if err != nil {
 			return false, err
 		}
-
-		imgInfo := map[string]json.RawMessage{}
-		err = json.Unmarshal([]byte(imgInfoStr), &imgInfo)
-		if err != nil {
-			return false, fmt.Errorf("failed to parse rbd image info for %q: %w", imageName, err)
-		}
-		parent, ok := imgInfo["parent"]
-		if !ok || string(parent) == "null" || string(parent) == `""` {
+		if !hasParent {
 			return true, nil
 		}
 
@@ -1293,6 +1286,56 @@ func waitForRBDImageFlattened(f *framework.Framework, poolName, imageName string
 	}
 
 	return err
+}
+
+func ensureRBDImageHasParent(f *framework.Framework, poolName, imageName string, t int) error {
+	var errReason error
+	timeout := time.Duration(t) * time.Minute
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
+		_, hasParent, err := getRBDImageParent(f, poolName, imageName)
+		if err != nil {
+			return false, err
+		}
+		if !hasParent {
+			errReason = fmt.Errorf("image %q no longer has a parent", imageName)
+
+			return true, nil
+		}
+
+		return false, nil
+	})
+
+	if errReason != nil {
+		return errReason
+	}
+	if wait.Interrupted(err) {
+		return nil
+	}
+
+	return err
+}
+
+func getRBDImageParent(
+	f *framework.Framework,
+	poolName,
+	imageName string,
+) (json.RawMessage, bool, error) {
+	imgInfoStr, err := getImageInfo(f, imageName, poolName)
+	if err != nil {
+		return nil, false, err
+	}
+
+	imgInfo := map[string]json.RawMessage{}
+	err = json.Unmarshal([]byte(imgInfoStr), &imgInfo)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to parse rbd image info for %q: %w", imageName, err)
+	}
+	parent, ok := imgInfo["parent"]
+	if !ok || string(parent) == "null" || string(parent) == `""` {
+		return parent, false, nil
+	}
+
+	return parent, true, nil
 }
 
 func getRBDSnapshotImageName(namespace, snapName string) (string, error) {

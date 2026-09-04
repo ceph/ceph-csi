@@ -748,6 +748,78 @@ func TestIsReaderOnly(t *testing.T) {
 	}
 }
 
+func TestAreAllCapabilitiesReaderOnly(t *testing.T) {
+	t.Parallel()
+
+	capability := func(mode csi.VolumeCapability_AccessMode_Mode) *csi.VolumeCapability {
+		return &csi.VolumeCapability{
+			AccessMode: &csi.VolumeCapability_AccessMode{Mode: mode},
+		}
+	}
+
+	tests := []struct {
+		name string
+		caps []*csi.VolumeCapability
+		want bool
+	}{
+		{
+			name: "single node reader only",
+			caps: []*csi.VolumeCapability{
+				capability(csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY),
+			},
+			want: true,
+		},
+		{
+			name: "multi node reader only",
+			caps: []*csi.VolumeCapability{
+				capability(csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY),
+			},
+			want: true,
+		},
+		{
+			name: "all reader only",
+			caps: []*csi.VolumeCapability{
+				capability(csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY),
+				capability(csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY),
+			},
+			want: true,
+		},
+		{
+			name: "writer",
+			caps: []*csi.VolumeCapability{
+				capability(csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER),
+			},
+		},
+		{
+			name: "mixed reader and writer",
+			caps: []*csi.VolumeCapability{
+				capability(csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY),
+				capability(csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER),
+			},
+		},
+		{
+			name: "empty",
+		},
+		{
+			name: "nil capability",
+			caps: []*csi.VolumeCapability{nil},
+		},
+		{
+			name: "missing access mode",
+			caps: []*csi.VolumeCapability{{}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := AreAllCapabilitiesReaderOnly(tt.caps); got != tt.want {
+				t.Errorf("AreAllCapabilitiesReaderOnly() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 // killOnSlowGRPC tests must not run in parallel: they mutate the package-level
 // osExit variable and running them concurrently would cause a data race.
 //
