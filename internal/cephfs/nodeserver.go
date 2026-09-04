@@ -158,6 +158,15 @@ func maybeUnlockFileEncryption(
 
 	log.DebugLog(ctx, "Creating lock for the following volume ID %s", volID)
 
+	releaseLegacyLock, err := acquireLegacyEncryptionLock(ctx, volOptions, objectUUID,
+		lockName, lockCookie, lockDesc, lockDuration)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to create the legacy lock for volume ID %s: %v", volID, err)
+
+		return err
+	}
+	defer releaseLegacyLock()
+
 	ioctx, err := volOptions.GetConnection().GetIoctx(volOptions.MetadataPool)
 	if err != nil {
 		log.ErrorLog(ctx, "Failed to create ioctx: %s", err)
@@ -165,6 +174,8 @@ func maybeUnlockFileEncryption(
 		return err
 	}
 	defer ioctx.Destroy()
+
+	ioctx.SetNamespace(volOptions.RadosNamespace)
 
 	lock := iolock.NewLock(ioctx, objectUUID, lockName, lockCookie, lockDesc, lockDuration)
 	err = lock.LockExclusive(ctx)
@@ -183,6 +194,57 @@ func maybeUnlockFileEncryption(
 	}
 
 	return nil
+}
+
+// acquireLegacyEncryptionLock takes the fscrypt lock in the default RADOS
+// namespace of the metadata pool, where releases before the lock moved to the
+// volume's RADOS namespace took it.
+//
+// The returned function releases the lock and must always be called.
+//
+// TODO: remove once upgrades from releases that lock in the default RADOS
+// namespace are no longer supported.
+func acquireLegacyEncryptionLock(
+	ctx context.Context,
+	volOptions *store.VolumeOptions,
+	objectUUID, lockName, lockCookie, lockDesc string,
+	lockDuration time.Duration,
+) (func(), error) {
+	noop := func() {}
+
+	// Skip when the volume has no RADOS namespace. In that case the caller
+	// already takes its lock in the default namespace of the pool, which is
+	// exactly where the legacy lock lives, and locking the same object twice
+	// with the same cookie fails with EEXIST.
+	if volOptions.RadosNamespace == "" {
+		return noop, nil
+	}
+
+	ioctx, err := volOptions.GetConnection().GetIoctx(volOptions.MetadataPool)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ioctx in the default namespace of pool %q: %w",
+			volOptions.MetadataPool, err)
+	}
+
+	lock := iolock.NewLock(ioctx, objectUUID, lockName, lockCookie, lockDesc, lockDuration)
+	if err = lock.LockExclusive(ctx); err != nil {
+		ioctx.Destroy()
+
+		if errors.Is(err, iolock.ErrLockNotPermitted) {
+			log.DebugLog(ctx, "not allowed to lock in the default namespace of pool %q, "+
+				"skipping the legacy lock for object %s: %v",
+				volOptions.MetadataPool, objectUUID, err)
+
+			return noop, nil
+		}
+
+		return nil, err
+	}
+
+	return func() {
+		lock.Unlock(ctx)
+		ioctx.Destroy()
+	}, nil
 }
 
 // generateLockCookie generates a consistent lock cookie for the client.

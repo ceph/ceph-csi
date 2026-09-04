@@ -17,3 +17,12 @@
       ClientProfileMapping integration
 
 ## NOTE
+
+- The RADOS lock that serializes fscrypt setup for encrypted CephFS volumes
+  is now taken in the CephFS RADOS namespace instead of the default
+  namespace of the metadata pool. This applies to every deployment with
+  encrypted volumes. `cephFS.radosNamespace` defaults to `csi`, so the lock
+  moves to this namespace even when the option was never directly
+  configured. During a rolling nodeplugin upgrade the locks in the default
+  namespace and `cephFS.radosNamespace` are taken, so that pods which have
+  not been upgraded yet stay serialized against upgraded ones.
