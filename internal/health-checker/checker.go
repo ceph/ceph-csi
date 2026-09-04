@@ -18,7 +18,6 @@ package healthchecker
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -109,7 +108,7 @@ func (c *checker) isHealthy() (bool, error) {
 	case delay > (c.interval + c.timeout):
 		c.mutex.Lock()
 		c.healthy = false
-		c.err = fmt.Errorf("health-check has not responded for %f seconds", delay.Seconds())
+		c.err = errors.New("health-check has not responded for too long")
 		c.mutex.Unlock()
 	case !checked:
 		// The first health-check cycle has not completed yet.
