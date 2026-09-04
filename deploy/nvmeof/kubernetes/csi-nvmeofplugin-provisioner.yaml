@@ -92,6 +92,7 @@ spec:
             - "--extra-create-metadata=true"
             - "--immediate-topology=false"
             - "--http-endpoint=$(POD_IP):8090"
+            - "--worker-threads=1"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
