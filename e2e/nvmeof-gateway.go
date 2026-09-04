@@ -123,3 +123,26 @@ func getNVMeofGateway(c kubernetes.Interface) (string, string) {
 
 	return pods.Items[0].Name, pods.Items[0].Status.PodIP
 }
+
+// getNVMeofGatewayNetworkMask returns the pod-network CIDR of the node that
+// hosts the gateway Pod. This CIDR is used as the networkMask StorageClass
+// parameter so the nvmeof controller can scan the subnet and discover the
+// listener automatically.
+func getNVMeofGatewayNetworkMask(c kubernetes.Interface) string {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=ceph-nvmeof-gateway",
+	}
+
+	pods, err := c.CoreV1().Pods(rookNamespace).List(context.TODO(), opt)
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(pods.Items).Should(HaveLen(1))
+
+	nodeName := pods.Items[0].Spec.NodeName
+	node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(node.Spec.PodCIDR).ShouldNot(BeEmpty())
+
+	framework.Logf("gateway Pod is on node %q, using networkMask %q", nodeName, node.Spec.PodCIDR)
+
+	return node.Spec.PodCIDR
+}

@@ -95,7 +95,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		policy := v1.PersistentVolumeReclaimDelete
 
 		nvmeofStorageClass = "e2e-" + f.UniqueName + "-sc"
-		createNVMeoFStorageClass(f, nvmeofStorageClass, options, params, policy)
+		createNVMeoFStorageClass(f, nvmeofStorageClass, options, params, policy, false)
 	}, ginkgo.OncePerOrdered)
 
 	ginkgo.AfterEach(func() {
@@ -136,11 +136,20 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		rawAppPath := nvmeofExamplePath + "raw-block-pod.yaml"
 
 		ginkgo.It("create a PVC and delete it", func() {
+			// Use a dedicated StorageClass that exercises the networkMask
+			// feature instead of an explicit listener list.
+			nmSCName := "e2e-" + f.UniqueName + "-networkmask-sc"
+			nmOptions := map[string]string{}
+			nmParams := map[string]string{"pool": nvmeofPool}
+			nmPolicy := v1.PersistentVolumeReclaimDelete
+			createNVMeoFStorageClass(f, nmSCName, nmOptions, nmParams, nmPolicy, true)
+			ginkgo.DeferCleanup(deleteNVMeofStorageClass, f, nmSCName)
+
 			pvc, err := loadPVC(pvcPath)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			pvc.Namespace = f.UniqueName
-			pvc.Spec.StorageClassName = &nvmeofStorageClass
+			pvc.Spec.StorageClassName = &nmSCName
 
 			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -155,7 +164,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			err = validateServiceAccountVolumeRestriction(
 				pvcPath, appPath,
 				".rbd.csi.ceph.com/serviceaccount", nvmeofPool,
-				&nvmeofStorageClass, f)
+				&nmSCName, f)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// validate created backend rbd images
@@ -347,7 +356,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			policy := v1.PersistentVolumeReclaimDelete
 
 			ginkgo.By("Creating StorageClass for external clients (without subsystemNQN)")
-			createNVMeoFStorageClass(f, externalClientSC, options, params, policy)
+			createNVMeoFStorageClass(f, externalClientSC, options, params, policy, false)
 			defer deleteNVMeofStorageClass(f, externalClientSC)
 
 			// Step 2: Create 2 VACs with allowHostNQNs parameter

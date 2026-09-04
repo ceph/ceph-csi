@@ -231,7 +231,7 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	// Parse volume context
-	connectionInfo, err := ns.getNvmeConnection(volumeContext, req.GetPublishContext())
+	connectionInfo, err := ns.getNvmeConnection(ctx, volumeContext, req.GetPublishContext())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid volume context: %v", err)
 	}
@@ -673,7 +673,11 @@ func isNotMountPoint(mounter mount.Interface, stagingTargetPath string) (bool, e
 // getNvmeConnection extracts and validates NVMe-oF connection parameters from volume context and publish context.
 // It returns connection information including subsystem NQN, namespace details, listeners,
 // and host NQN, or an error if validation fails.
-func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string]string) (*NvmeConnectionInfo, error) {
+func (ns *NodeServer) getNvmeConnection(
+	ctx context.Context,
+	volumeContext,
+	publishContext map[string]string,
+) (*NvmeConnectionInfo, error) {
 	subsystemNQN, ok := volumeContext[nvmeofSubsystemNQN]
 	if !ok || subsystemNQN == "" {
 		return nil, errors.New("missing subsystem NQN in volume context")
@@ -694,10 +698,17 @@ func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string
 		return nil, errors.New("missing namespace UUID in volume context")
 	}
 
-	// Parse listeners from JSON
-	listenersJSON, ok := volumeContext[nvmeofListeners]
+	// Parse listeners from publish context (reconciled during ControllerPublishVolume).
+	// TODO: remove the volumeContext fallback in the next release v3.19 once all
+	// controller-plugins are guaranteed to set listeners in the publish context.
+	listenersJSON, ok := publishContext[nvmeofListeners]
 	if !ok || listenersJSON == "" {
-		return nil, errors.New("missing listeners in volume context")
+		log.WarningLog(ctx, "listeners not found in publish context, falling back to volume context"+
+			" (node-plugin version may be ahead of controller-plugin version)")
+		listenersJSON, ok = volumeContext[nvmeofListeners]
+		if !ok || listenersJSON == "" {
+			return nil, errors.New("missing listeners in both publish context and volume context")
+		}
 	}
 
 	var listeners []nvmeof.ListenerDetails
@@ -706,7 +717,7 @@ func (ns *NodeServer) getNvmeConnection(volumeContext, publishContext map[string
 	}
 
 	if len(listeners) == 0 {
-		return nil, errors.New("no listeners found in volume context")
+		return nil, errors.New("no listeners found in publish context")
 	}
 
 	hostNQN, ok := publishContext[nvmeofHostNQN]

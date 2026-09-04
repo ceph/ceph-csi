@@ -16,4 +16,13 @@
     - Backward compatibility with existing cluster-mapping.json via
       ClientProfileMapping integration
 
+1. NVMe-oF: moved the `ListListeners` query from `CreateVolume` to
+   `ControllerPublishVolume`. Listeners are now fetched live at publish
+   time and passed through the publish context to the node, so the list
+   stays accurate across gateway scale-up/scale-down events
+   (restart the test-pod is required).
+   The node server reads listeners from the publish context instead of the volume
+   context, failback to volume context for backward compatibility when node-server
+   is updated, but provisioner is not.
+
 ## NOTE
