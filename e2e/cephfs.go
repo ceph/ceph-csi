@@ -27,6 +27,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -960,6 +961,171 @@ var _ = Describe(cephfsType, func() {
 			err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 			if err != nil {
 				logAndFail("failed to delete CephFS storageclass: %v", err)
+			}
+		})
+
+		It("refreshes stale quota-backed volume usage", func() {
+			const (
+				// Kernel CephFS statfs uses 4MB (1 << 22) blocks.
+				statFSUnitBytes    int64 = 1 << 22
+				quotaUnits         int64 = 32
+				seedUnits          int64 = 3
+				growthUnits        int64 = 1
+				metricsTimeoutMins       = 3
+			)
+
+			err := createCephfsStorageClass(f.ClientSet, f, false, map[string]string{
+				"mounter": "kernel",
+			})
+			if err != nil {
+				logAndFail("failed to create CephFS storageclass: %v", err)
+			}
+			defer func() {
+				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete CephFS storageclass: %v", err)
+				}
+			}()
+
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			quotaBytes := quotaUnits * statFSUnitBytes
+			pvc.Spec.Resources.Requests[v1.ResourceStorage] = *resource.NewQuantity(quotaBytes, resource.BinarySI)
+
+			defer func() {
+				currentPVC, err := f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(
+					context.TODO(),
+					pvc.Name,
+					metav1.GetOptions{},
+				)
+				if apierrs.IsNotFound(err) {
+					return
+				}
+				if err != nil {
+					logAndFail("failed to get PVC for cleanup: %v", err)
+				}
+
+				if currentPVC.Spec.VolumeName == "" {
+					err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(
+						context.TODO(),
+						pvc.Name,
+						metav1.DeleteOptions{},
+					)
+				} else {
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				}
+				if err != nil && !apierrs.IsNotFound(err) {
+					logAndFail("failed to delete PVC: %v", err)
+				}
+			}()
+
+			err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC: %v", err)
+			}
+
+			app, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			app.Namespace = f.UniqueName
+
+			_, err = f.ClientSet.CoreV1().Pods(app.Namespace).Create(context.TODO(), app, metav1.CreateOptions{})
+			if err != nil {
+				logAndFail("failed to create application: %v", err)
+			}
+			defer func() {
+				err := deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil && !apierrs.IsNotFound(err) {
+					logAndFail("failed to delete application: %v", err)
+				}
+			}()
+
+			err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout, noError)
+			if err != nil {
+				logAndFail("failed waiting for application to run: %v", err)
+			}
+
+			mountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath
+			filePath := mountPath + "/quota-usage"
+			containerName := app.Spec.Containers[0].Name
+			writeCmd := fmt.Sprintf(
+				"dd if=/dev/zero of=%s bs=%d count=%d status=none && sync",
+				filePath,
+				statFSUnitBytes,
+				seedUnits,
+			)
+			_, stdErr, err := execCommandInContainerByPodName(
+				f,
+				writeCmd,
+				app.Namespace,
+				app.Name,
+				containerName,
+			)
+			if err != nil || stdErr != "" {
+				logAndFail("failed to seed CephFS volume usage: %v, stderr: %s", err, stdErr)
+			}
+
+			seedBytes := float64(seedUnits * statFSUnitBytes)
+			metrics, err := waitForVolumeStatsMetrics(
+				f,
+				pvc,
+				metricsTimeoutMins,
+				func(metrics map[string]float64) (bool, error) {
+					used, found := metrics["kubelet_volume_stats_used_bytes"]
+					if !found {
+						return false, nil
+					}
+
+					return used >= seedBytes, nil
+				},
+			)
+			if err != nil {
+				logAndFail("failed waiting for seeded CephFS volume usage: %v", err)
+			}
+			baseline := metrics["kubelet_volume_stats_used_bytes"]
+
+			appendCmd := fmt.Sprintf(
+				"dd if=/dev/zero bs=%d count=%d status=none >> %s && sync",
+				statFSUnitBytes,
+				growthUnits,
+				filePath,
+			)
+			_, stdErr, err = execCommandInContainerByPodName(
+				f,
+				appendCmd,
+				app.Namespace,
+				app.Name,
+				containerName,
+			)
+			if err != nil || stdErr != "" {
+				logAndFail("failed to grow CephFS volume usage: %v, stderr: %s", err, stdErr)
+			}
+
+			expectedUsage := baseline + float64(growthUnits*statFSUnitBytes)
+			_, err = waitForVolumeStatsMetrics(
+				f,
+				pvc,
+				metricsTimeoutMins,
+				func(metrics map[string]float64) (bool, error) {
+					used, found := metrics["kubelet_volume_stats_used_bytes"]
+					if !found {
+						return false, nil
+					}
+
+					return used >= expectedUsage, nil
+				},
+			)
+			if err != nil {
+				logAndFail(
+					"failed waiting for CephFS volume usage to grow from %f to %f: %v",
+					baseline,
+					expectedUsage,
+					err,
+				)
 			}
 		})
 
