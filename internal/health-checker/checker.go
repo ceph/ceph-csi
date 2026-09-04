@@ -109,7 +109,8 @@ func (c *checker) isHealthy() (bool, error) {
 	case delay > (c.interval + c.timeout):
 		c.mutex.Lock()
 		c.healthy = false
-		c.err = fmt.Errorf("health-check has not responded for %f seconds", delay.Seconds())
+		c.err = fmt.Errorf("health-check has not responded since %s (timeout: %s)",
+			lastUpdate.Format(time.RFC3339), c.interval+c.timeout)
 		c.mutex.Unlock()
 	case !checked:
 		// The first health-check cycle has not completed yet.
