@@ -1,9 +1,13 @@
 # CSI RBD Plugin
 
-> **Note:** The preferred deployment method for Kubernetes is the
-> [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator), which manages
-> driver lifecycle, upgrades, and configuration automatically. The manual steps
-> below are for advanced or non-operator deployments.
+!!! warning "DEPRECATED: Manual YAML Deployment"
+    **This deployment method is DEPRECATED and will be removed in Ceph-CSI v3.19.**
+    
+    The [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) is now the **only supported deployment method** for Kubernetes. It provides automated driver lifecycle management, upgrades, and configuration.
+    
+    **These manual YAML deployment instructions are no longer tested or supported.** Please migrate to the operator.
+    
+    See [deploy/DEPRECATION.md](../../deploy/DEPRECATION.md) for migration guidance.
 
 The RBD CSI plugin is able to provision new RBD images and
 attach and mount those to workloads.
