@@ -78,12 +78,46 @@ type VolumeGroupReplicationContentSource struct {
 	VolumeHandles []string `json:"volumeHandles"`
 }
 
+// PersistentVolumeMapping contains the PV reference along with its
+// source and destination volume handles. The destination handle is
+// populated only when the SP supports GET_REPLICATION_DESTINATION_INFO
+// and destination info is available.
+type PersistentVolumeMapping struct {
+	// Name is the name of the PersistentVolume.
+	Name string `json:"name"`
+
+	// VolumeHandle is the CSI volume handle of this PV on the
+	// source cluster (i.e. PV.Spec.CSI.VolumeHandle).
+	VolumeHandle string `json:"volumeHandle"`
+
+	// DestinationVolumeHandle is the CSI volume handle on the
+	// destination/target cluster, as reported by the SP.
+	// This field is empty when destination info is not available.
+	// +optional
+	DestinationVolumeHandle string `json:"destinationVolumeHandle,omitempty"`
+}
+
 // VolumeGroupReplicationContentStatus defines the status of VolumeGroupReplicationContent
 type VolumeGroupReplicationContentStatus struct {
 	// PersistentVolumeRefList is the list of PV for the group replication
 	// The maximum number of allowed PV in the group is 100.
+	// Deprecated: Use PersistentVolumeMappingList instead, which includes
+	// source and destination volume handle information per PV.
 	// +optional
 	PersistentVolumeRefList []corev1.LocalObjectReference `json:"persistentVolumeRefList,omitempty"`
+
+	// PersistentVolumeMappingList is the list of PVs for the group
+	// replication, enriched with source and destination volume handles.
+	// This replaces PersistentVolumeRefList. When both fields are
+	// present, consumers SHOULD prefer this field.
+	// The maximum number of allowed PVs in the group is 100.
+	// +optional
+	PersistentVolumeMappingList []PersistentVolumeMapping `json:"persistentVolumeMappingList,omitempty"`
+
+	// DestinationVolumeGroupID is the volume group ID on the
+	// destination/target side, as reported by the SP.
+	// +optional
+	DestinationVolumeGroupID string `json:"destinationVolumeGroupID,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -109,8 +143,4 @@ type VolumeGroupReplicationContentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VolumeGroupReplicationContent `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&VolumeGroupReplicationContent{}, &VolumeGroupReplicationContentList{})
 }
