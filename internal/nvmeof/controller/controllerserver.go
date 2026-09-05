@@ -805,58 +805,6 @@ func ensureSubsystem(
 	return nil
 }
 
-// cleanupEmptySubsystem checks if the subsystem is empty (no namespaces), if so,
-// first deletes the listener and then deletes it.
-func cleanupEmptySubsystem(
-	ctx context.Context,
-	gateway *nvmeof.GatewayRpcClient,
-	subsystemNQN string,
-	listeners []nvmeof.ListenerDetails,
-) error {
-	if subsystemNQN == "" {
-		return nil
-	}
-	exists, err := gateway.SubsystemExists(ctx, subsystemNQN)
-	if err != nil {
-		return err
-	}
-	if !exists { // In case the subsystem already was deleted, return no error
-		log.DebugLog(ctx, "Subsystem %s does not exists", subsystemNQN)
-
-		return nil
-	}
-	// Check if subsystem has any remaining namespaces
-	namespaces, err := gateway.ListNamespaces(ctx, subsystemNQN)
-	if err != nil {
-		return fmt.Errorf("failed to list namespaces: %w", err)
-	}
-	if len(namespaces.GetNamespaces()) != 0 {
-		log.DebugLog(ctx, "Subsystem %s still has %d namespaces, keeping",
-			subsystemNQN, len(namespaces.GetNamespaces()))
-
-		return nil
-	}
-
-	// subsystem is empty delete listener first
-	for i, listener := range listeners {
-		if err := gateway.DeleteListener(ctx, subsystemNQN, listener); err != nil {
-			// Log and continue deleting other listeners. maybe on failure in creation some listeners were not created.
-			// anyway we want to delete the empty subsystem. deleting the subsystem will delete all listeners anyway.
-			log.WarningLog(ctx, "Failed to delete listener %d (%s) for subsystem %s: %v",
-				i, listener.String(), subsystemNQN, err)
-		}
-	}
-
-	log.DebugLog(ctx, "Subsystem %s is empty, deleting", subsystemNQN)
-	err = gateway.DeleteSubsystem(ctx, subsystemNQN)
-	if err != nil {
-		return fmt.Errorf("failed to delete empty subsystem: %w", err)
-	}
-	log.DebugLog(ctx, "Empty subsystem %s deleted", subsystemNQN)
-
-	return nil
-}
-
 // createNVMeoFResources sets up the NVMe-oF resources for the given RBD volume.
 func (cs *Server) createNVMeoFResources(
 	ctx context.Context,
@@ -971,7 +919,6 @@ func (cs *Server) createNVMeoFResources(
 	return nvmeofData, nil
 }
 
-// cleanupEmptySubsystem removes the subsystem if it exists and has no namespaces.
 // This function is idempotent and safe to call even if the subsystem doesn't exist
 // or has active namespaces.
 func (cs *Server) cleanupNVMeoFResources(
@@ -1013,9 +960,20 @@ func (cs *Server) cleanupNVMeoFResources(
 		log.DebugLog(ctx, "No namespace ID found in NVMe-oF metadata, skipping namespace deletion")
 	}
 
-	// Step 3: Cleanup empty subsystem
-	if err := cleanupEmptySubsystem(ctx, gateway, nvmeofData.SubsystemNQN, nvmeofData.ListenerInfo); err != nil {
-		return fmt.Errorf("failed to cleanup empty subsystem %s: %w", nvmeofData.SubsystemNQN, err)
+	// Step 3: Delete the subsystem if empty. DeleteSubsystem treats a missing or busy subsystem as success.
+	// The gateway automatically deletes all listeners when it deletes the subsystem.
+	if err := gateway.DeleteSubsystem(ctx, nvmeofData.SubsystemNQN); err != nil {
+		if errors.Is(err, nvmeoferrors.ErrSubsystemHasNamespaces) {
+			// The subsystem is shared by other volumes. Its namespace was removed
+			// above, and the gateway will delete the subsystem and listeners after
+			// All remaining namespaces are removed!
+			log.DebugLog(ctx, "Keeping subsystem %s because it still has namespaces",
+				nvmeofData.SubsystemNQN)
+
+			return nil
+		}
+
+		return fmt.Errorf("failed to delete subsystem %s: %w", nvmeofData.SubsystemNQN, err)
 	}
 
 	return nil
