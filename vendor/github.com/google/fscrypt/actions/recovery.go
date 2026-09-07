@@ -23,6 +23,7 @@ import (
 	"os"
 	"strconv"
 
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/google/fscrypt/crypto"
@@ -91,7 +92,7 @@ func AddRecoveryPassphrase(policy *Policy, dirname string) (*crypto.Key, *Protec
 // passphrase in a different location if they actually need it.
 func WriteRecoveryInstructions(recoveryPassphrase *crypto.Key, recoveryProtector *Protector,
 	policy *Policy, path string) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL|unix.O_NOFOLLOW, 0600)
 	if err != nil {
 		return err
 	}

@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"runtime"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/google/fscrypt/cgroup"
 	"github.com/google/fscrypt/crypto"
 	"github.com/google/fscrypt/filesystem"
 	"github.com/google/fscrypt/metadata"
@@ -186,8 +188,9 @@ func getConfig() (*metadata.Config, error) {
 func getHashingCosts(target time.Duration) (*metadata.HashingCosts, error) {
 	log.Printf("Finding hashing costs that take %v\n", target)
 
-	// Start out with the minimal possible costs that use all the CPUs.
-	parallelism := int64(runtime.NumCPU())
+	// Start out with the minimal possible costs that use all the available
+	// CPUs, respecting cgroup limits when present.
+	parallelism := int64(effectiveCPUCount())
 	// golang.org/x/crypto/argon2 only supports parallelism up to 255.
 	// For compatibility, don't use more than that amount.
 	if parallelism > metadata.MaxParallelism {
@@ -248,9 +251,25 @@ func getHashingCosts(target time.Duration) (*metadata.HashingCosts, error) {
 	}
 }
 
+// effectiveCPUCount returns the number of CPUs available to this process,
+// taking cgroup limits into account. Falls back to runtime.NumCPU() when
+// cgroup information is unavailable.
+func effectiveCPUCount() int {
+	cg, err := cgroup.New()
+	if err != nil {
+		return runtime.NumCPU()
+	}
+	quota, err := cg.CPUQuota()
+	if err != nil || quota <= 0 {
+		return runtime.NumCPU()
+	}
+	cpus := int(math.Ceil(quota))
+	return min(cpus, runtime.NumCPU())
+}
+
 // memoryBytesLimit returns the maximum amount of memory we will use for
 // passphrase hashing. This will never be more than a reasonable maximum (for
-// compatibility) or an 8th the available system RAM.
+// compatibility) or an 8th the available RAM (considering cgroup limits).
 func memoryBytesLimit() int64 {
 	// The sysinfo syscall only fails if given a bad address
 	var info unix.Sysinfo_t
@@ -258,6 +277,11 @@ func memoryBytesLimit() int64 {
 	util.NeverError(err)
 
 	totalRAMBytes := int64(info.Totalram)
+	if cg, err := cgroup.New(); err == nil {
+		if cgroupMem, err := cg.MemoryLimit(); err == nil && cgroupMem > 0 {
+			totalRAMBytes = util.MinInt64(totalRAMBytes, cgroupMem)
+		}
+	}
 	return util.MinInt64(totalRAMBytes/8, maxMemoryBytes)
 }
 
