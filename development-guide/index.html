@@ -1,0 +1,1944 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Container Storage Interface (CSI) drivers for Ceph storage">
+      
+      
+        <meta name="author" content="Ceph-CSI Contributors">
+      
+      
+        <link rel="canonical" href="https://ceph.github.io/ceph-csi/development-guide/">
+      
+      
+        <link rel="prev" href="../csi-addons/disaster-recovery/">
+      
+      
+        <link rel="next" href="../coding/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Development Guide - Ceph-CSI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#development-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Ceph-CSI Documentation" class="md-header__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ceph-CSI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Development Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../capabilities/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../rbd/deploy/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ceph-csi-upgrade/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../csi-addons/disaster-recovery/" class="md-tabs__link">
+          
+  
+  
+  CSI Addons
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Ceph-CSI Documentation" class="md-nav__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ceph-CSI Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snap-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Snapshots and Clones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expand-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Expansion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../volumeattributesclass/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Attributes Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RBD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rbd/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CephFS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CephFS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cephfs/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ceph-csi-upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intree-migrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In-tree Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../resource-cleanup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CSI Addons
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CSI Addons
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../csi-addons/disaster-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#new-to-go" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New to Go
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workspace-and-repository-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace and repository setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-ceph-csi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Ceph-CSI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-ceph-csi-tests-in-a-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Ceph-CSI tests in a container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-contribution-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code contribution workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code contribution workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#certificate-of-origin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Certificate of Origin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit Messages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backport-a-fix-to-a-release-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backport a Fix to a Release Branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retriggering-the-ci-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retriggering the CI Jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retesting-failed-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retesting failed Jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coding Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#new-to-go" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New to Go
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workspace-and-repository-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace and repository setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-ceph-csi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Ceph-CSI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-ceph-csi-tests-in-a-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Ceph-CSI tests in a container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-contribution-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code contribution workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code contribution workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#certificate-of-origin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Certificate of Origin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commit-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit Messages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backport-a-fix-to-a-release-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backport a Fix to a Release Branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retriggering-the-ci-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retriggering the CI Jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retesting-failed-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retesting failed Jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="development-guide">Development Guide<a class="headerlink" href="#development-guide" title="Permanent link">&para;</a></h1>
+<h2 id="new-to-go">New to Go<a class="headerlink" href="#new-to-go" title="Permanent link">&para;</a></h2>
+<p>Ceph-csi is written in Go and if you are new to the language,
+it is <strong>highly</strong> encouraged to:</p>
+<ul>
+<li>Take the <a href="http://tour.golang.org/welcome/1">A Tour of Go</a> course.</li>
+<li><a href="https://golang.org/doc/code.html">Set up</a> Go development environment on your machine.</li>
+<li>Read <a href="https://golang.org/doc/effective_go.html">Effective Go</a> for best practices.</li>
+</ul>
+<h2 id="development-workflow">Development Workflow<a class="headerlink" href="#development-workflow" title="Permanent link">&para;</a></h2>
+<h3 id="workspace-and-repository-setup">Workspace and repository setup<a class="headerlink" href="#workspace-and-repository-setup" title="Permanent link">&para;</a></h3>
+<ul>
+<li><a href="https://golang.org/dl/">Download</a> Go (&gt;=1.17.x) and
+   <a href="https://golang.org/doc/install">install</a> it on your system.</li>
+<li>Setup the <a href="https://go.dev/doc/gopath_code">GOPATH</a>
+   environment.</li>
+<li><code>CGO_ENABLED</code> is enabled by default, if <code>CGO_ENABLED</code> is set to <code>0</code> we need
+  to set it to <code>1</code> as we need to build with go-ceph bindings.</li>
+<li><code>GO111MODULE</code> is enabled by default, if <code>GO111MODULE</code> is set to <code>off</code> we need
+  to set it to <code>on</code> as cephcsi uses go modules for dependency.</li>
+<li>Ceph-CSI uses the native Ceph libraries through the <a href="https://github.com/ceph/go-ceph">go-ceph
+   package</a>. It is required to install the
+   Ceph C headers in order to compile Ceph-CSI. The packages are called
+   <code>librados-devel</code> , <code>librbd-devel</code> and <code>libcephfs-devel</code>
+   on many Linux distributions. See the <a href="https://github.com/ceph/go-ceph#installation">go-ceph installation
+   instructions</a> for more
+   details.</li>
+<li>
+<p>Run</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">go get -d github.com/ceph/ceph-csi</span>
+</code></pre></div>
+</li>
+</ul>
+<p>This will just download the source and not build it. The downloaded source
+   will be at <code>$GOPATH/src/github.com/ceph/ceph-csi</code>
+* Fork the <a href="https://github.com/ceph/ceph-csi">ceph-csi repo</a> on Github.
+* Add your fork as a git remote:</p>
+<div class="highlight"><pre><span></span><code>```console
+git remote add fork https://github.com/&lt;your-github-username&gt;/ceph-csi
+```
+</code></pre></div>
+<ul>
+<li>Set up a pre-commit hook to catch issues locally.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">pip install pre-commit</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">pre-commit install</span>
+</code></pre></div>
+<p>See the <a href="https://pre-commit.com/#installation">pre-commit installation
+   instructions</a> for more
+   details.</p>
+<p>Pre-commit will be now be triggered next time we commit changes.
+   This will catch some trivial style nitpicks (if any),
+   which will then need resolving. Once the warnings are resolved,
+   the user will be allowed to proceed with the commit.</p>
+<blockquote>
+<p>Editors: Our favorite editor is vim with the <a href="https://github.com/fatih/vim-go">vim-go</a>
+plugin, but there are many others like <a href="https://github.com/Microsoft/vscode-go">vscode</a></p>
+</blockquote>
+<h3 id="building-ceph-csi">Building Ceph-CSI<a class="headerlink" href="#building-ceph-csi" title="Permanent link">&para;</a></h3>
+<p>To build ceph-csi locally run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">make</span>
+</code></pre></div>
+<p>To build ceph-csi in a container:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="go">make containerized-build</span>
+</code></pre></div>
+<p>The built binary will be present under <code>_output/</code> directory.</p>
+<h3 id="running-ceph-csi-tests-in-a-container">Running Ceph-CSI tests in a container<a class="headerlink" href="#running-ceph-csi-tests-in-a-container" title="Permanent link">&para;</a></h3>
+<p>Once the changes to the sources compile, it is good practise to run the tests
+that validate the style and other basics of the source code. Execute the unit
+tests (in the <code>*_test.go</code> files) and check the formatting of YAML files,
+MarkDown documents and shell scripts:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">make containerized-test</span>
+</code></pre></div>
+<p>It is also possible to run only selected tests, these are the targets in the
+<code>Makefile</code> in the root of the project. For example, run the different static
+checks with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">make containerized-test TARGET=static-check</span>
+</code></pre></div>
+<p>In addition to running tests locally, each Pull Request that is created will
+trigger Continuous Integration tests that include the <code>containerized-test</code>, but
+also additional functionality tests that are defined under the <code>e2e/</code>
+directory.</p>
+<h3 id="code-contribution-workflow">Code contribution workflow<a class="headerlink" href="#code-contribution-workflow" title="Permanent link">&para;</a></h3>
+<p>ceph-csi repository currently follows GitHub's
+[Fork &amp; Pull] (<a href="https://help.github.com/articles/about-pull-requests/">https://help.github.com/articles/about-pull-requests/</a>) workflow
+for code contributions.</p>
+<p>Please read the <a href="../coding/">coding guidelines</a> document before submitting a PR.</p>
+<h4 id="certificate-of-origin">Certificate of Origin<a class="headerlink" href="#certificate-of-origin" title="Permanent link">&para;</a></h4>
+<p>By contributing to this project you agree to the Developer Certificate of
+Origin (DCO). This document was created by the Linux Kernel community and is a
+simple statement that you, as a contributor, have the legal right to make the
+contribution. See the <a href="../DCO">DCO</a> file for details.</p>
+<p>Contributors sign-off that they adhere to these requirements by adding a
+Signed-off-by line to commit messages. For example:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>subsystem: This is my commit message
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>More details on what this commit does
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>Signed-off-by: Random J Developer &lt;random@developer.example.org&gt;
+</code></pre></div>
+<p>If you have already made a commit and forgot to include the sign-off, you can
+amend your last commit to add the sign-off with the following command, which
+can then be force pushed.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">git commit --amend -s</span>
+</code></pre></div>
+<p>We use a <a href="https://github.com/apps/dco">DCO bot</a> to enforce the DCO on each pull
+request and branch commits.</p>
+<h4 id="commit-messages">Commit Messages<a class="headerlink" href="#commit-messages" title="Permanent link">&para;</a></h4>
+<p>We follow a rough convention for commit messages that is designed to answer two
+questions: what changed and why? The subject line should feature the what and
+the body of the commit should describe the why.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>cephfs: update cephfs resize
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>use cephfs resize to resize subvolume
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>Signed-off-by: Random J Developer &lt;random@developer.example.org&gt;
+</code></pre></div>
+<p>The format can be described more formally as follows:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>&lt;component&gt;: &lt;subject of the change&gt;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>&lt;BLANK LINE&gt;
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>&lt;paragraph(s) with reason/description&gt;
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>&lt;BLANK LINE&gt;
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>&lt;signed-off-by&gt;
+</code></pre></div>
+<p>The <code>component</code> in the subject of the commit message can be one of the following:</p>
+<ul>
+<li><code>cephfs</code>: bugs or enhancements related to CephFS</li>
+<li><code>rbd</code>: bugs or enhancements related to RBD</li>
+<li><code>doc</code>: documentation updates</li>
+<li><code>util</code>: utilities shared between components use <code>cephfs</code> or <code>rbd</code> if the
+   change is only relevant for one of the type of storage</li>
+<li><code>journal</code>: any of the journaling functionalities</li>
+<li><code>helm</code>: deployment changes for the Helm charts</li>
+<li><code>deploy</code>: updates to Kubernetes templates for deploying components</li>
+<li><code>build</code>: anything related to building Ceph-CSI, the executable or container
+   images</li>
+<li><code>ci</code>: changes related to the Continuous Integration, or testing</li>
+<li><code>e2e</code>: end-to-end testing updates</li>
+<li><code>cleanup</code>: general maintenance and cleanup changes</li>
+<li><code>revert</code>: undo a commit that was merged by mistake, use of one of the other
+   components is in most cases recommended</li>
+</ul>
+<p>The first line is the subject and should be no longer than 70 characters, the
+second line is always blank, and other lines should be wrapped at 80 characters.
+This allows the message to be easier to read on GitHub as well as in various
+git tools.</p>
+<p>Here is a short guide on how to work on a new patch.  In this example, we will
+work on a patch called <em>hellopatch</em>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">git checkout devel</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="go">git pull</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="go">git checkout -b hellopatch</span>
+</code></pre></div>
+<p>Do your work here and commit.</p>
+<p>Run the test suite, which includes linting checks, static code check, and unit
+tests:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="go">make test</span>
+</code></pre></div>
+<p>Certain unit tests may require extended permissions or other external resources
+that are not available by default. To run these tests as well, export the
+environment variable <code>CEPH_CSI_RUN_ALL_TESTS=1</code> before running the tests.</p>
+<p>You will need to provide unit tests and functional tests for your changes
+wherever applicable.</p>
+<p>Once you are ready to push, you will type the following:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="go">git push fork hellopatch</span>
+</code></pre></div>
+<p><strong>Creating A Pull Request:</strong>
+When you are satisfied with your changes, you will then need to go to your repo
+in GitHub.com and create a pull request for your branch. Automated tests will
+be run against the pull request. Your pull request will be reviewed and merged.</p>
+<p>If you are planning on making a large set of changes or a major architectural
+change it is often desirable to first build a consensus in an issue discussion
+and/or create an initial design doc PR. Once the design has been agreed upon
+one or more PRs implementing the plan can be made.</p>
+<p>Pull requests get labelled by maintainers of the repository. Labels help
+reviewers with selecting the pull requests of interest based on components:</p>
+<ul>
+<li>component/build: Issues and PRs related to compiling Ceph-CSI</li>
+<li>component/cephfs: Issues related to CephFS</li>
+<li>component/deployment: Helm chart, kubernetes templates and configuration Issues/PRs</li>
+<li>component/docs: Issues and PRs related to documentation</li>
+<li>component/journal: This PR has a change in volume journal</li>
+<li>component/rbd: Issues related to RBD</li>
+<li>component/testing: Additional test cases or CI work</li>
+<li>component/util: Utility functions shared between CephFS and RBD</li>
+</ul>
+<p>There are other labels as well, to indicate dependencies between projects:</p>
+<ul>
+<li>dependency/ceph: depends on core Ceph functionality</li>
+<li>dependency/go-ceph: depends on go-ceph functionality</li>
+<li>dependency/k8s: depends on Kubernetes features</li>
+<li>dependency/rook: depends on, or requires changes in Rook</li>
+<li>rebase: update the version of an external component</li>
+</ul>
+<p>A few labels interact with automation around the pull requests:</p>
+<ul>
+<li>ready-to-merge: This PR is ready to be merged and it doesn't need second review</li>
+<li>DNM: DO NOT MERGE (Mergify will not merge this PR)</li>
+<li>ci/skip/e2e: skip running e2e CI jobs</li>
+<li>ci/skip/multi-arch-build: skip building container images for different architectures</li>
+<li>ok-to-test: PR is ready for e2e testing.</li>
+</ul>
+<p><strong>Review Process:</strong>
+Once your PR has been submitted for review the following criteria will
+need to be met before it will be merged:</p>
+<ul>
+<li>Each PR needs reviews accepting the change from at least two developers for merging.</li>
+<li>Each PR needs approval from
+  <a href="https://github.com/orgs/ceph/teams/ceph-csi-contributors">ceph-csi-contributors</a>
+  and
+  <a href="https://github.com/orgs/ceph/teams/ceph-csi-maintainers">ceph-csi-maintainers</a>.</li>
+<li>It is common to request reviews from those reviewers automatically suggested
+  by GitHub.</li>
+<li>Each PR needs to have been open for at least 24 working hours to allow for
+  community feedback.</li>
+<li>The 24 working hours counts hours occurring Mon-Fri in the local timezone
+  of the submitter.</li>
+<li>ceph-csi-maintainers/ceph-csi-contributors can add <code>ok-to-test</code> label to the
+  pull request when they think it is ready for e2e testing. This is done to avoid
+  load on the CI.</li>
+<li>Each PR must be fully updated to devel and tests must have passed</li>
+<li>If the PR is having trivial changes or the reviewer is confident enough that
+  PR doesn't need a second review, the reviewer can set <code>ready-to-merge</code> label
+  on the PR. The bot will merge the PR if it's having one approval and the
+  label <code>ready-to-merge</code>.</li>
+</ul>
+<p>When the criteria are met, a project maintainer can instruct the automation to
+queue the PR for merging by commenting <code>/queue</code> on the pull request.</p>
+<p>The <code>/queue</code> command adds the <code>queued/rebase</code> label, asks Mergify to rebase the
+pull request on the latest HEAD of the branch, and after the rebase push adds
+the <code>ok-to-test</code> label so e2e testing can start before the PR is queued for
+merging.</p>
+<h3 id="backport-a-fix-to-a-release-branch">Backport a Fix to a Release Branch<a class="headerlink" href="#backport-a-fix-to-a-release-branch" title="Permanent link">&para;</a></h3>
+<p>The flow for getting a fix into a release branch is:</p>
+<ol>
+<li>Open a PR to merge the changes to devel following the process outlined above.</li>
+<li>Add the backport label to that PR such as <code>backport-to-release-vX.Y.Z</code></li>
+<li>After your PR is merged to devel, the mergify bot will automatically open a
+   PR with your commits backported to the release branch</li>
+<li>If there are any conflicts you will need to resolve them by pulling the
+   branch, resolving the conflicts and force push back the branch</li>
+<li>After the CI is green, the bot will automatically merge the backport PR.</li>
+</ol>
+<h3 id="retriggering-the-ci-jobs">Retriggering the CI Jobs<a class="headerlink" href="#retriggering-the-ci-jobs" title="Permanent link">&para;</a></h3>
+<p>The CI Jobs gets triggered automatically on these events, such as on
+opening fresh PRs, rebase of PRs and force pushing changes to existing PRs.</p>
+<p>Right now, we also have below commands to manually retrigger the CI jobs</p>
+<ol>
+<li>To retrigger a specific CI job, comment the PR with command: <code>/retest &lt;job-name&gt;</code></li>
+</ol>
+<p>example:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>/retest ci/centos/containerized-tests
+</code></pre></div>
+<p><strong>Caution</strong>: Please do not retrigger the CI jobs without an understanding of
+             the root cause, because:</p>
+<ul>
+<li>We may miss some important corner cases which are true negatives,
+  and hard to reproduce</li>
+<li>Retriggering jobs for known failures can unnecessarily put CI resources
+  under pressure</li>
+</ul>
+<p>Hence, it is recommended that you please go through the CI logs first, if you
+are certain about the flaky test failure behavior, then comment on the PR
+indicating the logs about a particular test that went flaky and use the
+appropriate command to retrigger the job[s].
+If you are uncertain about the CI failure, we prefer that you ping us on
+<a href="https://ceph-storage.slack.com">Slack channel #ceph-csi</a> with more details on
+failures before retriggering the jobs, we will be happy to help.</p>
+<h3 id="retesting-failed-jobs">Retesting failed Jobs<a class="headerlink" href="#retesting-failed-jobs" title="Permanent link">&para;</a></h3>
+<p>The CI Jobs gets triggered automatically on these events, such as on opening
+fresh PRs, rebase of PRs and force pushing changes to existing PRs.</p>
+<p>In case of failed we already documented steps  to manually
+<a href="#retriggering-the-ci-jobs">retrigger</a> the CI jobs. Sometime the tests might be
+flaky which required manually retriggering always. We have newly added a github
+action which runs periodically to retest the failed PR's. Below are the criteria
+for auto retesting the failed PR.</p>
+<ul>
+<li>Analyze the logs and make sure its a flaky test.</li>
+<li>Pull Request should have required approvals.</li>
+<li><code>ci/retest/e2e</code> label should be set on the PR.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

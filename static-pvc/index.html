@@ -1,0 +1,2106 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Container Storage Interface (CSI) drivers for Ceph storage">
+      
+      
+        <meta name="author" content="Ceph-CSI Contributors">
+      
+      
+        <link rel="canonical" href="https://ceph.github.io/ceph-csi/static-pvc/">
+      
+      
+        <link rel="prev" href="../expand-pvc/">
+      
+      
+        <link rel="next" href="../volumeattributesclass/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Static PVC - Ceph-CSI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#static-pvc-with-ceph-csi" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Ceph-CSI Documentation" class="md-header__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ceph-CSI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Static PVC
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../capabilities/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../rbd/deploy/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ceph-csi-upgrade/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../csi-addons/disaster-recovery/" class="md-tabs__link">
+          
+  
+  
+  CSI Addons
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development-guide/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Ceph-CSI Documentation" class="md-nav__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ceph-CSI Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snap-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Snapshots and Clones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../expand-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Expansion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rbd-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBD static PVC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RBD static PVC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-rbd-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create RBD image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-rbd-static-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create RBD static PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbd-volume-attributes-in-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBD Volume Attributes in PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-rbd-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create RBD static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resize-rbd-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resize RBD image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-rbd-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify RBD static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cephfs-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CephFS static PVC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CephFS static PVC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-cephfs-subvolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create CephFS subvolume
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-cephfs-static-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create CephFS static PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#node-stage-secret-ref-in-cephfs-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node stage secret ref in CephFS PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cephfs-volume-attributes-in-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CephFS volume attributes in PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-cephfs-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create CephFS static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-cephfs-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify CephFS static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../volumeattributesclass/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Attributes Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RBD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rbd/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CephFS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CephFS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cephfs/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ceph-csi-upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intree-migrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In-tree Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../resource-cleanup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CSI Addons
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CSI Addons
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../csi-addons/disaster-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coding Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rbd-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBD static PVC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RBD static PVC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-rbd-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create RBD image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-rbd-static-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create RBD static PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbd-volume-attributes-in-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBD Volume Attributes in PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-rbd-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create RBD static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resize-rbd-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resize RBD image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-rbd-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify RBD static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cephfs-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CephFS static PVC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CephFS static PVC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-cephfs-subvolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create CephFS subvolume
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-cephfs-static-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create CephFS static PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#node-stage-secret-ref-in-cephfs-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node stage secret ref in CephFS PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cephfs-volume-attributes-in-pv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CephFS volume attributes in PV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-cephfs-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create CephFS static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-cephfs-static-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify CephFS static PVC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="static-pvc-with-ceph-csi">Static PVC with ceph-csi<a class="headerlink" href="#static-pvc-with-ceph-csi" title="Permanent link">&para;</a></h1>
+<ul>
+<li><a href="#static-pvc-with-ceph-csi">Static PVC with ceph-csi</a></li>
+<li><a href="#rbd-static-pvc">RBD static PVC</a><ul>
+<li><a href="#create-rbd-image">Create RBD image</a></li>
+<li><a href="#create-rbd-static-pv">Create RBD static PV</a></li>
+<li><a href="#rbd-volume-attributes-in-pv">RBD Volume Attributes in PV</a></li>
+<li><a href="#create-rbd-static-pvc">Create RBD static PVC</a></li>
+<li><a href="#resize-rbd-image">Resize RBD image</a></li>
+<li><a href="#verify-rbd-static-pvc">Verify RBD static PVC</a></li>
+</ul>
+</li>
+<li><a href="#cephfs-static-pvc">CephFS static PVC</a><ul>
+<li><a href="#create-cephfs-subvolume">Create CephFS subvolume</a></li>
+<li><a href="#create-cephfs-static-pv">Create CephFS static PV</a></li>
+<li><a href="#node-stage-secret-ref-in-cephfs-pv">Node stage secret ref in CephFS PV</a></li>
+<li><a href="#cephfs-volume-attributes-in-pv">CephFS volume attributes in PV</a></li>
+<li><a href="#create-cephfs-static-pvc">Create CephFS static PVC</a></li>
+<li><a href="#verify-cephfs-static-pvc">Verify CephFS static PVC</a></li>
+</ul>
+</li>
+</ul>
+<p>This document outlines how to create static PV and static PVC from
+existing RBD image or CephFS volume.</p>
+<blockquote>
+<p>[!warning]
+static PVC can be created, deleted, mounted and unmounted but
+currently ceph-csi doesn't support other operations like snapshot, clone,
+resize, encryption etc for static PVC</p>
+</blockquote>
+<h2 id="rbd-static-pvc">RBD static PVC<a class="headerlink" href="#rbd-static-pvc" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>[!warning]
+Features that require ceph-csi to manage the volume lifecycle are not
+supported for static RBD PVC</p>
+</blockquote>
+<p>RBD images created manually can be mounted and unmounted to an app, below step
+shows how to create a RBD image, static PV, static PVC</p>
+<h3 id="create-rbd-image">Create RBD image<a class="headerlink" href="#create-rbd-image" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>[!tip]
+If you already have a RBD image created and contains some data which you want
+to access by the application pod you can skip this step.</p>
+</blockquote>
+<p>Let's create a new RBD image in ceph cluster which we are going to use for
+static PVC</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">rbd create static-image --size=1024 --pool=replicapool</span>
+</code></pre></div>
+<h3 id="create-rbd-static-pv">Create RBD static PV<a class="headerlink" href="#create-rbd-static-pv" title="Permanent link">&para;</a></h3>
+<p>To create the RBD PV you need to know the <code>rbd image name</code>,<code>clusterID</code> and
+<code>pool</code> name in which the RBD image is created</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolume</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs-static-pv</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteOnce</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">capacity</span><span class="p">:</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1Gi</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nt">csi</span><span class="p">:</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nt">driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rbd.csi.ceph.com</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="nt">fsType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ext4</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="nt">nodeStageSecretRef</span><span class="p">:</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">      </span><span class="c1"># node stage secret name</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-rbd-secret</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="c1"># node stage secret namespace where above secret is created</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="nt">volumeAttributes</span><span class="p">:</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">      </span><span class="c1"># Required options from storageclass parameters need to be added in volumeAttributes</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">      </span><span class="s">"clusterID"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"ba68226a-672f-4ba5-97bc-22840318b2ec"</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">      </span><span class="s">"pool"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"replicapool"</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">      </span><span class="s">"staticVolume"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"true"</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">      </span><span class="s">"imageFeatures"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"layering"</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">      </span><span class="c1">#mounter: rbd-nbd</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">    </span><span class="c1"># volumeHandle should be same as rbd image name</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">    </span><span class="nt">volumeHandle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">static-image</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">  </span><span class="nt">persistentVolumeReclaimPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Retain</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">  </span><span class="c1"># The volumeMode can be either `Filesystem` or `Block` if you are creating Filesystem PVC it should be `Filesystem`, if you are creating Block PV you need to change it to `Block`</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">  </span><span class="nt">volumeMode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Filesystem</span>
+</code></pre></div>
+<blockquote>
+<p>[!note]
+<code>controllerPublishSecretRef</code> must not be specified for static RBD PVs.</p>
+</blockquote>
+<h3 id="rbd-volume-attributes-in-pv">RBD Volume Attributes in PV<a class="headerlink" href="#rbd-volume-attributes-in-pv" title="Permanent link">&para;</a></h3>
+<p>Below table explains the list of volume attributes can be set when creating a
+static RBD PV</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Attributes</th>
+<th style="text-align: center;">Description</th>
+<th style="text-align: center;">Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">clusterID</td>
+<td style="text-align: center;">The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment)</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: center;">pool</td>
+<td style="text-align: center;">The pool name in which RBD image is created</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: center;">staticVolume</td>
+<td style="text-align: center;">Value must be set to <code>true</code> to mount and unmount static RBD PVC</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: center;">imageFeatures</td>
+<td style="text-align: center;">CSI RBD currently supports <code>layering, journaling, exclusive-lock</code> features. If <code>journaling</code> is enabled, must enable <code>exclusive-lock</code> too</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: center;">mounter</td>
+<td style="text-align: center;">If set to <code>rbd-nbd</code>, use <code>rbd-nbd</code> on nodes that have <code>rbd-nbd</code> and <code>nbd</code> kernel modules to map RBD images</td>
+<td style="text-align: center;">No</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!note]
+ceph-csi does not supports RBD image deletion for static PV.
+<code>persistentVolumeReclaimPolicy</code> in PV spec must be set to <code>Retain</code> to avoid PV
+delete attempt in csi-provisioner.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>fs-static-pv.yaml
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>persistentvolume/fs-static-pv<span class="w"> </span>created
+</code></pre></div>
+<h3 id="create-rbd-static-pvc">Create RBD static PVC<a class="headerlink" href="#create-rbd-static-pvc" title="Permanent link">&para;</a></h3>
+<p>To create the RBD PVC you need to know the PV name which is created above</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs-static-pvc</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="s">""</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="c1"># ReadWriteMany is only supported for Block PVC</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteOnce</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">  </span><span class="nt">resources</span><span class="p">:</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1Gi</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">  </span><span class="c1"># The volumeMode can be either `Filesystem` or `Block` if you are creating Filesystem PVC it should be `Filesystem`, if you are creating Block PV you need to change it to `Block`</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">  </span><span class="nt">volumeMode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Filesystem</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">  </span><span class="c1"># volumeName should be same as PV name</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">  </span><span class="nt">volumeName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs-static-pv</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>fs-static-pvc.yaml
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>persistentvolumeclaim/fs-static-pvc<span class="w"> </span>created
+</code></pre></div>
+<h3 id="resize-rbd-image">Resize RBD image<a class="headerlink" href="#resize-rbd-image" title="Permanent link">&para;</a></h3>
+<p>Let us resize the RBD image in ceph cluster</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">rbd resize static-image --size=2048 --pool=replicapool</span>
+</code></pre></div>
+<p>Once the RBD image is resized in the ceph cluster, update the PV size and PVC
+size to match the size of the RBD image.</p>
+<p>Now scale down the application pod which is using <code>cephfs-static-pvc</code> and scale
+up the application pod to resize the filesystem.</p>
+<blockquote>
+<p>[!note]
+If you have mounted same static PVC to multiple application pods, make
+sure you will scale down all the application pods and make sure no application
+pods using the static PVC is running on the node and scale up all the
+application pods again(this will trigger <code>NodeStageVolumeRequest</code> which will
+resize the filesystem for static volume).</p>
+</blockquote>
+<h3 id="verify-rbd-static-pvc">Verify RBD static PVC<a class="headerlink" href="#verify-rbd-static-pvc" title="Permanent link">&para;</a></h3>
+<p>We can verify the RBD static PVC by creating a Pod that mounts the PVC.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pod</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rbd-static-pvc-test</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">busybox</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">      </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">busybox:latest</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">      </span><span class="nt">volumeMounts</span><span class="p">:</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">static-pvc</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">          </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/pvc</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"sleep"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"3600"</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">  </span><span class="nt">volumes</span><span class="p">:</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">static-pvc</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">      </span><span class="nt">persistentVolumeClaim</span><span class="p">:</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">        </span><span class="nt">claimName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs-static-pvc</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>rbd-static-pvc-test.yaml
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>pod/rbd-static-pvc-test<span class="w"> </span>created
+</code></pre></div>
+<p>Verify that the PVC has been successfully mounted.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>rbd-static-pvc-test<span class="w"> </span>--<span class="w"> </span>df<span class="w"> </span>-h<span class="w"> </span>/data/pvc
+</code></pre></div>
+<p>Once you have completed the verification step, you can delete the test Pod for RBD.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>rbd-static-pvc-test
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>pod<span class="w"> </span><span class="s2">"rbd-static-pvc-test"</span><span class="w"> </span>deleted
+</code></pre></div>
+<blockquote>
+<p>[!note]
+deleting PV and PVC does not removed the backend RBD image, user need to
+manually delete the RBD image if required</p>
+</blockquote>
+<h2 id="cephfs-static-pvc">CephFS static PVC<a class="headerlink" href="#cephfs-static-pvc" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>[!warning]
+Features that require ceph-csi to manage the volume lifecycle are not
+supported for static CephFS PVC</p>
+</blockquote>
+<p>CephFS subvolume or volume created manually can be mounted and unmounted
+to an app, below steps show how to create a CephFS subvolume or volume,
+static PV and static PVC.</p>
+<h3 id="create-cephfs-subvolume">Create CephFS subvolume<a class="headerlink" href="#create-cephfs-subvolume" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>[!tip]
+If you already have a CephFS subvolume or volume created and contains some data
+which you want to access by the application pod, you can skip this step.</p>
+</blockquote>
+<p>Let's create a new CephFS subvolume of size 1 GiB in ceph cluster which
+we are going to use for static PVC, before that we need to create
+the subvolumegroup. <strong>myfs</strong> is the filesystem name(volume name) inside
+which subvolume should be created.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="go">ceph fs subvolumegroup create myfs testGroup</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">ceph fs subvolume create myfs testSubVolume testGroup --size=1073741824</span>
+</code></pre></div>
+<blockquote>
+<p>[!note]
+volume here refers to the filesystem.</p>
+</blockquote>
+<h3 id="create-cephfs-static-pv">Create CephFS static PV<a class="headerlink" href="#create-cephfs-static-pv" title="Permanent link">&para;</a></h3>
+<p>To create the CephFS PV you need to know the <code>volume rootpath</code>, and <code>clusterID</code>,
+here is the command to get the root path of subvolume in ceph cluster</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$<span class="w"> </span>ceph<span class="w"> </span>fs<span class="w"> </span>subvolume<span class="w"> </span>getpath<span class="w"> </span>myfs<span class="w"> </span>testSubVolume<span class="w"> </span>testGroup
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>/volumes/testGroup/testSubVolume
+</code></pre></div>
+<p>For volume, you can directly use the folder path relative to the
+filesystem as the <code>rootpath</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolume</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs-static-pv</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteMany</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="w">  </span><span class="nt">capacity</span><span class="p">:</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">    </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1Gi</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="w">  </span><span class="nt">csi</span><span class="p">:</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="w">    </span><span class="nt">driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs.csi.ceph.com</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="w">    </span><span class="nt">nodeStageSecretRef</span><span class="p">:</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="w">      </span><span class="c1"># node stage secret name</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-cephfs-secret</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="w">      </span><span class="c1"># node stage secret namespace where above secret is created</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a><span class="w">    </span><span class="nt">volumeAttributes</span><span class="p">:</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a><span class="w">      </span><span class="c1"># Required: CephFS filesystem name to be mounted</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="w">      </span><span class="s">"fsName"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"myfs"</span>
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="w">      </span><span class="c1"># Required options from storageclass parameters need to be added in volumeAttributes</span>
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a><span class="w">      </span><span class="s">"clusterID"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"ba68226a-672f-4ba5-97bc-22840318b2ec"</span>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a><span class="w">      </span><span class="s">"staticVolume"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">"true"</span>
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a><span class="w">      </span><span class="s">"rootPath"</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/volumes/testGroup/testSubVolume</span>
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a><span class="w">    </span><span class="c1"># volumeHandle can be anything, need not to be same</span>
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a><span class="w">    </span><span class="c1"># as PV name or volume name. keeping same for brevity</span>
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a><span class="w">    </span><span class="nt">volumeHandle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs-static-pv</span>
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a><span class="w">  </span><span class="nt">persistentVolumeReclaimPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Retain</span>
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a><span class="w">  </span><span class="nt">volumeMode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Filesystem</span>
+</code></pre></div>
+<blockquote>
+<p>[!note]
+<code>controllerPublishSecretRef</code> must not be specified for static CephFS PVs.</p>
+</blockquote>
+<h3 id="node-stage-secret-ref-in-cephfs-pv">Node stage secret ref in CephFS PV<a class="headerlink" href="#node-stage-secret-ref-in-cephfs-pv" title="Permanent link">&para;</a></h3>
+<p>For static CephFS PV to work, userID and userKey needs to be specified in the
+secret. Static PV will not work with adminID and adminKey.
+Format for the secret should be same as detailed <a href="https://github.com/ceph/ceph-csi/blob/3e656769b71a3c43d95f6875ed4934c82a8046e7/examples/cephfs/secret.yaml#L7-L10">here</a>.</p>
+<h3 id="cephfs-volume-attributes-in-pv">CephFS volume attributes in PV<a class="headerlink" href="#cephfs-volume-attributes-in-pv" title="Permanent link">&para;</a></h3>
+<p>Below table explains the list of volume attributes can be set when creating a
+static CephFS PV</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Attributes</th>
+<th style="text-align: center;">Description</th>
+<th style="text-align: center;">Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">clusterID</td>
+<td style="text-align: center;">The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment)</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: center;">fsName</td>
+<td style="text-align: center;">CephFS filesystem name to be mounted</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: center;">staticVolume</td>
+<td style="text-align: center;">Value must be set to <code>true</code> to mount and unmount static cephFS PVC</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+<tr>
+<td style="text-align: center;">rootPath</td>
+<td style="text-align: center;">Actual path of the subvolume in ceph cluster which can be retrieved by issuing getpath command as described above, or folder path of the volume</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note</strong> ceph-csi does not supports CephFS subvolume deletion for static PV.
+<code>persistentVolumeReclaimPolicy</code> in PV spec must be set to <code>Retain</code> to avoid PV
+delete attempt in csi-provisioner.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>cephfs-static-pv.yaml
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>persistentvolume/cephfs-static-pv<span class="w"> </span>created
+</code></pre></div>
+<h3 id="create-cephfs-static-pvc">Create CephFS static PVC<a class="headerlink" href="#create-cephfs-static-pvc" title="Permanent link">&para;</a></h3>
+<p>To create the CephFS PVC you need to know the PV name which is created above</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs-static-pvc</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteMany</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">  </span><span class="nt">resources</span><span class="p">:</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1Gi</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="s">""</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="w">  </span><span class="nt">volumeMode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Filesystem</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="w">  </span><span class="c1"># volumeName should be same as PV name</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="w">  </span><span class="nt">volumeName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs-static-pv</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>cephfs-static-pvc.yaml
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>persistentvolumeclaim/cephfs-static-pvc<span class="w"> </span>created
+</code></pre></div>
+<h3 id="verify-cephfs-static-pvc">Verify CephFS static PVC<a class="headerlink" href="#verify-cephfs-static-pvc" title="Permanent link">&para;</a></h3>
+<p>We can verify the CephFS static PVC by creating a Pod that mounts the PVC.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pod</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs-static-pvc-test</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">busybox</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="w">      </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">busybox:latest</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="w">      </span><span class="nt">volumeMounts</span><span class="p">:</span>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">static-pvc</span>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="w">          </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/pvc</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"sleep"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"3600"</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a><span class="w">  </span><span class="nt">volumes</span><span class="p">:</span>
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">static-pvc</span>
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a><span class="w">      </span><span class="nt">persistentVolumeClaim</span><span class="p">:</span>
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a><span class="w">        </span><span class="nt">claimName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cephfs-static-pvc</span>
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a><span class="w">        </span><span class="nt">readOnly</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>cephfs-static-pvc-test.yaml
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>pod/cephfs-static-pvc-test<span class="w"> </span>created
+</code></pre></div>
+<p>Verify that the PVC has been successfully mounted.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>cephfs-static-pvc-test<span class="w"> </span>--<span class="w"> </span>df<span class="w"> </span>-h<span class="w"> </span>/data/pvc
+</code></pre></div>
+<p>Once you have completed the verification step, you can delete the test Pod for CephFS.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>$<span class="w"> </span>kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>cephfs-static-pvc-test
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>pod<span class="w"> </span><span class="s2">"cephfs-static-pvc-test"</span><span class="w"> </span>deleted
+</code></pre></div>
+<blockquote>
+<p>[!note]
+deleting PV and PVC does not delete the backend CephFS subvolume or volume,
+user needs to manually delete the CephFS subvolume or volume if required.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

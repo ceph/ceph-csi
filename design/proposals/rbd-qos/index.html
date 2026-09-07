@@ -1,0 +1,1755 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Container Storage Interface (CSI) drivers for Ceph storage">
+      
+      
+        <meta name="author" content="Ceph-CSI Contributors">
+      
+      
+        <link rel="canonical" href="https://ceph.github.io/ceph-csi/design/proposals/rbd-qos/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Design Doc for RBD QoS using cgroup v2 - Ceph-CSI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design-doc-for-rbd-qos-using-cgroup-v2" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Ceph-CSI Documentation" class="md-header__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ceph-CSI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Design Doc for RBD QoS using cgroup v2
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../capabilities/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../rbd/deploy/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../ceph-csi-upgrade/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../csi-addons/disaster-recovery/" class="md-tabs__link">
+          
+  
+  
+  CSI Addons
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../development-guide/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Ceph-CSI Documentation" class="md-nav__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ceph-CSI Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../snap-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Snapshots and Clones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../expand-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Expansion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../static-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../volumeattributesclass/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Attributes Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RBD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rbd/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CephFS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CephFS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../cephfs/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ceph-csi-upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../intree-migrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In-tree Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../resource-cleanup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CSI Addons
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CSI Addons
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../csi-addons/disaster-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../coding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coding Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introduction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-steps-for-implementing-rbd-qos-in-a-kubernetes-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual steps for implementing RBD QoS in a Kubernetes Cluster
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Approach
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementation Approach">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#qos-using-volumeattributeclass-with-nodepublish-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QoS using VolumeAttributeClass with NodePublish Secret
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QoS using VolumeAttributeClass with NodePublish Secret">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implementation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pod-level-qos-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pod-Level QoS Application
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pod-Level QoS Application">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-design-decision-pod-level-iomax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Design Decision: Pod-Level io.max
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-path-construction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example path construction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secret-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advantages-of-this-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advantages of this Approach
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="design-doc-for-rbd-qos-using-cgroup-v2">Design Doc for RBD QoS using cgroup v2<a class="headerlink" href="#design-doc-for-rbd-qos-using-cgroup-v2" title="Permanent link">&para;</a></h1>
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
+<p>The RBD QoS (Quality of Service) design aims to address the issue of IO noisy
+neighbor problems encountered in early Ceph deployments catering to OpenStack
+environments. These problems were effectively managed by implementing QEMU
+throttling at the virtio-blk/scsi level. To further enhance this,
+capacity-based IOPS were introduced, providing a more dynamic experience
+similar to public cloud environments.</p>
+<p>The challenge arises in virtual environments, where a noisy neighbor can lead
+to performance degradation for other instances sharing the same resources.
+Although it's uncommon to observe noisy neighbor issues in Kubernetes
+environments backed by Ceph storage, the possibility exists. The existing QoS
+support with rbd-nbd doesn't apply to krbd, and as rbd-nbd isn't suitable for
+container production workloads, a solution is needed for krbd.</p>
+<p>To mitigate resource starvation issues, setting QoS at the device level through
+cgroup v2 when enabled becomes crucial. This approach guarantees that I/O
+capacity isn't overcommitted and is fairly distributed among workloads.</p>
+<h2 id="dependency">Dependency<a class="headerlink" href="#dependency" title="Permanent link">&para;</a></h2>
+<ul>
+<li>cgroup v2 must be enabled on the Node</li>
+<li>We might have Kubernetes dependency as well</li>
+<li>Container runtime dependency that supports cgroupv2</li>
+</ul>
+<h2 id="manual-steps-for-implementing-rbd-qos-in-a-kubernetes-cluster">Manual steps for implementing RBD QoS in a Kubernetes Cluster<a class="headerlink" href="#manual-steps-for-implementing-rbd-qos-in-a-kubernetes-cluster" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="o">[</span>$<span class="o">]</span><span class="w"> </span>ssh<span class="w"> </span>root@node1
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sh-4.4#<span class="w"> </span>chroot<span class="w"> </span>/host
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>sh-5.1#<span class="w"> </span>cat<span class="w"> </span>/proc/partitions
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>major<span class="w"> </span>minor<span class="w">  </span><span class="c1">#blocks  name</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w"> </span><span class="m">259</span><span class="w">        </span><span class="m">0</span><span class="w">  </span><span class="m">125829120</span><span class="w"> </span>nvme0n1
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w"> </span><span class="m">259</span><span class="w">        </span><span class="m">1</span><span class="w">       </span><span class="m">1024</span><span class="w"> </span>nvme0n1p1
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w"> </span><span class="m">259</span><span class="w">        </span><span class="m">2</span><span class="w">     </span><span class="m">130048</span><span class="w"> </span>nvme0n1p2
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w"> </span><span class="m">259</span><span class="w">        </span><span class="m">3</span><span class="w">     </span><span class="m">393216</span><span class="w"> </span>nvme0n1p3
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w"> </span><span class="m">259</span><span class="w">        </span><span class="m">4</span><span class="w">  </span><span class="m">125303791</span><span class="w"> </span>nvme0n1p4
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w"> </span><span class="m">259</span><span class="w">        </span><span class="m">6</span><span class="w">   </span><span class="m">52428800</span><span class="w"> </span>nvme2n1
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">   </span><span class="m">7</span><span class="w">        </span><span class="m">0</span><span class="w">  </span><span class="m">536870912</span><span class="w"> </span>loop0
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w"> </span><span class="m">259</span><span class="w">        </span><span class="m">5</span><span class="w">  </span><span class="m">536870912</span><span class="w"> </span>nvme1n1
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w"> </span><span class="m">252</span><span class="w">        </span><span class="m">0</span><span class="w">   </span><span class="m">52428800</span><span class="w"> </span>rbd0
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>sh-5.1#
+</code></pre></div>
+<p>Once the rbd device is mapped on the node we get the device's major and minor
+number we need to set the io limit on the device but we need to find the right
+cgroup file where we need to set the limit</p>
+<p>Kubernetes/Openshift creates a custom cgroup hierarchy for the pods it created
+but start is <code>/sys/fs/cgroup</code>  folder</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sh-5.1#<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/sys/fs/cgroup/
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sh-5.1#<span class="w"> </span>ls
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>cgroup.controllers<span class="w"> </span>cgroup.subtree_control<span class="w"> </span>cpuset.mems.effective<span class="w">  </span>io.stat<span class="w">   </span>memory.reclaim<span class="w">   </span>sys-kernel-debug.mount
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>cgroup.max.depth<span class="w"> </span>cgroup.threads<span class="w">  </span>dev-hugepages.mount<span class="w">    </span>kubepods.slice<span class="w">  </span>memory.stat<span class="w">   </span>sys-kernel-tracing.mount
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>cgroup.max.descendants<span class="w"> </span>cpu.pressure<span class="w">  </span>dev-mqueue.mount<span class="w">       </span>machine.slice<span class="w">  </span>misc.capacity<span class="w">   </span>system.slice
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>cgroup.procs<span class="w">  </span>cpu.stat<span class="w">  </span>init.scope<span class="w">        </span>memory.numa_stat<span class="w">  </span>sys-fs-fuse-connections.mount<span class="w"> </span>user.slice
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>cgroup.stat<span class="w">  </span>cpuset.cpus.effective<span class="w"> </span>io.pressure<span class="w">        </span>memory.pressure<span class="w">  </span>sys-kernel-config.mount
+</code></pre></div>
+<p><code>kubepods.slice</code> is the starting point and it contains multiple slices</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sh-5.1#<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>kubepods.slice
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sh-5.1#<span class="w"> </span>ls
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>cgroup.controllers<span class="w"> </span>cpuset.cpus<span class="w">    </span>hugetlb.2MB.rsvd.max<span class="w">       </span>memory.pressure
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>cgroup.events<span class="w">  </span>cpuset.cpus.effective<span class="w">   </span>io.bfq.weight<span class="w">        </span>memory.reclaim
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>cgroup.freeze<span class="w">  </span>cpuset.cpus.partition<span class="w">   </span>io.latency<span class="w">        </span>memory.stat
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>cgroup.kill<span class="w">  </span>cpuset.mems<span class="w">    </span>io.max<span class="w">        </span>memory.swap.current
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>cgroup.max.depth<span class="w"> </span>cpuset.mems.effective<span class="w">   </span>io.pressure<span class="w">        </span>memory.swap.events
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>cgroup.max.descendants<span class="w"> </span>hugetlb.1GB.current<span class="w">   </span>io.stat<span class="w">        </span>memory.swap.high
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>cgroup.procs<span class="w">  </span>hugetlb.1GB.events<span class="w">   </span>kubepods-besteffort.slice<span class="w">      </span>memory.swap.max
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>cgroup.stat<span class="w">  </span>hugetlb.1GB.events.local<span class="w">  </span>kubepods-burstable.slice<span class="w">      </span>memory.zswap.current
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>cgroup.subtree_control<span class="w"> </span>hugetlb.1GB.max<span class="w">    </span>kubepods-pod2b38830b_c2d6_4528_8935_b1c08511b1e3.slice<span class="w">  </span>memory.zswap.max
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>cgroup.threads<span class="w">  </span>hugetlb.1GB.numa_stat<span class="w">   </span>memory.current<span class="w">       </span>misc.current
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>cgroup.type<span class="w">  </span>hugetlb.1GB.rsvd.current<span class="w">  </span>memory.events<span class="w">        </span>misc.max
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>cpu.idle<span class="w">  </span>hugetlb.1GB.rsvd.max<span class="w">   </span>memory.events.local<span class="w">       </span>pids.current
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>cpu.max<span class="w">   </span>hugetlb.2MB.current<span class="w">   </span>memory.high<span class="w">        </span>pids.events
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>cpu.max.burst<span class="w">  </span>hugetlb.2MB.events<span class="w">   </span>memory.low<span class="w">        </span>pids.max
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>cpu.pressure<span class="w">  </span>hugetlb.2MB.events.local<span class="w">  </span>memory.max<span class="w">        </span>rdma.current
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>cpu.stat<span class="w">  </span>hugetlb.2MB.max<span class="w">    </span>memory.min<span class="w">        </span>rdma.max
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>cpu.weight<span class="w">  </span>hugetlb.2MB.numa_stat<span class="w">   </span>memory.numa_stat
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>cpu.weight.nice<span class="w">  </span>hugetlb.2MB.rsvd.current<span class="w">  </span>memory.oom.group
+</code></pre></div>
+<p>Based on the QoS of the pod, either our application pod will end up in the
+above <code>kubepods-besteffort.slice</code> or <code>kubepods-burstable.slice</code> or
+<code>kubepods.slice</code> (Guaranteed QoS) cgroup. The 3 QoS classes are defined
+<a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-QoS/#quality-of-service-classes">here</a></p>
+<p>To identify the right cgroup file, we need pod UUID from the <code>pod yaml</code> output</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="o">[</span>$<span class="o">]</span>kubectl<span class="w"> </span>get<span class="w"> </span>po<span class="w"> </span>csi-rbd-demo-pod<span class="w"> </span>-oyaml<span class="w"> </span><span class="p">|</span>grep<span class="w"> </span>uid
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>uid:<span class="w"> </span>cdf7b785-4eb7-44f7-99cc-ef53890f4dfd
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="o">[</span>$<span class="o">]</span>kubectl<span class="w"> </span>get<span class="w"> </span>po<span class="w"> </span>csi-rbd-demo-pod<span class="w"> </span>-oyaml<span class="w"> </span><span class="p">|</span>grep<span class="w"> </span>-i<span class="w"> </span>qosClass
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>qosClass:<span class="w"> </span>BestEffort
+</code></pre></div>
+<p>Now check in the <code>kubepods-besteffort.slice</code> and identify the right path using
+pod UID (hyphens replaced with underscores).</p>
+<p>Come back to the Node and navigate to the pod's cgroup slice</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sh-5.1#<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>kubepods-besteffort.slice/kubepods-besteffort-podcdf7b785_4eb7_44f7_99cc_ef53890f4dfd.slice/
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>sh-5.1#<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"252:0 wbps=1048576"</span><span class="w"> </span>&gt;<span class="w"> </span>io.max
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>sh-5.1#<span class="w"> </span>cat<span class="w"> </span>io.max
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="m">252</span>:0<span class="w"> </span><span class="nv">rbps</span><span class="o">=</span>max<span class="w"> </span><span class="nv">wbps</span><span class="o">=</span><span class="m">1048576</span><span class="w"> </span><span class="nv">riops</span><span class="o">=</span>max<span class="w"> </span><span class="nv">wiops</span><span class="o">=</span>max
+</code></pre></div>
+<p>Note:- We can only support the QoS that cgroup v2 io controller supports, this
+means that cumulative read+write QoS limits won't be supported.</p>
+<p>Below are the configurations that will be supported</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>maxReadIops</td>
+<td>Max read IO operations per second</td>
+</tr>
+<tr>
+<td>maxWriteIops</td>
+<td>Max write IO operations per second</td>
+</tr>
+<tr>
+<td>maxReadBps</td>
+<td>Max read bytes per second</td>
+</tr>
+<tr>
+<td>maxWriteBps</td>
+<td>Max write bytes per second</td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-approach">Implementation Approach<a class="headerlink" href="#implementation-approach" title="Permanent link">&para;</a></h2>
+<p>The solution uses VolumeAttributeClass to configure QoS parameters.</p>
+<h3 id="qos-using-volumeattributeclass-with-nodepublish-secret">QoS using VolumeAttributeClass with NodePublish Secret<a class="headerlink" href="#qos-using-volumeattributeclass-with-nodepublish-secret" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">storage.k8s.io/v1alpha1</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">VolumeAttributesClass</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">silver</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nt">parameters</span><span class="p">:</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">maxReadIops</span><span class="p">:</span><span class="w"> </span><span class="s">""</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nt">maxWriteIops</span><span class="p">:</span><span class="w"> </span><span class="s">""</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">  </span><span class="nt">maxReadBps</span><span class="p">:</span><span class="w"> </span><span class="s">""</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="nt">maxWriteBps</span><span class="p">:</span><span class="w"> </span><span class="s">""</span>
+</code></pre></div>
+<p>VolumeAttributesClassName is a new parameter in the PVC object the user can
+choose from and this can also be updated or removed later.</p>
+<p>This new VolumeAttributeClass is designed to keep storage that supports setting
+QoS at the storage level which means setting some configuration at the storage
+(like QoS for nbd)</p>
+<h4 id="implementation-steps">Implementation Steps<a class="headerlink" href="#implementation-steps" title="Permanent link">&para;</a></h4>
+<ol>
+<li>Modify CSIDriver object to pass pod details to the NodePublishVolume
+   CSI procedure</li>
+<li>Add support in Ceph-CSI to expose ModifyVolume CSI procedure</li>
+<li>Ceph-CSI will store QoS in the rbd image metadata</li>
+<li>During NodePublishVolume operation retrieve the QoS from image metadata</li>
+<li>Whenever a new pod comes in apply the QoS</li>
+</ol>
+<h4 id="pod-level-qos-application">Pod-Level QoS Application<a class="headerlink" href="#pod-level-qos-application" title="Permanent link">&para;</a></h4>
+<p>When kubelet invokes the NodePublishVolume RPC call, it provides the pod UUID
+as part of the request. Ceph-CSI uses this pod UUID to locate the pod's cgroup
+hierarchy path and applies QoS limits at the pod level.</p>
+<h5 id="key-design-decision-pod-level-iomax">Key Design Decision: Pod-Level io.max<a class="headerlink" href="#key-design-decision-pod-level-iomax" title="Permanent link">&para;</a></h5>
+<p>QoS limits are applied to the pod's io.max file, not individual container
+io.max files. This design choice provides several benefits:</p>
+<ol>
+<li><strong>Automatic Propagation</strong>: cgroup v2 hierarchical design ensures pod-level
+   limits automatically apply to all containers within the pod</li>
+<li><strong>Simplified Implementation</strong>: Single write operation instead of discovering
+   and updating multiple container cgroups</li>
+<li><strong>Timing Independence</strong>: No dependency on container creation timing - works
+   even if containers start after volume mount</li>
+<li><strong>Consistent Behavior</strong>: Same enforcement regardless of container runtime
+   (CRI-O, containerd, etc.)</li>
+</ol>
+<p>The QoS application process follows these steps:</p>
+<ol>
+<li>Kubelet provides pod UUID in NodePublishVolume request (via pod info in
+   volume context)</li>
+<li>Ceph-CSI identifies the pod's QoS class (BestEffort, Burstable, or
+   Guaranteed) by probing the cgroup hierarchy</li>
+<li>Navigate to the appropriate kubepods slice based on QoS class:</li>
+<li><code>kubepods-besteffort.slice</code> for BestEffort</li>
+<li><code>kubepods-burstable.slice</code> for Burstable</li>
+<li><code>kubepods.slice</code> for Guaranteed</li>
+<li>Locate the pod-specific slice using the normalized pod UUID (hyphens
+   replaced with underscores): <code>kubepods-&lt;qos&gt;-pod&lt;normalized-uuid&gt;.slice/</code></li>
+<li>Apply io.max limits to the pod's cgroup by writing to <code>&lt;pod-slice&gt;/io.max</code></li>
+<li>cgroup v2 automatically enforces these limits on all containers in the pod</li>
+</ol>
+<h5 id="example-path-construction">Example path construction<a class="headerlink" href="#example-path-construction" title="Permanent link">&para;</a></h5>
+<p>For a BestEffort pod with UUID <code>cdf7b785-4eb7-44f7-99cc-ef53890f4dfd</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>/sys/fs/cgroup/kubepods-besteffort.slice/kubepods-besteffort-podcdf7b785_4eb7_44f7_99cc_ef53890f4dfd.slice/io.max
+</code></pre></div>
+<p>This pod-level approach leverages cgroup v2's hierarchical design to
+automatically enforce QoS limits on all containers, eliminating the need for
+container discovery and individual container updates.</p>
+<h4 id="secret-management">Secret Management<a class="headerlink" href="#secret-management" title="Permanent link">&para;</a></h4>
+<p>This solution requires a secret to communicate with the ceph cluster during
+NodePublishVolume to retrieve the latest QoS settings from the image metadata.</p>
+<p><strong>StorageClass Configuration:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">storage.k8s.io/v1</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">StorageClass</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-rbd-sc</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nt">provisioner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rbd.csi.ceph.com</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="nt">parameters</span><span class="p">:</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">clusterID</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;cluster-id&gt;</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span><span class="nt">pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;pool-name&gt;</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/provisioner-secret-name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-rbd-secret</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/provisioner-secret-namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/controller-expand-secret-name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-rbd-secret</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/controller-expand-secret-namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/node-stage-secret-name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-rbd-secret</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/node-stage-secret-namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/node-publish-secret-name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi-rbd-secret</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">  </span><span class="nt">csi.storage.k8s.io/node-publish-secret-namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+</code></pre></div>
+<p><strong>Fallback to CSI ConfigMap:</strong></p>
+<p>If the NodePublishVolumeSecret is not specified in the StorageClass, Ceph-CSI
+will fall back to the default secret configured in the CSI ConfigMap. This
+provides flexibility for existing deployments without requiring StorageClass
+updates.</p>
+<p><strong>CSI ConfigMap Configuration:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ConfigMap</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceph-csi-config</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="nt">data</span><span class="p">:</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span><span class="nt">config.json</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|-</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="no">[</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">      </span><span class="no">{</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">        </span><span class="no">"clusterID": "&lt;cluster-id&gt;",</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">        </span><span class="no">"monitors": ["&lt;mon1&gt;", "&lt;mon2&gt;", "&lt;mon3&gt;"],</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">        </span><span class="no">"rbd": {</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">          </span><span class="no">"nodePublishSecretRef": {</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">            </span><span class="no">"name": "csi-rbd-secret",</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">            </span><span class="no">"namespace": "default"</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">          </span><span class="no">}</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">        </span><span class="no">}</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">      </span><span class="no">}</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">    </span><span class="no">]</span>
+</code></pre></div>
+<p>The secret lookup order:</p>
+<ol>
+<li>Check PV for <code>csi.storage.k8s.io/node-publish-secret-name</code> (from
+   StorageClass)</li>
+<li>If not found, use the <code>rbd.nodePublishSecretRef</code> from CSI ConfigMap for
+   the corresponding clusterID</li>
+<li>If neither is available, fail the NodePublishVolume operation with a
+   clear error message (if QOS is specified).</li>
+</ol>
+<h4 id="advantages-of-this-approach">Advantages of this Approach<a class="headerlink" href="#advantages-of-this-approach" title="Permanent link">&para;</a></h4>
+<ol>
+<li><strong>No Restore/Clone operation required</strong> - QoS can be changed on existing
+   PVCs via VolumeAttributesClass.</li>
+<li><strong>Flexible secret management</strong> - Supports both StorageClass-level and
+   cluster-level default secrets.</li>
+</ol>
+<h3 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h3>
+<p>Some of the useful links that helped me to understand cgroup v2 and how to set
+QoS on the device.</p>
+<ul>
+<li><a href="https://kubernetes.io/docs/concepts/architecture/cgroups/">Kubernetes cgroup v2
+  Architecture</a></li>
+<li><a href="https://docs.kernel.org/admin-guide/cgroup-v2.html">cgroup v2 kernel doc</a></li>
+<li><a href="https://tracker.ceph.com/issues/36191">ceph RBD QoS tracker</a></li>
+<li><a href="https://facebookmicrosites.github.io/cgroup2/docs/io-controller.html">cgroup v2 io
+  controller</a></li>
+<li><a href="https://github.com/kubernetes/kubernetes/issues/92287">Kubernetes IOPS
+  issue</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
