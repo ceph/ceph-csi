@@ -2215,6 +2215,13 @@ func (ri *rbdImage) GetMetadata(key string) (string, error) {
 }
 
 func (ri *rbdImage) SetMetadata(key, value string) error {
+	existingVal, err := ri.GetMetadata(key)
+	if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+		return err
+	}
+	if err == nil && existingVal == value {
+		return nil
+	}
 	image, err := ri.open()
 	if err != nil {
 		return err
