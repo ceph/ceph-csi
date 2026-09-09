@@ -1190,6 +1190,7 @@ func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint6
 	rbdImg.Monitors = ri.Monitors
 	rbdImg.RbdImageName = ri.RbdImageName
 	rbdImg.conn = ri.conn.Copy()
+	defer rbdImg.Destroy(ctx)
 
 	for {
 		if rbdImg.RbdImageName == "" {
@@ -2005,6 +2006,7 @@ func (ri *rbdImage) getParent() (*rbdImage, error) {
 	parentImage.Pool = ri.ParentPool
 	parentImage.RadosNamespace = ri.RadosNamespace
 	parentImage.RbdImageName = ri.ParentName
+	defer parentImage.conn.Destroy()
 
 	err = parentImage.getImageInfo()
 	if err != nil {
