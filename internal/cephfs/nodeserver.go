@@ -900,7 +900,7 @@ func (ns *cephfsNodeServer) NodeGetCapabilities(
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
-						Type: csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_HEALTH,
 					},
 				},
 			},
@@ -967,22 +967,12 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 			log.WarningLog(ctx, "failed to start healthchecker: %v", err)
 		}
 
-		return &csi.NodeGetVolumeStatsResponse{
-			VolumeCondition: &csi.VolumeCondition{
-				Abnormal: false,
-				Message:  "health checker started, status not yet available",
-			},
-		}, nil
+		return &csi.NodeGetVolumeStatsResponse{}, nil
 	}
 
 	// !healthy indicates a problem with the volume
 	if !healthy {
-		return &csi.NodeGetVolumeStatsResponse{
-			VolumeCondition: &csi.VolumeCondition{
-				Abnormal: true,
-				Message:  msg.Error(),
-			},
-		}, nil
+		return &csi.NodeGetVolumeStatsResponse{}, nil
 	}
 
 	// warning: reaching here should mean that synchronous os.Stat()
@@ -992,12 +982,7 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 		if util.IsCorruptedMountError(err) {
 			log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
 
-			return &csi.NodeGetVolumeStatsResponse{
-				VolumeCondition: &csi.VolumeCondition{
-					Abnormal: true,
-					Message:  err.Error(),
-				},
-			}, nil
+			return &csi.NodeGetVolumeStatsResponse{}, nil
 		}
 
 		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
@@ -1008,6 +993,54 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 	}
 
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
+}
+
+// NodeGetVolumeHealth returns the health status for the requested volume.
+func (ns *cephfsNodeServer) NodeGetVolumeHealth(
+	ctx context.Context,
+	req *csi.NodeGetVolumeHealthRequest,
+) (*csi.NodeGetVolumeHealthResponse, error) {
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume ID cannot be empty")
+	}
+
+	targetPath := req.GetVolumePublishPath()
+	if targetPath == "" {
+		targetPath = req.GetStagingTargetPath()
+	}
+	if targetPath == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume path cannot be empty")
+	}
+
+	// Check health using the health-checker manager
+	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
+
+	resp := &csi.NodeGetVolumeHealthResponse{
+		VolumeHealth: &csi.VolumeHealth{
+			VolumeId: volumeID,
+		},
+	}
+
+	// If healthy and an error is returned, the checker hasn't completed yet
+	if healthy && msg != nil {
+		// Return healthy with empty health_statuses (no adverse conditions)
+		//nolint:nilerr // msg is informational, not the return error
+		return resp, nil
+	}
+
+	// If unhealthy, add health status entry
+	if !healthy {
+		resp.VolumeHealth.HealthStatuses = []*csi.VolumeHealth_VolumeHealthEntry{
+			{
+				Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+				Reason:  "VolumeUnhealthy",
+				Message: msg.Error(),
+			},
+		}
+	}
+
+	return resp, nil
 }
 
 // setMountOptions updates the kernel/fuse mount options from CSI config file if it exists.
