@@ -35,7 +35,8 @@ set -e -o pipefail
 
 # ---------------------------------------------------------------------------
 # backend → file-path prefixes (relative to the repo root).
-# Any file not matched by any backend path is considered shared code.
+# Any file not matched by any backend path is considered shared code, and
+# counts as a change to every backend.
 # ---------------------------------------------------------------------------
 
 declare -A BACKEND_PATHS=(
@@ -185,19 +186,20 @@ for backend in "${CHECK_BACKENDS[@]}"; do
 done
 
 for f in "${CHANGED_FILES[@]}"; do
-    # --- check each backend ---
-    for backend in "${CHECK_BACKENDS[@]}"; do
-        read -r -a path_prefixes <<< "${BACKEND_PATHS[${backend}]}"
-        if path_matches_prefixes "${f}" "${path_prefixes[@]}"; then
+    if ! path_matches_prefixes "${f}" "${all_backend_prefixes[@]}"; then
+        # shared file: counts as a change to every backend
+        SHARED_FILES+=("${f}")
+        for backend in "${CHECK_BACKENDS[@]}"; do
             BACKEND_FILES[${backend}]+="${f}"$'\n'
-        fi
-    done
-
-    # --- shared: any file not under any backend path ---
-    if [[ -z "${BACKEND}" ]]; then
-        if ! path_matches_prefixes "${f}" "${all_backend_prefixes[@]}"; then
-            SHARED_FILES+=("${f}")
-        fi
+        done
+    else
+        # backend-specific file: attribute to the matching backend(s) only
+        for backend in "${CHECK_BACKENDS[@]}"; do
+            read -r -a path_prefixes <<< "${BACKEND_PATHS[${backend}]}"
+            if path_matches_prefixes "${f}" "${path_prefixes[@]}"; then
+                BACKEND_FILES[${backend}]+="${f}"$'\n'
+            fi
+        done
     fi
 done
 
@@ -246,7 +248,7 @@ for backend in "${CHECK_BACKENDS[@]}"; do
     fi
 done
 
-# shared (only shown when no specific backend requested)
+# shared (only shown when no specific backend requested, to avoid redundancy)
 if [[ -z "${BACKEND}" ]]; then
     count=${#SHARED_FILES[@]}
     if [[ "${count}" -gt 0 ]]; then
