@@ -1,12 +1,41 @@
 #!/bin/bash
 # vim: set ts=4 sw=4 et :
+#
+# inspect-changes.sh — inspect changed files between two git trees and
+# identify whether they touch a specific backend (cephfs, rbd, nfs, nvmeof)
+# or shared code.
+#
+# Uses a three-dot diff (<since>...<until>) so that only the files actually
+# changed by the PR are considered, regardless of shallow-clone depth.
+#
+# Usage:
+#   scripts/inspect-changes.sh [--backend=<backend>] [--repo=<path>] <since> [<until>]
+#
+# Arguments:
+#   <since>             git ref for the base of the range, e.g. "origin/devel"
+#                       or a commit SHA.  Used as the left side of a three-dot
+#                       diff: files changed relative to the merge base.
+#   <until>             git ref for the tip of the range (default: HEAD).
+#
+# Options:
+#   --backend=<name>    filter to a single backend: cephfs, rbd, nfs, nvmeof
+#                       When omitted, all backends and shared code are reported.
+#   --repo=<path>       path to the ceph-csi git repository to inspect.
+#                       Defaults to the current working directory.
+#   --files             show the list of changed files for each matched category
+#   -h, --help          print this help text and exit
+#
+# Exit codes:
+#   0   one or more changed files touch the requested backend / shared code
+#   1   no changed files match the requested backend / shared code
+#   2   usage error
+#
 
 set -e -o pipefail
 
 # ---------------------------------------------------------------------------
 # backend → file-path prefixes (relative to the repo root).
-# Any file not matched by any backend path is considered shared code, and
-# counts as a change to every backend.
+# Any file not matched by any backend path is considered shared code.
 # ---------------------------------------------------------------------------
 
 declare -A BACKEND_PATHS=(
@@ -29,36 +58,7 @@ GIT_UNTIL="HEAD"
 # helpers
 # ---------------------------------------------------------------------------
 usage() {
-    cat <<EOF
-inspect-changes.sh — inspect changed files between two git trees and
-identify whether they touch a specific backend (cephfs, rbd, nfs, nvmeof)
-or shared code.
-
-Uses a three-dot diff (<since>...<until>) so that only the files actually
-changed by the PR are considered, regardless of shallow-clone depth.
-
-Usage:
-  scripts/inspect-changes.sh [--backend=<backend>] [--repo=<path>] <since> [<until>]
-
-Arguments:
-  <since>             git ref for the base of the range, e.g. "origin/devel"
-                      or a commit SHA.  Used as the left side of a three-dot
-                      diff: files changed relative to the merge base.
-  <until>             git ref for the tip of the range (default: HEAD).
-
-Options:
-  --backend=<name>    filter to a single backend: cephfs, rbd, nfs, nvmeof
-                      When omitted, all backends and shared code are reported.
-  --repo=<path>       path to the ceph-csi git repository to inspect.
-                      Defaults to the current working directory.
-  --files             show the list of changed files for each matched category
-  -h, --help          print this help text and exit
-
-Exit codes:
-  0   one or more changed files touch the requested backend / shared code
-  1   no changed files match the requested backend / shared code
-  2   usage error
-EOF
+    sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -146,15 +146,11 @@ fi
 # ---------------------------------------------------------------------------
 log_info "Inspecting changes: ${GIT_SINCE}...${GIT_UNTIL}  (repo: ${REPO})"
 
-git_diff_output=$(git -C "${REPO}" diff --no-renames --name-only "${GIT_SINCE}...${GIT_UNTIL}") || {
-    log_error "git diff failed for range '${GIT_SINCE}...${GIT_UNTIL}'."
-    exit 2
-}
+mapfile -t CHANGED_FILES < <(
+    git -C "${REPO}" diff --name-only "${GIT_SINCE}...${GIT_UNTIL}" 2>/dev/null
+)
 
-mapfile -t CHANGED_FILES <<< "${git_diff_output}"
-
-# mapfile always produces one empty element when the input string is empty
-if [[ ${#CHANGED_FILES[@]} -eq 0 || ( ${#CHANGED_FILES[@]} -eq 1 && -z "${CHANGED_FILES[0]}" ) ]]; then
+if [[ ${#CHANGED_FILES[@]} -eq 0 ]]; then
     log_warn "No changed files found in ${GIT_SINCE}...${GIT_UNTIL}."
     exit 1
 fi
@@ -189,20 +185,19 @@ for backend in "${CHECK_BACKENDS[@]}"; do
 done
 
 for f in "${CHANGED_FILES[@]}"; do
-    if ! path_matches_prefixes "${f}" "${all_backend_prefixes[@]}"; then
-        # shared file: counts as a change to every backend
-        SHARED_FILES+=("${f}")
-        for backend in "${CHECK_BACKENDS[@]}"; do
+    # --- check each backend ---
+    for backend in "${CHECK_BACKENDS[@]}"; do
+        read -r -a path_prefixes <<< "${BACKEND_PATHS[${backend}]}"
+        if path_matches_prefixes "${f}" "${path_prefixes[@]}"; then
             BACKEND_FILES[${backend}]+="${f}"$'\n'
-        done
-    else
-        # backend-specific file: attribute to the matching backend(s) only
-        for backend in "${CHECK_BACKENDS[@]}"; do
-            read -r -a path_prefixes <<< "${BACKEND_PATHS[${backend}]}"
-            if path_matches_prefixes "${f}" "${path_prefixes[@]}"; then
-                BACKEND_FILES[${backend}]+="${f}"$'\n'
-            fi
-        done
+        fi
+    done
+
+    # --- shared: any file not under any backend path ---
+    if [[ -z "${BACKEND}" ]]; then
+        if ! path_matches_prefixes "${f}" "${all_backend_prefixes[@]}"; then
+            SHARED_FILES+=("${f}")
+        fi
     fi
 done
 
@@ -251,7 +246,7 @@ for backend in "${CHECK_BACKENDS[@]}"; do
     fi
 done
 
-# shared (only shown when no specific backend requested, to avoid redundancy)
+# shared (only shown when no specific backend requested)
 if [[ -z "${BACKEND}" ]]; then
     count=${#SHARED_FILES[@]}
     if [[ "${count}" -gt 0 ]]; then
