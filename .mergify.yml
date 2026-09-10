@@ -16,7 +16,7 @@ queue_rules:
   - name: default
     update_bot_account: ceph-csi-bot
     merge_method: rebase
-    update_method: rebase
+    update_method: merge
     batch_size: 1
     queue_conditions:
       - and:
