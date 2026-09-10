@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -100,11 +101,13 @@ func NewCSIVolumeGroupJournal(suffix string) VolumeGroupJournalConfig {
 	return VolumeGroupJournalConfig{
 		Config: Config{
 			csiDirectory:            "csi.groups." + suffix,
+			csiDirectoryShards:      defaultCSIDirectoryShards,
 			csiNameKeyPrefix:        "csi.volume.group.",
 			cephUUIDDirectoryPrefix: "csi.volume.group.",
 			csiImageKey:             "csi.groupname",
 			csiNameKey:              "csi.volname",
 			namespace:               "",
+			legacyDirectoryAbsent:   &sync.Map{},
 		},
 		csiCreationTimeKey: "csi.creationtime",
 	}
@@ -216,12 +219,8 @@ func (vgjc *volumeGroupJournalConnection) CheckReservation(ctx context.Context,
 	)
 
 	// check if request name is already part of the directory omap
-	fetchKeys := []string{
-		cj.csiNameKeyPrefix + reqName,
-	}
-	values, err := getOMapValuesByKeys(
-		ctx, vgjc.connection, journalPool, cj.namespace, cj.csiDirectory,
-		fetchKeys)
+	key := cj.csiNameKeyPrefix + reqName
+	objUUID, found, err := lookupCsiDirectoryValue(ctx, vgjc.connection, journalPool, key)
 	if err != nil {
 		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			// pool or omap (oid) was not present
@@ -231,8 +230,6 @@ func (vgjc *volumeGroupJournalConnection) CheckReservation(ctx context.Context,
 
 		return nil, err
 	}
-
-	objUUID, found := values[cj.csiNameKeyPrefix+reqName]
 	if !found {
 		// omap was read but was missing the desired key-value pair
 		// stop processing but without an error for no reservation exists
@@ -317,8 +314,14 @@ func (vgjc *volumeGroupJournalConnection) UndoReservation(ctx context.Context,
 	}
 
 	// delete the request name key (last, inverse of create order)
-	err := removeMapKeys(ctx, vgjc.connection, csiJournalPool, cj.namespace, cj.csiDirectory,
-		[]string{cj.csiNameKeyPrefix + reqName})
+	key := cj.csiNameKeyPrefix + reqName
+	shardOID := cj.getCsiDirectoryShard(key)
+	err := removeMapKeys(ctx, vgjc.connection, csiJournalPool, cj.namespace, shardOID, []string{key})
+	if err == nil {
+		// Always delete from the legacy oid as well, to ensure metadata for
+		// already existing volume groups gets cleaned up.
+		err = removeMapKeys(ctx, vgjc.connection, csiJournalPool, cj.namespace, cj.csiDirectory, []string{key})
+	}
 	if err != nil {
 		log.ErrorLog(ctx, "failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
 	}
@@ -370,8 +373,9 @@ func (vgjc *volumeGroupJournalConnection) ReserveName(ctx context.Context,
 	// After generating the UUID Directory omap, we populate the csiDirectory
 	// omap with a key-value entry to map the request to the backend volume group:
 	// `csiNameKeyPrefix + reqName: nameKeyVal`
-	err = setOMapKeys(ctx, vgjc.connection, journalPool, cj.namespace, cj.csiDirectory,
-		map[string]string{cj.csiNameKeyPrefix + reqName: nameKeyVal})
+	key := cj.csiNameKeyPrefix + reqName
+	err = setOMapKeys(ctx, vgjc.connection, journalPool, cj.namespace, cj.getCsiDirectoryShard(key),
+		map[string]string{key: nameKeyVal})
 	if err != nil {
 		return "", "", err
 	}

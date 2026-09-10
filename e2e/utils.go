@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"os"
 	"regexp"
@@ -74,6 +75,8 @@ const (
 	// cluster Name, set by user.
 	clusterNameKey     = "csi.ceph.com/cluster/name"
 	defaultClusterName = "k8s-cluster-1"
+
+	defaultCSIDirectoryShards = 11
 )
 
 var (
@@ -221,14 +224,81 @@ func compareStdoutWithCount(stdOut string, count int) error {
 	return nil
 }
 
+func getCsiDirectoryShard(key string) string {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(key))
+
+	return fmt.Sprintf("%s.%d", "csi.volumes.default", h.Sum32()%defaultCSIDirectoryShards)
+}
+
+func getCSIJournalBaseOID(mode string) string {
+	switch mode {
+	case volumesType:
+		return "csi.volumes.default"
+	case snapsType:
+		return "csi.snaps.default"
+	case groupSnapsType:
+		return "csi.groups.default"
+	default:
+		return ""
+	}
+}
+
+// filterNonEmptyLines normalizes rados output and keeps only non-empty lines.
+func filterNonEmptyLines(stdOut string) []string {
+	lines := strings.Split(stdOut, "\n")
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			filtered = append(filtered, line)
+		}
+	}
+
+	return filtered
+}
+
+// getCSIJournalKeyCount sums the omap keys across all CSI journal shards for the mode.
+func getCSIJournalKeyCount(f *framework.Framework, driver, pool, mode string) (int, error) {
+	baseOID := getCSIJournalBaseOID(mode)
+	if baseOID == "" {
+		return 0, fmt.Errorf("unsupported csi journal mode %q", mode)
+	}
+
+	total := 0
+	for i := 0; i < defaultCSIDirectoryShards; i++ {
+		oid := fmt.Sprintf("%s.%d", baseOID, i)
+		var cmd string
+		if strings.EqualFold(driver, cephfsType) {
+			cmd = "rados listomapkeys " + oid + " " + cephfsOptions(pool)
+		} else {
+			cmd = "rados listomapkeys " + oid + " " + rbdOptions(pool)
+		}
+
+		stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+		if err != nil {
+			if strings.Contains(err.Error(), exitOneErr) {
+				continue
+			}
+
+			return 0, err
+		}
+		if stdErr != "" {
+			return 0, fmt.Errorf("failed to list omap keys for %s: %s", oid, stdErr)
+		}
+		total += len(filterNonEmptyLines(stdOut))
+	}
+
+	return total, nil
+}
+
 // validateOmapCount validates no of OMAP entries on the given pool.
-// Works with Cephfs and RBD drivers and mode can be snapsType or volumesType.
+// Works with Cephfs and RBD drivers and mode can be volumesType, snapsType, or groupSnapsType.
 func validateOmapCount(f *framework.Framework, count int, driver, pool, mode string) {
 	type radosListCommand struct {
-		volumeMode                           string
-		driverType                           string
-		radosLsCmd, radosLsCmdFilter         string
-		radosLsKeysCmd, radosLsKeysCmdFilter string
+		volumeMode                   string
+		driverType                   string
+		radosLsCmd, radosLsCmdFilter string
 	}
 
 	radosListCommands := []radosListCommand{
@@ -238,8 +308,6 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			radosLsCmd: "rados ls " + cephfsOptions(pool),
 			radosLsCmdFilter: fmt.Sprintf("rados ls %s | grep -v default | grep -v csi.volume.group. | grep -c ^csi.volume.",
 				cephfsOptions(pool)),
-			radosLsKeysCmd:       "rados listomapkeys csi.volumes.default " + cephfsOptions(pool),
-			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default %s | wc -l", cephfsOptions(pool)),
 		},
 		{
 			volumeMode: volumesType,
@@ -248,40 +316,30 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			radosLsCmdFilter: fmt.Sprintf(
 				"rados ls %s | grep -v default | grep -v csi.volume.group. |  grep -c ^csi.volume.",
 				rbdOptions(pool)),
-			radosLsKeysCmd:       "rados listomapkeys csi.volumes.default " + rbdOptions(pool),
-			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default %s | wc -l", rbdOptions(pool)),
 		},
 		{
-			volumeMode:           snapsType,
-			driverType:           cephfsType,
-			radosLsCmd:           "rados ls " + cephfsOptions(pool),
-			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", cephfsOptions(pool)),
-			radosLsKeysCmd:       "rados listomapkeys csi.snaps.default " + cephfsOptions(pool),
-			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.snaps.default %s | wc -l", cephfsOptions(pool)),
+			volumeMode:       snapsType,
+			driverType:       cephfsType,
+			radosLsCmd:       "rados ls " + cephfsOptions(pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", cephfsOptions(pool)),
 		},
 		{
-			volumeMode:           snapsType,
-			driverType:           rbdType,
-			radosLsCmd:           "rados ls " + rbdOptions(pool),
-			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", rbdOptions(pool)),
-			radosLsKeysCmd:       "rados listomapkeys csi.snaps.default " + rbdOptions(pool),
-			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.snaps.default %s | wc -l", rbdOptions(pool)),
+			volumeMode:       snapsType,
+			driverType:       rbdType,
+			radosLsCmd:       "rados ls " + rbdOptions(pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", rbdOptions(pool)),
 		},
 		{
-			volumeMode:           groupSnapsType,
-			driverType:           cephfsType,
-			radosLsCmd:           "rados ls" + cephfsOptions(pool),
-			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", cephfsOptions(pool)),
-			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + cephfsOptions(pool),
-			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", cephfsOptions(pool)),
+			volumeMode:       groupSnapsType,
+			driverType:       cephfsType,
+			radosLsCmd:       "rados ls" + cephfsOptions(pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", cephfsOptions(pool)),
 		},
 		{
-			volumeMode:           groupSnapsType,
-			driverType:           rbdType,
-			radosLsCmd:           "rados ls" + rbdOptions(pool),
-			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", rbdOptions(pool)),
-			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + rbdOptions(pool),
-			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", rbdOptions(pool)),
+			volumeMode:       groupSnapsType,
+			driverType:       rbdType,
+			radosLsCmd:       "rados ls" + rbdOptions(pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", rbdOptions(pool)),
 		},
 	}
 
@@ -289,30 +347,38 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 		if !strings.EqualFold(cmds.volumeMode, mode) || !strings.EqualFold(cmds.driverType, driver) {
 			continue
 		}
-		filterCmds := []string{cmds.radosLsCmdFilter, cmds.radosLsKeysCmdFilter}
-		filterLessCmds := []string{cmds.radosLsCmd, cmds.radosLsKeysCmd}
-		for i, cmd := range filterCmds {
-			stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
-			if err != nil {
-				if !strings.Contains(err.Error(), exitOneErr) {
-					logAndFail("failed to execute rados command '%s' : err=%v stdErr=%s", cmd, err, stdErr)
-				}
+		stdOut, stdErr, err := execCommandInToolBoxPod(f, cmds.radosLsCmdFilter, rookNamespace)
+		if err != nil {
+			if !strings.Contains(err.Error(), exitOneErr) {
+				logAndFail("failed to execute rados command '%s' : err=%v stdErr=%s", cmds.radosLsCmdFilter, err, stdErr)
 			}
-			if stdErr != "" {
-				logAndFail("failed to execute rados command '%s' : stdErr=%s", cmd, stdErr)
-			}
-			err = compareStdoutWithCount(stdOut, count)
-			if err == nil {
-				continue
-			}
-			saveErr := fmt.Errorf("failed to validate omap count for %s: %w", cmd, err)
+		}
+		if stdErr != "" {
+			logAndFail("failed to execute rados command '%s' : stdErr=%s", cmds.radosLsCmdFilter, stdErr)
+		}
+		err = compareStdoutWithCount(stdOut, count)
+		if err != nil {
+			saveErr := fmt.Errorf("failed to validate omap count for %s: %w", cmds.radosLsCmdFilter, err)
 			if strings.Contains(err.Error(), "expected omap object count") {
-				stdOut, stdErr, err = execCommandInToolBoxPod(f, filterLessCmds[i], rookNamespace)
+				stdOut, stdErr, err = execCommandInToolBoxPod(f, cmds.radosLsCmd, rookNamespace)
 				if err == nil {
 					framework.Logf("additional debug info: rados ls command output: %s, stdErr: %s", stdOut, stdErr)
 				}
 			}
 			framework.Fail(saveErr.Error())
+		}
+
+		if mode == volumesType || mode == snapsType || mode == groupSnapsType {
+			keyCount, err := getCSIJournalKeyCount(f, driver, pool, mode)
+			if err != nil {
+				logAndFail("failed to count CSI journal keys: %v", err)
+			}
+			err = compareStdoutWithCount(strconv.Itoa(keyCount), count)
+			if err != nil {
+				framework.Fail(fmt.Errorf("failed to validate journal key count for %s: %w", mode, err).Error())
+			}
+
+			return
 		}
 	}
 }

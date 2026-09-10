@@ -1124,12 +1124,15 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 		return err
 	}
 
+	key := "csi.volume." + imageData.pvName
+	shardOid := getCsiDirectoryShard(key)
 	_, stdErr, err := execCommandInToolBoxPod(
 		f,
 		fmt.Sprintf(
-			"rados getomapval %s csi.volumes.default csi.volume.%s",
+			"rados getomapval %s %s %s",
 			rbdOptions(pool),
-			imageData.pvName,
+			shardOid,
+			key,
 		),
 		rookNamespace,
 	)
@@ -1137,17 +1140,18 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("error getting fsid %v", stdErr)
+		return fmt.Errorf("failed to getomapval from %s: %s", shardOid, stdErr)
 	}
 
 	if radosNamespace != "" {
 		framework.Logf(
-			"found CSI journal entry %s in pool %s namespace %s",
-			"csi.volume."+imageData.pvName,
+			"found CSI journal entry %s in pool %s namespace %s oid %s",
+			key,
 			pool,
-			radosNamespace)
+			radosNamespace,
+			shardOid)
 	} else {
-		framework.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)
+		framework.Logf("found CSI journal entry %s in pool %s oid %s", key, pool, shardOid)
 	}
 
 	return nil
@@ -1190,22 +1194,28 @@ func deletePVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeC
 		return err
 	}
 
+	key := "csi.volume." + imageData.pvName
+	shardOid := getCsiDirectoryShard(key)
 	_, stdErr, err := execCommandInToolBoxPod(
 		f,
 		fmt.Sprintf(
-			"rados rmomapkey %s csi.volumes.default csi.volume.%s",
+			"rados rmomapkey %s %s %s",
 			rbdOptions(pool),
-			imageData.pvName),
-		rookNamespace)
+			shardOid,
+			key,
+		),
+		rookNamespace,
+	)
 	if err != nil {
 		return err
 	}
 	if stdErr != "" {
 		return fmt.Errorf(
-			"failed to remove %s csi.volumes.default csi.volume.%s: %v",
-			rbdOptions(pool),
-			imageData.imageID,
-			stdErr)
+			"failed to remove %s %s: %s",
+			shardOid,
+			key,
+			stdErr,
+		)
 	}
 
 	return nil
