@@ -55,6 +55,7 @@ const (
 
 	rbdType    = "rbd"
 	cephfsType = "cephfs"
+	nfsType    = "nfs"
 
 	volumesType    = "volumes"
 	snapsType      = "snaps"
@@ -78,32 +79,32 @@ const (
 
 var (
 	// cli flags.
-	deployTimeout      int
-	deployCephFS       bool
-	deployRBD          bool
-	deployNFS          bool
-	deployNVMeoF       bool
-	testCephFS         bool
-	testCephFSFscrypt  bool
-	testRBD            bool
-	testRBDFSCrypt     bool
-	testNBD            bool
-	testNFS            bool
-	testNVMeoF         bool
-	helmTest           bool
-	upgradeTesting     bool
-	upgradeVersion     string
-	cephCSINamespace   string
-	rookNamespace      string
-	radosNamespace     string
-	poll               = 2 * time.Second
-	isOpenShift        bool
-	clusterID          string
-	nfsDriverName      string
-	operatorDeployment bool
-	skipVault          bool
+	deployTimeout       int
+	deployCephFS        bool
+	deployRBD           bool
+	deployNFS           bool
+	deployNVMeoF        bool
+	testCephFS          bool
+	testCephFSFscrypt   bool
+	testRBD             bool
+	testRBDFSCrypt      bool
+	testNBD             bool
+	testNFS             bool
+	testNVMeoF          bool
+	helmTest            bool
+	upgradeTesting      bool
+	upgradeVersion      string
+	cephCSINamespace    string
+	rookNamespace       string
+	radosNamespace      string
+	poll                = 2 * time.Second
+	isOpenShift         bool
+	clusterID           string
+	nfsDriverName       string
+	operatorDeployment  bool
+	skipVault           bool
 	kmsConfigMapCreated bool
-	monsCache          = make(map[string][]string)
+	monsCache           = make(map[string][]string)
 )
 
 type cephfsFilesystem struct {
@@ -175,7 +176,8 @@ func listCephFSFileSystems(f *framework.Framework) ([]cephfsFilesystem, error) {
 	stdout, stdErr, err := execCommandInToolBoxPod(
 		f,
 		"ceph fs ls --format=json",
-		rookNamespace)
+		rookNamespace,
+	)
 	if err != nil {
 		return fsList, err
 	}
@@ -247,7 +249,8 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			radosLsCmd: "rados ls " + rbdOptions(pool),
 			radosLsCmdFilter: fmt.Sprintf(
 				"rados ls %s | grep -v default | grep -v csi.volume.group. |  grep -c ^csi.volume.",
-				rbdOptions(pool)),
+				rbdOptions(pool),
+			),
 			radosLsKeysCmd:       "rados listomapkeys csi.volumes.default " + rbdOptions(pool),
 			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default %s | wc -l", rbdOptions(pool)),
 		},
@@ -282,6 +285,31 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", rbdOptions(pool)),
 			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + rbdOptions(pool),
 			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", rbdOptions(pool)),
+		},
+		{
+			volumeMode: volumesType,
+			driverType: nfsType,
+			radosLsCmd: "rados ls " + nfsOptions(pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls %s | grep -v default | grep -v csi.volume.group. | grep -c ^csi.volume.",
+				nfsOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.volumes.default " + nfsOptions(pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default %s | wc -l", nfsOptions(pool)),
+		},
+		{
+			volumeMode:           snapsType,
+			driverType:           nfsType,
+			radosLsCmd:           "rados ls " + nfsOptions(pool),
+			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", nfsOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.snaps.default " + nfsOptions(pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.snaps.default %s | wc -l", nfsOptions(pool)),
+		},
+		{
+			volumeMode:           groupSnapsType,
+			driverType:           nfsType,
+			radosLsCmd:           "rados ls" + nfsOptions(pool),
+			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.group.", nfsOptions(pool)),
+			radosLsKeysCmd:       "rados listomapkeys csi.groups.default " + nfsOptions(pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.groups.default %s | wc -l", nfsOptions(pool)),
 		},
 	}
 
@@ -350,7 +378,8 @@ func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 			"%s.%s.svc.cluster.local:%d",
 			svcList.Items[i].Name,
 			svcList.Items[i].Namespace,
-			svcList.Items[i].Spec.Ports[0].Port)
+			svcList.Items[i].Spec.Ports[0].Port,
+		)
 		services = append(services, s)
 	}
 
@@ -777,7 +806,8 @@ func writeDataInPod(app *v1.Pod, opt *metav1.ListOptions, f *framework.Framework
 		f,
 		fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10 status=none", filePath),
 		app.Namespace,
-		opt)
+		opt,
+	)
 	if err != nil {
 		return err
 	}
@@ -1101,7 +1131,8 @@ func validatePVCClone(
 							name,
 							p.Namespace,
 							imageData.csiVolumeHandle,
-							sErr)
+							sErr,
+						)
 					} else {
 						// check new passphrase created
 						stdOut, stdErr := kms.getPassphrase(f, imageData.csiVolumeHandle)
@@ -1197,7 +1228,8 @@ func validatePVCClone(
 							name,
 							p.Namespace,
 							imageData.csiVolumeHandle,
-							sErr)
+							sErr,
+						)
 					}
 				}
 			}
@@ -1306,7 +1338,8 @@ func validatePVCSnapshot(
 							"failed to get snapshotcontent for %s in namespace %s: %w",
 							s.Name,
 							s.Namespace,
-							sErr)
+							sErr,
+						)
 					} else {
 						// check new passphrase created
 						_, stdErr := kms.getPassphrase(f, *content.Status.SnapshotHandle)
@@ -1371,7 +1404,8 @@ func validatePVCSnapshot(
 							name,
 							p.Namespace,
 							imageData.csiVolumeHandle,
-							sErr)
+							sErr,
+						)
 					} else {
 						// check new passphrase created
 						_, stdErr := restoreKMS.getPassphrase(f, imageData.csiVolumeHandle)
@@ -1395,7 +1429,8 @@ func validatePVCSnapshot(
 					framework.Logf(
 						"checksum value didn't match. checksum=%s and checksumclone=%s",
 						checkSum,
-						checkSumClone)
+						checkSumClone,
+					)
 				}
 			}
 			wg.Done()
@@ -1510,7 +1545,8 @@ func validatePVCSnapshot(
 							"failed to get snapshotcontent for %s in namespace %s: %w",
 							s.Name,
 							s.Namespace,
-							err)
+							err,
+						)
 					}
 				}
 			}
@@ -1849,7 +1885,8 @@ func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) e
 
 		framework.Logf(
 			"Job %s/%s has not completed yet (%d seconds elapsed)",
-			ns, job, int(time.Since(start).Seconds()))
+			ns, job, int(time.Since(start).Seconds()),
+		)
 
 		return false, nil
 	})
@@ -1904,7 +1941,8 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 				"will run kubectl (%s) args (%s) again (%d seconds elapsed)",
 				action,
 				args,
-				int(time.Since(start).Seconds()))
+				int(time.Since(start).Seconds()),
+			)
 
 			return false, fmt.Errorf("failed to run kubectl: %w", err)
 		}
@@ -1944,7 +1982,8 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 				action,
 				filename,
 				args,
-				int(time.Since(start).Seconds()))
+				int(time.Since(start).Seconds()),
+			)
 
 			return false, fmt.Errorf("failed to run kubectl: %w", err)
 		}
@@ -1977,7 +2016,8 @@ func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...str
 			framework.Logf(
 				"will run kubectl (%s) again (%d seconds elapsed)",
 				args,
-				int(time.Since(start).Seconds()))
+				int(time.Since(start).Seconds()),
+			)
 
 			return false, fmt.Errorf("failed to run kubectl: %v, error: %w", args, err)
 		}
@@ -2050,7 +2090,8 @@ func listExports(f *framework.Framework, clusterID string) (*[]cephNFSExport, er
 	stdout, stdErr, err := execCommandInToolBoxPod(
 		f,
 		"ceph nfs export ls "+clusterID+" --detailed",
-		rookNamespace)
+		rookNamespace,
+	)
 	if err != nil {
 		return nil, err
 	}

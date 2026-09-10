@@ -235,6 +235,10 @@ func cephfsOptions(pool string) string {
 	return "--pool=" + pool + " --namespace=csi"
 }
 
+func nfsOptions(pool string) string {
+	return "--pool=" + pool + " --namespace=csi"
+}
+
 type cephfsSubVolume struct {
 	Name string `json:"name"`
 }
