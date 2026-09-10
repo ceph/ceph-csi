@@ -63,6 +63,7 @@ Job definitions live in `jobs/*.yaml` (JJB format) paired with a
 | `mini-e2e_k8s-{ver}` | `jobs/mini-e2e.yaml` | `mini-e2e.groovy` | PR comment `/test ci/centos/mini-e2e[/k8s-{ver}]` |
 | `mini-e2e-helm_k8s-{ver}` | `jobs/mini-e2e.yaml` | `mini-e2e-helm.groovy` | PR comment `/test ci/centos/mini-e2e-helm[/k8s-{ver}]` |
 | `mini-e2e-operator_k8s-{ver}` | `jobs/mini-e2e.yaml` | `mini-e2e-operator.groovy` | PR comment `/test ci/centos/mini-e2e-operator[/k8s-{ver}]` |
+| `mini-e2e-operator-c10s_k8s-{ver}` | `jobs/mini-e2e-operator-c10s.yaml` | `mini-e2e-operator-c10s.groovy` | PR comment `/test ci/centos/mini-e2e-operator-c10s[/k8s-{ver}]` |
 | `k8s-e2e-external-storage-{ver}` | `jobs/k8s-e2e-external-storage.yaml` | `k8s-e2e-external-storage.groovy` | PR comment `/test ci/centos/k8s-e2e-external-storage[/{ver}]` |
 | `upgrade-tests-{type}` | `jobs/upgrade-tests.yaml` | `upgrade-tests.groovy` | PR comment `/test ci/centos/upgrade-tests[-{type}]` |
 | `jjb-validate` | `jobs/jjb-validate.yaml` | `jjb-validate.groovy` | PRs to `ci/centos`; `/test ci/centos/jjb-validate` |
@@ -236,7 +237,7 @@ Rules (enforced by `commitlint`):
 | `prepare.sh` | Installs deps and checks out a PR on a bare-metal machine |
 | `scripts/Dockerfile.test` | Container image used for linting |
 | `scripts/lint-extras.sh` | Shell/markdown/yaml lint runner |
-| `scripts/skip-doc-change.sh` | Exits 1 when only docs changed (skips CI) |
+| `scripts/inspect-changes.sh` | Detects backend/shared code changes; `--doc-change-only` exits 0 when only docs changed (skips CI) |
 | `scripts/container-needs-rebuild.sh` | Detects if container image must be rebuilt |
 | `jobs/` | JJB YAML job definitions |
 | `deploy/` | OpenShift manifests + JJB container + `jjb.sh` helper |
