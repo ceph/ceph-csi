@@ -1,10 +1,13 @@
 ---
 apiVersion: v1
 appVersion: canary
-description: "Container Storage Interface (CSI) driver,
+description: "DEPRECATED: This Helm chart is deprecated and will be removed in v3.19.
+Please use the Ceph-CSI Operator (https://ceph.github.io/ceph-csi-operator) instead.
+Container Storage Interface (CSI) driver,
 provisioner, snapshotter, resizer and attacher for Ceph cephfs"
 name: ceph-csi-cephfs
 version: 3-canary
+deprecated: true
 keywords:
   - ceph
   - cephfs

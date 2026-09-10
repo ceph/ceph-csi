@@ -1,3 +1,10 @@
+# ============================================================================
+# DEPRECATION NOTICE
+# ============================================================================
+# Manual YAML deployments are DEPRECATED and will be removed in v3.19.
+# Please use the Ceph-CSI Operator: https://ceph.github.io/ceph-csi-operator
+# See deploy/DEPRECATION.md for migration guidance.
+# ============================================================================
 ---
 kind: Service
 apiVersion: v1

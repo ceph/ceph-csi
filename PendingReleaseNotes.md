@@ -2,6 +2,13 @@
 
 ## Breaking changes
 
+## Deprecations
+
+1. Helm charts and manual YAML deployments are deprecated in v3.18 and will
+   be removed in v3.19. The Ceph-CSI Operator is now the officially
+   supported deployment method for Kubernetes. See `deploy/DEPRECATION.md`
+   for migration guidance.
+
 ## Features
 
 1. Added `GetReplicationDestinationInfo` RPC to map source volume/volume
