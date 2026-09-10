@@ -95,11 +95,11 @@ node('cico-workspace') {
 
 	stage('check doc-only change') {
 		doc_change = sh(
-			script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/skip-doc-change.sh origin/${git_since}",
+			script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/inspect-changes.sh --doc-change-only origin/${git_since}",
 			returnStatus: true)
 	}
-	// if doc_change (return value of skip-doc-change.sh is 1, do not run the other stages
-	if (doc_change == 1 && ref != git_since) {
+	// if doc_change (return value of inspect-changes.sh --doc-change-only is 0, do not run the other stages
+	if (doc_change == 0 && ref != git_since) {
 		currentBuild.result = 'SUCCESS'
 		return
 	}
