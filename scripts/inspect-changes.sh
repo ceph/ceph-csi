@@ -7,9 +7,10 @@
 #
 # Uses a three-dot diff (<since>...<until>) so that only the files actually
 # changed by the PR are considered, regardless of shallow-clone depth.
+# Documentation files are always ignored when checking backend/shared changes.
 #
 # Usage:
-#   scripts/inspect-changes.sh [--backend=<backend>] [--repo=<path>] <since> [<until>]
+#   scripts/inspect-changes.sh [--backend=<backend>] [--repo=<path>] [--doc-change-only] <since> [<until>]
 #
 # Arguments:
 #   <since>             git ref for the base of the range, e.g. "origin/devel"
@@ -23,12 +24,18 @@
 #   --repo=<path>       path to the ceph-csi git repository to inspect.
 #                       Defaults to the current working directory.
 #   --files             show the list of changed files for each matched category
+#   --doc-change-only   exit 0 if every changed file is a documentation file,
+#                       exit 1 if any non-documentation file was changed.
+#                       Cannot be combined with --backend.
 #   -h, --help          print this help text and exit
 #
 # Exit codes:
 #   0   one or more changed files touch the requested backend / shared code
+#         (or, with --doc-change-only: all changes are documentation-only)
 #   1   no changed files match the requested backend / shared code
-#   2   usage error
+#         (or, with --doc-change-only: at least one non-documentation file changed)
+#   2   usage or runtime error (e.g. git failure, empty diff, bad arguments);
+#         a log_error message will have been printed to stderr
 #
 
 set -e -o pipefail
@@ -47,11 +54,26 @@ declare -A BACKEND_PATHS=(
 )
 
 # ---------------------------------------------------------------------------
+# documentation file patterns — matched against each changed file path.
+# A file is considered documentation-only if it matches any of these.
+# ---------------------------------------------------------------------------
+declare -a DOC_PATTERNS=(
+    "^docs/"
+    "\.md$"
+    "^LICENSE$"
+    "^\.mergify\.yml$"
+    "^\.github/"
+    "^\.gitignore$"
+    "^\.commitlintrc\.yml$"
+)
+
+# ---------------------------------------------------------------------------
 # defaults
 # ---------------------------------------------------------------------------
 REPO="."
 BACKEND=""
 SHOW_FILES=0
+DOC_CHANGE_ONLY=0
 GIT_SINCE=""
 GIT_UNTIL="HEAD"
 
@@ -80,11 +102,24 @@ path_matches_prefixes() {
     return 1
 }
 
+# is_doc_file <file>
+# Returns 0 if the file matches any documentation pattern.
+is_doc_file() {
+    local file="$1"
+    local pattern
+    for pattern in "${DOC_PATTERNS[@]}"; do
+        if [[ "${file}" =~ ${pattern} ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # ---------------------------------------------------------------------------
 # argument parsing
 # ---------------------------------------------------------------------------
 PARSED=$(getopt \
-    --longoptions "backend:,repo:,files,help" \
+    --longoptions "backend:,repo:,files,doc-change-only,help" \
     --options "h" \
     --name "$(basename "$0")" \
     -- "$@") || { usage 2; }
@@ -107,6 +142,9 @@ while true; do
         ;;
     --files)
         SHOW_FILES=1
+        ;;
+    --doc-change-only)
+        DOC_CHANGE_ONLY=1
         ;;
     -h | --help)
         usage 0
@@ -135,6 +173,12 @@ if [[ -n "${BACKEND}" ]]; then
     fi
 fi
 
+# --doc-change-only is incompatible with --backend
+if [[ "${DOC_CHANGE_ONLY}" -eq 1 && -n "${BACKEND}" ]]; then
+    log_error "--doc-change-only cannot be combined with --backend."
+    exit 2
+fi
+
 # Validate the repo
 if [[ ! -d "${REPO}/.git" ]]; then
     log_error "'${REPO}' does not appear to be a git repository."
@@ -150,9 +194,12 @@ fi
 # ---------------------------------------------------------------------------
 log_info "Inspecting changes: ${GIT_SINCE}...${GIT_UNTIL}  (repo: ${REPO})"
 
-mapfile -t CHANGED_FILES < <(
-    git -C "${REPO}" diff --name-only "${GIT_SINCE}...${GIT_UNTIL}" 2>/dev/null
-)
+if ! CHANGED_FILES_RAW=$(git -C "${REPO}" diff --no-renames --name-only "${GIT_SINCE}...${GIT_UNTIL}" 2>&1); then
+    log_error "git diff failed: ${CHANGED_FILES_RAW}"
+    exit 2
+fi
+
+mapfile -t CHANGED_FILES < <(printf '%s\n' "${CHANGED_FILES_RAW}" | grep -v '^$' || true)
 
 if [[ ${#CHANGED_FILES[@]} -eq 0 ]]; then
     log_error "No changed files found in ${GIT_SINCE}...${GIT_UNTIL} — git diff returned an empty result."
@@ -160,6 +207,20 @@ if [[ ${#CHANGED_FILES[@]} -eq 0 ]]; then
 fi
 
 log_info "Total changed files: ${#CHANGED_FILES[@]}"
+
+# ---------------------------------------------------------------------------
+# --doc-change-only: exit 0 if every changed file is a documentation file
+# ---------------------------------------------------------------------------
+if [[ "${DOC_CHANGE_ONLY}" -eq 1 ]]; then
+    for f in "${CHANGED_FILES[@]}"; do
+        if ! is_doc_file "${f}"; then
+            log_info "Non-documentation file changed: ${f}"
+            exit 1
+        fi
+    done
+    log_info "All changed files are documentation — skipping."
+    exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # build the set of backends to check
@@ -189,6 +250,12 @@ for backend in "${CHECK_BACKENDS[@]}"; do
 done
 
 for f in "${CHANGED_FILES[@]}"; do
+    # documentation files are ignored for backend/shared classification
+    if is_doc_file "${f}"; then
+        log_info "Ignoring documentation file: ${f}"
+        continue
+    fi
+
     if ! path_matches_prefixes "${f}" "${all_backend_prefixes[@]}"; then
         # shared file: counts as a change to every backend
         SHARED_FILES+=("${f}")
