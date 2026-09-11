@@ -139,6 +139,7 @@ func createNVMeoFStorageClass(
 	name string,
 	scOptions, parameters map[string]string,
 	policy v1.PersistentVolumeReclaimPolicy,
+	useNetworkMask bool,
 ) {
 	sc, err := getStorageClass(nvmeofExamplePath + "/storageclass.yaml")
 	Expect(err).ShouldNot(HaveOccurred())
@@ -183,21 +184,28 @@ func createNVMeoFStorageClass(
 
 	sc.Parameters["nvmeofGatewayAddress"] = gwIP
 
-	listeners := []struct {
-		Hostname string `json:"hostname,omitempty"`
-		Address  string `json:"address"`
-		Port     int    `json:"port"`
-	}{
-		{
-			Hostname: gwHost, // FIXME: is this required?
-			Address:  gwIP,
-			Port:     4420,
-		},
-		// only one gateway, so one listener
+	if useNetworkMask {
+		networkMask := getNVMeofGatewayNetworkMask(f.ClientSet)
+		sc.Parameters["networkMask"] = networkMask
+		delete(sc.Parameters, "listeners")
+	} else {
+		listeners := []struct {
+			Hostname string `json:"hostname,omitempty"`
+			Address  string `json:"address"`
+			Port     int    `json:"port"`
+		}{
+			{
+				Hostname: gwHost, // FIXME: is this required?
+				Address:  gwIP,
+				Port:     4420,
+			},
+			// only one gateway, so one listener
+		}
+		rawListeners, err := json.Marshal(listeners)
+		Expect(err).ShouldNot(HaveOccurred())
+		sc.Parameters["listeners"] = string(rawListeners)
+		delete(sc.Parameters, "networkMask")
 	}
-	rawListeners, err := json.Marshal(listeners)
-	Expect(err).ShouldNot(HaveOccurred())
-	sc.Parameters["listeners"] = string(rawListeners)
 
 	if scOptions["volumeBindingMode"] == "WaitForFirstConsumer" {
 		value := storagev1.VolumeBindingWaitForFirstConsumer
