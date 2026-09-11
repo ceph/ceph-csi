@@ -27,6 +27,6 @@ jobs:
 
       - name: run Snyk to check for code vulnerabilities
         # yamllint disable-line rule:line-length
-        uses: snyk/actions/golang@cdb760004ba9ea4d525f2e043745dfe85bb9077e  # master
+        uses: snyk/actions/golang@12140f4059e244892ae643824a95459a102120dd  # master
         env:
           SNYK_TOKEN: ${{ secrets.SYNK_TOKEN }}
