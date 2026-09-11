@@ -241,6 +241,9 @@ var _ = Describe(cephfsType, func() {
 		}
 		if !skipVault {
 			deployVault(f.ClientSet, deployTimeout)
+			if testCephFSFscrypt {
+				deployKMIP(f, deployTimeout)
+			}
 		} else {
 			err = createEmptyKMSConfigMap(f.ClientSet, cephCSINamespace)
 			if err != nil {
@@ -305,6 +308,9 @@ var _ = Describe(cephfsType, func() {
 		}
 		if !skipVault {
 			deleteVault()
+			if testCephFSFscrypt {
+				deleteKMIP()
+			}
 		}
 
 		err = deleteSubvolumegroup(f, fileSystemName, subvolumegroup)
@@ -595,6 +601,7 @@ var _ = Describe(cephfsType, func() {
 				"vault-test":            vaultKMS,
 				"vault-tokens-test":     vaultTokensKMS,
 				"vault-tenant-sa-test":  vaultTenantSAKMS,
+				"kmip-fscrypt-test":     kmipKMS,
 			}
 
 			for kmsID, kmsConf := range kmsToTest {
@@ -1759,7 +1766,7 @@ var _ = Describe(cephfsType, func() {
 		})
 
 		if testCephFSFscrypt {
-			for _, kmsID := range []string{"secrets-metadata-test", "vault-test"} {
+			for _, kmsID := range []string{"secrets-metadata-test", "vault-test", "kmip-fscrypt-test"} {
 				It("checking encrypted snapshot-backed volume with KMS "+kmsID, func() {
 					err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 					if err != nil {
@@ -2368,6 +2375,7 @@ var _ = Describe(cephfsType, func() {
 			kmsToTest := map[string]kmsConfig{
 				"secrets-metadata-test": secretsMetadataKMS,
 				"vault-test":            vaultKMS,
+				"kmip-fscrypt-test":     kmipKMS,
 			}
 			for kmsID, kmsConf := range kmsToTest {
 				It("create an encrypted PVC-PVC clone and bind it to an app with "+kmsID, func() {

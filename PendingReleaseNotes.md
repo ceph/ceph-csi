@@ -35,5 +35,10 @@
    `CreateVolume` now fails with `AlreadyExists` rather than silently
    reusing another volume's export if the name is already claimed by a
    different subvolume.
+1. CephFS: fscrypt file encryption now works with a KMIP KMS when
+   `USE_CRYPTO_RPC` is set to `"false"`. The key material of the managed
+   symmetric key is fetched with the KMIP `Get` operation and used as the
+   fscrypt passphrase. RBD with `encryptionType: file` keeps rejecting a
+   KMIP KMS until that combination has been tested.
 
 ## NOTE
