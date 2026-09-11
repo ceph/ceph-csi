@@ -75,7 +75,11 @@ func (cs *ControllerServer) CreateVolumeGroupSnapshot(
 	}
 	defer cs.VolumeGroupLocks.Release(vgsName)
 
-	mgr := NewManager(cs.Driver.GetInstanceID(), req.GetParameters(), req.GetSecrets())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	mgr := NewManager(cs.Driver.GetInstanceID(), parameters, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve all volumes, free them later on

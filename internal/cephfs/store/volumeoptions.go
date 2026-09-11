@@ -277,6 +277,9 @@ func NewVolumeOptions(
 	)
 
 	volOptions := req.GetParameters()
+	if volOptions == nil {
+		return nil, fmt.Errorf("parameters cannot be nil")
+	}
 	opts, err = getVolumeOptions(volOptions)
 	if err != nil {
 		return nil, err
