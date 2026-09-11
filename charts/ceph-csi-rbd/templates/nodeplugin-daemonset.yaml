@@ -39,7 +39,16 @@ spec:
       securityContext: {{ toYaml .Values.nodeplugin.podSecurityContext | nindent 8 }}
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.nodeplugin" . }}
       hostNetwork: true
+{{- $hostPID := false }}
+{{- range .Values.csiConfig }}
+  {{- if and .rbd .rbd.netNamespaceFilePath }}
+    {{- $hostPID = true }}
+  {{- end }}
+{{- end }}
+{{- if $hostPID }}
+      # set to true when netNamespaceFilePath is configured
       hostPID: true
+{{- end }}
 {{- if .Values.nodeplugin.priorityClassName }}
       priorityClassName: {{ .Values.nodeplugin.priorityClassName }}
 {{- end }}

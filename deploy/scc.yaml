@@ -21,8 +21,8 @@ priority:
 allowedCapabilities: ["SYS_ADMIN"]
 # Needed as we run liveness container on daemonset pods
 allowHostPorts: true
-# Needed as we are setting this in RBD plugin pod
-allowHostPID: true
+# Set to true when netNamespaceFilePath is configured
+allowHostPID: false
 # Required for encryption
 allowHostIPC: true
 # Set to false as we write to RootFilesystem inside csi containers

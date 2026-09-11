@@ -109,7 +109,8 @@ spec:
               name: registration-dir
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
-      hostPID: true
+      # set to true when netNamespaceFilePath is configured
+      hostPID: false
       priorityClassName: system-node-critical
       restartPolicy: Always
       schedulerName: default-scheduler
