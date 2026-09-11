@@ -240,11 +240,11 @@ github.com/ceph/go-ceph/rbd/admin
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/container-storage-interface/spec v1.12.0
-## explicit; go 1.23.0
-github.com/container-storage-interface/spec/lib/go/csi
-# github.com/csi-addons/kubernetes-csi-addons v0.14.0
+# github.com/container-storage-interface/spec v1.13.0
 ## explicit; go 1.25.0
+github.com/container-storage-interface/spec/lib/go/csi
+# github.com/csi-addons/kubernetes-csi-addons v0.15.0
+## explicit; go 1.26.3
 github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1
 # github.com/csi-addons/spec v0.2.1-0.20260515055340-d4a373713b9a
 ## explicit
@@ -303,7 +303,7 @@ github.com/go-jose/go-jose/v4
 github.com/go-jose/go-jose/v4/cipher
 github.com/go-jose/go-jose/v4/json
 github.com/go-jose/go-jose/v4/jwt
-# github.com/go-logr/logr v1.4.3
+# github.com/go-logr/logr v1.4.4
 ## explicit; go 1.18
 github.com/go-logr/logr
 github.com/go-logr/logr/funcr
@@ -554,7 +554,7 @@ go.uber.org/automaxprocs/maxprocs
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr
-# go.uber.org/zap v1.27.1
+# go.uber.org/zap v1.28.0
 ## explicit; go 1.19
 go.uber.org/zap
 go.uber.org/zap/buffer
@@ -1263,7 +1263,6 @@ sigs.k8s.io/controller-runtime/pkg/metrics/server
 sigs.k8s.io/controller-runtime/pkg/predicate
 sigs.k8s.io/controller-runtime/pkg/reconcile
 sigs.k8s.io/controller-runtime/pkg/recorder
-sigs.k8s.io/controller-runtime/pkg/scheme
 sigs.k8s.io/controller-runtime/pkg/source
 sigs.k8s.io/controller-runtime/pkg/webhook
 sigs.k8s.io/controller-runtime/pkg/webhook/admission
