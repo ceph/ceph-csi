@@ -394,6 +394,58 @@ Configure a role(s) for service accounts used for ceph-csi:
 * nodeplugin service account (`rbd-csi-nodeplugin`) requires **create** and
   **read** permissions to save new keys and retrieve existing
 
+##### TLS and mTLS options for `encryptionKMSType: vault`
+
+The following optional TLS configuration keys are supported. All `*FromSecret`
+values are **Kubernetes Secret names** in the CSI pod namespace (the namespace
+where ceph-csi is deployed, typically identified by the `POD_NAMESPACE`
+environment variable).
+
+| Key | Description |
+| --- | --- |
+| `vaultCAVerify` | Verify the Vault server TLS certificate (default: `"true"`) |
+| `vaultTLSServerName` | Override the TLS SNI server name |
+| `vaultCAFromSecret` | Name of a Kubernetes Secret containing the CA certificate in the `cert` field |
+| `vaultClientCertFromSecret` | Name of a Kubernetes Secret containing the client certificate in the `cert` field |
+| `vaultClientCertKeyFromSecret` | Name of a Kubernetes Secret containing the client private key in the `key` field |
+
+The client cert and key may be in the same Secret or in separate Secrets.
+
+Example Secret for the CA certificate:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-ca-secret
+  namespace: <ceph-csi-namespace>
+type: Opaque
+data:
+  cert: <base64-encoded PEM>
+```
+
+Example Secret for the client certificate and key (combined):
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-client-tls-secret
+  namespace: <ceph-csi-namespace>
+type: Opaque
+data:
+  cert: <base64-encoded client cert PEM>
+  key: <base64-encoded client key PEM>
+```
+
+> **Note:** `vaultCAFromSecret` behaviour changed in ceph-csi v3.14. Previously
+> the value was treated as a field name within the node-stage secret map
+> (the Secret referenced by `spec.csi.nodeStageSecretRef` on the PV).
+> It is now a Kubernetes Secret name, consistent with `vaulttokens`.
+> **Migration:** create a standalone Kubernetes Secret in the CSI pod namespace
+> with the CA PEM under the `cert` key, and set `vaultCAFromSecret` to that
+> Secret's name.
+
 #### Configuring Hashicorp Vault with a ServiceAccount per Tenant
 
 For deployments where a single ServiceAccount for accessing Hashicorp Vault is
