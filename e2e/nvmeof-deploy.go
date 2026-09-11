@@ -189,7 +189,7 @@ func createNVMeoFStorageClass(
 		Port     int    `json:"port"`
 	}{
 		{
-			Hostname: gwHost, // FIXME: is this required?
+			Hostname: gwHost, // short-hostname, without domain
 			Address:  gwIP,
 			Port:     4420,
 		},
@@ -319,4 +319,32 @@ func deleteNVMeOFVolumeAttributesClass(c kubernetes.Interface, name string) erro
 
 		return true, nil
 	})
+}
+
+// getNVMeofGateway returns the service name and pod IP address of the NVMe-oF gateway
+// in the rook-ceph namespace with label "app=rook-ceph-nvmeof".
+func getNVMeofGateway(c kubernetes.Interface) (string, string) {
+	ctx := context.TODO()
+	labelSelector := "app=rook-ceph-nvmeof"
+
+	// Get the service
+	svcList, err := c.CoreV1().Services(rookNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(svcList.Items).NotTo(BeEmpty(), "no service found with label %s in namespace %s", labelSelector, rookNamespace)
+
+	serviceName := svcList.Items[0].Name
+
+	// Get the pod
+	podList, err := c.CoreV1().Pods(rookNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(podList.Items).NotTo(BeEmpty(), "no pod found with label %s in namespace %s", labelSelector, rookNamespace)
+
+	podIP := podList.Items[0].Status.PodIP
+	Expect(podIP).NotTo(BeEmpty(), "pod IP is empty for pod %s", podList.Items[0].Name)
+
+	return serviceName, podIP
 }
