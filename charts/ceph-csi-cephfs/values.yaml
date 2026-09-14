@@ -131,7 +131,7 @@ nodeplugin:
   registrar:
     image:
       repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-      tag: v2.17.0
+      tag: v2.18.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -259,7 +259,7 @@ provisioner:
     enabled: true
     image:
       repository: registry.k8s.io/sig-storage/csi-attacher
-      tag: v4.12.0
+      tag: v4.13.0
       pullPolicy: IfNotPresent
     resources: {}
     args:
@@ -276,7 +276,7 @@ provisioner:
     enabled: true
     image:
       repository: registry.k8s.io/sig-storage/csi-resizer
-      tag: v2.2.0
+      tag: v2.2.1
       pullPolicy: IfNotPresent
     resources: {}
     args:
