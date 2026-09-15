@@ -22,6 +22,10 @@ FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
 
 for sc in "${WORKDIR}"/volumesnapshotclass-*.yaml.in
 do
+	# skip NFS VolumeSnapshotClass unless TEST_NFS is set
+	case "${sc}" in
+		*-nfs.yaml.in) [ "${TEST_NFS}" = "true" ] || continue ;;
+	esac
 	sed "s/@@CLUSTER_ID@@/${FS_ID}/" "${sc}" |
 		kubectl create -f -
 done
