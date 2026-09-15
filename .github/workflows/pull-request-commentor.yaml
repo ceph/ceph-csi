@@ -82,6 +82,25 @@ jobs:
           body: |
             /test ci/centos/mini-e2e/k8s-${{ matrix.k8s }}
 
+  devel-nfs-e2e:
+    runs-on: ubuntu-latest
+
+    if: >
+      github.repository == 'ceph/ceph-csi' &&
+      (github.event.label.name == 'ok-to-test' &&
+      github.event.pull_request.merged != true) &&
+      github.base_ref == 'devel'
+
+    steps:
+      - name: Add comment to trigger NFS E2E tests for Kubernetes 1.37
+        # yamllint disable-line rule:line-length
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            /test ci/centos/mini-e2e/k8s-1.37/nfs
+
   any-branch-k8s-version:
     runs-on: ubuntu-latest
 
