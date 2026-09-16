@@ -21,6 +21,11 @@ export KUBECONFIG="${KUBECONFIG_TMP}"
 
 for driver in /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/driver-*.yaml
 do
+        # skip NFS testing unless TEST_NFS is set
+        case "${driver}" in
+                */driver-nfs.yaml) [ "${TEST_NFS}" = "true" ] || continue ;;
+        esac
+
 	kubernetes/test/bin/ginkgo \
 		--vv \
 		-focus="External.Storage.*.csi.ceph.com" \
