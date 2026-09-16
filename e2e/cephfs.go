@@ -3074,7 +3074,18 @@ var _ = Describe(cephfsType, func() {
 
 				return
 			}
-			err := pvcDeleteWhenPoolNotFound(pvcPath, true, f)
+			err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+			if err != nil {
+				logAndFail("failed to create CephFS storageclass: %v", err)
+			}
+			defer func() {
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					logAndFail("failed to delete CephFS storageclass: %v", err)
+				}
+			}()
+
+			err = pvcDeleteWhenPoolNotFound(pvcPath, true, f)
 			if err != nil {
 				logAndFail("failed to delete PVC: %v", err)
 			}
