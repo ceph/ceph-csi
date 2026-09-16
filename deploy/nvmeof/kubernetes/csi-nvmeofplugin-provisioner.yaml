@@ -32,7 +32,7 @@ spec:
       containers:
         - name: csi-nvmeofplugin
           # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:canary
+          image: quay.io/cephcsi/cephcsi:v3.18.0
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=nvmeof"
