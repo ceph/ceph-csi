@@ -4,7 +4,7 @@
    - [Pre-upgrade considerations](#pre-upgrade-considerations)
       - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
    - [Upgrading from previous releases](#upgrading-from-previous-releases)
-   - [Upgrading from v3.16 to v3.17](#upgrading-from-v316-to-v317)
+   - [Upgrading from v3.17 to v3.18](#upgrading-from-v317-to-v318)
       - [Upgrading CephFS](#upgrading-cephfs)
          - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
             - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -91,8 +91,10 @@ To upgrade from previous releases, refer to the following:
   to upgrade from cephcsi v3.14 to v3.15
 - [upgrade-from-v3.15-v3.16](https://github.com/ceph/ceph-csi/blob/v3.16.2/docs/ceph-csi-upgrade.md)
   to upgrade from cephcsi v3.15 to v3.16
+- [upgrade-from-v3.16-v3.17](https://github.com/ceph/ceph-csi/blob/v3.17.1/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.16 to v3.17
 
-## Upgrading from v3.16 to v3.17
+## Upgrading from v3.17 to v3.18
 
 **Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
@@ -102,19 +104,19 @@ that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-**Also, we do not recommend any direct upgrades to 3.17 except from 3.16 to 3.17.**
-For example, upgrading from 3.14 to 3.17 is not recommended.
+**Also, we do not recommend any direct upgrades to 3.18 except from 3.17 to 3.18.**
+For example, upgrading from 3.15 to 3.18 is not recommended.
 
 **Refer to the Breaking Changes Section in the
-[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.17.1) before
+[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.18.0) before
 proceeding further.**
 
-git checkout v3.17.1 tag
+git checkout v3.18.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.17.1
+git checkout v3.18.0
 ```
 
 ```console
@@ -236,7 +238,7 @@ For each node:
    - The pod deletion causes the pods to be restarted and updated automatically
      on the node.
 
-we have successfully upgraded cephfs csi from v3.16 to v3.17
+we have successfully upgraded cephfs csi from v3.17 to v3.18
 
 ### Upgrading RBD
 
@@ -300,14 +302,9 @@ daemonset.apps/csi-rbdplugin configured
 service/csi-metrics-rbdplugin configured
 ```
 
-we have successfully upgraded RBD csi from v3.16 to v3.17
+we have successfully upgraded RBD csi from v3.17 to v3.18
 
 ### Upgrading NFS
-
-> **Note:** Only for upgrade from v3.16 to v3.17, old NFS csidriver
-object will need to be deleted and created again since
-the `spec.attachRequired` field is being updated to `true` in
-v3.17 release. Refer to v3.17 release notes for more details.
 
 Upgrading nfs csi includes upgrade of nfs driver and as well as
 kubernetes sidecar containers and also the permissions required for the
@@ -367,7 +364,7 @@ daemonset.apps/csi-nfsplugin configured
 service/csi-metrics-nfsplugin configured
 ```
 
-we have successfully upgraded nfs csi from v3.16 to v3.17
+we have successfully upgraded nfs csi from v3.17 to v3.18
 
 ### CSI Sidecar containers consideration
 
