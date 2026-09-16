@@ -48,7 +48,7 @@ spec:
       containers:
         - name: csi-rbdplugin
           # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:v3.18.0
+          image: quay.io/cephcsi/cephcsi:v3.18-canary
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
@@ -210,7 +210,7 @@ spec:
               mountPath: /csi
         - name: csi-rbdplugin-controller
           # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:v3.18.0
+          image: quay.io/cephcsi/cephcsi:v3.18-canary
           args:
             - "--type=controller"
             - "--v=5"
@@ -231,7 +231,7 @@ spec:
             - name: ceph-config
               mountPath: /etc/ceph/
         - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:v3.18.0
+          image: quay.io/cephcsi/cephcsi:v3.18-canary
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
