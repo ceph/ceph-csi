@@ -192,13 +192,13 @@ node('cico-workspace') {
 			timeout(time: 240, unit: 'MINUTES') {
 				def t_type = "" // test all by default
 				if ("${test_type}" == "cephfs"){
-					t_type = "--test-cephfs=true --test-rbd=false --test-nfs=false --test-nvmeof=false"
+					t_type = "--test-cephfs=true --test-rbd=false --test-nfs=false --test-nvmeof=false --deploy-cephfs=true --deploy-rbd=false --deploy-nfs=false"
 				} else if ("${test_type}" == "rbd"){
-					t_type = "--test-rbd=true --test-cephfs=false --test-nfs=false --test-nvmeof=false"
+					t_type = "--test-rbd=true --test-cephfs=false --test-nfs=false --test-nvmeof=false --deploy-rbd=true --deploy-cephfs=false --deploy-nfs=false"
 				} else if ("${test_type}" == "nfs"){
-					t_type = "--test-nfs=true --test-cephfs=false --test-rbd=false --test-nvmeof=false"
+					t_type = "--test-nfs=true --test-cephfs=false --test-rbd=false --test-nvmeof=false --deploy-nfs=true --deploy-cephfs=false --deploy-rbd=false"
 				} else if ("${test_type}" == "nvmeof"){
-					t_type = '--test-nvmeof=true --test-nfs=false --test-cephfs=false --test-rbd=false'
+					t_type = '--test-nvmeof=true --test-nfs=false --test-cephfs=false --test-rbd=false --deploy-nvmeof=true --deploy-cephfs=false --deploy-rbd=false --deploy-nfs=false'
 				}
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e E2E_ARGS=\"--delete-namespace-on-failure=false ${t_type}\""
 			}
