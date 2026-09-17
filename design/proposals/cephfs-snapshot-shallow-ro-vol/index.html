@@ -1,0 +1,1808 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Container Storage Interface (CSI) drivers for Ceph storage">
+      
+      
+        <meta name="author" content="Ceph-CSI Contributors">
+      
+      
+        <link rel="canonical" href="https://ceph.github.io/ceph-csi/design/proposals/cephfs-snapshot-shallow-ro-vol/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Snapshots as shallow read-only volumes - Ceph-CSI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#snapshots-as-shallow-read-only-volumes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Ceph-CSI Documentation" class="md-header__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ceph-CSI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Snapshots as shallow read-only volumes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../capabilities/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../rbd/deploy/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../ceph-csi-upgrade/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../csi-addons/disaster-recovery/" class="md-tabs__link">
+          
+  
+  
+  CSI Addons
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../development-guide/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Ceph-CSI Documentation" class="md-nav__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ceph-CSI Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../snap-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Snapshots and Clones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../expand-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Expansion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../static-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../volumeattributesclass/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Attributes Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RBD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rbd/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CephFS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CephFS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../cephfs/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ceph-csi-upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../intree-migrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In-tree Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../resource-cleanup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CSI Addons
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CSI Addons
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../csi-addons/disaster-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../coding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coding Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use-cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternatives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternatives
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#controller-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controller operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Controller operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reference-counting-for-shallow-volumes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference counting for shallow volumes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference counting for shallow volumes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-access-to-rt-objects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrent access to RT objects
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createvolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CreateVolume
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deletevolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeleteVolume
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createsnapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CreateSnapshot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controllerexpandvolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ControllerExpandVolume
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Node operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nodestagevolume-nodeunstagevolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodeStageVolume, NodeUnstageVolume
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="NodeStageVolume, NodeUnstageVolume">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-case-a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For case (a)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-case-b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For case (b)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nodepublishvolume-nodeunpublishvolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodePublishVolume, NodeUnpublishVolume
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nodegetvolumestats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodeGetVolumeStats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#volume-parameters-volume-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volume parameters, volume context
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="snapshots-as-shallow-read-only-volumes">Snapshots as shallow read-only volumes<a class="headerlink" href="#snapshots-as-shallow-read-only-volumes" title="Permanent link">&para;</a></h1>
+<p>CSI spec doesn't have a notion of "mounting a snapshot". Instead, the idiomatic
+way of accessing snapshot contents is first to create a volume populated with
+snapshot contents and then mount that volume to workloads.</p>
+<p>CephFS exposes snapshots as special, read-only directories of a subvolume
+located in <code>&lt;subvolume&gt;/.snap</code>. cephfs-csi can already provision writable
+volumes with snapshots as their data source, where snapshot contents are cloned
+to the newly created volume. However, cloning a snapshot to volume is a very
+expensive operation in CephFS as the data needs to be fully copied. When the
+need is to only read snapshot contents, snapshot cloning is extremely
+inefficient and wasteful.</p>
+<p>This proposal describes a way for cephfs-csi to expose CephFS snapshots as
+shallow, read-only volumes, without needing to clone the underlying snapshot
+data.</p>
+<h2 id="use-cases">Use-cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h2>
+<p>What's the point of such read-only volumes?</p>
+<ul>
+<li><strong>Restore snapshots selectively:</strong> users may want to traverse snapshots,
+  restoring data to a writable volume more selectively instead of restoring the
+  whole snapshot.</li>
+<li>
+<p><strong>Volume backup:</strong> users can't backup a live volume, they first need to
+  snapshot it. Once a snapshot is taken, it still can't be backed-up, as backup
+  tools usually work with volumes (that are exposed as file-systems)
+  and not snapshots (which might have backend-specific format). What this means
+  is that in order to create a snapshot backup, users have to clone snapshot
+  data twice:</p>
+<ol>
+<li>first time, when restoring the snapshot into a temporary volume from
+   where the data will be read,</li>
+<li>and second time, when transferring that volume into some backup/archive
+   storage (e.g. object store).</li>
+</ol>
+</li>
+</ul>
+<p>The temporary backed-up volume will most likely be thrown away after the
+  backup transfer is finished. That's a lot of wasted work for what we
+  originally wanted to do! Having the ability to create volumes from snapshots
+  cheaply would be a big improvement for this use case.</p>
+<h2 id="alternatives">Alternatives<a class="headerlink" href="#alternatives" title="Permanent link">&para;</a></h2>
+<ul>
+<li><em>Snapshots are stored in <code>&lt;subvolume&gt;/.snap</code>. Users could simply visit this
+  directory by themselves.</em></li>
+</ul>
+<p><code>.snap</code> is CephFS-specific detail of how snapshots are exposed. Users / tools
+  may not be aware of this special directory, or it may not fit their workflow.
+  At the moment, the idiomatic way of accessing snapshot contents in CSI drivers
+  is by creating a new volume and populating it with snapshot.</p>
+<h2 id="design">Design<a class="headerlink" href="#design" title="Permanent link">&para;</a></h2>
+<p>Key points:</p>
+<ul>
+<li>Volume source is a snapshot, volume access mode is <code>*_READER_ONLY</code>.</li>
+<li>No actual new subvolumes are created in CephFS.</li>
+<li>The resulting volume is a reference to the source subvolume snapshot. This
+  reference would be stored in <code>Volume.volume_context</code> map. In order to
+  reference a snapshot, we need subvolume name and snapshot name.</li>
+<li>Mounting such volume means mounting the respective CephFS subvolume and
+  exposing the snapshot to workloads.</li>
+<li>Let's call a <em>shallow read-only volume with a subvolume snapshot as its data
+  source</em> just a <em>shallow volume</em> from here on out for brevity.</li>
+</ul>
+<h3 id="controller-operations">Controller operations<a class="headerlink" href="#controller-operations" title="Permanent link">&para;</a></h3>
+<p>Care must be taken when handling life-times of relevant storage resources. When
+a shallow volume is created, what would happen if:</p>
+<ul>
+<li><em>Parent subvolume of the snapshot is removed while the shallow volume still
+  exists?</em></li>
+</ul>
+<p>This shouldn't be a problem already. The parent volume has either
+  <code>snapshot-retention</code> subvolume feature in which case its snapshots remain
+  available, or if it doesn't have that feature, it will fail to be deleted
+  because it still has snapshots associated to it.
+* <em>Source snapshot from which the shallow volume originates is removed while
+  that shallow volume still exists?</em></p>
+<p>We need to make sure this doesn't happen and some book-keeping is necessary.
+  Ideally we could employ some kind of reference counting.</p>
+<h4 id="reference-counting-for-shallow-volumes">Reference counting for shallow volumes<a class="headerlink" href="#reference-counting-for-shallow-volumes" title="Permanent link">&para;</a></h4>
+<p>As mentioned above, this is to protect shallow volumes, should their source
+snapshot be requested for deletion.</p>
+<p>When creating a volume snapshot, a reference tracker (RT), represented by a
+RADOS object, would be created for that snapshot. It would store information
+required to track the references for the backing subvolume snapshot. Upon a
+<code>CreateSnapshot</code> call, the reference tracker (RT) would be initialized with a
+single reference record, where the CSI snapshot itself is the first reference to
+the backing snapshot. Each subsequent shallow volume creation would add a new
+reference record to the RT object. Each shallow volume deletion would remove
+that reference from the RT object. Calling <code>DeleteSnapshot</code> would remove the
+reference record that was previously added in <code>CreateSnapshot</code>.</p>
+<p>The subvolume snapshot would be removed from the Ceph cluster only once the RT
+object holds no references. Note that this behavior would permit calling
+<code>DeleteSnapshot</code> even if it is still referenced by shallow volumes.</p>
+<ul>
+<li><code>DeleteSnapshot</code>:</li>
+<li>RT holds no references or the RT object doesn't exist:
+  delete the backing snapshot too.</li>
+<li>RT holds at least one reference: keep the backing snapshot.</li>
+<li><code>DeleteVolume</code>:</li>
+<li>RT holds no references: delete the backing snapshot too.</li>
+<li>RT holds at least one reference: keep the backing snapshot.</li>
+</ul>
+<p>To enable creating shallow volumes from snapshots that were provisioned by older
+versions of cephfs-csi (i.e. before this feature is introduced),
+<code>CreateVolume</code> for shallow volumes would also create an RT object in case it's
+missing. It would be initialized to two: the source snapshot and the newly
+created shallow volume.</p>
+<h5 id="concurrent-access-to-rt-objects">Concurrent access to RT objects<a class="headerlink" href="#concurrent-access-to-rt-objects" title="Permanent link">&para;</a></h5>
+<p>RADOS API provides access to compound atomic read and write operations. These
+will be used to implement reference tracking functionality, protecting
+modifications of reference records.</p>
+<h4 id="createvolume"><code>CreateVolume</code><a class="headerlink" href="#createvolume" title="Permanent link">&para;</a></h4>
+<p>A read-only volume with snapshot source would be created under these conditions:</p>
+<ol>
+<li><code>CreateVolumeRequest.volume_content_source</code> is a snapshot,</li>
+<li><code>CreateVolumeRequest.volume_capabilities[*].access_mode</code> is any of read-only
+   volume access modes.</li>
+<li>Possibly other volume parameters in <code>CreateVolumeRequest.parameters</code>
+   specific to shallow volumes.</li>
+</ol>
+<p><code>CreateVolumeResponse.Volume.volume_context</code> would then contain necessary
+information to identify the source subvolume / snapshot.</p>
+<p>Things to look out for:</p>
+<ul>
+<li><em>What's the volume size?</em></li>
+</ul>
+<p>It doesn't consume any space on the filesystem. <code>Volume.capacity_bytes</code> is
+  allowed to contain zero. We could use that.
+* <em>What should be the requested size when creating the volume (specified e.g. in
+  PVC)?</em></p>
+<p>This one is tricky. CSI spec allows for
+  <code>CreateVolumeRequest.capacity_range.{required_bytes,limit_bytes}</code> to be zero.
+  On the other hand,
+  <code>PersistentVolumeClaim.spec.resources.requests.storage</code> must be bigger than
+  zero. cephfs-csi doesn't care about the requested size (the volume will be
+  read-only, so it has no usable capacity) and would always set it to zero. This
+  shouldn't case any problems for the time being, but still is something we
+  should keep in mind.</p>
+<p><code>CreateVolume</code> and behavior when using volume as volume source (PVC-PVC clone):</p>
+<table>
+<thead>
+<tr>
+<th>New volume</th>
+<th>Source volume</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>shallow volume</td>
+<td>shallow volume</td>
+<td>Create a new reference to the parent snapshot of the source shallow volume.</td>
+</tr>
+<tr>
+<td>regular volume</td>
+<td>shallow volume</td>
+<td>Equivalent for a request to create a regular volume with snapshot as its source.</td>
+</tr>
+<tr>
+<td>shallow volume</td>
+<td>regular volume</td>
+<td>Such request doesn't make sense and <code>CreateVolume</code> should return an error.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="deletevolume"><code>DeleteVolume</code><a class="headerlink" href="#deletevolume" title="Permanent link">&para;</a></h3>
+<p>Volume deletion is trivial.</p>
+<h3 id="createsnapshot"><code>CreateSnapshot</code><a class="headerlink" href="#createsnapshot" title="Permanent link">&para;</a></h3>
+<p>Snapshotting read-only volumes doesn't make sense in general, and should be
+rejected.</p>
+<h3 id="controllerexpandvolume"><code>ControllerExpandVolume</code><a class="headerlink" href="#controllerexpandvolume" title="Permanent link">&para;</a></h3>
+<p>Same thing as above. Expanding read-only volumes doesn't make sense in general,
+and should be rejected.</p>
+<h2 id="node-operations">Node operations<a class="headerlink" href="#node-operations" title="Permanent link">&para;</a></h2>
+<p>Two cases need to be considered:</p>
+<ul>
+<li>(a) Volume/snapshot provisioning is handled by cephfs-csi</li>
+<li>(b) Volume/snapshot provisioning is handled externally (e.g. pre-provisioned
+  manually, or by OpenStack Manila, ...)</li>
+</ul>
+<h3 id="nodestagevolume-nodeunstagevolume"><code>NodeStageVolume</code>, <code>NodeUnstageVolume</code><a class="headerlink" href="#nodestagevolume-nodeunstagevolume" title="Permanent link">&para;</a></h3>
+<p>Here we're mounting the source subvolume onto the node. Subsequent volume
+publish calls then use bind mounts to expose the snapshot directory located in
+<code>.snap/&lt;SNAPSHOT DIRECTORY NAME&gt;</code>. Unfortunately, we cannot mount snapshots
+directly because they are not visible during mount time. We need to mount the
+whole subvolume first, and only then perform the binds to target paths.</p>
+<h4 id="for-case-a">For case (a)<a class="headerlink" href="#for-case-a" title="Permanent link">&para;</a></h4>
+<p>Subvolume paths are normally retrieved by
+<code>ceph fs subvolume info/getpath &lt;VOLUME NAME&gt; &lt;SUBVOLUME NAME&gt; &lt;SUBVOLUMEGROUP NAME&gt;</code>
+, which outputs a path like so:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;/&lt;UUID&gt;
+</code></pre></div>
+<p>Snapshots are then accessible in:</p>
+<ul>
+<li><code>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;/.snap</code> and</li>
+<li><code>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;/&lt;UUID&gt;/.snap</code>.</li>
+</ul>
+<p><code>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;/&lt;UUID&gt;</code> may be deleted if the source
+subvolume is deleted, but thanks to the <code>snapshot-retention</code> feature, snapshots
+in <code>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;/.snap</code> will remain to be available.</p>
+<p>The CephFS mount should therefore have its root set to the parent of what
+<code>fs subvolume getpath</code> returns, i.e. <code>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;</code>.
+That way we will have snapshots available regardless of whether the subvolume
+itself still exists or not.</p>
+<h4 id="for-case-b">For case (b)<a class="headerlink" href="#for-case-b" title="Permanent link">&para;</a></h4>
+<p>For cases where subvolumes are managed externally and not by cephfs-csi, we must
+assume that the cephx user we're given can access only
+<code>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;/&lt;UUID&gt;</code> so users won't be able to
+benefit from snapshot retention. Users will need to be careful not to delete the
+parent subvolumes and snapshots while they are associated by these shallow RO
+volumes.</p>
+<h3 id="nodepublishvolume-nodeunpublishvolume"><code>NodePublishVolume</code>, <code>NodeUnpublishVolume</code><a class="headerlink" href="#nodepublishvolume-nodeunpublishvolume" title="Permanent link">&para;</a></h3>
+<p>Node publish is trivial. We bind staging path to target path as a read-only
+mount.</p>
+<h3 id="nodegetvolumestats"><code>NodeGetVolumeStats</code><a class="headerlink" href="#nodegetvolumestats" title="Permanent link">&para;</a></h3>
+<p><code>NodeGetVolumeStatsResponse.usage[*].available</code> should be always zero.</p>
+<h2 id="volume-parameters-volume-context">Volume parameters, volume context<a class="headerlink" href="#volume-parameters-volume-context" title="Permanent link">&para;</a></h2>
+<p>This section provides a discussion around determining what volume parameters and
+volume context parameters will be used to convey necessary information to the
+cephfs-csi driver in order to support shallow volumes.</p>
+<p>Volume parameters <code>CreateVolumeRequest.parameters</code>:</p>
+<ul>
+<li>Should be "shallow" the default mode for all <code>CreateVolume</code> calls that have
+  (a) snapshot as data source and (b) read-only volume access mode? If not, a
+  new volume parameter should be introduced: e.g <code>isShallow: &lt;bool&gt;</code>. On the
+  other hand, does it even makes sense for users to want to create full copies
+  of snapshots and still have them read-only?</li>
+</ul>
+<p>Volume context <code>Volume.volume_context</code>:</p>
+<ul>
+<li>Here we definitely need <code>isShallow</code> or similar. Without it we wouldn't be able
+  to distinguish between a regular volume that just happens to have a read-only
+  access mode, and a volume that references a snapshot.</li>
+<li>Currently cephfs-csi recognizes <code>subvolumePath</code> for dynamically provisioned
+  volumes and <code>rootPath</code> for pre-previsioned volumes. As mentioned in
+  <a href="#NodeStageVolume-NodeUnstageVolume"><code>NodeStageVolume</code>, <code>NodeUnstageVolume</code> section</a>
+  , snapshots cannot be mounted directly. How do we pass in path to the parent
+  subvolume?</li>
+<li>a) Path to the snapshot is passed in via <code>subvolumePath</code> / <code>rootPath</code>, e.g.
+  <code>/volumes/&lt;VOLUME NAME&gt;/&lt;SUBVOLUME NAME&gt;/&lt;UUID&gt;/.snap/&lt;SNAPSHOT NAME&gt;</code>. From
+  that we can derive path to the subvolume: it's the parent of <code>.snap</code>
+  directory.</li>
+<li>b) Similar to a), path to the snapshot is passed in via <code>subvolumePath</code> /
+  <code>rootPath</code>, but instead of trying to derive the right path we introduce
+  another volume context parameter containing path to the parent subvolume
+  explicitly.</li>
+<li>c) <code>subvolumePath</code> / <code>rootPath</code> contains path to the parent subvolume and we
+  introduce another volume context parameter containing name of the snapshot.
+  Path to the snapshot is then formed by appending
+  <code>/.snap/&lt;SNAPSHOT NAME&gt;</code> to the subvolume path.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
