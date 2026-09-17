@@ -115,7 +115,3 @@ type VolumeGroupReplicationList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VolumeGroupReplication `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&VolumeGroupReplication{}, &VolumeGroupReplicationList{})
-}
