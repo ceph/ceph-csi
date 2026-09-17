@@ -313,6 +313,22 @@ Right now, we also have below commands to manually retrigger the CI jobs
    /retest ci/centos/containerized-tests
    ```
 
+1. To override (mark as successful) one or more CI status contexts, add
+   `/override <context-name>` lines anywhere in a PR comment.
+
+   example:
+
+   ```
+   This test fails with an unrelated infrastructure error.
+   /override ci/centos/some-test
+   /override ci/centos/other-test
+   ```
+
+   Each `/override` line is processed independently. The command checks that
+   the named status context already exists on the PR's head commit and then
+   sets it to `SUCCESS`. Only repository collaborators with write (or admin)
+   permission can use this command.
+
 **Caution**: Please do not retrigger the CI jobs without an understanding of
              the root cause, because:
 
