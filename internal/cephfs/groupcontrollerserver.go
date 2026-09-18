@@ -61,6 +61,9 @@ func (cs *cephfsControllerServer) validateCreateVolumeGroupSnapshotRequest(
 	}
 
 	param := req.GetParameters()
+	if param == nil {
+		return status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
 	// check for ClusterID and fsName
 	if value, ok := param["clusterID"]; !ok || value == "" {
 		return status.Error(codes.InvalidArgument, "missing or empty clusterID")

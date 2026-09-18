@@ -97,7 +97,11 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 		groupName = req.GetName()
 	)
 
-	mgr := rbd.NewManager(vs.driverInstance, req.GetParameters(), req.GetSecrets())
+	parameters := req.GetParameters()
+	if parameters == nil {
+		return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+	}
+	mgr := rbd.NewManager(vs.driverInstance, parameters, req.GetSecrets())
 	defer mgr.Destroy(ctx)
 
 	// resolve all volumes
@@ -209,7 +213,11 @@ func (vs *VolumeGroupServer) CreateVolumeGroup(
 
 		// extract the flatten mode
 		var flattenMode types.FlattenMode
-		flattenMode, err = getFlattenMode(ctx, req.GetParameters())
+		parameters := req.GetParameters()
+		if parameters == nil {
+			return nil, status.Error(codes.InvalidArgument, "parameters cannot be nil")
+		}
+		flattenMode, err = getFlattenMode(ctx, parameters)
 		if err != nil {
 			return nil, err
 		}
