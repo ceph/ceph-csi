@@ -23,11 +23,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsCreds "github.com/aws/aws-sdk-go-v2/credentials"
+	awsKMS "github.com/aws/aws-sdk-go-v2/service/kms"
 	awsSTS "github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/aws/aws-sdk-go/aws"
-	awsCreds "github.com/aws/aws-sdk-go/aws/credentials"
-	awsSession "github.com/aws/aws-sdk-go/aws/session"
-	awsKMS "github.com/aws/aws-sdk-go/service/kms"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
@@ -121,7 +120,7 @@ func (as *awsSTSMetadataKMS) EncryptDEK(ctx context.Context, _, plainDEK string)
 		return "", fmt.Errorf("failed to get KMS service: %w", err)
 	}
 
-	result, err := svc.Encrypt(&awsKMS.EncryptInput{
+	result, err := svc.Encrypt(ctx, &awsKMS.EncryptInput{
 		KeyId:     aws.String(as.cmk),
 		Plaintext: []byte(plainDEK),
 	})
@@ -147,7 +146,7 @@ func (as *awsSTSMetadataKMS) DecryptDEK(ctx context.Context, _, encryptedDEK str
 			err)
 	}
 
-	result, err := svc.Decrypt(&awsKMS.DecryptInput{
+	result, err := svc.Decrypt(ctx, &awsKMS.DecryptInput{
 		CiphertextBlob: ciphertextBlob,
 	})
 	if err != nil {
@@ -189,8 +188,8 @@ func (as *awsSTSMetadataKMS) getWebIdentityToken() (string, error) {
 	return string(buf), nil
 }
 
-// getServiceWithSTS returns a new awsSession established with the STS.
-func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.KMS, error) {
+// getServiceWithSTS returns a new KMS client with STS credentials.
+func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.Client, error) {
 	webIdentityToken, err := as.getWebIdentityToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get web identity token: %w", err)
@@ -209,19 +208,13 @@ func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.KMS, error) {
 		return nil, fmt.Errorf("failed to assume role with web identity token: %w", err)
 	}
 
-	creds := awsCreds.NewStaticCredentials(*output.Credentials.AccessKeyId,
-		*output.Credentials.SecretAccessKey, *output.Credentials.SessionToken)
-
-	sess, err := awsSession.NewSessionWithOptions(awsSession.Options{
-		SharedConfigState: awsSession.SharedConfigDisable,
-		Config: aws.Config{
-			Credentials: creds,
-			Region:      &as.region,
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+	config := aws.Config{
+		Credentials: awsCreds.NewStaticCredentialsProvider(
+			aws.ToString(output.Credentials.AccessKeyId),
+			aws.ToString(output.Credentials.SecretAccessKey),
+			aws.ToString(output.Credentials.SessionToken)),
+		Region: as.region,
 	}
 
-	return awsKMS.New(sess), nil
+	return awsKMS.NewFromConfig(config), nil
 }
