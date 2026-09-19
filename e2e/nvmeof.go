@@ -30,8 +30,9 @@ import (
 	"k8s.io/pod-security-admission/api"
 )
 
-const (
-	nvmeofPool = "nvmeofpool"
+var (
+	// FIXME: if these tests run parallel with RBD, a dedicated pool is needed
+	nvmeofPool = defaultRBDPool
 )
 
 var _ = ginkgo.Describe("nvmeof", func() {
@@ -70,10 +71,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 
 		framework.Logf("NVMe-oF testing supported, Ceph version: %s", version)
 
-		// FIXME: gateway should get deployed by Rook
-		deployGateway(f, deployTimeout)
-
-		// No need to create the namespace if ceph-csi is deployed via operator.
+		// No need to create the namespace if ceph-csi is deployed via helm or operator.
 		if cephCSINamespace != defaultNs && !operatorDeployment {
 			err := createNamespace(f.ClientSet, cephCSINamespace)
 			if err != nil {
@@ -110,7 +108,7 @@ var _ = ginkgo.Describe("nvmeof", func() {
 			logsCSIPods("app="+nvmeofDaemonsetName, f.ClientSet)
 
 			// Gateway logs - need to search in rook-ceph namespace
-			opt := metav1.ListOptions{LabelSelector: "app=ceph-nvmeof-gateway"}
+			opt := metav1.ListOptions{LabelSelector: "app=rook-ceph-nvmeof"}
 			podList, _ := f.ClientSet.CoreV1().Pods(rookNamespace).List(context.TODO(), opt)
 			for i := range podList.Items {
 				kubectlLogPod(f.ClientSet, &podList.Items[i])
@@ -121,7 +119,6 @@ var _ = ginkgo.Describe("nvmeof", func() {
 		}
 
 		deleteNVMeoFPlugin()
-		deleteGateway(f)
 		deleteNVMeofStorageClass(f, nvmeofStorageClass)
 	}, ginkgo.OncePerOrdered)
 
