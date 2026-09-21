@@ -36,6 +36,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -470,6 +471,11 @@ func (kms *kmipKMS) connect() (*tls.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform connection handshake: %w", err)
 	}
+
+	// log the state of the TLS connection
+	state := conn.ConnectionState()
+	log.DebugLogMsg("connected to KMIP server %q with %s (%s)", kms.endpoint,
+		tls.VersionName(state.Version), tls.CipherSuiteName(state.CipherSuite))
 
 	err = kms.discover(conn)
 	if err != nil {
