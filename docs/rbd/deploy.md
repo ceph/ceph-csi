@@ -540,6 +540,11 @@ file](../../examples/kms/vault/kms-config.yaml):
    `ceph-csi-kmip-credentials`.
 1. `TLS_SERVER_NAME`(optional): The endpoint server name. Useful when the
    KMIP endpoint does not have a DNS entry.
+1. `TLS_MIN_VERSION`(optional): The minimum TLS version accepted for
+   connections to the KMIP server, either `"1.2"` or `"1.3"`. Defaults to
+   `"1.2"`, which still negotiates TLS 1.3 with a KMIP server that offers it.
+   Set it to `"1.3"` to require TLS 1.3 and fail the connection to a KMIP
+   server that only offers TLS 1.2.
 1. `READ_TIMEOUT`(optional): Network read timeout, in seconds. The default
    value is 10.
 1. `WRITE_TIMEOUT`(optional): Network write timeout, in seconds. The default
