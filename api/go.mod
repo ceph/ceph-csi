@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/openshift/api v0.0.0-20240115183315-0793e918179d
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	k8s.io/api v0.36.2
 )
 
@@ -19,11 +19,11 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apimachinery v0.36.2 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect

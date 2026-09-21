@@ -24,7 +24,7 @@ github.com/modern-go/reflect2
 # github.com/openshift/api v0.0.0-20240115183315-0793e918179d
 ## explicit; go 1.21
 github.com/openshift/api/security/v1
-# github.com/stretchr/testify v1.12.0
+# github.com/stretchr/testify v1.12.1
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
@@ -37,6 +37,9 @@ github.com/x448/float16
 # go.yaml.in/yaml/v2 v2.4.3
 ## explicit; go 1.15
 go.yaml.in/yaml/v2
+# go.yaml.in/yaml/v3 v3.0.5
+## explicit; go 1.16
+go.yaml.in/yaml/v3
 # golang.org/x/net v0.55.0
 ## explicit; go 1.25.0
 golang.org/x/net/http/httpguts
@@ -57,9 +60,6 @@ gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.1
-## explicit
-gopkg.in/yaml.v3
 # k8s.io/api v0.36.2
 ## explicit; go 1.26.0
 k8s.io/api/core/v1
