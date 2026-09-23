@@ -240,7 +240,7 @@ func execWithRetry(f *framework.Framework, opts *e2epod.ExecOptions) (string, st
 	var stdOut, stdErr string
 	err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		var execErr error
-		stdOut, stdErr, execErr = e2epod.ExecWithOptions(f, *opts)
+		stdOut, stdErr, execErr = e2epod.Exec(f.TContext(context.Background()), *opts)
 		if execErr != nil {
 			if isRetryableAPIError(execErr) {
 				return false, nil
