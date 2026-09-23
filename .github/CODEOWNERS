@@ -3,12 +3,12 @@
 
 # Default owners for all files
 # Maintainers:
+#   - iPraveenParihar
 #   - Madhu-1
 #   - nixpanic
 #   - Rakshith-R
 # Contributors:
 #   - black-dragon74
 #   - gadididi
-#   - iPraveenParihar
 #   - Nikhil-Ladha
 *       @ceph/ceph-csi-maintainers @ceph/ceph-csi-contributors
