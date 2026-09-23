@@ -8,6 +8,7 @@ def ref = "devel"
 def git_since = 'devel'
 def skip_e2e = 0
 def doc_change = 0
+def backend_change = 0
 def k8s_release = 'latest'
 def ci_registry = 'registry-ceph-csi.apps.ocp.cloud.ci.centos.org'
 def failure = null
@@ -91,13 +92,27 @@ node('cico-workspace') {
 
 	stage('check doc-only change') {
 		doc_change = sh(
-			script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/skip-doc-change.sh origin/${git_since}",
+			script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/inspect-changes.sh --doc-change-only origin/${git_since}",
 			returnStatus: true)
 	}
-	// if doc_change (return value of skip-doc-change.sh is 1, do not run the other stages
-	if (doc_change == 1 && ref != git_since) {
+	// if doc_change (return value of inspect-changes.sh --doc-change-only is 0, do not run the other stages
+	if (doc_change == 0 && ref != git_since) {
 		currentBuild.result = 'SUCCESS'
 		return
+	}
+
+	// when test_type is set, skip the job if there are no changes for that backend
+	if ("${test_type}" != "" && ref != git_since) {
+		stage('check backend change') {
+			backend_change = sh(
+				script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/inspect-changes.sh --backend=${test_type} origin/${git_since}",
+				returnStatus: true)
+		}
+		// inspect-changes.sh returns 1 when no commits touch the backend
+		if (backend_change == 1) {
+			currentBuild.result = 'SUCCESS'
+			return
+		}
 	}
 
 	stage('reserve bare-metal machine') {
