@@ -58,7 +58,7 @@ func execCommandInPodWithName(
 		PreserveWhitespace: true,
 	}
 
-	return e2epod.ExecWithOptions(f, podOpt)
+	return e2epod.Exec(f.TContext(context.Background()), podOpt)
 }
 
 // loadAppDeployment loads the deployment app config and return deployment
