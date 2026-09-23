@@ -240,8 +240,8 @@ github.com/ceph/go-ceph/rbd/admin
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/container-storage-interface/spec v1.12.1-0.20260720052920-cd9e7ad1ae09
-## explicit; go 1.24.0
+# github.com/container-storage-interface/spec v1.12.1-0.20260720052920-cd9e7ad1ae09 => github.com/container-storage-interface/spec v1.12.0
+## explicit; go 1.23.0
 github.com/container-storage-interface/spec/lib/go/csi
 # github.com/csi-addons/kubernetes-csi-addons v0.14.0
 ## explicit; go 1.25.0
@@ -1339,3 +1339,4 @@ sigs.k8s.io/structured-merge-diff/v6/value
 sigs.k8s.io/yaml
 # github.com/ceph/ceph-csi/api => ./api
 # k8s.io/client-go => k8s.io/client-go v0.37.0
+# github.com/container-storage-interface/spec => github.com/container-storage-interface/spec v1.12.0

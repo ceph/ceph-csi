@@ -52,6 +52,11 @@ require (
 
 replace k8s.io/client-go => k8s.io/client-go v0.37.0
 
+// k8s.io/kubernetes v1.37.0 pulls in a CSI spec snapshot that drops
+// VolumeCondition; pin to v1.12.0 until #6486 bumps the spec and updates
+// the code that uses it.
+replace github.com/container-storage-interface/spec => github.com/container-storage-interface/spec v1.12.0
+
 exclude (
 	// missing tag, referred to by github.com/hashicorp/go-kms-wrapping@v0.5.1
 	github.com/hashicorp/vault/sdk v0.1.14-0.20191229212425-c478d00be0d6
