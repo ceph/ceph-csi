@@ -22,7 +22,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -110,13 +112,18 @@ single entity modifying the related omaps for a given VolName.
 const (
 	defaultVolumeNamingPrefix   string = "csi-vol-"
 	defaultSnapshotNamingPrefix string = "csi-snap-"
+	defaultCSIDirectoryShards   uint32 = 11
 )
 
 // CSIJournal defines the interface and the required key names for the above RADOS based OMaps.
 type Config struct {
-	// csiDirectory is the name of the CSI volumes object map that contains CSI volume-name (or
-	// snapshot name) based keys
+	// csiDirectory is the legacy base name of the CSI volumes object map that contains CSI
+	// volume-name (or snapshot name) based keys.
 	csiDirectory string
+
+	// csiDirectoryShards is the number of sharded directory objects used for new CSI name lookups.
+	// The legacy csiDirectory object remains as a compatibility fallback during upgrades.
+	csiDirectoryShards uint32
 
 	// CSI volume-name keyname prefix, for key in csiDirectory, suffix is the CSI passed volume name
 	csiNameKeyPrefix string
@@ -165,12 +172,18 @@ type Config struct {
 
 	// commonPrefix is the prefix common to all omap keys for this Config
 	commonPrefix string
+
+	// legacyDirectoryAbsent tracks csiDirectory oids that have been confirmed
+	// absent for this controller instance, so later connections can skip legacy
+	// fallback for the same journal directory.
+	legacyDirectoryAbsent *sync.Map
 }
 
 // NewCSIVolumeJournal returns an instance of CSIJournal for volumes.
 func NewCSIVolumeJournal(suffix string) *Config {
 	return &Config{
 		csiDirectory:            "csi.volumes." + suffix,
+		csiDirectoryShards:      defaultCSIDirectoryShards,
 		csiNameKeyPrefix:        "csi.volume.",
 		cephUUIDDirectoryPrefix: "csi.volume.",
 		csiNameKey:              "csi.volname",
@@ -185,6 +198,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 		ownerKey:                "csi.volume.owner",
 		backingSnapshotIDKey:    "csi.volume.backingsnapshotid",
 		commonPrefix:            "csi.",
+		legacyDirectoryAbsent:   &sync.Map{},
 	}
 }
 
@@ -192,6 +206,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 func NewCSISnapshotJournal(suffix string) *Config {
 	return &Config{
 		csiDirectory:            "csi.snaps." + suffix,
+		csiDirectoryShards:      defaultCSIDirectoryShards,
 		csiNameKeyPrefix:        "csi.snap.",
 		cephUUIDDirectoryPrefix: "csi.snap.",
 		csiNameKey:              "csi.snapname",
@@ -205,6 +220,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 		encryptionType:          "csi.volume.encryptionType",
 		ownerKey:                "csi.volume.owner",
 		commonPrefix:            "csi.",
+		legacyDirectoryAbsent:   &sync.Map{},
 	}
 }
 
@@ -275,6 +291,102 @@ func (cj *Config) Connect(monitors, namespace string, cr *util.Credentials) (*Co
 	return conn, nil
 }
 
+// getCsiDirectoryShard returns the shard oid for key based on the csiDirectory hash layout.
+func (cj *Config) getCsiDirectoryShard(key string) string {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(key))
+
+	return fmt.Sprintf("%s.%d", cj.csiDirectory, h.Sum32()%cj.csiDirectoryShards)
+}
+
+func legacyCsiDirectoryKey(journalPool, namespace, csiDirectory string) string {
+	return fmt.Sprintf("%s/%s/%s", journalPool, namespace, csiDirectory)
+}
+
+func (cj *Config) isLegacyDirectoryAbsent(journalPool, namespace, csiDirectory string) bool {
+	if cj.legacyDirectoryAbsent == nil {
+		return false
+	}
+
+	_, found := cj.legacyDirectoryAbsent.Load(legacyCsiDirectoryKey(journalPool, namespace, csiDirectory))
+
+	return found
+}
+
+func (cj *Config) markLegacyDirectoryAbsent(journalPool, namespace, csiDirectory string) {
+	if cj.legacyDirectoryAbsent == nil {
+		cj.legacyDirectoryAbsent = &sync.Map{}
+	}
+
+	cj.legacyDirectoryAbsent.Store(legacyCsiDirectoryKey(journalPool, namespace, csiDirectory), struct{}{})
+}
+
+/*
+lookupCsiDirectoryValue looks up key in the sharded csiDirectory layout and
+falls back to the legacy unsharded csiDirectory oid when needed.
+
+New mappings including volume, snapshot, and volume group request
+names, are stored in shard oids selected by getCsiDirectoryShard(). During
+upgrades, existing mappings may still exist only in the legacy csiDirectory
+oid. This helper preserves compatibility by checking the shard oid first and
+retrying the lookup against the legacy oid when the shard object is missing
+or when the requested key is not found in the shard result.
+
+Once the controller confirms that a legacy csiDirectory oid is absent for a
+given pool and namespace, subsequent lookups skip the legacy fallback and
+return the shard result directly.
+
+It returns the mapped value, whether the key was found after shard and
+legacy lookup, and any error returned while reading the omap objects.
+*/
+func lookupCsiDirectoryValue(
+	ctx context.Context,
+	conn *Connection,
+	journalPool, key string,
+) (string, bool, error) {
+	cj := conn.config
+	shardOID := cj.getCsiDirectoryShard(key)
+	values, err := getOMapValuesByKeys(ctx, conn, journalPool, cj.namespace, shardOID, []string{key})
+	switch {
+	case err == nil:
+		if value, found := values[key]; found {
+			return value, true, nil
+		}
+	case errors.Is(err, util.ErrKeyNotFound):
+		log.DebugLog(ctx, "failed reading shard csiDirectory %q with ErrKeyNotFound", shardOID)
+	default:
+		return "", false, err
+	}
+
+	if cj.isLegacyDirectoryAbsent(journalPool, cj.namespace, cj.csiDirectory) {
+		log.DebugLog(ctx, "skipping legacy csiDirectory lookup for %q after confirming the oid is absent",
+			cj.csiDirectory)
+
+		return "", false, nil
+	}
+
+	log.DebugLog(ctx, "key %q not found in shard csiDirectory %q; falling back to legacy oid %q",
+		key, shardOID, cj.csiDirectory)
+
+	values, err = getOMapValuesByKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory, []string{key})
+	if err != nil {
+		if errors.Is(err, util.ErrObjectNotFound) {
+			cj.markLegacyDirectoryAbsent(journalPool, cj.namespace, cj.csiDirectory)
+
+			log.DebugLog(ctx, "legacy csiDirectory %q is absent; future lookups will skip the fallback",
+				cj.csiDirectory)
+
+			return "", false, nil
+		}
+
+		return "", false, err
+	}
+
+	value, found := values[key]
+
+	return value, found, nil
+}
+
 /*
 CheckReservation checks if given request name contains a valid reservation
 - If there is a valid reservation, then the corresponding ImageData for the volume/snapshot is returned
@@ -312,12 +424,8 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 	}
 
 	// check if request name is already part of the directory omap
-	fetchKeys := []string{
-		cj.csiNameKeyPrefix + reqName,
-	}
-	values, err := getOMapValuesByKeys(
-		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		fetchKeys)
+	key := cj.csiNameKeyPrefix + reqName
+	objUUIDAndPool, found, err := lookupCsiDirectoryValue(ctx, conn, journalPool, key)
 	if err != nil {
 		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			// pool or omap (oid) was not present
@@ -327,7 +435,6 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 
 		return nil, err
 	}
-	objUUIDAndPool, found := values[cj.csiNameKeyPrefix+reqName]
 	if !found {
 		// omap was read but was missing the desired key-value pair
 		// stop processing but without an error for no reservation exists
@@ -475,8 +582,14 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 	}
 
 	// delete the request name key (last, inverse of create order)
-	err := removeMapKeys(ctx, conn, csiJournalPool, cj.namespace, cj.csiDirectory,
-		[]string{cj.csiNameKeyPrefix + reqName})
+	key := cj.csiNameKeyPrefix + reqName
+	shardOid := cj.getCsiDirectoryShard(key)
+	err := removeMapKeys(ctx, conn, csiJournalPool, cj.namespace, shardOid, []string{key})
+	if err == nil {
+		// Always delete from the legacy oid as well, to ensure metadata for
+		// already existing volumes gets cleaned up.
+		err = removeMapKeys(ctx, conn, csiJournalPool, cj.namespace, cj.csiDirectory, []string{key})
+	}
 	if err != nil {
 		log.ErrorLog(ctx, "failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
 
@@ -619,8 +732,9 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	// After generating the UUID Directory omap, we populate the csiDirectory
 	// omap with a key-value entry to map the request to the backend volume:
 	// `csiNameKeyPrefix + reqName: nameKeyVal`
-	err = setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		map[string]string{cj.csiNameKeyPrefix + reqName: nameKeyVal})
+	key := cj.csiNameKeyPrefix + reqName
+	err = setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.getCsiDirectoryShard(key),
+		map[string]string{key: nameKeyVal})
 	if err != nil {
 		return "", "", err
 	}
@@ -849,12 +963,8 @@ func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 	cj := conn.config
 
 	// check if request name is already part of the directory omap
-	fetchKeys := []string{
-		cj.csiNameKeyPrefix + volumeHandle,
-	}
-	values, err := getOMapValuesByKeys(
-		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		fetchKeys)
+	key := cj.csiNameKeyPrefix + volumeHandle
+	value, _, err := lookupCsiDirectoryValue(ctx, conn, journalPool, key)
 	if err != nil {
 		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			// pool or omap (oid) was not present
@@ -865,7 +975,7 @@ func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 		return "", err
 	}
 
-	return values[cj.csiNameKeyPrefix+volumeHandle], nil
+	return value, nil
 }
 
 // ReserveNewUUIDMapping creates the omap mapping between the oldVolumeHandle
@@ -878,12 +988,10 @@ func (conn *Connection) ReserveNewUUIDMapping(ctx context.Context,
 	journalPool, oldVolumeHandle, newVolumeHandle string,
 ) error {
 	cj := conn.config
+	key := cj.csiNameKeyPrefix + oldVolumeHandle
 
-	setKeys := map[string]string{
-		cj.csiNameKeyPrefix + oldVolumeHandle: newVolumeHandle,
-	}
-
-	return setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory, setKeys)
+	return setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.getCsiDirectoryShard(key),
+		map[string]string{key: newVolumeHandle})
 }
 
 // ResetVolumeOwner updates the owner in the rados object.
