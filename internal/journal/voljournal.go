@@ -735,6 +735,16 @@ func (conn *Connection) GetImageAttributes(
 		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
 			return nil, err
 		}
+		// The UUID directory object is gone entirely, so there are no
+		// attributes to report. Synthesizing defaults here would hand the
+		// caller a fabricated image name with an empty ImageID, which makes a
+		// deleted volume look like an existing one whose image vanished. Fail
+		// with ErrObjectNotFound (which wraps ErrKeyNotFound) so that delete
+		// paths can treat it as "already deleted" and return success.
+		if errors.Is(err, util.ErrObjectNotFound) {
+			return nil, fmt.Errorf("%w: missing journal object for %q",
+				err, cj.cephUUIDDirectoryPrefix+objectUUID)
+		}
 		log.WarningLog(ctx, "unable to read omap keys: pool or key missing: %v", err)
 	}
 

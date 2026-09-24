@@ -63,7 +63,12 @@ func getOMapValuesByKeys(
 			log.DebugLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
 
-			return nil, fmt.Errorf("%w: %w", util.ErrKeyNotFound, err)
+			// the omap object itself is missing. Absent individual keys are
+			// not an error (they are simply left out of the results), so
+			// ErrObjectNotFound lets callers tell "the journal is gone" apart
+			// from "the journal exists but lacks this key". ErrKeyNotFound is
+			// kept in the chain to not break existing error handling.
+			return nil, fmt.Errorf("%w: %w: %w", util.ErrObjectNotFound, util.ErrKeyNotFound, err)
 		}
 
 		return nil, err
