@@ -37,6 +37,11 @@ A unique name for the key management service within the project.
 The endpoint server name. Useful when the GKLM endpoint does not have
 a DNS entry. This SAN on the returned certificate must match this.
 
+* TLS_MIN_VERSION (optional)
+The minimum TLS version accepted for connections to the GKLM server,
+either "1.2" or "1.3". The default is "1.2", which still negotiates
+TLS 1.3 when the server offers it. Set it to "1.3" to require TLS 1.3.
+
 * READ_TIMEOUT (optional)
 Network read timeout, in seconds. The default value is 10.
 

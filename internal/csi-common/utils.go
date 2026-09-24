@@ -239,6 +239,9 @@ func getReqID(req any) string {
 	case *csi.NodeUnpublishVolumeRequest:
 		reqID = r.GetVolumeId()
 
+	case *csi.NodeGetVolumeStatsRequest:
+		reqID = r.GetVolumeId()
+
 	case *csi.NodeExpandVolumeRequest:
 		reqID = r.GetVolumeId()
 

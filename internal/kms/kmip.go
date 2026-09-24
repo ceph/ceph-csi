@@ -36,6 +36,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -64,8 +65,15 @@ const (
 
 	kmipEndpoint      = "KMIP_ENDPOINT"
 	kmipTLSServerName = "TLS_SERVER_NAME"
+	kmipTLSMinVersion = "TLS_MIN_VERSION"
 	kmipReadTimeOut   = "READ_TIMEOUT"
 	kmipWriteTimeOut  = "WRITE_TIMEOUT"
+
+	// Accepted values for the `TLS_MIN_VERSION` option. The minimum TLS
+	// version used for connections to the KMIP server can be raised to
+	// TLS 1.3, it can not be lowered below the default of TLS 1.2.
+	kmipTLSVersion12 = "1.2"
+	kmipTLSVersion13 = "1.3"
 
 	// The following options are part of the Kubernetes Secrets.
 	//
@@ -137,6 +145,18 @@ func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	}
 
 	// optional
+	tlsMinVersion := kmipTLSVersion12
+	err = setConfigString(&tlsMinVersion, args.Config, kmipTLSMinVersion)
+	if errors.Is(err, errConfigOptionInvalid) {
+		return nil, err
+	}
+
+	minVersion, err := parseTLSMinVersion(tlsMinVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	// optional
 	timeout := kmipDefaulfReadTimeout
 	err = setConfigInt(&timeout, args.Config, kmipReadTimeOut)
 	if errors.Is(err, errConfigOptionInvalid) {
@@ -187,13 +207,28 @@ func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	}
 
 	kms.tlsConfig = &tls.Config{
-		MinVersion:   tls.VersionTLS12,
+		MinVersion:   minVersion,
 		ServerName:   serverName,
 		RootCAs:      caCertPool,
 		Certificates: []tls.Certificate{cert},
 	}
 
 	return kms, nil
+}
+
+// parseTLSMinVersion converts the `TLS_MIN_VERSION` option into a version
+// that crypto/tls understands.
+func parseTLSMinVersion(version string) (uint16, error) {
+	switch version {
+	case kmipTLSVersion12:
+		return tls.VersionTLS12, nil
+	case kmipTLSVersion13:
+		return tls.VersionTLS13, nil
+	}
+
+	return 0, fmt.Errorf("%w: %s is %q, expected %q or %q",
+		errConfigOptionInvalid, kmipTLSMinVersion, version,
+		kmipTLSVersion12, kmipTLSVersion13)
 }
 
 // EncryptDEK calls either GET or ENCRYPT operation on the KMIP kms to encrypt the DEK.
@@ -436,6 +471,11 @@ func (kms *kmipKMS) connect() (*tls.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform connection handshake: %w", err)
 	}
+
+	// log the state of the TLS connection
+	state := conn.ConnectionState()
+	log.DebugLogMsg("connected to KMIP server %q with %s (%s)", kms.endpoint,
+		tls.VersionName(state.Version), tls.CipherSuiteName(state.CipherSuite))
 
 	err = kms.discover(conn)
 	if err != nil {
