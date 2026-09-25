@@ -1,4 +1,16 @@
 ---
+# ============================================================================
+# DEPRECATION NOTICE
+# ============================================================================
+# This Helm chart is DEPRECATED and will be removed in Ceph-CSI v3.19.
+#
+# The Ceph-CSI Operator is now the officially supported deployment method
+# for Kubernetes. Please migrate to the operator for automated lifecycle
+# management, upgrades, and configuration.
+#
+# Operator documentation: https://ceph.github.io/ceph-csi-operator
+# ============================================================================
+
 rbac:
   # Specifies whether RBAC resources should be created
   create: true
