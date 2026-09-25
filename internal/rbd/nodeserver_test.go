@@ -17,12 +17,16 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/stretchr/testify/require"
+	mount "k8s.io/mount-utils"
 
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
@@ -307,6 +311,93 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 			}
 
 			require.Equal(t, tt.want, readAffinityMapOptions)
+		})
+	}
+}
+
+// TestMountVolumeToStagePathExt4Options verifies that the ext4 mount options
+// that are passed to the mounter when staging a volume contain the default of
+// errors=remount-ro, unless the volume capability sets an errors= option.
+func TestMountVolumeToStagePathExt4Options(t *testing.T) {
+	t.Parallel()
+
+	// SafeFormatAndMount runs blkid and mkfs.ext4 on the (image) file
+	for _, tool := range []string{"blkid", "mkfs.ext4"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s is not available: %v", tool, err)
+		}
+	}
+
+	tests := []struct {
+		name       string
+		mountFlags []string
+		want       []string
+		notWant    []string
+	}{
+		{
+			name:       "default",
+			mountFlags: nil,
+			want:       []string{"errors=remount-ro", "_netdev"},
+		},
+		{
+			name:       "unrelated mount flags",
+			mountFlags: []string{"noatime"},
+			want:       []string{"errors=remount-ro", "_netdev", "noatime"},
+		},
+		{
+			name:       "errors=continue set in the StorageClass",
+			mountFlags: []string{"errors=continue"},
+			want:       []string{"errors=continue", "_netdev"},
+			notWant:    []string{"errors=remount-ro"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			devicePath := filepath.Join(dir, "image")
+			stagingPath := filepath.Join(dir, "staging")
+
+			img, err := os.Create(devicePath)
+			require.NoError(t, err)
+			require.NoError(t, img.Truncate(16<<20))
+			require.NoError(t, img.Close())
+			require.NoError(t, os.Mkdir(stagingPath, 0o750))
+
+			mounter := mount.NewFakeMounter(nil)
+			ns := &NodeServer{
+				DefaultNodeServer: &csicommon.DefaultNodeServer{Mounter: mounter},
+			}
+			req := &csi.NodeStageVolumeRequest{
+				VolumeId:          "vol-id",
+				StagingTargetPath: stagingPath,
+				VolumeCapability: &csi.VolumeCapability{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{
+							FsType:     "ext4",
+							MountFlags: tt.mountFlags,
+						},
+					},
+				},
+			}
+
+			// staticVol=true, so that only SafeFormatAndMount formats the image
+			err = ns.mountVolumeToStagePath(context.Background(), req, true, stagingPath, devicePath, false)
+			require.NoError(t, err)
+
+			mounts, err := mounter.List()
+			require.NoError(t, err)
+			require.Len(t, mounts, 1)
+			require.Equal(t, devicePath, mounts[0].Device)
+			require.Equal(t, "ext4", mounts[0].Type)
+			for _, opt := range tt.want {
+				require.Contains(t, mounts[0].Opts, opt)
+			}
+			for _, opt := range tt.notWant {
+				require.NotContains(t, mounts[0].Opts, opt)
+			}
 		})
 	}
 }
