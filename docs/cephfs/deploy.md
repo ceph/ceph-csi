@@ -269,6 +269,13 @@ However, not all KMS are supported in order to be compatible with
 either store secrets to use directly (Vault), or allow access to the
 plain password (Kubernetes Secrets) work.
 
+A KMIP KMS works when `USE_CRYPTO_RPC` is set to `"false"`, so that
+Ceph-CSI can fetch the key material of the managed symmetric key with
+the KMIP `Get` operation and use it as the fscrypt passphrase. Note
+that rotating or destroying the KMIP key, or pointing
+`UNIQUE_IDENTIFIER` at a different key, makes every existing encrypted
+volume permanently unopenable.
+
 ## CephFS PVC Provisioning
 
 Requires subvolumegroup to be created before provisioning the PVC.
