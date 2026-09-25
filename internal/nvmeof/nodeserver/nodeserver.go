@@ -856,9 +856,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	}
 
 	// Add filesystem-specific default options
-	if fsType == "xfs" {
-		mountOptions = append(mountOptions, "nouuid")
-	}
+	mountOptions = append(mountOptions, csicommon.DefaultMountOptions(fsType, volumeCap)...)
 	mountOptions = append(mountOptions, "_netdev")
 	log.DebugLog(ctx, "nvmeof: mounting device %s to %s with fsType %s", devicePath, stagingPath, fsType)
 	err := diskMounter.FormatAndMount(devicePath, stagingPath, fsType, mountOptions)

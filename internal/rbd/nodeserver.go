@@ -128,10 +128,6 @@ var (
 			Backport:     true,
 		}, // RHEL 8.2
 	}
-
-	mountDefaultOpts = map[string][]string{
-		xfsFilesystem: {"nouuid"},
-	}
 )
 
 // parseBoolOption checks if parameters contain option and parse it. If it is
@@ -1108,7 +1104,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 		return err
 	}
 
-	opt := mountDefaultOpts[fsType]
+	opt := csicommon.DefaultMountOptions(fsType, req.GetVolumeCapability())
 	opt = append(opt, "_netdev")
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
