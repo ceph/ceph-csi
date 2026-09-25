@@ -3,6 +3,10 @@ defaults:
   actions:
     merge:
       merge_bot_account: ceph-csi-bot
+    rebase:
+      bot_account: ceph-csi-bot
+    update:
+      bot_account: ceph-csi-bot
 
 merge_protections_settings:
   reporting_method: check-runs
@@ -10,6 +14,7 @@ merge_protections_settings:
 
 queue_rules:
   - name: default
+    update_bot_account: ceph-csi-bot
     merge_method: rebase
     update_method: rebase
     batch_size: 1
