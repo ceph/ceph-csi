@@ -1,0 +1,162 @@
+---
+name: Override CI status
+
+# yamllint disable-line rule:truthy
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  override-ci-status:
+    if: >
+      github.repository == 'ceph/ceph-csi' &&
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/override ')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse context from comment
+        id: parse
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            const body = context.payload.comment.body
+            // Collect all '/override <context>' lines anywhere in the comment
+            const re = /^\/override[ \t]+(\S+)[ \t]*$/gm
+            const matches = [...body.matchAll(re)]
+            if (matches.length === 0) {
+              core.setFailed(
+                "No '/override <context>' lines found in comment"
+              )
+              return
+            }
+            const contexts = matches.map((m) => m[1])
+            core.info(`Contexts to override: ${contexts.join(', ')}`)
+            core.setOutput('contexts', JSON.stringify(contexts))
+
+      - name: Check commenter has write permission
+        id: permission
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            const login = context.payload.comment.user.login
+            let level
+            try {
+              const { data } =
+                await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: login
+              })
+              level = data.permission
+            } catch (e) {
+              // 404 means the user is not a collaborator at all
+              if (e.status !== 404) throw e
+              level = 'none'
+            }
+            // 'admin', 'maintain', and 'write' grant write access
+            const hasWrite = (
+              level === 'admin' || level === 'maintain' || level === 'write'
+            )
+            if (!hasWrite) {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: '-1'
+              }).catch(() => {})
+              core.setFailed(
+                `@${login} does not have write permission (got '${level}')`
+              )
+            }
+
+      - name: Get PR head SHA
+        id: pr
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            })
+            core.setOutput('head_sha', pr.data.head.sha)
+
+      - name: Check status contexts exist and mark SUCCESS
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          CONTEXTS: ${{ steps.parse.outputs.contexts }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            const requestedContexts = JSON.parse(process.env.CONTEXTS)
+            const sha = process.env.HEAD_SHA
+            const actor = context.payload.comment.user.login
+
+            // List all statuses for the PR head commit once
+            const statuses = await github.paginate(
+              github.rest.repos.listCommitStatusesForRef,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: sha
+              }
+            )
+            const knownContexts = new Set(statuses.map((s) => s.context))
+
+            let failed = false
+            for (const statusContext of requestedContexts) {
+              if (!knownContexts.has(statusContext)) {
+                core.error(
+                  `Status context '${statusContext}' not found on commit ${sha}`
+                )
+                failed = true
+                continue
+              }
+
+              // Mark the context as SUCCESS
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: sha,
+                state: 'success',
+                context: statusContext,
+                description: `Overridden by @${actor}`
+              })
+              core.info(`Marked '${statusContext}' as SUCCESS on ${sha}`)
+            }
+
+            if (failed) {
+              core.setFailed('One or more status contexts were not found')
+            }
+
+      - name: React to triggering comment
+        if: success()
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            try {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: '+1'
+              })
+            } catch (e) {
+              // 422 means the reaction already exists; ignore it
+              if (e.status !== 422) throw e
+            }
