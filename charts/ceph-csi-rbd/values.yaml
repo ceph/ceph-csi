@@ -135,6 +135,18 @@ nodeplugin:
   imagePullSecrets: []
   # - name: "image-pull-secret"
 
+  podMonitor:
+    # Specifies whether a PodMonitor should be created for the nodeplugin.
+    # Requires the prometheus-operator to be installed.
+    # Requires nodeplugin.httpMetrics.enabled=true.
+    enabled: false
+    # Namespace where the PodMonitor is deployed. Defaults to the release namespace.
+    namespace: ""
+    # Additional labels to add to the PodMonitor.
+    labels: {}
+    # Additional annotations to add to the PodMonitor.
+    annotations: {}
+
   profiling:
     # enable profiling to check for memory leaks
     enabled: false
@@ -248,6 +260,19 @@ provisioner:
   ##
   imagePullSecrets: []
   # - name: "image-pull-secret"
+
+  podMonitor:
+    # Specifies whether a PodMonitor should be created for the provisioner.
+    # Requires the prometheus-operator to be installed.
+    # Each sidecar port is included only when its httpEndpointPort is set under
+    # provisioner.{provisioner,attacher,resizer,snapshotter}.args.httpEndpointPort.
+    enabled: false
+    # Namespace where the PodMonitor is deployed. Defaults to the release namespace.
+    namespace: ""
+    # Additional labels to add to the PodMonitor.
+    labels: {}
+    # Additional annotations to add to the PodMonitor.
+    annotations: {}
 
   profiling:
     # enable profiling to check for memory leaks

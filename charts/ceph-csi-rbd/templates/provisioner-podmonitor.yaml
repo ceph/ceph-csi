@@ -1,0 +1,39 @@
+{{- if .Values.provisioner.podMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
+  namespace: {{ .Values.provisioner.podMonitor.namespace | default .Release.Namespace }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.provisioner.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.provisioner.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.provisioner.podMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "ceph-csi-rbd.name" . }}
+      component: {{ .Values.provisioner.name }}
+      release: {{ .Release.Name }}
+  podMetricsEndpoints:
+    {{- if ((.Values.provisioner.provisioner.args).httpEndpointPort) }}
+    - port: provisioner
+    {{- end }}
+    {{- if ((.Values.provisioner.attacher.args).httpEndpointPort) }}
+    - port: attacher
+    {{- end }}
+    {{- if ((.Values.provisioner.resizer.args).httpEndpointPort) }}
+    - port: resizer
+    {{- end }}
+    {{- if ((.Values.provisioner.snapshotter.args).httpEndpointPort) }}
+    - port: snapshotter
+    {{- end }}
+{{- end }}
