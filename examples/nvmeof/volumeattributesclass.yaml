@@ -25,22 +25,16 @@ parameters:
   # Optional QoS parameters (uint64 values):
 
   # Limit read/write IOPS (operations per second for both read and write)
-  # nvmeofRWIOsPerSecond: "10000"
+  # rwIosPerSecond: "10000"
 
   # Limit read/write throughput in MB/s (for both read and write)
-  # nvmeofRWMegabytesPerSecond: "100"
-
-  # Limit read-only IOPS (operations per second for read only)
-  # nvmeofRIOsPerSecond: "5000"
-
-  # Limit write-only IOPS (operations per second for write only)
-  # nvmeofWIOsPerSecond: "5000"
+  # rwMbytesPerSecond: "100"
 
   # Limit read-only throughput in MB/s
-  # nvmeofRMegabytesPerSecond: "50"
+  # rMbytesPerSecond: "50"
 
   # Limit write-only throughput in MB/s
-  # nvmeofWMegabytesPerSecond: "50"
+  # wMbytesPerSecond: "50"
 
 # Notes:
 # - Cannot mix RBD QoS parameters with NVMe-oF QoS parameters
