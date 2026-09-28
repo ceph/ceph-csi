@@ -1811,6 +1811,13 @@ func (cs *ControllerServer) ControllerUnpublishVolume(
 	rv, err := GenVolFromVolID(ctx, volumeId, credentials, secrets)
 	if err != nil {
 		rv.Destroy(ctx)
+		if errors.Is(err, rbderrors.ErrImageNotFound) ||
+			errors.Is(err, util.ErrKeyNotFound) ||
+			errors.Is(err, util.ErrPoolNotFound) {
+			log.WarningLog(ctx, "volume %s no longer exists, skipping unpublish: %v", volumeId, err)
+
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
 
 		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v",
 			volumeId, err)
