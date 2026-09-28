@@ -1291,6 +1291,14 @@ func (cs *cephfsControllerServer) ControllerUnpublishVolume(
 
 	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, volumeId, nil, secrets, cs.ClusterName)
 	if err != nil {
+		if errors.Is(err, cerrors.ErrVolumeNotFound) ||
+			errors.Is(err, util.ErrKeyNotFound) ||
+			errors.Is(err, util.ErrPoolNotFound) {
+			log.WarningLog(ctx, "volume %s no longer exists, skipping unpublish: %v", volumeId, err)
+
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+
 		return nil, status.Errorf(codes.Internal, "failed to generate volume from volume ID %s: %v", volumeId, err)
 	}
 	defer volOptions.Destroy()
