@@ -18,7 +18,30 @@ package rbd
 
 import (
 	"testing"
+
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 )
+
+func TestCheckErrAndUndoReserveImageNotFoundWithoutJournalData(t *testing.T) {
+	t.Parallel()
+
+	controllerServer := &ControllerServer{}
+	rbdVol := &rbdVolume{}
+
+	response, err := controllerServer.checkErrAndUndoReserve(
+		t.Context(),
+		rbderrors.ErrImageNotFound,
+		"volume-id",
+		rbdVol,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("checkErrAndUndoReserve() error = %v", err)
+	}
+	if response == nil {
+		t.Fatal("checkErrAndUndoReserve() returned a nil response")
+	}
+}
 
 func TestValidateStriping(t *testing.T) {
 	t.Parallel()
