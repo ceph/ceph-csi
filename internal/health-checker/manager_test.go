@@ -44,7 +44,7 @@ func TestManager(t *testing.T) {
 
 	t.Log("check health, should be healthy")
 	healthy, msg = mgr.IsHealthy(volumeID, volumePath)
-	if !healthy || err != nil {
+	if !healthy {
 		t.Errorf("volume is unhealthy: %s", msg)
 	}
 
@@ -72,13 +72,13 @@ func TestSharedChecker(t *testing.T) {
 
 	t.Log("check health, should be healthy")
 	healthy, msg = mgr.IsHealthy(volumeID, volumePath)
-	if !healthy || err != nil {
+	if !healthy {
 		t.Errorf("volume is unhealthy: %s", msg)
 	}
 
 	t.Log("check health, should be healthy, path is ignored")
 	healthy, msg = mgr.IsHealthy(volumeID, "different-path")
-	if !healthy || err != nil {
+	if !healthy {
 		t.Errorf("volume is unhealthy: %s", msg)
 	}
 
@@ -103,7 +103,7 @@ func TestTwoNonSharedChecker(t *testing.T) {
 
 	t.Log("check health for first path, should be healthy")
 	healthy, msg := mgr.IsHealthy(volumeID, firstVolumePath)
-	if !healthy || err != nil {
+	if !healthy {
 		t.Errorf("volume is unhealthy: %s", msg)
 	}
 
@@ -119,7 +119,7 @@ func TestTwoNonSharedChecker(t *testing.T) {
 
 	t.Log("check health, should be healthy")
 	healthy, msg = mgr.IsHealthy(volumeID, secondVolumePath)
-	if !healthy || err != nil {
+	if !healthy {
 		t.Errorf("volume is unhealthy: %s", msg)
 	}
 
@@ -128,7 +128,7 @@ func TestTwoNonSharedChecker(t *testing.T) {
 
 	t.Log("check health of second path, should still be healthy")
 	healthy, msg = mgr.IsHealthy(volumeID, secondVolumePath)
-	if !healthy || err != nil {
+	if !healthy {
 		t.Errorf("volume is unhealthy: %s", msg)
 	}
 
