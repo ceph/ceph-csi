@@ -26,8 +26,8 @@ func noinitKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return nil, nil
 }
 
+//nolint:paralleltest // mutates the package-global KMS provider registry
 func TestRegisterProvider(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		provider Provider
 		panics   bool
