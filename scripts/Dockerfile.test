@@ -66,6 +66,7 @@ RUN set -x \
     && curl -sSfL "https://github.com/lycheeverse/lychee/releases/download/lychee-${LYCHEE_VERSION}/lychee-${ARCH}-unknown-linux-gnu.tar.gz" | tar -xz -C /usr/local/bin \
     && git config --global --add safe.directory ${CEPHCSIPATH} \
     && go install github.com/augmentable-dev/tickgit/cmd/tickgit@latest \
+    && go install golang.org/x/tools/gopls@${GOPLS_VERSION} \
     && true
 
 WORKDIR ${CEPHCSIPATH}
