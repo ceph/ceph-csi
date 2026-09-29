@@ -237,7 +237,6 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 			"go-ceph failed to create export %q in NFS-cluster %q: %v",
 			nv, nfsCluster, err)
 
-		break
 	default: // any other error
 		return fmt.Errorf("exporting %q on NFS-cluster %q failed: %w",
 			nv, nfsCluster, err)
