@@ -52,7 +52,7 @@ func getCgroupPidsFile() (string, error) {
 	var slice string
 	for scanner.Scan() {
 		parts := strings.SplitN(scanner.Text(), ":", 3)
-		if parts == nil || len(parts) < 3 {
+		if len(parts) < 3 {
 			continue
 		}
 		// No cgroup subsystem given, then it is cgroupv2
@@ -68,6 +68,9 @@ func getCgroupPidsFile() (string, error) {
 
 			break
 		}
+	}
+	if err = scanner.Err(); err != nil {
+		return "", err
 	}
 	if slice == "" {
 		return "", errors.New("could not find a cgroup for 'pids'")
