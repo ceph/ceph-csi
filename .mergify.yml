@@ -121,17 +121,6 @@ pull_request_rules:
         add:
           - ok-to-test
 
-  - name: remove outdated approvals
-    conditions:
-      - base~=^(devel)|(release-.+)$
-    actions:
-      dismiss_reviews:
-        approved: true
-        changes_requested: false
-      label:
-        remove:
-          - ci/in-progress/e2e
-
   - name: ask to resolve conflict
     conditions:
       - conflict
