@@ -59,29 +59,60 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number
             })
-            core.setOutput('head_sha', pr.data.head.sha)
+            if (!pr.data.head.repo) {
+              core.exportVariable('FAIL_REASON',
+                'The source branch or its fork repository no longer ' +
+                'exists, so `/queue` cannot rebase it.')
+              core.setFailed('head repository is missing (deleted fork)')
+              return
+            }
+            const headRepo = pr.data.head.repo.full_name
+            const baseRepo = pr.data.base.repo.full_name
             core.setOutput('base_ref', pr.data.base.ref)
             core.setOutput('head_ref', pr.data.head.ref)
+            core.setOutput('head_sha', pr.data.head.sha)
+            core.setOutput('head_repo', headRepo)
+            core.setOutput('cross_repo', String(headRepo !== baseRepo))
+            core.setOutput('can_modify', String(pr.data.maintainer_can_modify))
 
+      # Check out the pull request's head branch at the exact SHA the lease
+      # is pinned to, so the rebase operates on what we will force-push.
       - name: Checkout PR branch
         # yamllint disable-line rule:line-length
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          repository: ${{ steps.pr.outputs.head_repo }}
           ref: ${{ steps.pr.outputs.head_sha }}
           fetch-depth: 0
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          persist-credentials: true
 
       - name: Check if rebase is needed
         id: check_rebase
+        env:
+          BASE_REF: ${{ steps.pr.outputs.base_ref }}
         run: |
           set -euo pipefail
-          BASE_REF="${{ steps.pr.outputs.base_ref }}"
-          git fetch origin -- "$BASE_REF"
+
+          # The base branch always lives on this repository, not on the fork
+          # that origin now points at, so fetch it from an upstream remote.
+          UPSTREAM="https://github.com/${{ github.repository }}.git"
+          git remote add upstream "$UPSTREAM"
+          if ! git fetch upstream -- "$BASE_REF"; then
+            {
+              echo "FAIL_REASON<<EOF"
+              echo "Could not fetch the \`$BASE_REF\` base branch. This is"
+              echo "usually transient, please comment \`/queue\` again."
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+            exit 1
+          fi
 
           # Get the merge base between PR and target branch
-          MERGE_BASE=$(git merge-base HEAD "origin/$BASE_REF")
+          MERGE_BASE=$(git merge-base HEAD "upstream/$BASE_REF")
 
           # Get the latest commit on the target branch
-          BASE_SHA=$(git rev-parse "origin/$BASE_REF")
+          BASE_SHA=$(git rev-parse "upstream/$BASE_REF")
 
           # If merge base equals latest commit on base, no rebase needed
           if [ "$MERGE_BASE" = "$BASE_SHA" ]; then
@@ -106,15 +137,99 @@ jobs:
               labels: ['queued/rebase']
             })
 
-      - name: Request rebase through Mergify
+      # Rebase in the workflow instead of asking mergify, because GitHub refuses
+      # to rebase a fork pull request on behalf of a user. The push triggers the
+      # synchronize event that the add-ok-to-test-label job requires.
+      - name: Rebase PR branch on base and push
+        id: rebase
         if: steps.check_rebase.outputs.needs_rebase == 'true'
+        env:
+          BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          CROSS_REPO: ${{ steps.pr.outputs.cross_repo }}
+          CAN_MODIFY: ${{ steps.pr.outputs.can_modify }}
+        run: |
+          set -euo pipefail
+
+          # A fork branch can only be pushed to when the author enabled
+          # "Allow edits from maintainers"; without it there is no point trying.
+          if [ "$CROSS_REPO" = "true" ] && [ "$CAN_MODIFY" != "true" ]; then
+            {
+              echo "FAIL_REASON<<EOF"
+              echo "This pull request comes from a fork with \"Allow edits from"
+              echo "maintainers\" disabled, so \`/queue\` cannot rebase it."
+              echo "Enable that option or rebase the branch manually, then"
+              echo "comment \`/queue\` again."
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+          git config user.name "ceph-csi-bot"
+          git config user.email "ceph-csi-bot@users.noreply.github.com"
+
+          if ! git rebase "upstream/$BASE_REF"; then
+            git rebase --abort || true
+            {
+              echo "FAIL_REASON<<EOF"
+              echo "Rebasing this pull request on \`$BASE_REF\` hit conflicts."
+              echo "Please rebase it manually, resolve the conflicts and force"
+              echo "push, then comment \`/queue\` again."
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+          # Only force-push if the remote branch is still at the SHA GitHub
+          # reported when /queue ran.
+          LEASE="refs/heads/$HEAD_REF:$HEAD_SHA"
+          REFSPEC="HEAD:refs/heads/$HEAD_REF"
+          if ! git push --force-with-lease="$LEASE" origin "$REFSPEC"; then
+            {
+              echo "FAIL_REASON<<EOF"
+              echo "The rebase succeeded but pushing the rebased branch failed."
+              echo "The branch may have changed in the meantime, or the push"
+              echo "permission is missing. Please retry \`/queue\`."
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      # Report on any failure in this job, not just the rebase step.
+      - name: Report rebase failure
+        if: failure()
         # yamllint disable-line rule:line-length
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
-          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            @mergifyio rebase
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            const reason = process.env.FAIL_REASON ||
+              'The `/queue` rebase step failed. Check the workflow logs for ' +
+              'details, then comment `/queue` again once resolved.'
+            // Post the comment and remove the label independently.
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `❌ ${reason}`
+              })
+            } catch (e) {
+              core.warning(`Failed to post failure comment: ${e.message}`)
+            }
+
+            // remove the label so the PR is not left stuck in the queued state.
+            try {
+              await github.rest.issues.removeLabel({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'queued/rebase'
+              })
+            } catch (e) {
+              if (e.status !== 404) throw e
+            }
 
       - name: Add ok-to-test label directly
         if: steps.check_rebase.outputs.needs_rebase == 'false'
