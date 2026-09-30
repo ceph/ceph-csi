@@ -3,22 +3,24 @@ defaults:
   actions:
     merge:
       merge_bot_account: ceph-csi-bot
-    rebase:
-      bot_account: ceph-csi-bot
-    update:
-      bot_account: ceph-csi-bot
 
 merge_protections_settings:
   reporting_method: check-runs
   auto_merge_conditions: true
 
 queue_rules:
+  # This queue handles every non-dependabot pull request It sets no
+  # update_bot_account: Mergify updates these branches with its own
+  # installation token. Setting a bot account would make Mergify act
+  # as that user, which GitHub rejects for fork branches. dependabot
+  # PRs need a bot account, so they are split off below.
   - name: default
     merge_method: rebase
     update_method: rebase
     batch_size: 1
     queue_conditions:
-      - and:
+      - author!=dependabot[bot]
+      - and: &shared_queue_conditions
           # requirements for any branch
           - label!=DNM
           - "#approved-reviews-by>=2"
@@ -87,6 +89,18 @@ queue_rules:
                   - base=ci/centos
                   - "status-success=ci/centos/job-validation"
                   - "status-success=ci/centos/jjb-validate"
+
+  # dependabot pull requests come from branches in this repository but are
+  # authored by an app. GitHub does not let one app update another app's
+  # pull request unless it acts as a user, so update_bot_account is set here.
+  - name: dependabot
+    merge_method: rebase
+    update_method: rebase
+    update_bot_account: ceph-csi-bot
+    batch_size: 1
+    queue_conditions:
+      - author=dependabot[bot]
+      - and: *shared_queue_conditions
 
 merge_queue:
   max_parallel_checks: 1
