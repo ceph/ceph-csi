@@ -1,0 +1,98 @@
+---
+name: Dismiss stale approvals
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request_target:
+    branches:
+      - devel
+      - "release-v*"
+    types:
+      - synchronize
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dismiss-stale-approvals:
+    # Mergify used to preserve approvals in cases where it did
+    # a force push. This job emulates the same but for our bot.
+    if: >
+      github.repository == 'ceph/ceph-csi' &&
+      github.actor != 'ceph-csi-bot' &&
+      github.actor != 'mergify[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dismiss approvals of the previous revision
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            const number = context.payload.pull_request.number
+
+            // Re-read the HEAD from API.
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: number
+            })
+            const head = pr.data.head.sha
+
+            const reviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: number
+              }
+            )
+
+            // Only dismiss approved reviews, preserve requested changes.
+            for (const review of reviews) {
+              if (review.state !== 'APPROVED') {
+                continue
+              }
+
+              // don't dismiss reviews that are recent.
+              if (review.commit_id === head) {
+                core.info(
+                  `keeping approval ${review.id}, it is for the new head`
+                )
+
+                continue
+              }
+
+              await github.rest.pulls.dismissReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: number,
+                review_id: review.id,
+                message: 'The pull request was updated, please review again.'
+              })
+            }
+
+      # The mergify rule used to remove in-progress almost
+      # immediately. Only remove the label if the contents
+      # changed.
+      - name: Remove the in-progress e2e label
+        # yamllint disable-line rule:line-length
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                issue_number: context.payload.pull_request.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'ci/in-progress/e2e'
+              })
+            } catch (e) {
+              if (e.status !== 404) throw e
+            }
