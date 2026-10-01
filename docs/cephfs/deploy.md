@@ -254,20 +254,13 @@ in order for it to work with ceph CRUSH map.
 
 ## CephFS Volume Encryption
 
-Requires fscrypt support in the Linux kernel and Ceph.
+CephFS volumes support filesystem-level encryption using the fscrypt kernel
+feature. The KMS configuration is shared with RBD encryption; only KMS
+backends that expose a raw passphrase are supported.
 
-Key management is compatible with the
-[fscrypt](https://github.com/google/fscrypt) userspace tool. See the
-design doc [Ceph Filesystem fscrypt
-Support](../design/proposals/cephfs-fscrypt.md) for details.
-
-In general the KMS configuration is the same as for RBD encryption and
-can even be shared.
-
-However, not all KMS are supported in order to be compatible with
-[fscrypt](https://github.com/google/fscrypt). In general KMS that
-either store secrets to use directly (Vault), or allow access to the
-plain password (Kubernetes Secrets) work.
+See [Encrypted Volumes](../encrypted-volumes.md#cephfs-volume-encryption)
+for the full configuration, KMS compatibility matrix, volume layout and
+prerequisites.
 
 ## CephFS PVC Provisioning
 
