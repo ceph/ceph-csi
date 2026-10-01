@@ -15,6 +15,20 @@ data:
         "vaultPassphrasePath": "ceph-csi/",
         "vaultCAVerify": "false"
       },
+      "vault-mtls-test": {
+        "encryptionKMSType": "vault",
+        "vaultAddress": "https://vault.default.svc.cluster.local:8200",
+        "vaultAuthPath": "/v1/auth/kubernetes/login",
+        "vaultRole": "csi-kubernetes",
+        "vaultBackend": "kv-v2",
+        "vaultDestroyKeys": "true",
+        "vaultPassphraseRoot": "/v1/secret",
+        "vaultPassphrasePath": "ceph-csi/",
+        "vaultCAVerify": "true",
+        "vaultCAFromSecret": "vault-ca-secret",
+        "vaultClientCertFromSecret": "vault-client-tls-secret",
+        "vaultClientCertKeyFromSecret": "vault-client-tls-secret"
+      },
       "vault-tokens-test": {
           "encryptionKMSType": "vaulttokens",
           "vaultAddress": "http://vault.default.svc.cluster.local:8200",
