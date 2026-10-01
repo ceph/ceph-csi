@@ -108,15 +108,15 @@ compatibility support and without prior notice.
 For example, upgrading from 3.15 to 3.18 is not recommended.
 
 **Refer to the Breaking Changes Section in the
-[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.18.0) before
+[release notes](https://github.com/ceph/ceph-csi/releases/tag/v3.18.1) before
 proceeding further.**
 
-git checkout v3.18.0 tag
+git checkout v3.18.1 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.18.0
+git checkout v3.18.1
 ```
 
 ```console
