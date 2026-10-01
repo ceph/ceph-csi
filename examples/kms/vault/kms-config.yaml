@@ -109,6 +109,14 @@ data:
         "READ_TIMEOUT": 10,
         "WRITE_TIMEOUT": 10
       },
+      "kmip-fscrypt-test": {
+        "KMS_PROVIDER": "kmip",
+        "KMIP_ENDPOINT": "kmip.default.svc.cluster.local:5696",
+        "TLS_SERVER_NAME": "kmip.default.svc.cluster.local",
+        "USE_CRYPTO_RPC": "false",
+        "READ_TIMEOUT": 10,
+        "WRITE_TIMEOUT": 10
+      },
       "azure-test": {
         "KMS_PROVIDER": "azure-kv",
         "AZURE_CERT_SECRET_NAME": "ceph-csi-azure-credentials",
