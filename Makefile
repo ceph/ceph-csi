@@ -100,13 +100,13 @@ endif
 
 all: cephcsi
 
-.PHONY: go-test static-check mod-check go-lint go-lint-fix lint-extras commitlint link-check codespell
+.PHONY: go-test static-check mod-check go-lint go-lint-fix lint-extras commitlint link-check codespell gopls
 ifeq ($(CONTAINERIZED),no)
 # include mod-check in non-containerized runs
 test: go-test static-check mod-check
 else
 # exclude mod-check for containerized runs (CI runs it separately)
-test: go-test static-check
+test: go-test static-check gopls
 endif
 static-check: check-env codespell go-lint lint-extras
 
@@ -137,6 +137,9 @@ go-lint: scripts/golangci.yml
 
 go-lint-fix: scripts/golangci.yml
 	./scripts/lint-go.sh --fix
+
+gopls: check-env
+	find . -name '*.go' -not -path '*/vendor/*' -not -path './e2e/*' | GOFLAGS="$(GO_TAGS)" xargs gopls check
 
 lint-extras:
 	./scripts/lint-extras.sh lint-all
@@ -229,12 +232,12 @@ run-e2e:
 .PHONY: containerized-build containerized-test
 containerized-build: TARGET = cephcsi
 containerized-build: .container-cmd .devel-container-id
-	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET) CONTAINERIZED=yes
+	$(CONTAINER_CMD) run $(CPUSET) --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET) CONTAINERIZED=yes
 
 containerized-test: TARGET = test
 containerized-test: REBASE ?= 0
 containerized-test: .container-cmd .test-container-id
-	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE) CONTAINERIZED=yes
+	$(CONTAINER_CMD) run $(CPUSET) --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE) CONTAINERIZED=yes
 
 .PHONY: mkdocs
 mkdocs:
