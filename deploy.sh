@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Usage: ./deploy.sh [--images-only]
+# Use --images-only to skip publishing Helm chart.
 set -e
 
 # shellcheck source=scripts/build_step.inc.sh
@@ -101,29 +103,45 @@ push_helm_charts() {
 
 }
 
-if [[ -z "${GITHUB_TOKEN}" ]]; then
-	echo "GITHUB_TOKEN is unset or set to the empty string"
-	exit 1
+PUBLISH_HELM=true
+
+while [ $# -ge 1 ]; do
+  case "$1" in
+    --images-only)
+      PUBLISH_HELM=false
+      shift ;;
+  *)
+    echo "usage: $0 [--images-only]" >&2
+    exit 1
+    ;;
+  esac
+done
+
+if $PUBLISH_HELM && [[ -z "${GITHUB_TOKEN}" ]]; then
+  echo "GITHUB_TOKEN is unset or set to the empty string"
+  exit 1
 fi
 
 build_push_images
 
-CSI_CHARTS_DIR=$(mktemp -d)
+if $PUBLISH_HELM; then
+  CSI_CHARTS_DIR=$(mktemp -d)
 
-pushd "${CSI_CHARTS_DIR}" >/dev/null
+  pushd "${CSI_CHARTS_DIR}" >/dev/null
 
-curl -L "${HELM_SCRIPT}" | bash -s -- --version "${HELM_VERSION}"
+  curl -L "${HELM_SCRIPT}" | bash -s -- --version "${HELM_VERSION}"
 
-build_step "cloning ceph/csi-charts repository"
-git clone https://github.com/ceph/csi-charts
+  build_step "cloning ceph/csi-charts repository"
+  git clone https://github.com/ceph/csi-charts
 
-mkdir -p csi-charts/docs
-popd >/dev/null
+  mkdir -p csi-charts/docs
+  popd >/dev/null
 
-build_step "pushing RBD helm charts"
-push_helm_charts rbd "${CSI_CHARTS_DIR}"
-build_step "pushing CephFS helm charts"
-push_helm_charts cephfs "${CSI_CHARTS_DIR}"
-build_step_log "finished deployment!"
+  build_step "pushing RBD helm charts"
+  push_helm_charts rbd "${CSI_CHARTS_DIR}"
+  build_step "pushing CephFS helm charts"
+  push_helm_charts cephfs "${CSI_CHARTS_DIR}"
+  build_step_log "finished deployment!"
 
-[ -n "${CSI_CHARTS_DIR}" ] && rm -rf "${CSI_CHARTS_DIR}"
+  [ -n "${CSI_CHARTS_DIR}" ] && rm -rf "${CSI_CHARTS_DIR}"
+fi
