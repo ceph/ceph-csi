@@ -1,0 +1,61 @@
+---
+name: publish artifacts (rocky9)
+# yamllint disable-line rule:truthy
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build (for example v3.18.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  push:
+    name: Publish Rocky Linux 9 images
+    runs-on: ubuntu-latest
+    if: github.repository == 'ceph/ceph-csi'
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      CONTAINER_CMD: docker
+    steps:
+      # yamllint disable-line rule:line-length
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+
+      - name: Patch build.env for Rocky Linux 9 build
+        run: |
+          # shellcheck source=build.env
+          source build.env
+          final_base_image=quay.io/rockylinux/rockylinux:9-minimal
+          image_version=${CSI_IMAGE_VERSION}-rocky9
+          sed -i \
+            -e 's|^BASE_IMAGE=.*|BASE_IMAGE=quay.io/rockylinux/rockylinux:9|' \
+            -e "s|^FINAL_BASE_IMAGE=.*|FINAL_BASE_IMAGE=${final_base_image}|" \
+            -e '/^CEPH_RELEASE_RPM=/s/el10/el9/g' \
+            -e "s|^CSI_IMAGE_VERSION=.*|CSI_IMAGE_VERSION=${image_version}|" \
+            build.env
+
+      - name: Login to Quay
+        # yamllint disable-line rule:line-length
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772  # v3.4.0
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_IO_USERNAME }}
+          password: ${{ secrets.QUAY_IO_PASSWORD }}
+
+      - name: publish artifacts
+        # podman cannot pull images with both tag and digest
+        # https://github.com/containers/buildah/issues/1407
+        # use docker to build images
+        run: CONTAINER_CMD=docker ./deploy.sh --images-only
