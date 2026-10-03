@@ -31,6 +31,7 @@ import (
 	utilexec "k8s.io/utils/exec"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/filesystems"
 	"github.com/ceph/ceph-csi/internal/nvmeof"
 	nvmeutil "github.com/ceph/ceph-csi/internal/nvmeof/util"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -856,9 +857,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	}
 
 	// Add filesystem-specific default options
-	if fsType == "xfs" {
-		mountOptions = append(mountOptions, "nouuid")
-	}
+	mountOptions = append(mountOptions, filesystems.DefaultMountOptions(fsType, volumeCap.GetMount().GetMountFlags())...)
 	mountOptions = append(mountOptions, "_netdev")
 	log.DebugLog(ctx, "nvmeof: mounting device %s to %s with fsType %s", devicePath, stagingPath, fsType)
 	err := diskMounter.FormatAndMount(devicePath, stagingPath, fsType, mountOptions)

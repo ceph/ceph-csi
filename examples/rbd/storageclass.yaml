@@ -207,5 +207,8 @@ reclaimPolicy: Delete
 allowVolumeExpansion: true
 
 # If filesystem is xfs, nouuid will be automatically added to mountOptions
+# If filesystem is ext4, errors=remount-ro will be automatically added to
+# mountOptions, unless an errors= option is set here (for example
+# errors=continue, the default of the ext4 kernel driver)
 mountOptions:
    - discard
