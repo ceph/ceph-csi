@@ -24,3 +24,6 @@
    is updated, but provisioner is not.
 
 ## NOTE
+
+- The `--setmetadata` flag has been removed. The flag was deprecated in
+  v3.17 and had no effect (metadata is always set on volumes).
