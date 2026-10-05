@@ -54,7 +54,6 @@ spec:
             - "--drivername=cephfs.csi.ceph.com"
             - "--pidlimit=-1"
             - "--enableprofiling=false"
-            - "--setmetadata=true"
             # - "--enable-fencing=true"
           env:
             - name: POD_IP
@@ -199,7 +198,6 @@ spec:
             - "--v=5"
             - "--drivername=cephfs.csi.ceph.com"
             - "--drivernamespace=$(DRIVER_NAMESPACE)"
-            - "--setmetadata=true"
           env:
             - name: DRIVER_NAMESPACE
               valueFrom:

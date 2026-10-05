@@ -108,7 +108,6 @@ spec:
             {{- if .Values.provisioner.fencing }}
             - "--enable-fencing={{ .Values.provisioner.fencing }}"
             {{- end }}
-            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
             - "--logslowopinterval={{ .Values.logSlowOperationInterval }}"
           env:
             - name: POD_IP
@@ -311,7 +310,6 @@ spec:
             {{- if .Values.provisioner.clustername }}
             - "--clustername={{ .Values.provisioner.clustername }}"
             {{- end }}
-            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
           env:
             - name: DRIVER_NAMESPACE
               valueFrom:

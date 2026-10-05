@@ -244,9 +244,6 @@ provisioner:
     ## https://github.com/kubernetes-csi/external-provisioner#command-line-options
     extraArgs: []
 
-  # set metadata on volume
-  setmetadata: true
-
   # deployController to enable or disable the deployment of controller which
   # sets the CSI metadata on CephFS subvolumes.
   deployController: true
