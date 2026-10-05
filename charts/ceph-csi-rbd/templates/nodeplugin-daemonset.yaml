@@ -202,6 +202,10 @@ spec:
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- end }}
+{{- if .Values.nodeplugin.extraInitContainers }}
+      initContainers:
+{{ toYaml .Values.nodeplugin.extraInitContainers | indent 8 }}
+{{- end }}
       volumes:
         - name: socket-dir
           hostPath:

@@ -357,6 +357,10 @@ spec:
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- end }}
+{{- if .Values.provisioner.extraInitContainers }}
+      initContainers:
+{{ toYaml .Values.provisioner.extraInitContainers | indent 8 }}
+{{- end }}
       volumes:
         - name: socket-dir
           emptyDir: {

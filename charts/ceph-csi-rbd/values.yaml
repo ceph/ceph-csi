@@ -99,6 +99,24 @@ nodeplugin:
   # if you are using rbd-nbd client set this value to OnDelete
   updateStrategy: RollingUpdate
 
+  # Add extra init containers to the nodeplugin daemonset.
+  # Example:
+  # extraInitContainers:
+  #   - name: check-ceph-conf
+  #     image: busybox
+  #     command: ['sh', '-c']
+  #     args:
+  #       - |
+  #         if ! grep -q "cephx" /etc/ceph/ceph.conf; then
+  #           echo "Error: Required parameter missing in ceph.conf!"
+  #           exit 1
+  #         fi
+  #         echo "ceph.conf validation successful."
+  #     volumeMounts:
+  #       - name: ceph-config
+  #         mountPath: /etc/ceph/
+  extraInitContainers: []
+
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
     # Specifies whether http metrics should be exposed
@@ -201,6 +219,24 @@ provisioner:
   # skip image flattening if kernel support mapping of rbd images
   # which has the deep-flatten feature
   # skipForceFlatten: false
+
+  # Add extra init containers to the provisioner deployment.
+  # Example:
+  # extraInitContainers:
+  #   - name: check-ceph-conf
+  #     image: busybox
+  #     command: ['sh', '-c']
+  #     args:
+  #       - |
+  #         if ! grep -q "cephx" /etc/ceph/ceph.conf; then
+  #           echo "Error: Required parameter missing in ceph.conf!"
+  #           exit 1
+  #         fi
+  #         echo "ceph.conf validation successful."
+  #     volumeMounts:
+  #       - name: ceph-config
+  #         mountPath: /etc/ceph/
+  extraInitContainers: []
 
   # set user created priorityclassName for csi provisioner pods. default is
   # system-cluster-critical which is less priority than system-node-critical
