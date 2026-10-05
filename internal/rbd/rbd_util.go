@@ -2304,6 +2304,17 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 
 // RemoveMetadata deletes the key and data from the metadata of the image.
 func (ri *rbdImage) RemoveMetadata(key string) error {
+	_, err := ri.GetMetadata(key)
+	// openReadOnly wraps both ErrImageNotFound and ErrNotFound.
+	switch {
+	case errors.Is(err, rbderrors.ErrImageNotFound):
+		return err
+	case errors.Is(err, librbd.ErrNotFound):
+		return nil
+	case err != nil:
+		return err
+	}
+
 	image, err := ri.open()
 	if err != nil {
 		return err
