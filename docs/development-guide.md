@@ -248,7 +248,6 @@ There are other labels as well, to indicate dependencies between projects:
 
 A few labels interact with automation around the pull requests:
 
-* ready-to-merge: This PR is ready to be merged and it doesn't need second review
 * DNM: DO NOT MERGE (Mergify will not merge this PR)
 * ci/skip/e2e: skip running e2e CI jobs
 * ci/skip/multi-arch-build: skip building container images for different architectures
@@ -273,10 +272,6 @@ need to be met before it will be merged:
   pull request when they think it is ready for e2e testing. This is done to avoid
   load on the CI.
 * Each PR must be fully updated to devel and tests must have passed
-* If the PR is having trivial changes or the reviewer is confident enough that
-  PR doesn't need a second review, the reviewer can set `ready-to-merge` label
-  on the PR. The bot will merge the PR if it's having one approval and the
-  label `ready-to-merge`.
 
 When the criteria are met, a project maintainer can instruct the automation to
 queue the PR for merging by commenting `/queue` on the pull request.
