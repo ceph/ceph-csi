@@ -358,6 +358,24 @@ type EncryptionOptions struct {
 	keysize       *uint
 	integrityMode *string
 	sectorSize    *uint
+	allowDiscards bool
+}
+
+// AllowDiscards returns whether discards/TRIM is allowed on the encrypted device.
+func (e *EncryptionOptions) AllowDiscards() bool {
+	return e.allowDiscards
+}
+
+// SetAllowDiscards parses the input string as a boolean and sets whether
+// discards/TRIM is allowed on the encrypted device.
+func (e *EncryptionOptions) SetAllowDiscards(value string) error {
+	allowDiscards, err := strconv.ParseBool(value)
+	if err != nil {
+		return fmt.Errorf("could not parse allowDiscards value %q: %w", value, err)
+	}
+	e.allowDiscards = allowDiscards
+
+	return nil
 }
 
 // SectorSize returns the device sector size in bytes, or nil if not set.
@@ -533,7 +551,7 @@ func parseLuksStatusSize(input string) (string, error) {
 // LuksWrapper is a struct that provides a context-aware wrapper around cryptsetup commands.
 type LUKSWrapper interface {
 	Format(devicePath, passphrase string, cipher *EncryptionOptions) (string, string, error)
-	Open(devicePath, mapperFile, passphrase string) (string, string, error)
+	Open(devicePath, mapperFile, passphrase string, allowDiscards bool) (string, string, error)
 	Close(mapperFile string) (string, string, error)
 	AddKey(devicePath, passphrase, newPassphrase, slot string) error
 	RemoveKey(devicePath, passphrase, slot string) error
@@ -594,17 +612,24 @@ func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *Encry
 }
 
 // LuksOpen opens LUKS encrypted partition and sets up a mapping.
-func (l *luksWrapper) Open(devicePath, mapperFile, passphrase string) (string, string, error) {
+func (l *luksWrapper) Open(devicePath, mapperFile, passphrase string, allowDiscards bool) (string, string, error) {
 	// cryptsetup option --disable-keyring (introduced with cryptsetup v2.0.0)
 	// will be ignored with luks1
-	return l.execCryptsetupCommand(
-		&passphrase,
+	args := []string{
 		"luksOpen",
 		devicePath,
 		mapperFile,
 		"--disable-keyring",
 		"-d",
-		"-")
+		"-",
+	}
+	if allowDiscards {
+		args = append(args, "--allow-discards")
+	}
+
+	return l.execCryptsetupCommand(
+		&passphrase,
+		args...)
 }
 
 // LuksResize resizes LUKS encrypted partition.

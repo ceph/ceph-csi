@@ -247,9 +247,9 @@ func EncryptVolume(ctx context.Context, devicePath, passphrase string, cipher *c
 }
 
 // OpenEncryptedVolume opens volume so that it can be used by the client.
-func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase string) error {
+func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase string, allowDiscards bool) error {
 	log.DebugLog(ctx, "Opening device %q with LUKS on %q", devicePath, mapperFile)
-	_, stdErr, err := luks.Open(devicePath, mapperFile, passphrase)
+	_, stdErr, err := luks.Open(devicePath, mapperFile, passphrase, allowDiscards)
 	if err != nil || stdErr != "" {
 		log.ErrorLog(ctx, "failed to open device %q (%v): %s", devicePath, err, stdErr)
 	}
