@@ -2,12 +2,26 @@
 
 ## Breaking changes
 
+
 - Journal metadata now uses sharded `csiDirectory` objects for new CSI name
   mappings. This is a forward-only upgrade for journal metadata: newer
   ceph-csi versions can read legacy `csiDirectory` entries, but older versions
   only read the legacy unsharded object and cannot see mappings written to
   shard oids after the upgrade. Downgrading after new entries have been written
   in the upgraded version can break idempotent lookups for those entries.
+
+- Default host PID settings were flipped off for the `netNamespaceFilePath`
+  deprecation / removal:
+  - `hostPID` changed from `true` to `false` in all static nodeplugin manifests
+  - OpenShift sample SCCs set `allowHostPID` from `true` to `false` (including
+    `deploy/nvmeof/kubernetes/csi-nodeplugin-scc.yaml`)
+  - Helm charts default `nodeplugin.hostPID` to `false`; they set `hostPID`
+    automatically when `csiConfig` includes `netNamespaceFilePath`. With
+    `externallyManagedConfigmap: true`, set `nodeplugin.hostPID: true`
+    explicitly (the chart cannot read the external ConfigMap)
+  - Users who still need host PID (including `netNamespaceFilePath`) must set
+    `hostPID: true` and, on OpenShift, `allowHostPID: true` themselves
+
 
 ## Features
 
@@ -40,3 +54,10 @@
 - The `aws-metadata` and `aws-sts-metadata` KMS providers now use
   aws-sdk-go-v2, as aws-sdk-go (v1) has reached end-of-support. No
   configuration changes are required.
+
+## Deprecations
+
+- The `netNamespaceFilePath` configuration option is now deprecated and will be
+  removed in a future release. Users should migrate to using host networking for
+  CSI plugin pods instead. When this feature is detected, a deprecation warning
+  will be logged at the WARNING level.
