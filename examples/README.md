@@ -52,6 +52,10 @@ option `clusterID`, can now be created on the cluster.
 
 ## Running CephCSI with pod networking
 
+> **DEPRECATION NOTICE**: The `netNamespaceFilePath` feature is deprecated and
+> will be removed in a future version. Users should migrate to using host
+> networking for CSI plugin pods.
+
 The current problem with Pod Networking, is when a CephFS/RBD/NFS volume is mounted
 in a pod using Ceph CSI and then the CSI CephFS/RBD/NFS plugin is restarted or
 terminated (e.g. by restarting or deleting its DaemonSet), all operations on
