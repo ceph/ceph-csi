@@ -613,9 +613,58 @@ func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 	subvolRoot, subvolUUID := path.Split(parentBackingSnapVolOpts.RootPath)
 
 	vo.RootPath = subvolRoot
-	vo.BackingSnapshotRoot = path.Join(".snap", snapID.FsSnapshotName, subvolUUID)
+
+	// Prefer Ceph's snapshot getpath; fall back to manual construction when unsupported.
+	snapClient := core.NewSnapshot(
+		parentBackingSnapVolOpts.conn,
+		snapID.FsSnapshotName,
+		parentBackingSnapVolOpts.ClusterID,
+		clusterName,
+		&parentBackingSnapVolOpts.SubVolume,
+	)
+	absPath, err := snapClient.GetSnapshotPath(ctx)
+	switch {
+	case err == nil:
+		relPath, ok := extractSnapshotRelativePath(absPath, subvolRoot)
+		if !ok {
+			return fmt.Errorf("unexpected snapshot path %q for backing snapshot %s", absPath, vo.BackingSnapshotID)
+		}
+		vo.BackingSnapshotRoot = relPath
+		log.DebugLog(ctx, "got snapshot path from API: %s", vo.BackingSnapshotRoot)
+	case errors.Is(err, cerrors.ErrInvalidCommand):
+		log.DebugLog(ctx, "SubVolumeSnapshotPath not supported by Ceph cluster, using manual construction")
+		vo.BackingSnapshotRoot = path.Join(".snap", snapID.FsSnapshotName, subvolUUID)
+	default:
+		return fmt.Errorf("failed to get path for backing snapshot %s: %w", vo.BackingSnapshotID, err)
+	}
 
 	return nil
+}
+
+// extractSnapshotRelativePath extracts the relative snapshot path from an absolute CephFS path.
+// For example, given:
+//
+//	absPath: /volumes/group/subvol/.snap/snapshot/uuid
+//	subvolRoot: /volumes/group/subvol/
+//
+// Returns: .snap/snapshot/uuid
+// ok is false if the path does not contain a usable .snap component.
+func extractSnapshotRelativePath(absPath, subvolRoot string) (string, bool) {
+	rel, found := strings.CutPrefix(absPath, subvolRoot)
+	if !found {
+		idx := strings.Index(absPath, "/.snap/")
+		if idx < 0 {
+			return "", false
+		}
+		rel = absPath[idx+1:] // ".snap/..."
+	}
+
+	rel = strings.TrimPrefix(rel, "/")
+	if !strings.HasPrefix(rel, ".snap/") {
+		return "", false
+	}
+
+	return rel, true
 }
 
 // NewVolumeOptionsFromMonitorList generates a new instance of VolumeOptions and
