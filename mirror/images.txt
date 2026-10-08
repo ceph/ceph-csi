@@ -8,6 +8,9 @@
 
 # ceph-csi devel
 quay.io/rook/ceph:v1.20.5        rook/ceph:v1.20.5
+quay.io/ceph/ceph:v21            ceph/ceph:v21
+
+# release-v3.18
 quay.io/ceph/ceph:v20            ceph/ceph:v20
 
 # ceph-csi-operator
