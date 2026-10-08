@@ -10,6 +10,7 @@ on:
       - labeled
 
 permissions:
+  contents: read
   pull-requests: write
 
 jobs:
@@ -59,11 +60,59 @@ jobs:
             tests.push('ci/centos/upgrade-tests-cephfs');
             tests.push('ci/centos/upgrade-tests-rbd');
 
+            // Re-read the HEAD from the API.
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const sha = pr.data.head.sha;
+
+            // Statuses belong to a single commit, and a status can only
+            // be set after that commit was pushed. A job that has a
+            // status on the current HEAD was therefore triggered after
+            // the last commit, and does not need to run again. A new
+            // commit (or a rebase) moves HEAD to a commit without any
+            // statuses, so the whole matrix is commented again.
+            const combined =
+              await github.rest.repos.getCombinedStatusForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: sha,
+                per_page: 100,
+              });
+
+            const states = new Map(
+              combined.data.statuses.map(s => [s.context, s.state])
+            );
+
+            // Skip jobs that passed, and jobs that are still running
+            // against this commit.
+            const done = ['success', 'pending'];
+            const todo = tests.filter(
+              test => !done.includes(states.get(test))
+            );
+
+            const skipped = tests.filter(test => !todo.includes(test));
+            if (skipped.length !== 0) {
+              core.info(
+                `not triggering for ${sha}: ${skipped.join(', ')}`
+              );
+            }
+
+            if (todo.length === 0) {
+              core.notice(
+                `all e2e jobs already ran for ${sha}, nothing to do`
+              );
+
+              return;
+            }
+
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: tests.map(test => `/test ${test}`).join('\n'),
+              body: todo.map(test => `/test ${test}`).join('\n'),
             });
 
   remove-label:
