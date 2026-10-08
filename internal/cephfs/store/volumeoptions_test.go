@@ -218,3 +218,46 @@ func TestIsShallowVolumeSupported(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractSnapshotRelativePath(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		absPath  string
+		subvol   string
+		expected string
+		ok       bool
+	}{
+		{
+			name:     "strip subvol prefix",
+			absPath:  "/volumes/csi/vol/.snap/snap/uuid",
+			subvol:   "/volumes/csi/vol/",
+			expected: ".snap/snap/uuid",
+			ok:       true,
+		},
+		{
+			name:     "fallback to .snap search",
+			absPath:  "/other/.snap/snap/uuid",
+			subvol:   "/volumes/csi/vol/",
+			expected: ".snap/snap/uuid",
+			ok:       true,
+		},
+		{
+			name:     "no .snap is rejected",
+			absPath:  "/volumes/data",
+			subvol:   "/volumes/",
+			expected: "",
+			ok:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, ok := extractSnapshotRelativePath(tt.absPath, tt.subvol)
+			if ok != tt.ok || got != tt.expected {
+				t.Errorf("got (%q, %v), want (%q, %v)", got, ok, tt.expected, tt.ok)
+			}
+		})
+	}
+}
