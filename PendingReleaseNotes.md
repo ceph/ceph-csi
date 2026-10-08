@@ -33,3 +33,19 @@
 - The `aws-metadata` and `aws-sts-metadata` KMS providers now use
   aws-sdk-go-v2, as aws-sdk-go (v1) has reached end-of-support. No
   configuration changes are required.
+
+## Deprecations
+
+- The `netNamespaceFilePath` configuration option is now deprecated and will be
+  removed in a future release. Users should migrate to using host networking for
+  CSI plugin pods instead. When this feature is detected, a deprecation warning
+  will be logged at the WARNING level.
+   - `hostPID` was changed from `true` to `false` in all static manifests
+   - Static manifest users with `netNamespaceFilePath` must manually set
+     `hostPID: true`
+   - Helm charts set `hostPID` automatically when `csiConfig` includes
+     `netNamespaceFilePath`. With `externallyManagedConfigmap: true`, set
+     `nodeplugin.hostPID: true` explicitly (the chart cannot read the external
+     ConfigMap).
+   - OpenShift users must also keep `allowHostPID: true` in their SCC (if they
+     were using it), including `deploy/nvmeof/kubernetes/csi-nodeplugin-scc.yaml`
