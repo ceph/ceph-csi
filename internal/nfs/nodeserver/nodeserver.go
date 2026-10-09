@@ -44,6 +44,9 @@ const (
 	// Address of the NFS server.
 	paramShare     = "share"
 	paramClusterID = "clusterID"
+
+	// healthReasonInaccessible is reported when the health-checker says the volume is not healthy.
+	healthReasonInaccessible = "VolumeInaccessible"
 )
 
 var errInvalidParameter = errors.New("invalid parameter")
@@ -51,6 +54,9 @@ var errInvalidParameter = errors.New("invalid parameter")
 // nfsNodeServer implements the CSI node server for the NFS driver.
 type nfsNodeServer struct {
 	csicommon.DefaultNodeServer
+	// A map storing all volumes with ongoing operations so that additional operations
+	// for that same volume (as defined by VolumeID/targetPath) return an Aborted error
+	VolumeLocks   *util.IDLocker
 	healthChecker hc.Manager
 }
 
@@ -66,6 +72,7 @@ func NewNodeServer(
 
 	return &nfsNodeServer{
 		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
+		VolumeLocks:       util.NewIDLocker(),
 		healthChecker:     hc.NewHealthCheckManager(),
 	}
 }
@@ -92,6 +99,13 @@ func (ns *nfsNodeServer) NodePublishVolume(
 	volumeID := req.GetVolumeId()
 	volCap := req.GetVolumeCapability()
 	targetPath := req.GetTargetPath()
+	if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+		log.ErrorLog(ctx, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+
+		return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+	}
+	defer ns.VolumeLocks.Release(targetPath)
+
 	mountOptions := volCap.GetMount().GetMountFlags()
 	if req.GetReadonly() {
 		mountOptions = append(mountOptions, "ro")
@@ -154,6 +168,13 @@ func (ns *nfsNodeServer) NodeUnpublishVolume(
 
 	volumeID := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
+	if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+		log.ErrorLog(ctx, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+
+		return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+	}
+	defer ns.VolumeLocks.Release(targetPath)
+
 	log.DebugLog(ctx, "nfs: unmounting volume %s on %s", volumeID, targetPath)
 
 	// stop the health-checker that may have been started in NodePublishVolume()
@@ -188,6 +209,13 @@ func (ns *nfsNodeServer) NodeGetCapabilities(
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_HEALTH,
 					},
 				},
 			},
@@ -247,6 +275,72 @@ func (ns *nfsNodeServer) NodeGetVolumeStats(
 	}
 
 	return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
+}
+
+// NodeGetVolumeHealth returns the health of the volume.
+func (ns *nfsNodeServer) NodeGetVolumeHealth(
+	ctx context.Context,
+	req *csi.NodeGetVolumeHealthRequest,
+) (*csi.NodeGetVolumeHealthResponse, error) {
+	volumeID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	targetPath := req.GetVolumePublishPath()
+	if targetPath != "" && !strings.HasPrefix(targetPath, "/") {
+		return nil, status.Errorf(codes.InvalidArgument, "volume_publish_path %q must be an absolute path", targetPath)
+	}
+
+	if targetPath != "" {
+		if acquired := ns.VolumeLocks.TryAcquire(targetPath); !acquired {
+			return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, targetPath)
+		}
+		defer ns.VolumeLocks.Release(targetPath)
+	}
+
+	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
+
+	// healthy && msg != nil means the checker has not started yet.
+	if healthy && msg != nil {
+		if targetPath != "" {
+			if err := ns.healthChecker.StartChecker(volumeID, targetPath, hc.StatCheckerType); err != nil {
+				log.WarningLog(ctx, "failed to start healthchecker: %v", err)
+			}
+		}
+
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+			},
+		}, nil
+	}
+
+	if !healthy {
+		// the checker could not find the path anymore, the volume is gone
+		if errors.Is(msg, os.ErrNotExist) {
+			return nil, status.Error(codes.NotFound, msg.Error())
+		}
+
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+				HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+					{
+						Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+						Reason:  healthReasonInaccessible,
+						Message: msg.Error(),
+					},
+				},
+			},
+		}, nil
+	}
+
+	return &csi.NodeGetVolumeHealthResponse{
+		VolumeHealth: &csi.VolumeHealth{
+			VolumeId: volumeID,
+		},
+	}, nil
 }
 
 // mountNFS mounts nfs volumes.
