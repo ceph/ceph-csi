@@ -508,8 +508,8 @@ github.com/cncf/xds/go v0.0.0-20211001041855-01bcc9b48dfe/go.mod h1:eXthEFrGJvWH
 github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20220314180256-7f1daf1720fc/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20230105202645-06c439db220b/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
-github.com/container-storage-interface/spec v1.12.0 h1:zrFOEqpR5AghNaaDG4qyedwPBqU2fU0dWjLQMP/azK0=
-github.com/container-storage-interface/spec v1.12.0/go.mod h1:txsm+MA2B2WDa5kW69jNbqPnvTtfvZma7T/zsAZ9qX8=
+github.com/container-storage-interface/spec v1.13.0 h1:6ja3nYoACisewTPAAZkJ1pbf4+1ehhvt9Z/nYgWGHGw=
+github.com/container-storage-interface/spec v1.13.0/go.mod h1:fPZ7EFHYJwIwc9CMcoaT/yIhFTdToocYVtyafMG7EDM=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/csi-addons/kubernetes-csi-addons v0.14.0 h1:aH4w1X9z6eOqbKvh9Q4M0YzksaUgQDU3aTU/fblG4yI=
 github.com/csi-addons/kubernetes-csi-addons v0.14.0/go.mod h1:jG5S4Txts6WHt8QmyfpIXB00HYPpawWPcyViW+Xppgc=
