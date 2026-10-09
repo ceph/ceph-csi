@@ -81,7 +81,7 @@ func cephFSNodePluginCaps() []string {
 	caps := []string{
 		"mon", "'allow r'",
 		"mgr", "'allow rw'",
-		"osd", "'allow rw tag cephfs *=*'",
+		"osd", "'allow rwx tag cephfs metadata=*, allow rw tag cephfs data=*'",
 		"mds", "'allow rw'",
 	}
 
