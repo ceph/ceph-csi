@@ -333,7 +333,11 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 	if isOpen {
 		log.DebugLog(ctx, "encrypted device is already open at %s", mapperFilePath)
 	} else {
-		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
+		allowDiscards := false
+		if cipherOpts := rv.blockEncryption.CipherOptions(); cipherOpts != nil {
+			allowDiscards = cipherOpts.AllowDiscards()
+		}
+		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase, allowDiscards)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to open device %s: %v",
 				rv, err)
@@ -375,29 +379,41 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 }
 
 func parseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOptions, error) {
-	cipher, cipherOk := volOptions["encryptionCipher"]
-	if !cipherOk {
-		return nil, nil
-	}
 	opts := &cryptsetup.EncryptionOptions{}
-	if err := opts.SetCipher(cipher); err != nil {
-		return nil, fmt.Errorf("failed to set cipher: %w", err)
+	optsSet := false
+	cipher, cipherOk := volOptions["encryptionCipher"]
+	if cipherOk {
+		if err := opts.SetCipher(cipher); err != nil {
+			return nil, fmt.Errorf("failed to set cipher: %w", err)
+		}
+		optsSet = true
 	}
-	// when cipher is not set keysize is not used
-	if keysize, ok := volOptions["encryptionKeySize"]; ok {
-		if err := opts.SetKeySize(keysize); err != nil {
-			return nil, fmt.Errorf("failed to set key size: %w", err)
+	// when cipher is not set keysize, integrity mode and sector size are not used
+	if cipherOk {
+		if keysize, ok := volOptions["encryptionKeySize"]; ok {
+			if err := opts.SetKeySize(keysize); err != nil {
+				return nil, fmt.Errorf("failed to set key size: %w", err)
+			}
+		}
+		if integrity, ok := volOptions["integrityMode"]; ok {
+			if err := opts.SetIntegrityMode(integrity); err != nil {
+				return nil, fmt.Errorf("failed to set integrity mode: %w", err)
+			}
+		}
+		if sectorSize, ok := volOptions["encryptionSectorSize"]; ok {
+			if err := opts.SetSectorSize(sectorSize); err != nil {
+				return nil, fmt.Errorf("failed to set sector size: %w", err)
+			}
 		}
 	}
-	if integrity, ok := volOptions["integrityMode"]; ok {
-		if err := opts.SetIntegrityMode(integrity); err != nil {
-			return nil, fmt.Errorf("failed to set integrity mode: %w", err)
+	if allowDiscards, ok := volOptions["encryptionAllowDiscards"]; ok {
+		if err := opts.SetAllowDiscards(allowDiscards); err != nil {
+			return nil, fmt.Errorf("failed to set allow discards: %w", err)
 		}
+		optsSet = true
 	}
-	if sectorSize, ok := volOptions["encryptionSectorSize"]; ok {
-		if err := opts.SetSectorSize(sectorSize); err != nil {
-			return nil, fmt.Errorf("failed to set sector size: %w", err)
-		}
+	if !optsSet {
+		return nil, nil
 	}
 
 	return opts, nil
