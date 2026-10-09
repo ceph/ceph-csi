@@ -895,14 +895,16 @@ func (ns *cephfsNodeServer) NodeUnstageVolume(
 
 	volID := req.GetVolumeId()
 
-	ns.healthChecker.StopSharedChecker(volID)
-
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
+
+	// stop the checker while holding the lock, NodeGetVolumeHealth could
+	// otherwise (re)start the shared checker after it was stopped here
+	ns.healthChecker.StopSharedChecker(volID)
 
 	stagingTargetPath := req.GetStagingTargetPath()
 
@@ -965,6 +967,13 @@ func (ns *cephfsNodeServer) NodeGetCapabilities(
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_HEALTH,
 					},
 				},
 			},
@@ -1063,6 +1072,87 @@ func (ns *cephfsNodeServer) NodeGetVolumeStats(
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
 }
 
+// NodeGetVolumeHealth returns the health of the volume.
+func (ns *cephfsNodeServer) NodeGetVolumeHealth(
+	ctx context.Context,
+	req *csi.NodeGetVolumeHealthRequest,
+) (*csi.NodeGetVolumeHealthResponse, error) {
+	volumeID := req.GetVolumeId()
+	if err := util.ValidateVolumeID(volumeID, true); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	targetPath := req.GetVolumePublishPath()
+	if targetPath != "" && !strings.HasPrefix(targetPath, "/") {
+		return nil, status.Errorf(codes.InvalidArgument, "volume_publish_path %q must be an absolute path", targetPath)
+	}
+
+	stagingTargetPath := req.GetStagingTargetPath()
+	if stagingTargetPath != "" && !strings.HasPrefix(stagingTargetPath, "/") {
+		return nil, status.Errorf(codes.InvalidArgument, "staging_target_path %q must be an absolute path", stagingTargetPath)
+	}
+
+	// VolumePublishPath is optional; fall back to StagingTargetPath when
+	// absent. The staging path is shared by all publish paths, and
+	// serialized with stage/unstage by the volumeID.
+	lockID := targetPath
+	startChecker := ns.healthChecker.StartChecker
+	if targetPath == "" && stagingTargetPath != "" {
+		targetPath = stagingTargetPath
+		lockID = volumeID
+		startChecker = ns.healthChecker.StartSharedChecker
+	}
+
+	if lockID != "" {
+		if acquired := ns.VolumeLocks.TryAcquire(lockID); !acquired {
+			return nil, status.Errorf(codes.Aborted, util.TargetPathOperationAlreadyExistsFmt, lockID)
+		}
+		defer ns.VolumeLocks.Release(lockID)
+	}
+
+	healthy, msg := ns.healthChecker.IsHealthy(volumeID, targetPath)
+
+	// healthy && msg != nil means the checker has not started yet.
+	if healthy && msg != nil {
+		if targetPath != "" {
+			if err := startChecker(volumeID, targetPath, hc.StatCheckerType); err != nil {
+				log.WarningLog(ctx, "failed to start healthchecker: %v", err)
+			}
+		}
+
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+			},
+		}, nil
+	}
+
+	if !healthy {
+		// the checker could not find the path anymore, the volume is gone
+		if errors.Is(msg, os.ErrNotExist) {
+			return nil, status.Error(codes.NotFound, msg.Error())
+		}
+
+		return &csi.NodeGetVolumeHealthResponse{
+			VolumeHealth: &csi.VolumeHealth{
+				VolumeId: volumeID,
+				HealthStatuses: []*csi.VolumeHealth_VolumeHealthEntry{
+					{
+						Status:  csi.VolumeHealthErrorType_INACCESSIBLE,
+						Reason:  "VolumeInaccessible",
+						Message: msg.Error(),
+					},
+				},
+			},
+		}, nil
+	}
+
+	return &csi.NodeGetVolumeHealthResponse{
+		VolumeHealth: &csi.VolumeHealth{
+			VolumeId: volumeID,
+		},
+	}, nil
+}
 
 // setMountOptions updates the kernel/fuse mount options from CSI config file if it exists.
 // If not, it falls back to returning the kernelMountOptions/fuseMountOptions from the command line.
