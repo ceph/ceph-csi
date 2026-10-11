@@ -185,7 +185,7 @@ func createNVMeoFStorageClass(
 	sc.Parameters["nvmeofGatewayAddress"] = gwIP
 
 	if useNetworkMask {
-		networkMask := getNVMeofGatewayNetworkMask(f.ClientSet)
+		networkMask := getNVMeofGatewayNetworkMask(f)
 		sc.Parameters["networkMask"] = networkMask
 		delete(sc.Parameters, "listeners")
 	} else {
