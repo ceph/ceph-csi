@@ -18,6 +18,9 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net"
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,3 +126,51 @@ func getNVMeofGateway(c kubernetes.Interface) (string, string) {
 
 	return pods.Items[0].Name, pods.Items[0].Status.PodIP
 }
+<<<<<<< HEAD
+=======
+
+// getNVMeofGatewayNetworkMask returns the subnet (CIDR) of the gateway Pod's own interface,
+// for use as the networkMask StorageClass parameter. The gateway only auto-creates listeners
+// on addresses inside that mask, and node.Spec.PodCIDR does not always match the Pod's real subnet.
+func getNVMeofGatewayNetworkMask(f *framework.Framework) string {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=ceph-nvmeof-gateway",
+	}
+
+	pods, err := f.ClientSet.CoreV1().Pods(rookNamespace).List(context.TODO(), opt)
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(pods.Items).Should(HaveLen(1))
+
+	gatewayPod := &pods.Items[0]
+
+	// Ask the kernel (inside the gateway container) for the interface that holds the Pod IP,
+	// as JSON: [{"addr_info":[{"local":"10.244.1.6","prefixlen":24,...}],...}]
+	output, stderr, err := execCommandInPodWithName(
+		f, "ip -j -4 addr show to "+gatewayPod.Status.PodIP, gatewayPod.Name, "nvmeof-gateway", rookNamespace)
+	Expect(err).ShouldNot(HaveOccurred(), "failed to read gateway interface: %s", stderr)
+
+	// Only the fields needed to build the CIDR are decoded.
+	var ifaces []struct {
+		AddrInfo []struct {
+			Local     string `json:"local"`
+			PrefixLen int    `json:"prefixlen"`
+		} `json:"addr_info"`
+	}
+	err = json.Unmarshal([]byte(output), &ifaces)
+	Expect(err).ShouldNot(HaveOccurred(), "failed to parse ip output %q", output)
+	// The "to <ip>" filter limits the result to the single interface with the Pod IP.
+	Expect(ifaces).Should(HaveLen(1), "unexpected ip output %q", output)
+	Expect(ifaces[0].AddrInfo).ShouldNot(BeEmpty(), "no address in ip output %q", output)
+
+	// ParseCIDR masks the host bits: 10.244.1.6/24 -> 10.244.1.0/24.
+	addr := ifaces[0].AddrInfo[0]
+	_, subnet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", addr.Local, addr.PrefixLen))
+	Expect(err).ShouldNot(HaveOccurred())
+
+	networkMask := subnet.String()
+	framework.Logf("gateway Pod %q IP %q uses networkMask %q",
+		gatewayPod.Name, gatewayPod.Status.PodIP, networkMask)
+
+	return networkMask
+}
+>>>>>>> 80582d6 (e2e: derive nvmeof networkMask from the gateway pod interface)

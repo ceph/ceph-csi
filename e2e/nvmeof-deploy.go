@@ -183,6 +183,7 @@ func createNVMeoFStorageClass(
 
 	sc.Parameters["nvmeofGatewayAddress"] = gwIP
 
+<<<<<<< HEAD
 	listeners := []struct {
 		Hostname string `json:"hostname,omitempty"`
 		Address  string `json:"address"`
@@ -194,6 +195,29 @@ func createNVMeoFStorageClass(
 			Port:     4420,
 		},
 		// only one gateway, so one listener
+=======
+	if useNetworkMask {
+		networkMask := getNVMeofGatewayNetworkMask(f)
+		sc.Parameters["networkMask"] = networkMask
+		delete(sc.Parameters, "listeners")
+	} else {
+		listeners := []struct {
+			Hostname string `json:"hostname,omitempty"`
+			Address  string `json:"address"`
+			Port     int    `json:"port"`
+		}{
+			{
+				Hostname: gwHost, // FIXME: is this required?
+				Address:  gwIP,
+				Port:     4420,
+			},
+			// only one gateway, so one listener
+		}
+		rawListeners, err := json.Marshal(listeners)
+		Expect(err).ShouldNot(HaveOccurred())
+		sc.Parameters["listeners"] = string(rawListeners)
+		delete(sc.Parameters, "networkMask")
+>>>>>>> 80582d6 (e2e: derive nvmeof networkMask from the gateway pod interface)
 	}
 	rawListeners, err := json.Marshal(listeners)
 	Expect(err).ShouldNot(HaveOccurred())
