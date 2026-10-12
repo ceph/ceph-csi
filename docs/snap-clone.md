@@ -175,6 +175,18 @@ kubectl create -f pod-restore.yaml
 
 ### Clone RBD PVC
 
+**Warning:** Cloning an RBD PVC into a different pool (the StorageClass
+`pool` parameter) or a different `radosNamespace` is not supported.
+The clone may be created successfully, but later flattening can fail
+because the child image is looked up in the source pool and namespace.
+Using a different `dataPool` while keeping the same pool and namespace
+is supported.
+
+To provision a volume in another pool within the same Ceph cluster, create a
+VolumeSnapshot of the source PVC and restore it to a new PVC using a
+StorageClass configured for the destination pool.
+See [Restore RBD Snapshot](#restore-rbd-snapshot).
+
 ```console
 $ kubectl create -f https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/rbd/pvc-clone.yaml
 $ kubectl get pvc
