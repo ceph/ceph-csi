@@ -22,10 +22,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	awsCreds "github.com/aws/aws-sdk-go/aws/credentials"
-	awsSession "github.com/aws/aws-sdk-go/aws/session"
-	awsKMS "github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsCreds "github.com/aws/aws-sdk-go-v2/credentials"
+	awsKMS "github.com/aws/aws-sdk-go-v2/service/kms"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
@@ -136,12 +135,9 @@ func (kms *awsMetadataKMS) RequiresDEKStore() DEKStoreType {
 
 // EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
 func (kms *awsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
-	svc, err := kms.getService()
-	if err != nil {
-		return "", fmt.Errorf("could not get KMS service: %w", err)
-	}
+	svc := kms.getService()
 
-	result, err := svc.Encrypt(&awsKMS.EncryptInput{
+	result, err := svc.Encrypt(ctx, &awsKMS.EncryptInput{
 		KeyId:     aws.String(kms.cmk),
 		Plaintext: []byte(plainDEK),
 	})
@@ -158,10 +154,7 @@ func (kms *awsMetadataKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK st
 
 // DecryptDEK uses the Amazon KMS and the configured CMK to decrypt the DEK.
 func (kms *awsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK string) (string, error) {
-	svc, err := kms.getService()
-	if err != nil {
-		return "", fmt.Errorf("could not get KMS service: %w", err)
-	}
+	svc := kms.getService()
 
 	ciphertextBlob, err := base64.StdEncoding.DecodeString(encryptedDEK)
 	if err != nil {
@@ -169,7 +162,7 @@ func (kms *awsMetadataKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDE
 			err)
 	}
 
-	result, err := svc.Decrypt(&awsKMS.DecryptInput{
+	result, err := svc.Decrypt(ctx, &awsKMS.DecryptInput{
 		CiphertextBlob: ciphertextBlob,
 	})
 	if err != nil {
@@ -204,20 +197,17 @@ func (kms *awsMetadataKMS) getSecrets() (map[string]any, error) {
 	return config, nil
 }
 
-func (kms *awsMetadataKMS) getService() (*awsKMS.KMS, error) {
-	creds := awsCreds.NewStaticCredentials(kms.accessKey,
-		kms.secretAccessKey, kms.sessionToken)
+func (kms *awsMetadataKMS) getService() *awsKMS.Client {
+	return newAWSKMSClient(kms.region, kms.accessKey, kms.secretAccessKey, kms.sessionToken)
+}
 
-	sess, err := awsSession.NewSessionWithOptions(awsSession.Options{
-		SharedConfigState: awsSession.SharedConfigDisable,
-		Config: aws.Config{
-			Credentials: creds,
-			Region:      aws.String(kms.region),
-		},
+// newAWSKMSClient returns an Amazon KMS client that uses only the given
+// static credentials and region, without loading any shared configuration.
+func newAWSKMSClient(region, accessKey, secretAccessKey, sessionToken string) *awsKMS.Client {
+	return awsKMS.New(awsKMS.Options{
+		Region: region,
+		Credentials: aws.NewCredentialsCache(
+			awsCreds.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken),
+		),
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	return awsKMS.New(sess), nil
 }
