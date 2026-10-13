@@ -23,11 +23,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsKMS "github.com/aws/aws-sdk-go-v2/service/kms"
 	awsSTS "github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/aws/aws-sdk-go/aws"
-	awsCreds "github.com/aws/aws-sdk-go/aws/credentials"
-	awsSession "github.com/aws/aws-sdk-go/aws/session"
-	awsKMS "github.com/aws/aws-sdk-go/service/kms"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
@@ -116,12 +114,12 @@ func initAWSSTSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 
 // EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
 func (as *awsSTSMetadataKMS) EncryptDEK(ctx context.Context, _, plainDEK string) (string, error) {
-	svc, err := as.getServiceWithSTS()
+	svc, err := as.getServiceWithSTS(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get KMS service: %w", err)
 	}
 
-	result, err := svc.Encrypt(&awsKMS.EncryptInput{
+	result, err := svc.Encrypt(ctx, &awsKMS.EncryptInput{
 		KeyId:     aws.String(as.cmk),
 		Plaintext: []byte(plainDEK),
 	})
@@ -136,7 +134,7 @@ func (as *awsSTSMetadataKMS) EncryptDEK(ctx context.Context, _, plainDEK string)
 
 // DecryptDEK uses the Amazon KMS and the configured CMK to decrypt the DEK.
 func (as *awsSTSMetadataKMS) DecryptDEK(ctx context.Context, _, encryptedDEK string) (string, error) {
-	svc, err := as.getServiceWithSTS()
+	svc, err := as.getServiceWithSTS(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get KMS service: %w", err)
 	}
@@ -147,7 +145,7 @@ func (as *awsSTSMetadataKMS) DecryptDEK(ctx context.Context, _, encryptedDEK str
 			err)
 	}
 
-	result, err := svc.Decrypt(&awsKMS.DecryptInput{
+	result, err := svc.Decrypt(ctx, &awsKMS.DecryptInput{
 		CiphertextBlob: ciphertextBlob,
 	})
 	if err != nil {
@@ -189,8 +187,9 @@ func (as *awsSTSMetadataKMS) getWebIdentityToken() (string, error) {
 	return string(buf), nil
 }
 
-// getServiceWithSTS returns a new awsSession established with the STS.
-func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.KMS, error) {
+// getServiceWithSTS returns a new Amazon KMS client with credentials obtained
+// from STS.
+func (as *awsSTSMetadataKMS) getServiceWithSTS(ctx context.Context) (*awsKMS.Client, error) {
 	webIdentityToken, err := as.getWebIdentityToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get web identity token: %w", err)
@@ -199,7 +198,7 @@ func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.KMS, error) {
 	client := awsSTS.New(awsSTS.Options{
 		Region: as.region,
 	})
-	output, err := client.AssumeRoleWithWebIdentity(context.TODO(),
+	output, err := client.AssumeRoleWithWebIdentity(ctx,
 		&awsSTS.AssumeRoleWithWebIdentityInput{
 			RoleArn:          aws.String(as.role),
 			RoleSessionName:  aws.String(awsRoleSessionName),
@@ -209,19 +208,10 @@ func (as *awsSTSMetadataKMS) getServiceWithSTS() (*awsKMS.KMS, error) {
 		return nil, fmt.Errorf("failed to assume role with web identity token: %w", err)
 	}
 
-	creds := awsCreds.NewStaticCredentials(*output.Credentials.AccessKeyId,
-		*output.Credentials.SecretAccessKey, *output.Credentials.SessionToken)
-
-	sess, err := awsSession.NewSessionWithOptions(awsSession.Options{
-		SharedConfigState: awsSession.SharedConfigDisable,
-		Config: aws.Config{
-			Credentials: creds,
-			Region:      &as.region,
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	return awsKMS.New(sess), nil
+	return newAWSKMSClient(
+		as.region,
+		aws.ToString(output.Credentials.AccessKeyId),
+		aws.ToString(output.Credentials.SecretAccessKey),
+		aws.ToString(output.Credentials.SessionToken),
+	), nil
 }
