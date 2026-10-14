@@ -41,7 +41,7 @@ exclude k8s.io/client-go v12.0.0+incompatible
 require (
 	github.com/kubernetes-csi/external-snapshot-metadata v1.1.0
 	go.yaml.in/yaml/v2 v2.4.4
-	golang.org/x/sync v0.23.0
+	golang.org/x/sync v0.24.0
 	google.golang.org/grpc v1.84.0
 )
 
