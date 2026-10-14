@@ -41,7 +41,7 @@ require (
 	k8s.io/apimachinery v0.37.1
 	k8s.io/cloud-provider v0.37.0
 	k8s.io/klog/v2 v2.140.0
-	k8s.io/kubernetes v1.37.0
+	k8s.io/kubernetes v1.37.1
 	k8s.io/mount-utils v0.37.0
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd
 )
@@ -49,7 +49,7 @@ require (
 require (
 	// sigs.k8s.io/controller-runtime wants this version, it gets replaced below
 	k8s.io/client-go v12.0.0+incompatible
-	sigs.k8s.io/controller-runtime v0.24.1
+	sigs.k8s.io/controller-runtime v0.25.2
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.37.0
