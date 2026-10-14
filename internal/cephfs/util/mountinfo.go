@@ -31,9 +31,12 @@ import (
 // in a file. It's currently used to restore ceph-fuse mounts.
 // Mount info is stored in `/csi/mountinfo`.
 
-const (
-	mountinfoDir = "/csi/mountinfo"
-)
+var mountinfoDir = "/csi/mountinfo"
+
+// SetMountinfoDir overrides the directory used to store mountinfo records.
+func SetMountinfoDir(dir string) {
+	mountinfoDir = dir
+}
 
 // nodeStageMountinfoRecord describes a single
 // record of mountinfo of a staged volume.
