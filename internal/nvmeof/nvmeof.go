@@ -571,13 +571,16 @@ func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN s
 func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN string, listenerInfo ListenerDetails,
 ) error {
 	log.DebugLog(ctx, "Adding listener %s to subsystem %s", listenerInfo.Address, subsystemNQN)
-	adrfam := pb.AddressFamily_ipv4
+	addressFamily, err := listenerInfo.addressFamily()
+	if err != nil {
+		return err
+	}
 	req := &pb.CreateListenerReq{
 		Nqn:      subsystemNQN,
 		HostName: listenerInfo.Hostname,
 		Traddr:   listenerInfo.Address,
 		Trsvcid:  &listenerInfo.Port,
-		Adrfam:   &adrfam, // Assuming IPv4, can be configurable // TODO - make it configurable
+		Adrfam:   &addressFamily,
 		// Secure  // false, // Assuming no security for now   // TODO - make it configurable?
 		// VerifyHostName // false, // Assuming no hostname verification for now // TODO - make it configurable
 	}
@@ -610,7 +613,10 @@ func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN str
 func (gw *GatewayRpcClient) DeleteListener(ctx context.Context, subsystemNQN string, listenerInfo ListenerDetails,
 ) error {
 	log.DebugLog(ctx, "Deleting listener %s from subsystem %s", listenerInfo.Address, subsystemNQN)
-	adrfam := pb.AddressFamily_ipv4
+	addressFamily, err := listenerInfo.addressFamily()
+	if err != nil {
+		return err
+	}
 	// Add this because without this, the gw return
 	// "Can't verify there are no active connections for this address" instead of "Listener not found"
 	force := true
@@ -619,7 +625,7 @@ func (gw *GatewayRpcClient) DeleteListener(ctx context.Context, subsystemNQN str
 		HostName: listenerInfo.Hostname,
 		Traddr:   listenerInfo.Address,
 		Trsvcid:  &listenerInfo.Port,
-		Adrfam:   &adrfam, // Assuming IPv4, can be configurable // TODO - make it configurable
+		Adrfam:   &addressFamily,
 		Force:    &force,
 	}
 
@@ -797,7 +803,8 @@ func ConvertListenersFromProto(protoListeners []*pb.ListenerInfo) []ListenerDeta
 				Address: l.GetTraddr(),
 				Port:    l.GetTrsvcid(),
 			},
-			Hostname: l.GetHostName(),
+			Hostname:      l.GetHostName(),
+			AddressFamily: l.GetAdrfam().String(),
 		})
 	}
 

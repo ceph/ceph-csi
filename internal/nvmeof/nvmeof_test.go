@@ -17,11 +17,14 @@ limitations under the License.
 package nvmeof
 
 import (
+	"context"
 	"encoding/json"
 	"math/big"
 	"testing"
 
+	pb "github.com/ceph/ceph-nvmeof/lib/go/nvmeof"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 func TestListenerDetailsSetDefaults(t *testing.T) {
@@ -111,6 +114,57 @@ func TestListenerDetailsSetDefaults(t *testing.T) {
 			require.NoError(t, listener.setDefaults())
 		})
 	}
+}
+
+type listenerGatewayClient struct {
+	pb.GatewayClient
+	created *pb.CreateListenerReq
+	deleted *pb.DeleteListenerReq
+}
+
+func (client *listenerGatewayClient) CreateListener(
+	_ context.Context, req *pb.CreateListenerReq, _ ...grpc.CallOption,
+) (*pb.ReqStatus, error) {
+	client.created = req
+
+	return &pb.ReqStatus{}, nil
+}
+
+func (client *listenerGatewayClient) DeleteListener(
+	_ context.Context, req *pb.DeleteListenerReq, _ ...grpc.CallOption,
+) (*pb.ReqStatus, error) {
+	client.deleted = req
+
+	return &pb.ReqStatus{}, nil
+}
+
+func TestListenerRPCAddressFamily(t *testing.T) {
+	t.Parallel()
+	for _, address := range []string{"192.0.2.1", "2001:db8::1", "::"} {
+		t.Run(address, func(t *testing.T) {
+			t.Parallel()
+			client := &listenerGatewayClient{}
+			gateway := &GatewayRpcClient{client: client}
+			listener := ListenerDetails{GatewayAddress: GatewayAddress{Address: address, Port: 4420}, Hostname: "gw"}
+			family := pb.AddressFamily_ipv6
+			if address == "192.0.2.1" {
+				family = pb.AddressFamily_ipv4
+			}
+			require.NoError(t, gateway.CreateListener(context.Background(), "nqn.test", listener))
+			require.Equal(t, family, client.created.GetAdrfam())
+			require.NoError(t, gateway.DeleteListener(context.Background(), "nqn.test", listener))
+			require.Equal(t, family, client.deleted.GetAdrfam())
+		})
+	}
+}
+
+func TestConvertListenersFromProtoAddressFamily(t *testing.T) {
+	t.Parallel()
+	listeners := ConvertListenersFromProto([]*pb.ListenerInfo{
+		{HostName: "gw", Traddr: "::", Trsvcid: 4420, Adrfam: pb.AddressFamily_ipv6},
+	})
+	require.Len(t, listeners, 1)
+	require.Equal(t, "ipv6", listeners[0].AddressFamily)
 }
 
 func TestGatewayAddress_String(t *testing.T) {
