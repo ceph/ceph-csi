@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -358,23 +359,25 @@ func ResolveListeners(ctx context.Context, listeners []ListenerDetails) ([]Liste
 	var validListeners []ListenerDetails
 
 	for i := range listeners {
-		// if the address was empty, and the controller assigned it to default 0.0.0.0,
-		// resolve the IP address from hostname for the node to connect to the subsystem
-		if listeners[i].Address == "0.0.0.0" {
-			addrs, err := ResolveIPAddress(listeners[i].Hostname)
-			if err != nil {
-				errMsg := fmt.Sprintf("listener %d (%s): %v", i, listeners[i].Hostname, err)
-				log.WarningLog(ctx, "%s", errMsg)
-				resolveErrors = append(resolveErrors, errMsg)
-
-				continue // Skip this listener
+		listener := listeners[i]
+		family, err := listener.addressFamily()
+		address := net.ParseIP(listener.Address)
+		if err == nil && (listener.Address == "" || (address != nil && address.IsUnspecified())) {
+			listener.Address, err = ResolveIPAddress(listener.Hostname, family)
+			if err == nil {
+				log.DebugLog(ctx, "Resolved %s to %s", listener.Hostname, listener.Address)
 			}
-			listeners[i].Address = addrs
-			log.DebugLog(ctx, "Resolved %s to %s", listeners[i].Hostname, listeners[i].Address)
+		}
+		if err != nil {
+			errMsg := fmt.Sprintf("listener %d (%s): %v", i, listener.Hostname, err)
+			log.WarningLog(ctx, "%s", errMsg)
+			resolveErrors = append(resolveErrors, errMsg)
+
+			continue
 		}
 
 		// Add to valid listeners (either resolved or already had an address)
-		validListeners = append(validListeners, listeners[i])
+		validListeners = append(validListeners, listener)
 	}
 
 	// If no listeners succeeded, return error

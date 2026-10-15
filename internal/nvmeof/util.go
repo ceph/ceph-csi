@@ -21,6 +21,7 @@ import (
 	"net"
 	"strings"
 
+	pb "github.com/ceph/ceph-nvmeof/lib/go/nvmeof"
 	"github.com/google/uuid"
 )
 
@@ -43,12 +44,16 @@ func formatUUID(rawUUID string) string {
 }
 
 // ResolveIPAddress resolves the given host to an IP address.
-// It returns the first resolved IP address as a string, or an error if resolution fails.
-func ResolveIPAddress(host string) (string, error) {
-	// TODO - IPv6 support: we currently return the first resolved address,
-	// which may be an IPv4 or IPv6 address. We should consider how to handle this
-	// in a way that supports both protocols.
-	addrs, err := net.LookupHost(host)
+// It returns the first resolved IP address matching the requested address family.
+func ResolveIPAddress(host string, family pb.AddressFamily) (string, error) {
+	return resolveIPAddress(host, family, net.LookupHost)
+}
+
+func resolveIPAddress(host string, family pb.AddressFamily, lookupHost func(string) ([]string, error)) (string, error) {
+	if family != pb.AddressFamily_ipv4 && family != pb.AddressFamily_ipv6 {
+		return "", fmt.Errorf("unsupported address family %s", family)
+	}
+	addrs, err := lookupHost(host)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve %s: %w", host, err)
 	}
@@ -56,5 +61,15 @@ func ResolveIPAddress(host string) (string, error) {
 		return "", fmt.Errorf("no IP addresses for %s", host)
 	}
 
-	return addrs[0], nil
+	for _, address := range addrs {
+		ip := net.ParseIP(address)
+		if ip == nil || ip.IsUnspecified() {
+			continue
+		}
+		if (family == pb.AddressFamily_ipv4) == (ip.To4() != nil) {
+			return address, nil
+		}
+	}
+
+	return "", fmt.Errorf("no %s addresses for %s", family, host)
 }
