@@ -73,3 +73,24 @@ func TestCheckerConfirmedHealthyStillExpires(t *testing.T) {
 		t.Errorf("expected (false, error) for a checker that stopped reporting, got (%t, %v)", healthy, err)
 	}
 }
+
+func TestCheckerStopDoesNotBlock(t *testing.T) {
+	t.Parallel()
+
+	c := &checker{}
+	c.initDefaults()
+
+	// nothing is reading from c.commands, like a go routine stuck in os.Stat
+	done := make(chan struct{})
+	go func() {
+		c.stop()
+		c.stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("stop() blocks while the checker is not reading commands")
+	}
+}
