@@ -36,17 +36,33 @@ func TestSetListenersWithDefaults(t *testing.T) {
 				{Hostname: "nvmeof-gw-d", GatewayAddress: GatewayAddress{Port: 1234, Address: "10.92.3.13"}},
 			},
 			out: []ListenerDetails{
-				{Hostname: "nvmeof-gw-a", GatewayAddress: GatewayAddress{Port: 4420, Address: "0.0.0.0"}},
-				{Hostname: "nvmeof-gw-b", GatewayAddress: GatewayAddress{Port: 1234, Address: "0.0.0.0"}},
-				{Hostname: "nvmeof-gw-c", GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.12"}},
-				{Hostname: "nvmeof-gw-d", GatewayAddress: GatewayAddress{Port: 1234, Address: "10.92.3.13"}},
+				{
+					Hostname:       "nvmeof-gw-a",
+					AddressFamily:  addressFamilyIPv4,
+					GatewayAddress: GatewayAddress{Port: 4420, Address: "0.0.0.0"},
+				},
+				{
+					Hostname:       "nvmeof-gw-b",
+					AddressFamily:  addressFamilyIPv4,
+					GatewayAddress: GatewayAddress{Port: 1234, Address: "0.0.0.0"},
+				},
+				{
+					Hostname:       "nvmeof-gw-c",
+					AddressFamily:  addressFamilyIPv4,
+					GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.12"},
+				},
+				{
+					Hostname:       "nvmeof-gw-d",
+					AddressFamily:  addressFamilyIPv4,
+					GatewayAddress: GatewayAddress{Port: 1234, Address: "10.92.3.13"},
+				},
 			},
 		},
 	}
 
 	for _, test := range tests {
 		vol := &NVMeoFVolumeData{ListenerInfo: test.in}
-		vol.SetListenersWithDefaults()
+		require.NoError(t, vol.SetListenersWithDefaults())
 		require.Equal(t, test.out, vol.ListenerInfo)
 	}
 }
@@ -129,7 +145,11 @@ func TestSetFromParameters(t *testing.T) {
 					Port:    5500,
 				},
 				ListenerInfo: []ListenerDetails{
-					{Hostname: "nvmeof-gw-a", GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.12"}},
+					{
+						Hostname:       "nvmeof-gw-a",
+						AddressFamily:  addressFamilyIPv4,
+						GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.12"},
+					},
 				},
 			},
 			expectError: false,
@@ -155,7 +175,11 @@ func TestSetFromParameters(t *testing.T) {
 					AuthenticationKMSID: "vault-kms",
 				},
 				ListenerInfo: []ListenerDetails{
-					{Hostname: "nvmeof-gw-b", GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.13"}},
+					{
+						Hostname:       "nvmeof-gw-b",
+						AddressFamily:  addressFamilyIPv4,
+						GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.13"},
+					},
 				},
 			},
 			expectError: false,
@@ -180,7 +204,11 @@ func TestSetFromParameters(t *testing.T) {
 					AuthenticationKMSID: "metadata",
 				},
 				ListenerInfo: []ListenerDetails{
-					{Hostname: "nvmeof-gw-b", GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.13"}},
+					{
+						Hostname:       "nvmeof-gw-b",
+						AddressFamily:  addressFamilyIPv4,
+						GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.13"},
+					},
 				},
 			},
 			expectError: false,
@@ -220,7 +248,11 @@ func TestSetFromParameters(t *testing.T) {
 					Port:    5500,
 				},
 				ListenerInfo: []ListenerDetails{
-					{Hostname: "nvmeof-gw-a", GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.12"}},
+					{
+						Hostname:       "nvmeof-gw-a",
+						AddressFamily:  addressFamilyIPv4,
+						GatewayAddress: GatewayAddress{Port: 4420, Address: "10.92.3.12"},
+					},
 				},
 			},
 			expectError: false,
@@ -237,4 +269,55 @@ func TestSetFromParameters(t *testing.T) {
 			require.Equal(t, test.expected, *vol)
 		}
 	}
+}
+
+func TestSetFromParametersIPv6Listeners(t *testing.T) {
+	t.Parallel()
+	info := &NVMeoFVolumeData{}
+	err := info.SetFromParameters(map[string]string{
+		"listeners": `[
+			{"hostname":"gw4"},
+			{"hostname":"gw6","adrfam":"ipv6"},
+			{"hostname":"gw6-explicit","address":"2001:db8::1","port":5500}
+		]`,
+	}, "test-volume-id")
+	require.NoError(t, err)
+	require.Len(t, info.ListenerInfo, 3)
+	require.Equal(t, "0.0.0.0", info.ListenerInfo[0].Address)
+	require.Equal(t, addressFamilyIPv4, info.ListenerInfo[0].AddressFamily)
+	require.Equal(t, "::", info.ListenerInfo[1].Address)
+	require.Equal(t, uint32(4420), info.ListenerInfo[1].Port)
+	require.Equal(t, addressFamilyIPv6, info.ListenerInfo[1].AddressFamily)
+	require.Equal(t, "2001:db8::1", info.ListenerInfo[2].Address)
+	require.Equal(t, uint32(5500), info.ListenerInfo[2].Port)
+	require.Equal(t, addressFamilyIPv6, info.ListenerInfo[2].AddressFamily)
+}
+
+func TestSetupListenersAddressFamilyError(t *testing.T) {
+	t.Parallel()
+	// Include explicit address-family values that do not match their IP addresses.
+	for _, input := range []string{
+		`invalid`,
+		`[{"hostname":"gw","adrfam":"invalid"}]`,
+		`[{"hostname":"gw","adrfam":"ipv6","address":"192.0.2.1"}]`,
+		`[{"hostname":"gw","adrfam":"ipv4","address":"2001:db8::1"}]`,
+	} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+			listeners, err := SetupListeners(input)
+			require.Error(t, err)
+			require.Empty(t, listeners)
+			info := &NVMeoFVolumeData{}
+			require.Error(t, info.SetFromParameters(map[string]string{"listeners": input}, "test-volume-id"))
+			require.Empty(t, info.ListenerInfo)
+		})
+	}
+}
+
+func TestSetListenersWithDefaultsAddressFamilyError(t *testing.T) {
+	t.Parallel()
+	info := &NVMeoFVolumeData{
+		ListenerInfo: []ListenerDetails{{Hostname: "gw", AddressFamily: "invalid"}},
+	}
+	require.ErrorContains(t, info.SetListenersWithDefaults(), "listener 0")
 }

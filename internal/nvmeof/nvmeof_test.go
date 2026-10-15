@@ -24,6 +24,95 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestListenerDetailsSetDefaults(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		input   ListenerDetails
+		address string
+		port    uint32
+		family  string
+		wantErr bool
+	}{
+		{
+			name:    "legacy defaults",
+			address: "0.0.0.0",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name:    "ipv4 wildcard",
+			input:   ListenerDetails{AddressFamily: addressFamilyIPv4},
+			address: "0.0.0.0",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name:    "ipv6 wildcard",
+			input:   ListenerDetails{AddressFamily: addressFamilyIPv6},
+			address: "::",
+			port:    4420,
+			family:  addressFamilyIPv6,
+		},
+		{
+			name: "infer ipv6",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "2001:db8::1", Port: 5500},
+			},
+			address: "2001:db8::1",
+			port:    5500,
+			family:  addressFamilyIPv6,
+		},
+		{
+			name: "infer ipv4",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "192.0.2.1"},
+			},
+			address: "192.0.2.1",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name: "ipv6 address ipv4 family",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "2001:db8::1"},
+				AddressFamily:  addressFamilyIPv4,
+			},
+			wantErr: true,
+		},
+		{
+			name: "ipv4 address ipv6 family",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "192.0.2.1"},
+				AddressFamily:  addressFamilyIPv6,
+			},
+			wantErr: true,
+		},
+		{
+			name:    "invalid family",
+			input:   ListenerDetails{AddressFamily: "invalid"},
+			wantErr: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			listener := test.input
+			err := listener.setDefaults()
+			if test.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.address, listener.Address)
+			require.Equal(t, test.port, listener.Port)
+			require.Equal(t, test.family, listener.AddressFamily)
+			require.NoError(t, listener.setDefaults())
+		})
+	}
+}
+
 func TestGatewayAddress_String(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
