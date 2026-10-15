@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"net"
 	"slices"
 	"syscall"
 
@@ -48,11 +49,77 @@ func (ga GatewayAddress) String() string {
 // ListenerDetails holds the listener information for a subsystem.
 type ListenerDetails struct {
 	GatewayAddress
-	Hostname string `json:"hostname"`
+	Hostname      string `json:"hostname"`
+	AddressFamily string `json:"adrfam,omitempty"`
 }
+
+const (
+	addressFamilyIPv4 = "ipv4"
+	addressFamilyIPv6 = "ipv6"
+)
 
 func (ga ListenerDetails) String() string {
 	return fmt.Sprintf("%s:%d (%s)", ga.Address, ga.Port, ga.Hostname)
+}
+
+// addressFamily returns the configured or inferred listener address family.
+// It infers the family from an IP address, validates an explicitly configured
+// family against that address, and defaults to IPv4 when neither identifies one.
+func (listener ListenerDetails) addressFamily() (pb.AddressFamily, error) {
+	address := net.ParseIP(listener.Address)
+	family := pb.AddressFamily_ipv4
+	if address != nil && address.To4() == nil {
+		family = pb.AddressFamily_ipv6
+	}
+	if listener.AddressFamily == "" {
+		return family, nil
+	}
+
+	switch listener.AddressFamily {
+	case addressFamilyIPv4:
+		if address != nil && family != pb.AddressFamily_ipv4 {
+			return family, fmt.Errorf(
+				"listener address %q does not match adrfam %q",
+				listener.Address,
+				listener.AddressFamily,
+			)
+		}
+	case addressFamilyIPv6:
+		if address != nil && family != pb.AddressFamily_ipv6 {
+			return family, fmt.Errorf(
+				"listener address %q does not match adrfam %q",
+				listener.Address,
+				listener.AddressFamily,
+			)
+		}
+		family = pb.AddressFamily_ipv6
+	default:
+		return family, fmt.Errorf(
+			"unsupported listener adrfam %q: expected ipv4 or ipv6",
+			listener.AddressFamily,
+		)
+	}
+
+	return family, nil
+}
+
+func (listener *ListenerDetails) setDefaults() error {
+	family, err := listener.addressFamily()
+	if err != nil {
+		return err
+	}
+	listener.AddressFamily = family.String()
+	if listener.Port == 0 {
+		listener.Port = 4420
+	}
+	if listener.Address == "" {
+		listener.Address = "0.0.0.0"
+		if family == pb.AddressFamily_ipv6 {
+			listener.Address = "::"
+		}
+	}
+
+	return nil
 }
 
 // Config holds gateway client configuration.
