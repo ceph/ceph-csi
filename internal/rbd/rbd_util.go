@@ -1538,8 +1538,11 @@ func GenVolFromVolID(
 	if mapping != nil {
 		rbdVol, vErr := generateVolumeFromMapping(ctx, mapping, volumeID, vi, cr, secrets)
 		if !ShouldRetryVolumeGeneration(vErr) {
+			vol.Destroy(ctx)
+
 			return rbdVol, vErr
 		}
+		rbdVol.Destroy(ctx)
 	}
 
 	return vol, err
@@ -1585,10 +1588,13 @@ func generateVolumeFromMapping(
 						poolID)
 					pID, err := strconv.ParseInt(mappedPoolID, 10, 64)
 					if err != nil {
-						return vol, err
+						vol.Destroy(ctx)
+
+						return &rbdVolume{}, err
 					}
 					// Add mapping poolID to Identifier
 					nvi.LocationID = pID
+					vol.Destroy(ctx)
 					vol, err = generateVolumeFromVolumeID(ctx, volumeID, nvi, cr, secrets)
 					if !ShouldRetryVolumeGeneration(err) {
 						return vol, err
@@ -1598,7 +1604,9 @@ func generateVolumeFromMapping(
 		}
 	}
 
-	return vol, util.ErrPoolNotFound
+	vol.Destroy(ctx)
+
+	return &rbdVolume{}, util.ErrPoolNotFound
 }
 
 func genVolFromVolumeOptions(
