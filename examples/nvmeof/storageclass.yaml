@@ -39,6 +39,8 @@ parameters:
   # (static, defined at StorageClass creation time).
   # Note: StorageClass is immutable; if gateways scale up/down, listeners
   # here will be stale.
+  # An omitted address defaults to 0.0.0.0 (IPv4) or :: (IPv6).
+  # An omitted port defaults to 4420.
   # listeners: |
   #   [{
   #     "address": "10.242.64.32",
