@@ -1,0 +1,86 @@
+---
+name: "Update build.env"
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    # Check for new releases of the tools in build.env once a week, on
+    # Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-build-env:
+    if: github.repository == 'ceph/ceph-csi'
+    runs-on: ubuntu-latest
+    env:
+      BASE_BRANCH: devel
+      UPDATE_BRANCH: ceph-csi-bot/update-build-env
+    steps:
+      - name: Checkout the ceph-csi repository
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          persist-credentials: true
+
+      - name: Update build.env and commit the changes
+        id: update
+        run: |
+          set -euo pipefail
+
+          git config user.name "ceph-csi-bot"
+          git config user.email "ceph-csi-bot@users.noreply.github.com"
+
+          START="$(git rev-parse HEAD)"
+          make update-build-env
+
+          COUNT="$(git rev-list --count "${START}..HEAD")"
+          echo "new_commits=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "${COUNT} new commit(s)"
+
+          if [ "${COUNT}" -gt 0 ]; then
+            {
+              echo "Update the tools listed in build.env to their latest"
+              echo "release:"
+              echo
+              git log --reverse --format='- %s' "${START}..HEAD"
+              echo
+              echo "This pull request is created by the \"Update build.env\""
+              echo "workflow."
+            } > "${RUNNER_TEMP}/pr-body.md"
+          fi
+
+      # The branch is owned by this workflow and recreated from the base
+      # branch on every run, so it can safely be force-pushed.
+      - name: Push the update branch
+        if: steps.update.outputs.new_commits != '0'
+        run: |
+          git push --force origin "HEAD:refs/heads/${UPDATE_BRANCH}"
+
+      - name: Create or update the pull request
+        if: steps.update.outputs.new_commits != '0'
+        env:
+          GH_TOKEN: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
+          PR_TITLE: "build: update tools in build.env"
+        run: |
+          set -euo pipefail
+
+          PR="$(gh pr list --repo "${GITHUB_REPOSITORY}" \
+            --head "${UPDATE_BRANCH}" --base "${BASE_BRANCH}" \
+            --state open --json number --jq '.[0].number // empty')"
+
+          if [ -z "${PR}" ]; then
+            gh pr create --repo "${GITHUB_REPOSITORY}" \
+              --head "${UPDATE_BRANCH}" --base "${BASE_BRANCH}" \
+              --title "${PR_TITLE}" \
+              --body-file "${RUNNER_TEMP}/pr-body.md"
+          else
+            gh pr edit "${PR}" --repo "${GITHUB_REPOSITORY}" \
+              --title "${PR_TITLE}" \
+              --body-file "${RUNNER_TEMP}/pr-body.md"
+          fi
