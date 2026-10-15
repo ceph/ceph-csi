@@ -69,7 +69,7 @@ func (c *checker) initDefaults() {
 	c.healthy = true
 	c.checked = false
 	c.lastUpdate = time.Now()
-	c.commands = make(chan command)
+	c.commands = make(chan command, 1)
 
 	c.runChecker = func() {
 		panic("BUG: implement runChecker() in the final checker struct")
@@ -84,8 +84,14 @@ func (c *checker) start() {
 	go c.runChecker()
 }
 
+// stop asks the checker to stop. It never blocks: the channel is buffered, so
+// the go routine picks up the command once it is done with a (possibly hanging)
+// check. A pending command is enough, additional ones are dropped.
 func (c *checker) stop() {
-	c.commands <- stopCommand
+	select {
+	case c.commands <- stopCommand:
+	default:
+	}
 }
 
 func (c *checker) isHealthy() (bool, error) {
