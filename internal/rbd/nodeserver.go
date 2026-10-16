@@ -305,9 +305,7 @@ func initDynamicVol(
 ) (*rbdVolume, error) {
 	rv, err := GenVolFromVolID(ctx, volID, cr, secrets)
 	if err != nil {
-		if rv != nil {
-			rv.Destroy(ctx)
-		}
+		rv.Destroy(ctx)
 		log.ErrorLog(ctx, "error generating volume %s: %v", volID, err)
 
 		return nil, status.Errorf(codes.Internal, "error generating volume %s: %v", volID, err)
