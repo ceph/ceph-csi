@@ -17,12 +17,366 @@ limitations under the License.
 package nvmeof
 
 import (
+	"context"
 	"encoding/json"
 	"math/big"
 	"testing"
 
+	pb "github.com/ceph/ceph-nvmeof/lib/go/nvmeof"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
+
+func TestListenerDetailsSetDefaults(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		input   ListenerDetails
+		address string
+		port    uint32
+		family  string
+		wantErr bool
+	}{
+		{
+			name: "hostname resolves to ipv4",
+			input: ListenerDetails{
+				Hostname: "192.0.2.1",
+			},
+			address: "0.0.0.0",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name: "hostname resolves to ipv6",
+			input: ListenerDetails{
+				Hostname: "2001:db8::1",
+			},
+			address: "::",
+			port:    4420,
+			family:  addressFamilyIPv6,
+		},
+		{
+			name: "ipv4 wildcard",
+			input: ListenerDetails{
+				Hostname:      "nvmeof-gw-a",
+				AddressFamily: addressFamilyIPv4,
+			},
+			address: "0.0.0.0",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name: "ipv6 wildcard",
+			input: ListenerDetails{
+				Hostname:      "nvmeof-gw-a",
+				AddressFamily: addressFamilyIPv6,
+			},
+			address: "::",
+			port:    4420,
+			family:  addressFamilyIPv6,
+		},
+		{
+			name: "unresolvable hostname falls back to ipv4",
+			input: ListenerDetails{
+				Hostname: "nvmeof-gw.invalid",
+			},
+			address: "0.0.0.0",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name: "infer ipv6",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "2001:db8::1", Port: 5500},
+			},
+			address: "2001:db8::1",
+			port:    5500,
+			family:  addressFamilyIPv6,
+		},
+		{
+			name: "infer ipv4",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "192.0.2.1"},
+			},
+			address: "192.0.2.1",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name: "ipv6 address ipv4 family",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "2001:db8::1"},
+				AddressFamily:  addressFamilyIPv4,
+			},
+			wantErr: true,
+		},
+		{
+			name: "ipv4 address ipv6 family",
+			input: ListenerDetails{
+				GatewayAddress: GatewayAddress{Address: "192.0.2.1"},
+				AddressFamily:  addressFamilyIPv6,
+			},
+			wantErr: true,
+		},
+		{
+			name:    "invalid family",
+			input:   ListenerDetails{AddressFamily: "invalid"},
+			wantErr: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			listener := test.input
+			err := listener.setDefaults()
+			if test.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.address, listener.Address)
+			require.Equal(t, test.port, listener.Port)
+			require.Equal(t, test.family, listener.AddressFamily)
+			require.NoError(t, listener.setDefaults())
+		})
+	}
+}
+
+func TestAddressFamilyFromAddresses(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		addresses []string
+		family    pb.AddressFamily
+		wantErr   bool
+	}{
+		{
+			name: "ipv4",
+			addresses: []string{
+				"192.0.2.1",
+			},
+			family: pb.AddressFamily_ipv4,
+		},
+		{
+			name: "ipv6",
+			addresses: []string{
+				"2001:db8::1",
+			},
+			family: pb.AddressFamily_ipv6,
+		},
+		{
+			name: "skip invalid address",
+			addresses: []string{
+				"invalid",
+				"2001:db8::1",
+			},
+			family: pb.AddressFamily_ipv6,
+		},
+		{
+			name: "no valid address",
+			addresses: []string{
+				"invalid",
+			},
+			wantErr: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			family, err := addressFamilyFromAddresses("gateway.example", test.addresses)
+			if test.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.family, family)
+		})
+	}
+}
+
+type listenerGatewayClient struct {
+	pb.GatewayClient
+	created *pb.CreateListenerReq
+	deleted *pb.DeleteListenerReq
+}
+
+func (client *listenerGatewayClient) CreateListener(
+	_ context.Context, req *pb.CreateListenerReq, _ ...grpc.CallOption,
+) (*pb.ReqStatus, error) {
+	client.created = req
+
+	return &pb.ReqStatus{}, nil
+}
+
+func (client *listenerGatewayClient) DeleteListener(
+	_ context.Context, req *pb.DeleteListenerReq, _ ...grpc.CallOption,
+) (*pb.ReqStatus, error) {
+	client.deleted = req
+
+	return &pb.ReqStatus{}, nil
+}
+
+func TestListenerRPCAddressFamily(t *testing.T) {
+	t.Parallel()
+	for _, address := range []string{"192.0.2.1", "2001:db8::1", "::"} {
+		t.Run(address, func(t *testing.T) {
+			t.Parallel()
+			client := &listenerGatewayClient{}
+			gateway := &GatewayRpcClient{client: client}
+			listener := ListenerDetails{GatewayAddress: GatewayAddress{Address: address, Port: 4420}, Hostname: "gw"}
+			family := pb.AddressFamily_ipv6
+			if address == "192.0.2.1" {
+				family = pb.AddressFamily_ipv4
+			}
+			require.NoError(t, gateway.CreateListener(context.Background(), "nqn.test", listener))
+			require.Equal(t, family, client.created.GetAdrfam())
+			require.NoError(t, gateway.DeleteListener(context.Background(), "nqn.test", listener))
+			require.Equal(t, family, client.deleted.GetAdrfam())
+		})
+	}
+}
+
+func TestConvertListenersFromProtoAddressFamily(t *testing.T) {
+	t.Parallel()
+	listeners := ConvertListenersFromProto([]*pb.ListenerInfo{
+		{HostName: "gw", Traddr: "::", Trsvcid: 4420, Adrfam: pb.AddressFamily_ipv6},
+	})
+	require.Len(t, listeners, 1)
+	require.Equal(t, "ipv6", listeners[0].AddressFamily)
+}
+
+func TestResolveListeners(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		address  string
+		hostname string
+		family   string
+		want     string
+		wantErr  bool
+	}{
+		{
+			name:     "legacy ipv4 wildcard",
+			address:  "0.0.0.0",
+			hostname: "192.0.2.1",
+			want:     "192.0.2.1",
+		},
+		{
+			name:     "ipv6 wildcard",
+			address:  "::",
+			hostname: "2001:db8::1",
+			family:   addressFamilyIPv6,
+			want:     "2001:db8::1",
+		},
+		{
+			name:     "infer ipv6 wildcard",
+			address:  "::",
+			hostname: "2001:db8::1",
+			want:     "2001:db8::1",
+		},
+		{
+			name:     "expanded ipv6 wildcard",
+			address:  "0:0:0:0:0:0:0:0",
+			hostname: "2001:db8::1",
+			want:     "2001:db8::1",
+		},
+		{
+			name:     "empty ipv6 address",
+			hostname: "2001:db8::1",
+			family:   addressFamilyIPv6,
+			want:     "2001:db8::1",
+		},
+		{
+			name:    "explicit ipv6 address",
+			address: "2001:db8::1",
+			family:  addressFamilyIPv6,
+			want:    "2001:db8::1",
+		},
+		{
+			name:    "explicit ipv4 address",
+			address: "192.0.2.1",
+			want:    "192.0.2.1",
+		},
+		{
+			name:     "ipv4 target for ipv6",
+			address:  "::",
+			hostname: "192.0.2.1",
+			wantErr:  true,
+		},
+		{
+			name:     "ipv6 target for ipv4",
+			address:  "0.0.0.0",
+			hostname: "2001:db8::1",
+			wantErr:  true,
+		},
+		{
+			name:    "address family mismatch",
+			address: "2001:db8::1",
+			family:  addressFamilyIPv4,
+			wantErr: true,
+		},
+		{
+			name:    "invalid family",
+			address: "::",
+			family:  "invalid",
+			wantErr: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			listener := ListenerDetails{
+				GatewayAddress: GatewayAddress{
+					Address: test.address,
+					Port:    4420,
+				},
+				Hostname:      test.hostname,
+				AddressFamily: test.family,
+			}
+			input := []ListenerDetails{listener}
+			listeners, err := ResolveListeners(context.Background(), input)
+			require.Equal(t, listener, input[0])
+			if test.wantErr {
+				require.Error(t, err)
+				require.Empty(t, listeners)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, listeners, 1)
+			require.Equal(t, test.want, listeners[0].Address)
+			require.Equal(t, uint32(4420), listeners[0].Port)
+			require.Equal(t, test.hostname, listeners[0].Hostname)
+		})
+	}
+}
+
+func TestResolveListenersPartialFailure(t *testing.T) {
+	t.Parallel()
+	listeners, err := ResolveListeners(context.Background(), []ListenerDetails{
+		{
+			GatewayAddress: GatewayAddress{
+				Address: "::",
+				Port:    4420,
+			},
+			Hostname:      "192.0.2.1",
+			AddressFamily: addressFamilyIPv6,
+		},
+		{
+			GatewayAddress: GatewayAddress{
+				Address: "::",
+				Port:    4420,
+			},
+			Hostname:      "2001:db8::1",
+			AddressFamily: addressFamilyIPv6,
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, listeners, 1)
+	require.Equal(t, "2001:db8::1", listeners[0].Address)
+}
 
 func TestGatewayAddress_String(t *testing.T) {
 	t.Parallel()

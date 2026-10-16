@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"net"
 	"slices"
 	"syscall"
 
@@ -48,11 +49,115 @@ func (ga GatewayAddress) String() string {
 // ListenerDetails holds the listener information for a subsystem.
 type ListenerDetails struct {
 	GatewayAddress
-	Hostname string `json:"hostname"`
+	Hostname      string `json:"hostname"`
+	AddressFamily string `json:"adrfam,omitempty"`
 }
+
+const (
+	addressFamilyIPv4 = "ipv4"
+	addressFamilyIPv6 = "ipv6"
+)
 
 func (ga ListenerDetails) String() string {
 	return fmt.Sprintf("%s:%d (%s)", ga.Address, ga.Port, ga.Hostname)
+}
+
+// addressFamily returns the configured or inferred listener address family.
+// It infers the family from an IP address, validates an explicitly configured
+// family against that address, and defaults to IPv4 when neither identifies one.
+func (listener ListenerDetails) addressFamily() (pb.AddressFamily, error) {
+	address := net.ParseIP(listener.Address)
+	family := pb.AddressFamily_ipv4
+	if address != nil && address.To4() == nil {
+		family = pb.AddressFamily_ipv6
+	}
+	if listener.AddressFamily == "" {
+		return family, nil
+	}
+
+	switch listener.AddressFamily {
+	case addressFamilyIPv4:
+		if address != nil && family != pb.AddressFamily_ipv4 {
+			return family, fmt.Errorf(
+				"listener address %q does not match adrfam %q",
+				listener.Address,
+				listener.AddressFamily,
+			)
+		}
+	case addressFamilyIPv6:
+		if address != nil && family != pb.AddressFamily_ipv6 {
+			return family, fmt.Errorf(
+				"listener address %q does not match adrfam %q",
+				listener.Address,
+				listener.AddressFamily,
+			)
+		}
+		family = pb.AddressFamily_ipv6
+	default:
+		return family, fmt.Errorf(
+			"unsupported listener adrfam %q: expected ipv4 or ipv6",
+			listener.AddressFamily,
+		)
+	}
+
+	return family, nil
+}
+
+func (listener *ListenerDetails) setDefaults() error {
+	var (
+		family pb.AddressFamily
+		err    error
+	)
+	switch {
+	case listener.Address != "" || listener.AddressFamily != "":
+		family, err = listener.addressFamily()
+	default:
+		family, err = resolveAddressFamily(listener.Hostname)
+		if err != nil {
+			family = pb.AddressFamily_ipv4
+			err = nil
+		}
+	}
+	if err != nil {
+		return err
+	}
+	listener.AddressFamily = family.String()
+	if listener.Port == 0 {
+		listener.Port = 4420
+	}
+	if listener.Address == "" {
+		listener.Address = "0.0.0.0"
+		if family == pb.AddressFamily_ipv6 {
+			listener.Address = "::"
+		}
+	}
+
+	return nil
+}
+
+func resolveAddressFamily(host string) (pb.AddressFamily, error) {
+	addresses, err := net.LookupHost(host)
+	if err != nil {
+		return pb.AddressFamily_ipv4, fmt.Errorf("failed to resolve %s: %w", host, err)
+	}
+
+	return addressFamilyFromAddresses(host, addresses)
+}
+
+func addressFamilyFromAddresses(host string, addresses []string) (pb.AddressFamily, error) {
+	for _, address := range addresses {
+		ip := net.ParseIP(address)
+		if ip == nil {
+			continue
+		}
+		if ip.To4() != nil {
+			return pb.AddressFamily_ipv4, nil
+		}
+
+		return pb.AddressFamily_ipv6, nil
+	}
+
+	return pb.AddressFamily_ipv4, fmt.Errorf("no valid IP addresses for %s", host)
 }
 
 // Config holds gateway client configuration.
@@ -504,13 +609,16 @@ func (gw *GatewayRpcClient) AddHost(ctx context.Context, subsystemNQN, hostNQN s
 func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN string, listenerInfo ListenerDetails,
 ) error {
 	log.DebugLog(ctx, "Adding listener %s to subsystem %s", listenerInfo.Address, subsystemNQN)
-	adrfam := pb.AddressFamily_ipv4
+	addressFamily, err := listenerInfo.addressFamily()
+	if err != nil {
+		return err
+	}
 	req := &pb.CreateListenerReq{
 		Nqn:      subsystemNQN,
 		HostName: listenerInfo.Hostname,
 		Traddr:   listenerInfo.Address,
 		Trsvcid:  &listenerInfo.Port,
-		Adrfam:   &adrfam, // Assuming IPv4, can be configurable // TODO - make it configurable
+		Adrfam:   &addressFamily,
 		// Secure  // false, // Assuming no security for now   // TODO - make it configurable?
 		// VerifyHostName // false, // Assuming no hostname verification for now // TODO - make it configurable
 	}
@@ -543,7 +651,10 @@ func (gw *GatewayRpcClient) CreateListener(ctx context.Context, subsystemNQN str
 func (gw *GatewayRpcClient) DeleteListener(ctx context.Context, subsystemNQN string, listenerInfo ListenerDetails,
 ) error {
 	log.DebugLog(ctx, "Deleting listener %s from subsystem %s", listenerInfo.Address, subsystemNQN)
-	adrfam := pb.AddressFamily_ipv4
+	addressFamily, err := listenerInfo.addressFamily()
+	if err != nil {
+		return err
+	}
 	// Add this because without this, the gw return
 	// "Can't verify there are no active connections for this address" instead of "Listener not found"
 	force := true
@@ -552,7 +663,7 @@ func (gw *GatewayRpcClient) DeleteListener(ctx context.Context, subsystemNQN str
 		HostName: listenerInfo.Hostname,
 		Traddr:   listenerInfo.Address,
 		Trsvcid:  &listenerInfo.Port,
-		Adrfam:   &adrfam, // Assuming IPv4, can be configurable // TODO - make it configurable
+		Adrfam:   &addressFamily,
 		Force:    &force,
 	}
 
@@ -730,7 +841,8 @@ func ConvertListenersFromProto(protoListeners []*pb.ListenerInfo) []ListenerDeta
 				Address: l.GetTraddr(),
 				Port:    l.GetTrsvcid(),
 			},
-			Hostname: l.GetHostName(),
+			Hostname:      l.GetHostName(),
+			AddressFamily: l.GetAdrfam().String(),
 		})
 	}
 

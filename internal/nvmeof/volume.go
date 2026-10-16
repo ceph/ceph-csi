@@ -40,16 +40,15 @@ type NVMeoFSecurityConfig struct {
 
 // SetListenersWithDefaults applies default values to the existing ListenerInfo.
 // If port is 0, it defaults to 4420.
-// If address is empty, it defaults to 0.0.0.0.
-func (v *NVMeoFVolumeData) SetListenersWithDefaults() {
+// If address is empty, it defaults to 0.0.0.0 for IPv4 or :: for IPv6.
+func (v *NVMeoFVolumeData) SetListenersWithDefaults() error {
 	for i := range v.ListenerInfo {
-		if v.ListenerInfo[i].Port == 0 {
-			v.ListenerInfo[i].Port = 4420
-		}
-		if v.ListenerInfo[i].Address == "" {
-			v.ListenerInfo[i].Address = "0.0.0.0"
+		if err := v.ListenerInfo[i].setDefaults(); err != nil {
+			return fmt.Errorf("listener %d: %w", i, err)
 		}
 	}
+
+	return nil
 }
 
 // SetupListeners parses the listeners JSON and validates the required fields.
@@ -69,11 +68,14 @@ func SetupListeners(listenersJSON string) ([]ListenerDetails, error) {
 	}
 
 	// Validate each listener
-	// Listener address can be empty. It will be set later to the default 0.0.0.0.
+	// Listener address can be empty. Its default depends on the address family.
 	// Port can be empty (it will be set later to the default 4420).
 	for i, listener := range listeners {
 		if listener.Hostname == "" {
 			return nil, fmt.Errorf("listener %d: missing required fields (hostname)", i)
+		}
+		if _, err := listener.addressFamily(); err != nil {
+			return nil, fmt.Errorf("listener %d: %w", i, err)
 		}
 	}
 
@@ -121,7 +123,5 @@ func (v *NVMeoFVolumeData) SetFromParameters(parameters map[string]string, volum
 	v.ListenerInfo = listeners
 
 	// Apply default values to listeners if necessary
-	v.SetListenersWithDefaults()
-
-	return nil
+	return v.SetListenersWithDefaults()
 }
