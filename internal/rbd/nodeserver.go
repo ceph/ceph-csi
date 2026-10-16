@@ -35,6 +35,7 @@ import (
 	utilexec "k8s.io/utils/exec"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/filesystems"
 	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -127,10 +128,6 @@ var (
 			Distribution: ".el8",
 			Backport:     true,
 		}, // RHEL 8.2
-	}
-
-	mountDefaultOpts = map[string][]string{
-		xfsFilesystem: {"nouuid"},
 	}
 )
 
@@ -1108,10 +1105,18 @@ func (ns *NodeServer) mountVolumeToStagePath(
 		return err
 	}
 
-	opt := mountDefaultOpts[fsType]
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	opt := []string{}
+	if !isBlock {
+		// FormatAndMount() mounts the volume as ext4 when no fsType is set
+		mountFsType := fsType
+		if mountFsType == "" {
+			mountFsType = "ext4"
+		}
+		opt = filesystems.DefaultMountOptions(mountFsType, req.GetVolumeCapability().GetMount().GetMountFlags())
+	}
 	opt = append(opt, "_netdev")
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	readOnly := csicommon.IsReaderOnly([]*csi.VolumeCapability{req.GetVolumeCapability()})
 
 	if existingFormat == "" && !staticVol && !readOnly && !isBlock {
