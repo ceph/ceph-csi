@@ -83,7 +83,7 @@ RUN true \
   && microdnf -y install \
     kmod nfs-utils nvme-cli epel-release psmisc e2fsprogs xfsprogs cryptsetup attr logrotate \
     --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
-  && microdnf -y install --enablerepo=crb thrift librados2 librbd1 libcephfs2 ceph-common ceph-fuse rbd-nbd --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
+  && microdnf -y install --enablerepo=crb thrift librados2 librbd1 libcephfs2 ceph-common ceph-fuse rbd-nbd btrfs-progs --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
   && microdnf clean all \
   && true
 
