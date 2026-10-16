@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ceph/go-ceph/cephfs/admin"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
@@ -613,9 +614,87 @@ func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 	subvolRoot, subvolUUID := path.Split(parentBackingSnapVolOpts.RootPath)
 
 	vo.RootPath = subvolRoot
+
+	// Use Ceph's SubVolumeSnapshotPath; fall back to manual construction.
+	if relPath, ok := vo.backingSnapshotRootFromAPI(ctx, parentBackingSnapVolOpts, snapID, subvolRoot); ok {
+		vo.BackingSnapshotRoot = relPath
+
+		return nil
+	}
+
 	vo.BackingSnapshotRoot = path.Join(".snap", snapID.FsSnapshotName, subvolUUID)
 
 	return nil
+}
+
+// backingSnapshotRootFromAPI asks Ceph for the snapshot path and returns the
+// path relative to subvolRoot. ok is false when the API is unavailable or the
+// response cannot be converted to a usable .snap-relative path.
+func (vo *VolumeOptions) backingSnapshotRootFromAPI(
+	ctx context.Context,
+	parent *VolumeOptions,
+	snapID *SnapshotIdentifier,
+	subvolRoot string,
+) (string, bool) {
+	fsa, err := vo.conn.GetFSAdmin()
+	if err != nil {
+		log.WarningLog(ctx, "failed to get FSAdmin for SubVolumeSnapshotPath: %v, using manual construction", err)
+
+		return "", false
+	}
+
+	absPath, err := fsa.SubVolumeSnapshotPath(
+		parent.FsName,
+		parent.SubvolumeGroup,
+		snapID.FsSubvolName,
+		snapID.FsSnapshotName,
+	)
+	if err != nil {
+		if _, ok := errors.AsType[admin.NotImplementedError](err); ok {
+			log.DebugLog(ctx, "SubVolumeSnapshotPath not supported by Ceph cluster, using manual construction")
+		} else {
+			log.WarningLog(ctx, "SubVolumeSnapshotPath failed: %v, using manual construction", err)
+		}
+
+		return "", false
+	}
+
+	relPath, ok := extractSnapshotRelativePath(absPath, subvolRoot)
+	if !ok {
+		log.WarningLog(ctx, "SubVolumeSnapshotPath returned unexpected path %q, using manual construction", absPath)
+
+		return "", false
+	}
+
+	log.DebugLog(ctx, "got snapshot path from API: %s", relPath)
+
+	return relPath, true
+}
+
+// extractSnapshotRelativePath extracts the relative snapshot path from an absolute CephFS path.
+// For example, given:
+//
+//	absPath: /volumes/group/subvol/.snap/snapshot/uuid
+//	subvolRoot: /volumes/group/subvol/
+//
+// Returns: .snap/snapshot/uuid
+// ok is false if the path does not contain a usable .snap component.
+func extractSnapshotRelativePath(absPath, subvolRoot string) (string, bool) {
+	rel, found := strings.CutPrefix(absPath, subvolRoot)
+	if !found {
+		idx := strings.Index(absPath, "/.snap/")
+		if idx < 0 {
+			return "", false
+		}
+		rel = absPath[idx+1:] // ".snap/..."
+	}
+
+	rel = strings.TrimPrefix(rel, "/")
+	if !strings.HasPrefix(rel, ".snap/") {
+		return "", false
+	}
+
+	return rel, true
 }
 
 // NewVolumeOptionsFromMonitorList generates a new instance of VolumeOptions and
