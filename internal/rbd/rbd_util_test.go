@@ -565,3 +565,109 @@ func TestVolumeInfo(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestDiffMetadata(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		desired  map[string]string
+		existing map[string]string
+		want     map[string]string
+	}{
+		{
+			name:     "all values match",
+			desired:  map[string]string{"one": "1", "two": "2"},
+			existing: map[string]string{"one": "1", "two": "2"},
+			want:     map[string]string{},
+		},
+		{
+			name:     "some keys are missing",
+			desired:  map[string]string{"one": "1", "two": "2"},
+			existing: map[string]string{"one": "1"},
+			want:     map[string]string{"two": "2"},
+		},
+		{
+			name:     "some values differ",
+			desired:  map[string]string{"one": "1", "two": "2"},
+			existing: map[string]string{"one": "different", "two": "2"},
+			want:     map[string]string{"one": "1"},
+		},
+		{
+			name:     "empty desired",
+			desired:  map[string]string{},
+			existing: map[string]string{"one": "1"},
+			want:     map[string]string{},
+		},
+		{
+			name:     "empty existing",
+			desired:  map[string]string{"one": "1"},
+			existing: map[string]string{},
+			want:     map[string]string{"one": "1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, diffMetadata(tt.desired, tt.existing))
+		})
+	}
+}
+
+func TestDesiredMetadata(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		parameters  map[string]string
+		clusterName string
+		mounter     string
+		want        map[string]string
+	}{
+		{
+			name:       "parameters only",
+			parameters: map[string]string{"one": "1"},
+			want:       map[string]string{"one": "1"},
+		},
+		{
+			name:        "cluster and mounter",
+			parameters:  map[string]string{"one": "1"},
+			clusterName: "cluster",
+			mounter:     "rbd",
+			want: map[string]string{
+				"one":          "1",
+				clusterNameKey: "cluster",
+				mounterKey:     "rbd",
+			},
+		},
+		{
+			name:        "cluster only",
+			clusterName: "cluster",
+			want:        map[string]string{clusterNameKey: "cluster"},
+		},
+		{
+			name:    "mounter only",
+			mounter: "rbd",
+			want:    map[string]string{mounterKey: "rbd"},
+		},
+		{
+			name: "nil parameters",
+			want: map[string]string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			parameters := tt.parameters
+			var original map[string]string
+			if parameters != nil {
+				original = make(map[string]string, len(parameters))
+				for key, value := range parameters {
+					original[key] = value
+				}
+			}
+
+			rv := &rbdVolume{ClusterName: tt.clusterName, Mounter: tt.mounter}
+			assert.Equal(t, tt.want, rv.desiredMetadata(parameters))
+			assert.Equal(t, original, parameters)
+		})
+	}
+}
