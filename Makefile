@@ -205,6 +205,17 @@ generate-deploy:
 	go mod vendor
 	$(MAKE) -C deploy
 
+#
+# Check build.env for newer releases of the linters (golangci-lint, gopls,
+# lychee) and create a commit for each update.
+#
+# Usage: make update-build-env [DRY_RUN=1]
+#
+.PHONY: update-build-env
+update-build-env: DRY_RUN ?= 0
+update-build-env:
+	./scripts/update-build-env.sh $(if $(filter 1,$(DRY_RUN)),--dry-run)
+
 .PHONY: check-all-committed
 check-all-committed: ## Fail in case there are uncommitted changes
 	test -z "$(shell git status --short)" || (echo "files were modified: " ; git status --short ; false)
