@@ -2548,37 +2548,66 @@ func genVolFromVolIDWithMigration(
 }
 
 // setAllMetadata set all the metadata from arg parameters on RBD image.
+// The image is first opened read-only to find the keys whose values differ,
+// and only opened read-write when an update is actually needed.
 func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
+	desired := make(map[string]string, len(parameters)+2)
+	for k, v := range parameters {
+		desired[k] = v
+	}
+	if rv.ClusterName != "" {
+		desired[clusterNameKey] = rv.ClusterName
+	}
+	if rv.Mounter != "" {
+		desired[mounterKey] = rv.Mounter
+	}
+
+	toSet, err := rv.filterUnchangedMetadata(desired)
+	if err != nil {
+		return err
+	}
+	if len(toSet) == 0 {
+		return nil
+	}
+
 	image, err := rv.open()
 	if err != nil {
 		return err
 	}
 	defer image.Close() //nolint:errcheck // not a critical failure
 
-	for k, v := range parameters {
-		err := image.SetMetadata(k, v)
+	for k, v := range toSet {
+		err = image.SetMetadata(k, v)
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)
 		}
 	}
 
-	if rv.ClusterName != "" {
-		err := image.SetMetadata(clusterNameKey, rv.ClusterName)
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w",
-				clusterNameKey, rv.ClusterName, err)
-		}
-	}
-
-	if rv.Mounter != "" {
-		err := image.SetMetadata(mounterKey, rv.Mounter)
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w",
-				mounterKey, rv.Mounter, err)
-		}
-	}
-
 	return nil
+}
+
+// filterUnchangedMetadata returns the subset of metadata whose keys are
+// missing on the RBD image or have a different value.
+func (rv *rbdVolume) filterUnchangedMetadata(metadata map[string]string) (map[string]string, error) {
+	image, err := rv.openReadOnly()
+	if err != nil {
+		return nil, err
+	}
+	defer image.Close() //nolint:errcheck // not a critical failure
+
+	changed := make(map[string]string, len(metadata))
+	for k, v := range metadata {
+		existing, err := image.GetMetadata(k)
+		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+			return nil, fmt.Errorf("failed to get metadata key %q on image: %w", k, err)
+		}
+		if err == nil && existing == v {
+			continue
+		}
+		changed[k] = v
+	}
+
+	return changed, nil
 }
 
 // unsetAllMetadata unset all the metadata from arg keys on RBD image.
