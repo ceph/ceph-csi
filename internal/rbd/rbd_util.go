@@ -444,6 +444,24 @@ func (ri *rbdImage) Destroy(ctx context.Context) {
 	}
 }
 
+// Destroy cleans up the rbdVolume resources. It is safe to call on a nil
+// rbdVolume.
+func (rv *rbdVolume) Destroy(ctx context.Context) {
+	if rv == nil {
+		return
+	}
+	rv.rbdImage.Destroy(ctx)
+}
+
+// Destroy cleans up the rbdSnapshot resources. It is safe to call on a nil
+// rbdSnapshot.
+func (rs *rbdSnapshot) Destroy(ctx context.Context) {
+	if rs == nil {
+		return
+	}
+	rs.rbdImage.Destroy(ctx)
+}
+
 // String returns the image-spec (pool/{namespace/}image) format of the image.
 func (ri *rbdImage) String() string {
 	if ri.RadosNamespace != "" {

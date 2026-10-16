@@ -467,12 +467,8 @@ func (cs *ControllerServer) CreateVolume(
 	if err != nil {
 		return nil, err
 	}
-	if parentVol != nil {
-		defer parentVol.Destroy(ctx)
-	}
-	if rbdSnap != nil {
-		defer rbdSnap.Destroy(ctx)
-	}
+	defer parentVol.Destroy(ctx)
+	defer rbdSnap.Destroy(ctx)
 
 	err = updateTopologyConstraints(rbdVol, rbdSnap)
 	if err != nil {
@@ -1114,11 +1110,7 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 
 	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer func() {
-		if rbdVol != nil {
-			rbdVol.Destroy(ctx)
-		}
-	}()
+	defer rbdVol.Destroy(ctx)
 	if err != nil {
 		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
 	}
@@ -1269,11 +1261,7 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	// Fetch source volume information
 	rbdVol, err := GenVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
-	defer func() {
-		if rbdVol != nil {
-			rbdVol.Destroy(ctx)
-		}
-	}()
+	defer rbdVol.Destroy(ctx)
 	if err != nil {
 		switch {
 		case errors.Is(err, rbderrors.ErrImageNotFound):
@@ -1851,9 +1839,7 @@ func (cs *ControllerServer) getServiceAccountRestriction(
 
 	rv, err := GenVolFromVolID(ctx, volumeID, cr, secrets)
 	if err != nil {
-		if rv != nil {
-			rv.Destroy(ctx)
-		}
+		rv.Destroy(ctx)
 
 		if errors.Is(err, rbderrors.ErrInvalidVolID) {
 			return "", status.Errorf(codes.InvalidArgument, "volume ID %s does not support publish: %v", volumeID, err)
