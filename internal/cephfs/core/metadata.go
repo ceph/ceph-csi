@@ -132,27 +132,40 @@ func (s *subVolumeClient) listMetadata() (map[string]string, error) {
 }
 
 // SetAllMetadata set all the metadata from arg parameters on Ssubvolume.
+// Existing metadata is listed first, and only keys that are missing or have
+// a different value are set on the subvolume.
 func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
+	desired := make(map[string]string, len(parameters)+1)
 	for k, v := range parameters {
-		err := s.setMetadata(k, v)
+		desired[k] = v
+	}
+	if s.clusterName != "" {
+		desired[clusterNameKey] = s.clusterName
+	}
+	if len(desired) == 0 {
+		return nil
+	}
+
+	existing, err := s.listMetadata()
+	// If listMetadata is not supported return nil
+	if errors.Is(err, ErrSubVolMetadataNotSupported) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to list metadata on subvolume %v: %w", s, err)
+	}
+
+	for k, v := range desired {
+		if cur, ok := existing[k]; ok && cur == v {
+			continue
+		}
+		err = s.setMetadata(k, v)
 		// If setMetadata is not supported return nil
 		if errors.Is(err, ErrSubVolMetadataNotSupported) {
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on subvolume %v: %w", k, v, s, err)
-		}
-	}
-
-	if s.clusterName != "" {
-		err := s.setMetadata(clusterNameKey, s.clusterName)
-		// If setMetadata is not supported return nil
-		if errors.Is(err, ErrSubVolMetadataNotSupported) {
-			return nil
-		}
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on subvolume %v: %w",
-				clusterNameKey, s.clusterName, s, err)
 		}
 	}
 
