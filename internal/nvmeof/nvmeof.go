@@ -104,7 +104,20 @@ func (listener ListenerDetails) addressFamily() (pb.AddressFamily, error) {
 }
 
 func (listener *ListenerDetails) setDefaults() error {
-	family, err := listener.addressFamily()
+	var (
+		family pb.AddressFamily
+		err    error
+	)
+	switch {
+	case listener.Address != "" || listener.AddressFamily != "":
+		family, err = listener.addressFamily()
+	default:
+		family, err = resolveAddressFamily(listener.Hostname)
+		if err != nil {
+			family = pb.AddressFamily_ipv4
+			err = nil
+		}
+	}
 	if err != nil {
 		return err
 	}
@@ -120,6 +133,31 @@ func (listener *ListenerDetails) setDefaults() error {
 	}
 
 	return nil
+}
+
+func resolveAddressFamily(host string) (pb.AddressFamily, error) {
+	addresses, err := net.LookupHost(host)
+	if err != nil {
+		return pb.AddressFamily_ipv4, fmt.Errorf("failed to resolve %s: %w", host, err)
+	}
+
+	return addressFamilyFromAddresses(host, addresses)
+}
+
+func addressFamilyFromAddresses(host string, addresses []string) (pb.AddressFamily, error) {
+	for _, address := range addresses {
+		ip := net.ParseIP(address)
+		if ip == nil {
+			continue
+		}
+		if ip.To4() != nil {
+			return pb.AddressFamily_ipv4, nil
+		}
+
+		return pb.AddressFamily_ipv6, nil
+	}
+
+	return pb.AddressFamily_ipv4, fmt.Errorf("no valid IP addresses for %s", host)
 }
 
 // Config holds gateway client configuration.

@@ -38,24 +38,51 @@ func TestListenerDetailsSetDefaults(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "legacy defaults",
+			name: "hostname resolves to ipv4",
+			input: ListenerDetails{
+				Hostname: "192.0.2.1",
+			},
 			address: "0.0.0.0",
 			port:    4420,
 			family:  addressFamilyIPv4,
 		},
 		{
-			name:    "ipv4 wildcard",
-			input:   ListenerDetails{AddressFamily: addressFamilyIPv4},
-			address: "0.0.0.0",
-			port:    4420,
-			family:  addressFamilyIPv4,
-		},
-		{
-			name:    "ipv6 wildcard",
-			input:   ListenerDetails{AddressFamily: addressFamilyIPv6},
+			name: "hostname resolves to ipv6",
+			input: ListenerDetails{
+				Hostname: "2001:db8::1",
+			},
 			address: "::",
 			port:    4420,
 			family:  addressFamilyIPv6,
+		},
+		{
+			name: "ipv4 wildcard",
+			input: ListenerDetails{
+				Hostname:      "nvmeof-gw-a",
+				AddressFamily: addressFamilyIPv4,
+			},
+			address: "0.0.0.0",
+			port:    4420,
+			family:  addressFamilyIPv4,
+		},
+		{
+			name: "ipv6 wildcard",
+			input: ListenerDetails{
+				Hostname:      "nvmeof-gw-a",
+				AddressFamily: addressFamilyIPv6,
+			},
+			address: "::",
+			port:    4420,
+			family:  addressFamilyIPv6,
+		},
+		{
+			name: "unresolvable hostname falls back to ipv4",
+			input: ListenerDetails{
+				Hostname: "nvmeof-gw.invalid",
+			},
+			address: "0.0.0.0",
+			port:    4420,
+			family:  addressFamilyIPv4,
 		},
 		{
 			name: "infer ipv6",
@@ -112,6 +139,59 @@ func TestListenerDetailsSetDefaults(t *testing.T) {
 			require.Equal(t, test.port, listener.Port)
 			require.Equal(t, test.family, listener.AddressFamily)
 			require.NoError(t, listener.setDefaults())
+		})
+	}
+}
+
+func TestAddressFamilyFromAddresses(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		addresses []string
+		family    pb.AddressFamily
+		wantErr   bool
+	}{
+		{
+			name: "ipv4",
+			addresses: []string{
+				"192.0.2.1",
+			},
+			family: pb.AddressFamily_ipv4,
+		},
+		{
+			name: "ipv6",
+			addresses: []string{
+				"2001:db8::1",
+			},
+			family: pb.AddressFamily_ipv6,
+		},
+		{
+			name: "skip invalid address",
+			addresses: []string{
+				"invalid",
+				"2001:db8::1",
+			},
+			family: pb.AddressFamily_ipv6,
+		},
+		{
+			name: "no valid address",
+			addresses: []string{
+				"invalid",
+			},
+			wantErr: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			family, err := addressFamilyFromAddresses("gateway.example", test.addresses)
+			if test.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.family, family)
 		})
 	}
 }
