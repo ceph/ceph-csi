@@ -494,6 +494,59 @@ func Test_shouldRetryVolumeGeneration(t *testing.T) {
 	}
 }
 
+func Test_diffMetadata(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		desired  map[string]string
+		existing map[string]string
+		want     map[string]string
+	}{
+		{
+			name:     "all keys match",
+			desired:  map[string]string{"a": "1", "b": "2"},
+			existing: map[string]string{"a": "1", "b": "2"},
+			want:     map[string]string{},
+		},
+		{
+			name:     "some keys missing",
+			desired:  map[string]string{"a": "1", "b": "2"},
+			existing: map[string]string{"a": "1"},
+			want:     map[string]string{"b": "2"},
+		},
+		{
+			name:     "some keys differ",
+			desired:  map[string]string{"a": "1", "b": "2"},
+			existing: map[string]string{"a": "1", "b": "3"},
+			want:     map[string]string{"b": "2"},
+		},
+		{
+			name:     "nothing exists yet",
+			desired:  map[string]string{"a": "1"},
+			existing: map[string]string{},
+			want:     map[string]string{"a": "1"},
+		},
+		{
+			name:     "empty desired",
+			desired:  map[string]string{},
+			existing: map[string]string{"a": "1"},
+			want:     map[string]string{},
+		},
+		{
+			name:     "extra keys in existing are ignored",
+			desired:  map[string]string{"a": "1"},
+			existing: map[string]string{"a": "1", "b": "2"},
+			want:     map[string]string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, diffMetadata(tt.desired, tt.existing))
+		})
+	}
+}
+
 func TestVolumeInfo(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
