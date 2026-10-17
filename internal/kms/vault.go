@@ -31,6 +31,7 @@ import (
 	"github.com/libopenstorage/secrets/vault"
 
 	"github.com/ceph/ceph-csi/internal/util/file"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
 
 const (
@@ -69,10 +70,18 @@ Example JSON structure in the KMS config is,
 		"vaultPassphraseRoot": "/v1/secret",
 		"vaultPassphrasePath": "",
 		"vaultCAVerify": true,
-		"vaultCAFromSecret": "vault-ca"
+		"vaultCAFromSecret": "vault-ca-secret",
+		"vaultClientCertFromSecret": "vault-client-cert-secret",
+		"vaultClientCertKeyFromSecret": "vault-client-cert-secret"
 	},
 	...
 }.
+
+"vaultCAFromSecret", "vaultClientCertFromSecret", and "vaultClientCertKeyFromSecret"
+are Kubernetes Secret names in the CSI pod namespace. The CA cert is read from
+the "cert" field of the named Secret; the client cert from the "cert" field and
+the client key from the "key" field of their respective Secrets (cert and key
+may be in the same Secret or different Secrets).
 */
 
 type vaultConnection struct {
@@ -156,10 +165,11 @@ func setConfigBoolean(option *bool, config map[string]any, key string) error {
 // Destroy frees allocated resources. For a vaultConnection that means removing
 // the created temporary files.
 func (vc *vaultConnection) Destroy() {
-	if vc.vaultConfig != nil {
-		tmpFile, ok := vc.vaultConfig[api.EnvVaultCACert]
-		if ok {
-			// ignore error on failure to remove tmpfile (gosec complains)
+	if vc.vaultConfig == nil {
+		return
+	}
+	for _, key := range []string{api.EnvVaultCACert, api.EnvVaultClientCert, api.EnvVaultClientKey} {
+		if tmpFile, ok := vc.vaultConfig[key]; ok {
 			//nolint:forcetypeassert,errcheck // ignore error on failure to remove tmpfile
 			_ = os.Remove(tmpFile.(string))
 		}
@@ -298,6 +308,13 @@ func (vc *vaultConnection) initConnection(config map[string]any) error {
 // vc.connectVault().
 func (vc *vaultConnection) initCertificates(config map[string]any, secrets map[string]string) error {
 	vaultConfig := make(map[string]any)
+	csiNamespace := os.Getenv("POD_NAMESPACE")
+
+	// Merge vaultConfig into vc.vaultConfig eagerly on return so that any temp
+	// files created before a partial failure are tracked and cleaned up by Destroy().
+	defer func() {
+		maps.Copy(vc.vaultConfig, vaultConfig)
+	}()
 
 	vaultCAFromSecret := "" // optional
 	err := setConfigString(&vaultCAFromSecret, config, "vaultCAFromSecret")
@@ -306,19 +323,61 @@ func (vc *vaultConnection) initCertificates(config map[string]any, secrets map[s
 	}
 	// ignore errConfigOptionMissing, no default was set
 	if vaultCAFromSecret != "" {
-		caPEM, ok := secrets[vaultCAFromSecret]
-		if !ok {
-			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
+		cert, err := k8s.GetSecret(vaultCAFromSecret, csiNamespace)
+		if err != nil {
+			return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, err)
 		}
-
+		caPEM, ok := cert["cert"]
+		if !ok {
+			return fmt.Errorf("missing \"cert\" field in secret %s", vaultCAFromSecret)
+		}
 		tf, err := file.CreateTempFile("vault-ca-cert", caPEM)
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
 		}
 		vaultConfig[api.EnvVaultCACert] = tf.Name()
+	}
 
-		// update the existing config
-		maps.Copy(vc.vaultConfig, vaultConfig)
+	vaultClientCertFromSecret := "" // optional
+	err = setConfigString(&vaultClientCertFromSecret, config, "vaultClientCertFromSecret")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	if vaultClientCertFromSecret != "" {
+		certSecret, err := k8s.GetSecret(vaultClientCertFromSecret, csiNamespace)
+		if err != nil {
+			return fmt.Errorf("failed to get client certificate from secret %s: %w", vaultClientCertFromSecret, err)
+		}
+		certPEM, ok := certSecret["cert"]
+		if !ok {
+			return fmt.Errorf("missing \"cert\" field in secret %s", vaultClientCertFromSecret)
+		}
+		tf, err := file.CreateTempFile("vault-client-cert", certPEM)
+		if err != nil {
+			return fmt.Errorf("failed to create temporary file for Vault client certificate: %w", err)
+		}
+		vaultConfig[api.EnvVaultClientCert] = tf.Name()
+	}
+
+	vaultClientCertKeyFromSecret := "" // optional
+	err = setConfigString(&vaultClientCertKeyFromSecret, config, "vaultClientCertKeyFromSecret")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	if vaultClientCertKeyFromSecret != "" {
+		keySecret, err := k8s.GetSecret(vaultClientCertKeyFromSecret, csiNamespace)
+		if err != nil {
+			return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultClientCertKeyFromSecret, err)
+		}
+		keyPEM, ok := keySecret["key"]
+		if !ok {
+			return fmt.Errorf("missing \"key\" field in secret %s", vaultClientCertKeyFromSecret)
+		}
+		tf, err := file.CreateTempFile("vault-client-cert-key", keyPEM)
+		if err != nil {
+			return fmt.Errorf("failed to create temporary file for Vault client certificate key: %w", err)
+		}
+		vaultConfig[api.EnvVaultClientKey] = tf.Name()
 	}
 
 	return nil
