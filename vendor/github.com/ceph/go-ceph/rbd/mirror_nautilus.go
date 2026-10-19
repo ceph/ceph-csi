@@ -12,6 +12,7 @@ import "C"
 import (
 	"unsafe"
 
+	"github.com/ceph/go-ceph/internal/retry"
 	"github.com/ceph/go-ceph/rados"
 )
 
@@ -130,24 +131,21 @@ type MirrorPeerInfo struct {
 //	 												 rbd_mirror_peer_list_t *peers,
 //											 			 int *max_peers);
 func MirrorPeerList(ioctx *rados.IOContext) ([]*MirrorPeerInfo, error) {
-	var mpi []*MirrorPeerInfo
-	cMaxPeers := C.int(5)
-
-	var cPeers []C.rbd_mirror_peer_t
-	for {
+	var (
+		mpi       []*MirrorPeerInfo
+		cMaxPeers C.int
+		cPeers    []C.rbd_mirror_peer_t
+		err       error
+	)
+	retry.WithTries(5, 16, func(maxPeers int) retry.Hint {
+		cMaxPeers = C.int(maxPeers)
 		cPeers = make([]C.rbd_mirror_peer_t, cMaxPeers)
 		ret := C.rbd_mirror_peer_list(cephIoctx(ioctx), &cPeers[0], &cMaxPeers)
-		if ret == -C.ERANGE {
-			// There are too many peers to fit in the list, and the number of peers has been
-			// returned in cMaxPeers. Try again with the returned value.
-			continue
-		}
-		if ret != 0 {
-			return nil, getError(ret)
-		}
-
-		// ret == 0
-		break
+		err = getError(ret)
+		return retry.Size(int(cMaxPeers)).If(err == errRange)
+	})
+	if err != nil {
+		return nil, err
 	}
 	defer C.rbd_mirror_peer_list_cleanup(&cPeers[0], cMaxPeers)
 	cPeers = cPeers[:cMaxPeers]

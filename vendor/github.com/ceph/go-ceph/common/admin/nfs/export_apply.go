@@ -1,4 +1,4 @@
-//go:build !(nautilus || octopus || pacific || quincy) && ceph_preview
+//go:build !(nautilus || octopus || pacific || quincy)
 
 package nfs
 

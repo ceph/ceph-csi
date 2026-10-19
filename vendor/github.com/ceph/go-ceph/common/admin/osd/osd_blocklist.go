@@ -26,6 +26,11 @@ type networkList struct {
 	Until   expireTime `json:"until"`
 }
 
+type blocklistInfo struct {
+	Blocklist      []ipList      `json:"blocklist"`
+	RangeBlocklist []networkList `json:"range_blocklist"`
+}
+
 func (et *expireTime) UnmarshalText(data []byte) error {
 	t, err := time.Parse(layout, string(data))
 	if err != nil {
@@ -49,6 +54,25 @@ type Blocklist struct {
 
 func parseBlocklist(res response) (*[]Blocklist, error) {
 	var bl []Blocklist
+
+	// Newer monitors return proper JSON; fall back for older monitors.
+	var info blocklistInfo
+	if err := json.Unmarshal(res.Body(), &info); err == nil {
+		for _, i := range info.Blocklist {
+			bl = append(bl, Blocklist{
+				Addr:  i.IPAddr,
+				Until: i.Until.Time(),
+			})
+		}
+		for _, n := range info.RangeBlocklist {
+			bl = append(bl, Blocklist{
+				Addr:  n.Network,
+				Until: n.Until.Time(),
+			})
+		}
+
+		return &bl, nil
+	}
 
 	dec := json.NewDecoder(bytes.NewReader(res.Body()))
 
