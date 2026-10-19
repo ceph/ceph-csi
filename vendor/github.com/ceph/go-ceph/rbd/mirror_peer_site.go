@@ -165,25 +165,21 @@ type MirrorPeerSite struct {
 //
 //	int rbd_mirror_peer_site_list(rados_ioctx_t p, rbd_mirror_peer_site_t *peers, int *max_peers)
 func ListMirrorPeerSite(ioctx *rados.IOContext) ([]*MirrorPeerSite, error) {
-	var mps []*MirrorPeerSite
-	cMaxPeers := C.int(10)
-
-	var cSites []C.rbd_mirror_peer_site_t
-	for {
+	var (
+		mps       []*MirrorPeerSite
+		cMaxPeers C.int
+		cSites    []C.rbd_mirror_peer_site_t
+		err       error
+	)
+	retry.WithTries(10, 16, func(maxPeers int) retry.Hint {
+		cMaxPeers = C.int(maxPeers)
 		cSites = make([]C.rbd_mirror_peer_site_t, cMaxPeers)
 		ret := C.rbd_mirror_peer_site_list(cephIoctx(ioctx), &cSites[0], &cMaxPeers)
-		err := getError(ret)
-		if err == errRange {
-			// There are too many peer sites to fit in the list, and the number of peer sites has been
-			// returned in cMaxPeers. Try again with the returned value.
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		// ret == 0
-		break
+		err = getError(ret)
+		return retry.Size(int(cMaxPeers)).If(err == errRange)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	defer C.rbd_mirror_peer_site_list_cleanup(&cSites[0], cMaxPeers)

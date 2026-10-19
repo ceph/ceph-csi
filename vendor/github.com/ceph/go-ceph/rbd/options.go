@@ -1,6 +1,7 @@
 package rbd
 
 // #cgo LDFLAGS: -lrbd
+// #include <errno.h>
 // #include <stdlib.h>
 // #include <rbd/librbd.h>
 import "C"
@@ -8,6 +9,8 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/retry"
 )
 
 const (
@@ -142,11 +145,17 @@ func (rio *ImageOptions) SetString(option ImageOption, value string) error {
 //	int rbd_image_options_get_string(rbd_image_options_t opts, int optname,
 //	        char* optval, size_t maxlen);
 func (rio *ImageOptions) GetString(option ImageOption) (string, error) {
-	value := make([]byte, 4096)
-
-	ret := C.rbd_image_options_get_string(rio.options, C.int(option),
-		(*C.char)(unsafe.Pointer(&value[0])),
-		C.size_t(len(value)))
+	var (
+		value []byte
+		ret   C.int
+	)
+	retry.WithSizes(4096, 1<<18, func(size int) retry.Hint {
+		value = make([]byte, size)
+		ret = C.rbd_image_options_get_string(rio.options, C.int(option),
+			(*C.char)(unsafe.Pointer(&value[0])),
+			C.size_t(len(value)))
+		return retry.DoubleSize.If(ret == -C.E2BIG)
+	})
 	if ret != 0 {
 		return "", fmt.Errorf("%v, could not get option %v", getError(ret), option)
 	}

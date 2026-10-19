@@ -144,7 +144,7 @@ func (image *Image) ListChildren() (pools []string, images []string, err error) 
 		csize    C.size_t
 		children []C.rbd_linked_image_spec_t
 	)
-	retry.WithSizes(16, 4096, func(size int) retry.Hint {
+	retry.WithTries(1024, 16, func(size int) retry.Hint {
 		csize = C.size_t(size)
 		children = make([]C.rbd_linked_image_spec_t, csize)
 		ret := C.rbd_list_children3(
@@ -183,7 +183,7 @@ func (image *Image) ListChildrenAttributes() (imgSpec []ImageSpec, err error) {
 		csize    C.size_t
 		children []C.rbd_linked_image_spec_t
 	)
-	retry.WithSizes(16, 4096, func(size int) retry.Hint {
+	retry.WithTries(1024, 16, func(size int) retry.Hint {
 		csize = C.size_t(size)
 		children = make([]C.rbd_linked_image_spec_t, csize)
 		ret := C.rbd_list_children3(

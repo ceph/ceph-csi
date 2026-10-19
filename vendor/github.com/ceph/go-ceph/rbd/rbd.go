@@ -942,30 +942,30 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 		return nil, err
 	}
 
-	var cMaxSnaps C.int
-
-	ret := C.rbd_snap_list(image.image, nil, &cMaxSnaps)
-	// bugfix index out of range(&cSnaps[0])
-	if cMaxSnaps < 1 {
-		return nil, getError(ret)
+	var (
+		cMaxSnaps C.int
+		cSnaps    []C.rbd_snap_info_t
+		ret       C.int
+	)
+	retry.WithTries(1, 16, func(size int) retry.Hint {
+		cMaxSnaps = C.int(size)
+		cSnaps = make([]C.rbd_snap_info_t, cMaxSnaps)
+		ret = C.rbd_snap_list(image.image, &cSnaps[0], &cMaxSnaps)
+		err = getErrorIfNegative(ret)
+		return retry.Size(int(cMaxSnaps)).If(err == errRange)
+	})
+	if err != nil {
+		return nil, err
 	}
-	cSnaps := make([]C.rbd_snap_info_t, cMaxSnaps)
-	snaps = make([]SnapInfo, cMaxSnaps)
+	defer C.rbd_snap_list_end(&cSnaps[0])
 
-	ret = C.rbd_snap_list(image.image,
-		&cSnaps[0], &cMaxSnaps)
-	if ret < 0 {
-		return nil, getError(ret)
-	}
-
-	for i, s := range cSnaps {
+	snaps = make([]SnapInfo, ret)
+	for i, s := range cSnaps[:ret] {
 		snaps[i] = SnapInfo{Id: uint64(s.id),
 			Size: uint64(s.size),
 			Name: C.GoString(s.name)}
 	}
-
-	C.rbd_snap_list_end(&cSnaps[0])
-	return snaps[:len(snaps)-1], nil
+	return snaps, nil
 }
 
 // GetId returns the internal image ID string.
@@ -1028,7 +1028,7 @@ func GetTrashList(ioctx *rados.IOContext) ([]TrashInfo, error) {
 		count   C.size_t
 		entries []C.rbd_trash_image_info_t
 	)
-	retry.WithSizes(32, 10240, func(size int) retry.Hint {
+	retry.WithTries(4096, 16, func(size int) retry.Hint {
 		count = C.size_t(size)
 		entries = make([]C.rbd_trash_image_info_t, count)
 		ret := C.rbd_trash_list(cephIoctx(ioctx), &entries[0], &count)
