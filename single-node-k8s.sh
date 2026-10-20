@@ -176,4 +176,12 @@ deploy_rook
 # running e2e.test requires librados and librbd
 dnf -y install librados2 librbd1
 
+# install the btrfs kernel module from the CentOS Kmods SIG
+if [ "${VM_DRIVER}" = 'podman' ]
+then
+    dnf -y install centos-release-kmods
+    dnf -y install kmod-btrfs
+    modprobe btrfs
+fi
+
 # now it is time to run the e2e tests!
