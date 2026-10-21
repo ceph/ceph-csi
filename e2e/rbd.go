@@ -1643,7 +1643,18 @@ var _ = Describe("RBD", func() {
 		})
 
 		It("create a PVC and bind it to an app with btrfs as the FS", Label("acceptance"), func() {
-			err := deleteResource(rbdExamplePath + "storageclass.yaml")
+			supported, err := isFilesystemSupportedByDaemonset(
+				f, cephCSINamespace, rbdDeployment.getDaemonsetName(), rbdContainerName, "btrfs")
+			if err != nil {
+				logAndFail("failed to check for btrfs support: %v", err)
+			}
+			if !supported {
+				framework.Logf("kernel does not support btrfs, skipping btrfs test")
+
+				return
+			}
+
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
 			if err != nil {
 				logAndFail("failed to delete storageclass: %v", err)
 			}
