@@ -562,6 +562,16 @@ func (ns *NodeServer) stageTransaction(
 	}
 	transaction.isMounted = true
 
+	// A volume restored from a snapshot or cloned to a bigger size carries the
+	// old (smaller) filesystem, grow it if the device is bigger. Block volumes
+	// have no filesystem and a read-only filesystem can not be resized.
+	if !isBlock && !csicommon.IsReaderOnly([]*csi.VolumeCapability{req.GetVolumeCapability()}) {
+		err = resizeStagePath(utilexec.New(), devicePath, stagingTargetPath)
+		if err != nil {
+			return transaction, err
+		}
+	}
+
 	// Resolve real device and update cache
 	realDevice, err := nvmeutil.GetDeviceFromMountpoint(ctx, stagingTargetPath)
 	if err != nil {
@@ -873,6 +883,24 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	}
 
 	return err
+}
+
+// resizeStagePath grows the filesystem on devicePath to fill the device, if required.
+func resizeStagePath(exec utilexec.Interface, devicePath, stagingPath string) error {
+	resizer := mount.NewResizeFs(exec)
+	ok, err := resizer.NeedResize(devicePath, stagingPath)
+	if err != nil {
+		return fmt.Errorf("need resize check failed on device %s and staging path %s: %w",
+			devicePath, stagingPath, err)
+	}
+	if !ok {
+		return nil
+	}
+	if ok, err = resizer.Resize(devicePath, stagingPath); !ok {
+		return fmt.Errorf("resize failed on staging path %s: %w", stagingPath, err)
+	}
+
+	return nil
 }
 
 // initNVMeMountedDevices initializes the mount cache with currently mounted NVMe devices on startup.
