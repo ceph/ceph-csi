@@ -20,6 +20,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/ceph/go-ceph/rados"
 
@@ -41,13 +43,16 @@ func appendClsString(buf []byte, s string) []byte {
 	return append(buf, s...)
 }
 
-// encodeClsMetadataSet encodes a map<string,bufferlist> with a single entry,
-// the input of the cls_rbd metadata_set method.
-func encodeClsMetadataSet(key, value string) []byte {
-	buf := binary.LittleEndian.AppendUint32(nil, 1)
-	buf = appendClsString(buf, key)
+// encodeClsMetadataSet encodes pairs as a map<string,bufferlist>, the input of
+// the cls_rbd metadata_set method. Keys are sorted for a stable encoding.
+func encodeClsMetadataSet(pairs map[string]string) []byte {
+	buf := binary.LittleEndian.AppendUint32(nil, uint32(len(pairs)))
+	for _, k := range slices.Sorted(maps.Keys(pairs)) {
+		buf = appendClsString(buf, k)
+		buf = appendClsString(buf, pairs[k])
+	}
 
-	return appendClsString(buf, value)
+	return buf
 }
 
 // encodeClsMetadataRemove encodes the input of the cls_rbd metadata_remove

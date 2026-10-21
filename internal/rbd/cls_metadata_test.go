@@ -29,7 +29,20 @@ func TestEncodeClsMetadataSet(t *testing.T) {
 		3, 0, 0, 0, 'k', 'e', 'y',
 		2, 0, 0, 0, 'v', 'v',
 	}
-	if got := encodeClsMetadataSet("key", "vv"); !bytes.Equal(got, want) {
+	if got := encodeClsMetadataSet(map[string]string{"key": "vv"}); !bytes.Equal(got, want) {
+		t.Errorf("encodeClsMetadataSet() = %v, want %v", got, want)
+	}
+}
+
+func TestEncodeClsMetadataSetMultiple(t *testing.T) {
+	t.Parallel()
+
+	want := []byte{
+		2, 0, 0, 0, // count
+		1, 0, 0, 0, 'a', 1, 0, 0, 0, '1',
+		1, 0, 0, 0, 'b', 0, 0, 0, 0,
+	}
+	if got := encodeClsMetadataSet(map[string]string{"b": "", "a": "1"}); !bytes.Equal(got, want) {
 		t.Errorf("encodeClsMetadataSet() = %v, want %v", got, want)
 	}
 }

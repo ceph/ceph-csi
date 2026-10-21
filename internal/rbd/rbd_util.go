@@ -2298,7 +2298,7 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 	// conf_ keys are validated and applied live by librbd, others go
 	// directly to the header object and avoid the exclusive lock.
 	if !strings.HasPrefix(key, metadataConfPrefix) {
-		return ri.clsMetadataOp(clsMetadataSet, encodeClsMetadataSet(key, value))
+		return ri.clsMetadataOp(clsMetadataSet, encodeClsMetadataSet(map[string]string{key: value}))
 	}
 
 	image, err := ri.open()
@@ -2631,14 +2631,26 @@ func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
 		return nil
 	}
 
-	image, err := rv.open()
-	if err != nil {
-		return err
-	}
-	defer image.Close() //nolint:errcheck // not a critical failure
-
+	// all non-conf keys are set with a single cls call, conf keys need librbd
+	confKeys := make(map[string]string)
+	clsKeys := make(map[string]string, len(mismatched))
 	for k, v := range mismatched {
-		err := image.SetMetadata(k, v)
+		if strings.HasPrefix(k, metadataConfPrefix) {
+			confKeys[k] = v
+		} else {
+			clsKeys[k] = v
+		}
+	}
+
+	if len(clsKeys) > 0 {
+		err = rv.clsMetadataOp(clsMetadataSet, encodeClsMetadataSet(clsKeys))
+		if err != nil {
+			return fmt.Errorf("failed to set metadata keys %v on image %q: %w", slices.Sorted(maps.Keys(clsKeys)), rv, err)
+		}
+	}
+
+	for k, v := range confKeys {
+		err = rv.SetMetadata(k, v)
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)
 		}
@@ -2662,16 +2674,10 @@ func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
 		return nil
 	}
 
-	image, err := rv.open()
-	if err != nil {
-		return err
-	}
-	defer image.Close() //nolint:errcheck // not a critical failure
-
 	for k := range existing {
-		// a key may get removed concurrently between the read-only and
-		// read-write open, treat that as success
-		err := image.RemoveMetadata(k)
+		// a key may get removed concurrently after the read, treat that as
+		// success
+		err := rv.RemoveMetadata(k)
 		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
 			return fmt.Errorf("failed to unset metadata key %q on %q: %w", k, rv, err)
 		}
