@@ -2295,6 +2295,12 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 	if err == nil && existingVal == value {
 		return nil
 	}
+	// conf_ keys are validated and applied live by librbd, others go
+	// directly to the header object and avoid the exclusive lock.
+	if !strings.HasPrefix(key, metadataConfPrefix) {
+		return ri.clsMetadataOp(clsMetadataSet, encodeClsMetadataSet(key, value))
+	}
+
 	image, err := ri.open()
 	if err != nil {
 		return err
@@ -2315,6 +2321,10 @@ func (ri *rbdImage) RemoveMetadata(key string) error {
 		return nil
 	case err != nil:
 		return err
+	}
+
+	if !strings.HasPrefix(key, metadataConfPrefix) {
+		return ri.clsMetadataOp(clsMetadataRm, encodeClsMetadataRemove(key))
 	}
 
 	image, err := ri.open()
