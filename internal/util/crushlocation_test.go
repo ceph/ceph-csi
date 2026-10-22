@@ -121,3 +121,37 @@ func Test_getCrushLocationMap(t *testing.T) {
 		})
 	}
 }
+
+func TestParseCrushLocation(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		in      string
+		want    map[string]string
+		wantErr bool
+	}{
+		{name: "empty", in: "", want: nil},
+		{name: "single", in: "region:eu", want: map[string]string{"region": "eu"}},
+		{
+			name: "multiple",
+			in:   "region:eu,datacenter:ams",
+			want: map[string]string{"region": "eu", "datacenter": "ams"},
+		},
+		{name: "missing value", in: "region:", wantErr: true},
+		{name: "missing separator", in: "region", wantErr: true},
+		{name: "empty entry", in: "region:eu,", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := ParseCrushLocation(tt.in)
+			if tt.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}

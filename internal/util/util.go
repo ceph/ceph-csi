@@ -168,6 +168,9 @@ type Config struct {
 	EnableReadAffinity  bool   // enable OSD read affinity.
 	CrushLocationLabels string // list of CRUSH location labels to read from the node.
 
+	// CrushLocation is the parsed value of --crush-location, used instead of the node labels when set.
+	CrushLocation map[string]string
+
 	// FeatureGates is a comma-separated list of key=bool pairs (e.g., SlowGRPCRestart=false).
 	FeatureGates string
 }
