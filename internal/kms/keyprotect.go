@@ -17,12 +17,18 @@ limitations under the License.
 package kms
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
+	"time"
 
-	kp "github.com/IBM/keyprotect-go-client"
+	"github.com/IBM/go-sdk-core/v5/core"
+	kp "github.com/IBM/keyprotect-go-client/ibmkeyprotectapiv2"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 )
@@ -53,6 +59,14 @@ const (
 	KeyProtectCustomerRootKey = "IBM_KP_CUSTOMER_ROOT_KEY"
 	keyProtectSessionToken    = "IBM_KP_SESSION_TOKEN" //nolint:gosec // only configuration key
 	keyProtectCRK             = "IBM_KP_CRK_ARN"
+
+	// keyProtectDefaultTokenURL is the IAM token endpoint.
+	keyProtectDefaultTokenURL = "https://iam.cloud.ibm.com/oidc/token" //nolint:gosec // only the IAM token endpoint
+	keyProtectIAMTokenPath    = "/oidc/token"
+
+	// retry settings matching the old client.
+	keyProtectRetryMax     = 4
+	keyProtectRetryWaitMax = 30 * time.Second
 )
 
 var _ = RegisterProvider(Provider{
@@ -67,7 +81,7 @@ type keyProtectKMS struct {
 	secretName string
 
 	// standard KeyProtect configuration options
-	client            *kp.Client
+	client            *kp.IbmKeyProtectApiV2
 	serviceAPIKey     string
 	customerRootKey   string
 	serviceInstanceID string
@@ -99,14 +113,14 @@ func initKeyProtectKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	if errors.Is(err, errConfigOptionInvalid) {
 		return nil, err
 	} else if errors.Is(err, errConfigOptionMissing) {
-		kms.baseURL = kp.DefaultBaseURL
+		kms.baseURL = kp.DefaultServiceURL
 	}
 
 	err = setConfigString(&kms.tokenURL, args.Config, keyProtectServiceTokenURL)
 	if errors.Is(err, errConfigOptionInvalid) {
 		return nil, err
 	} else if errors.Is(err, errConfigOptionMissing) {
-		kms.tokenURL = kp.DefaultTokenURL
+		kms.tokenURL = keyProtectDefaultTokenURL
 	}
 
 	// read the Kubernetes Secret with credentials
@@ -154,23 +168,49 @@ func (kms *keyProtectKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 
+// keyActionRequest is the body of the KeyProtect `wrap` and `unwrap` key
+// actions. The v2 SDK passes the body through as an opaque
+// io.ReadCloser, so it has to be marshaled here.
+type keyActionRequest struct {
+	Plaintext  string   `json:"plaintext,omitempty"`
+	Ciphertext string   `json:"ciphertext,omitempty"`
+	AAD        []string `json:"aad,omitempty"`
+}
+
+func (r keyActionRequest) body() (io.ReadCloser, error) {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode the key action request: %w", err)
+	}
+
+	return io.NopCloser(bytes.NewReader(data)), nil
+}
+
 // EncryptDEK uses the KeyProtect KMS and the configured CRK to encrypt the DEK.
 func (kms *keyProtectKMS) EncryptDEK(ctx context.Context, volumeID, plainDEK string) (string, error) {
 	if err := kms.getService(); err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
 	}
 
-	dekByteSlice := []byte(plainDEK)
-	aadVolID := []string{volumeID}
-	result, err := kms.client.Wrap(ctx, kms.customerRootKey, dekByteSlice, &aadVolID)
+	body, err := keyActionRequest{Plaintext: plainDEK, AAD: []string{volumeID}}.body()
+	if err != nil {
+		return "", err
+	}
+
+	opts := kms.client.NewWrapKeyOptions(kms.customerRootKey, kms.serviceInstanceID)
+	opts.SetKeyActionWrapBody(body)
+
+	result, _, err := kms.client.WrapKeyWithContext(ctx, opts)
 	if err != nil {
 		return "", fmt.Errorf("failed to wrap the DEK: %w", err)
 	}
+	if result == nil || result.Ciphertext == nil {
+		return "", errors.New("failed to wrap the DEK: no ciphertext in the response")
+	}
 
-	// base64 encode the encrypted DEK, so that storing it should not have
-	// issues
-
-	return base64.StdEncoding.EncodeToString(result), nil
+	// KeyProtect returns the ciphertext base64 encoded already, base64 encode
+	// it once more to stay compatible with the older client.
+	return base64.StdEncoding.EncodeToString([]byte(*result.Ciphertext)), nil
 }
 
 // DecryptDEK uses the Key protect KMS and the configured CRK to decrypt the DEK.
@@ -185,13 +225,22 @@ func (kms *keyProtectKMS) DecryptDEK(ctx context.Context, volumeID, encryptedDEK
 			err)
 	}
 
-	aadVolID := []string{volumeID}
-	result, err := kms.client.Unwrap(ctx, kms.customerRootKey, ciphertextBlob, &aadVolID)
+	body, err := keyActionRequest{Ciphertext: string(ciphertextBlob), AAD: []string{volumeID}}.body()
+	if err != nil {
+		return "", err
+	}
+
+	opts := kms.client.NewUnwrapKeyOptions(kms.customerRootKey, kms.serviceInstanceID, body)
+
+	result, _, err := kms.client.UnwrapKeyWithContext(ctx, opts)
 	if err != nil {
 		return "", fmt.Errorf("failed to unwrap the DEK: %w", err)
 	}
+	if result == nil || result.Plaintext == nil {
+		return "", errors.New("failed to unwrap the DEK: no plaintext in the response")
+	}
 
-	return string(result), nil
+	return *result.Plaintext, nil
 }
 
 func (kms *keyProtectKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
@@ -220,19 +269,23 @@ func (kms *keyProtectKMS) getSecrets() (map[string]any, error) {
 }
 
 func (kms *keyProtectKMS) getService() error {
-	// Use your Service API Key and your KeyProtect Service Instance ID to create a ClientConfig
-	cc := kp.ClientConfig{
-		BaseURL:    kms.baseURL,
-		TokenURL:   kms.tokenURL,
-		APIKey:     kms.serviceAPIKey,
-		InstanceID: kms.serviceInstanceID,
+	authenticator := &core.IamAuthenticator{
+		ApiKey: kms.serviceAPIKey,
+		// Requires the base IAM endpoint, trim the oidc token suffix.
+		URL: strings.TrimSuffix(kms.tokenURL, keyProtectIAMTokenPath),
 	}
 
-	// Build a new client from the config
-	client, err := kp.New(cc, kp.DefaultTransport())
+	// Build a new client, the Instance ID is passed with
+	// every request in the headers.
+	client, err := kp.NewIbmKeyProtectApiV2(&kp.IbmKeyProtectApiV2Options{
+		URL:           kms.baseURL,
+		Authenticator: authenticator,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create keyprotect client: %w", err)
 	}
+
+	client.Service.EnableRetries(keyProtectRetryMax, keyProtectRetryWaitMax)
 	kms.client = client
 
 	return nil
