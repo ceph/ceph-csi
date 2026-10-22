@@ -57,7 +57,12 @@ const (
 	defaultStagingPath = defaultPluginPath + "/kubernetes.io/csi/"
 )
 
-var conf util.Config
+var (
+	conf util.Config
+
+	// crushLocation is the raw value of --crush-location, parsed into conf.CrushLocation.
+	crushLocation string
+)
 
 func init() {
 	// common flags
@@ -90,6 +95,12 @@ func init() {
 		"",
 		"list of Kubernetes node labels, that determines the"+
 			" CRUSH location the node belongs to, separated by ','")
+	flag.StringVar(
+		&crushLocation,
+		"crush-location",
+		"",
+		"CRUSH location of the node, used instead of the node labels, "+
+			"in the format \"type:value,type:value\" (e.g. \"region:eu,datacenter:ams\")")
 
 	// cephfs related flags
 	flag.BoolVar(
@@ -213,12 +224,18 @@ func main() {
 		logAndExit(err.Error())
 	}
 
+	var err error
+	conf.CrushLocation, err = util.ParseCrushLocation(crushLocation)
+	if err != nil {
+		logAndExit(err.Error())
+	}
+
 	if conf.Vtype == "" {
 		logAndExit("driver type not specified")
 	}
 
 	dname := getDriverName()
-	err := util.ValidateDriverName(dname)
+	err = util.ValidateDriverName(dname)
 	if err != nil {
 		logAndExit(err.Error())
 	}

@@ -38,7 +38,12 @@ const (
 // GetTopologyFromDomainLabels returns the CSI topology map, determined from
 // the domain labels and their values from the CO system
 // Expects domainLabels in arg to be in the format "[prefix/]<name>,[prefix/]<name>,...",.
-func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map[string]string, error) {
+// When crushLocation is not empty, it is used as the node labels instead of
+// reading the labels of the node from the CO system.
+func GetTopologyFromDomainLabels(
+	domainLabels, nodeName, driverName string,
+	crushLocation map[string]string,
+) (map[string]string, error) {
 	if domainLabels == "" {
 		return nil, nil
 	}
@@ -68,9 +73,13 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 		labelCount++
 	}
 
-	nodeLabels, err := k8s.GetNodeLabels(nodeName)
-	if err != nil {
-		return nil, err
+	nodeLabels := crushLocation
+	if len(nodeLabels) == 0 {
+		var err error
+		nodeLabels, err = k8s.GetNodeLabels(nodeName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Determine values for requested labels from node labels

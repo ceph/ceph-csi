@@ -17,10 +17,32 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
+
+// ParseCrushLocation parses a crush location string in the format
+// "type:value,type:value,..." (e.g. "region:eu,datacenter:ams") into a map.
+// An empty string results in a nil map.
+func ParseCrushLocation(crushLocation string) (map[string]string, error) {
+	if crushLocation == "" {
+		return nil, nil
+	}
+
+	m := make(map[string]string)
+	for kv := range strings.SplitSeq(crushLocation, labelSeparator) {
+		key, value, ok := strings.Cut(kv, ":")
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if !ok || key == "" || value == "" {
+			return nil, fmt.Errorf("invalid crush location %q, expected format <type>:<value>", kv)
+		}
+		m[key] = value
+	}
+
+	return m, nil
+}
 
 // GetCrushLocationMap returns the crush location map, determined from
 // the crush location labels and their values from the node labels passed in arg.
