@@ -24,6 +24,7 @@ import (
 	"slices"
 
 	"github.com/ceph/go-ceph/rados"
+	librbd "github.com/ceph/go-ceph/rbd"
 
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 )
@@ -81,9 +82,15 @@ func (ri *rbdImage) clsMetadataOp(method string, in []byte) error {
 	op.Exec(clsRBD, method, in)
 
 	err = op.Operate(ri.ioctx, rbdHeaderPrefix+ri.ImageID, rados.OperationNoFlag)
-	if errors.Is(err, rados.ErrNotFound) {
+	if isClsNotFound(err) {
 		return fmt.Errorf("%w: image %q: %w", rbderrors.ErrImageNotFound, ri, err)
 	}
 
 	return err
+}
+
+// isClsNotFound reports whether err is the ENOENT of a cls call, either as the
+// rados or as the librbd sentinel.
+func isClsNotFound(err error) bool {
+	return errors.Is(err, rados.ErrNotFound) || errors.Is(err, librbd.ErrNotFound)
 }

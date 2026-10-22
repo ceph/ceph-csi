@@ -18,7 +18,12 @@ package rbd
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/ceph/go-ceph/rados"
+	librbd "github.com/ceph/go-ceph/rbd"
 )
 
 func TestEncodeClsMetadataSet(t *testing.T) {
@@ -56,5 +61,31 @@ func TestEncodeClsMetadataRemove(t *testing.T) {
 	}
 	if got := encodeClsMetadataRemove(""); !bytes.Equal(got, []byte{0, 0, 0, 0}) {
 		t.Errorf("encodeClsMetadataRemove(\"\") = %v", got)
+	}
+}
+
+func TestIsClsNotFound(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "nil", err: nil, want: false},
+		{name: "rados ENOENT", err: rados.ErrNotFound, want: true},
+		{name: "wrapped rados ENOENT", err: fmt.Errorf("op: %w", rados.ErrNotFound), want: true},
+		{name: "librbd ENOENT", err: librbd.ErrNotFound, want: true},
+		{name: "wrapped librbd ENOENT", err: fmt.Errorf("op: %w", librbd.ErrNotFound), want: true},
+		{name: "other error", err: errors.New("op failed"), want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isClsNotFound(tt.err); got != tt.want {
+				t.Errorf("isClsNotFound() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
