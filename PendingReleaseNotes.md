@@ -23,6 +23,12 @@
    context, failback to volume context for backward compatibility when node-server
    is updated, but provisioner is not.
 
+1. Added the `--crush-location` flag for the RBD and CephFS drivers. It takes
+   the CRUSH location of a node in the format `type:value,type:value` and is
+   used instead of the Kubernetes node labels when resolving `--domainlabels`.
+   This makes topology usable on non-Kubernetes clusters, by specifying the
+   labels for an instance directly.
+
 ## NOTE
 
 - The `--setmetadata` flag has been removed. The flag was deprecated in
