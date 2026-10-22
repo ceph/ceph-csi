@@ -57,7 +57,12 @@ const (
 	defaultStagingPath = defaultPluginPath + "/kubernetes.io/csi/"
 )
 
-var conf util.Config
+var (
+	conf util.Config
+
+	// topologyLabels is the raw value of --topology-labels, parsed into conf.TopologyLabels.
+	topologyLabels string
+)
 
 func init() {
 	// common flags
@@ -91,6 +96,13 @@ func init() {
 		"",
 		"list of Kubernetes node labels, that determines the"+
 			" CRUSH location the node belongs to, separated by ','")
+	flag.StringVar(
+		&topologyLabels,
+		"topology-labels",
+		"",
+		"labels of the node, used instead of the Kubernetes node labels to determine the topology domains, "+
+			"in the format \"label:value,label:value\" (e.g. \"failure-domain/region:eu,failure-domain/zone:ams\"). "+
+			"Unless --domainlabels is set, all labels are used as domain labels")
 
 	// cephfs related flags
 	flag.BoolVar(
@@ -214,12 +226,18 @@ func main() {
 		logAndExit(err.Error())
 	}
 
+	var err error
+	conf.TopologyLabels, err = util.ParseTopologyLabels(topologyLabels)
+	if err != nil {
+		logAndExit(err.Error())
+	}
+
 	if conf.Vtype == "" {
 		logAndExit("driver type not specified")
 	}
 
 	dname := getDriverName()
-	err := util.ValidateDriverName(dname)
+	err = util.ValidateDriverName(dname)
 	if err != nil {
 		logAndExit(err.Error())
 	}
