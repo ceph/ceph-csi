@@ -667,6 +667,29 @@ func validateInodeCount(pvcPath string, f *framework.Framework, inodes int) erro
 	return validateNormalUserPVCAccessFunc(pvcPath, f, countInodes)
 }
 
+// validateFilesystemType creates a PVC and an application that mounts it, and
+// checks that the filesystem on the volume is of the expected type.
+func validateFilesystemType(pvcPath string, f *framework.Framework, fsType string) error {
+	checkFsType := func(ns string, opts *metav1.ListOptions) error {
+		stdOut, stdErr, err := execCommandInPod(f, "stat -f -c %T /target", ns, opts)
+		if err != nil {
+			return fmt.Errorf("failed to exec command in pod: %w", err)
+		}
+		if stdErr != "" {
+			return fmt.Errorf("failed to get filesystem type in pod: %v", stdErr)
+		}
+
+		actual := strings.TrimSpace(stdOut)
+		if actual != fsType {
+			return fmt.Errorf("expected filesystem type %q, found %q on volume", fsType, actual)
+		}
+
+		return nil
+	}
+
+	return validateNormalUserPVCAccessFunc(pvcPath, f, checkFsType)
+}
+
 func validateNormalUserPVCAccessFunc(
 	pvcPath string,
 	f *framework.Framework,
