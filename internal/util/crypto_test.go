@@ -28,12 +28,14 @@ import (
 
 func TestGenerateNewEncryptionPassphrase(t *testing.T) {
 	t.Parallel()
+	// KMS providers like KeyProtect reject a passphrase that is not
+	// standard base64.
 	b64Passphrase, err := generateNewEncryptionPassphrase(defaultEncryptionPassphraseSize)
 	require.NoError(t, err)
 
-	// b64Passphrase is URL-encoded, decode to verify the length of the
-	// passphrase
-	passphrase, err := base64.URLEncoding.DecodeString(b64Passphrase)
+	// b64Passphrase is standard base64, decode to verify the
+	// length of the passphrase
+	passphrase, err := base64.StdEncoding.DecodeString(b64Passphrase)
 	require.NoError(t, err)
 	require.Len(t, passphrase, defaultEncryptionPassphraseSize)
 }
