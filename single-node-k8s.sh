@@ -182,7 +182,7 @@ then
     # this may fail, it is not fatal, btrfs tests would not run
     (
         dnf -y install centos-release-kmods && \
-        dnf -y install kmod-btrfs && \
+        dnf -y install "/lib/modules/$(uname -r)/extra/fs/btrfs.ko.xz" && \
         modprobe btrfs
     ) || true
 fi
