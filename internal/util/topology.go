@@ -19,9 +19,12 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"k8s.io/apimachinery/pkg/api/validate/content"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -35,10 +38,80 @@ const (
 	topologyPoolsParam = "topologyConstrainedPools"
 )
 
+// ParseTopologyLabels parses a string in the format "label:value,label:value,..."
+// (e.g. "failure-domain/region:eu,failure-domain/zone:ams") into a map.
+// An empty string results in a nil map. Entries with a blank value are
+// discarded with a warning, so that callers can pass unset variables.
+// Keys and values are validated like Kubernetes label keys and values.
+func ParseTopologyLabels(topologyLabels string) (map[string]string, error) {
+	if topologyLabels == "" {
+		return nil, nil
+	}
+
+	m := make(map[string]string)
+	for kv := range strings.SplitSeq(topologyLabels, labelSeparator) {
+		key, value, ok := strings.Cut(kv, ":")
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if !ok || key == "" {
+			return nil, fmt.Errorf("invalid topology label %q, expected format <label>:<value>", kv)
+		}
+		if errs := content.IsLabelKey(key); len(errs) > 0 {
+			return nil, fmt.Errorf("invalid topology label key %q: %s", key, strings.Join(errs, "; "))
+		}
+		if value == "" {
+			log.WarningLogMsg("ignoring topology label %q with a blank value", key)
+
+			continue
+		}
+		if errs := content.IsLabelValue(value); len(errs) > 0 {
+			return nil, fmt.Errorf("invalid value %q for topology label %q: %s", value, key, strings.Join(errs, "; "))
+		}
+		m[key] = value
+	}
+
+	return m, nil
+}
+
+// GetNodeLabels returns the labels of the node. The labels passed with
+// --topology-labels (topologyLabels) are used when set (non-nil, even if
+// empty), otherwise the labels are read from the Kubernetes node object when
+// running on Kubernetes.
+func GetNodeLabels(nodeName string, topologyLabels map[string]string) (map[string]string, error) {
+	if topologyLabels != nil {
+		return topologyLabels, nil
+	}
+	if k8s.RunsOnKubernetes() {
+		return k8s.GetNodeLabels(nodeName)
+	}
+
+	return nil, nil
+}
+
 // GetTopologyFromDomainLabels returns the CSI topology map, determined from
 // the domain labels and their values from the CO system
 // Expects domainLabels in arg to be in the format "[prefix/]<name>,[prefix/]<name>,...",.
-func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map[string]string, error) {
+// When topologyLabels is not nil, it is used as the node labels instead of
+// reading the labels of the node from the CO system. The keys of topologyLabels
+// are matched as-is against domainLabels (including their prefix). If
+// domainLabels is empty, all keys of topologyLabels are used as domain labels,
+// which fails when different keys have the same name after removing the prefix.
+func GetTopologyFromDomainLabels(
+	domainLabels, nodeName, driverName string,
+	topologyLabels map[string]string,
+) (map[string]string, error) {
+	if domainLabels == "" && len(topologyLabels) > 0 {
+		keys := slices.Sorted(maps.Keys(topologyLabels))
+		domains := make(map[string]string, len(keys))
+		for _, key := range keys {
+			domain := key[strings.IndexRune(key, keySeparator)+1:]
+			if other, ok := domains[domain]; ok {
+				return nil, fmt.Errorf("topology labels %q and %q both result in topology domain %q, "+
+					"use --domainlabels to select one of them", other, key, domain)
+			}
+			domains[domain] = key
+		}
+		domainLabels = strings.Join(keys, labelSeparator)
+	}
 	if domainLabels == "" {
 		return nil, nil
 	}
@@ -68,9 +141,13 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 		labelCount++
 	}
 
-	nodeLabels, err := k8s.GetNodeLabels(nodeName)
-	if err != nil {
-		return nil, err
+	nodeLabels := topologyLabels
+	if nodeLabels == nil {
+		var err error
+		nodeLabels, err = k8s.GetNodeLabels(nodeName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Determine values for requested labels from node labels
