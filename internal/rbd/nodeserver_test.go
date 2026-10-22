@@ -23,9 +23,12 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
@@ -309,4 +312,37 @@ func TestReadAffinity_GetReadAffinityMapOptions(t *testing.T) {
 			require.Equal(t, tt.want, readAffinityMapOptions)
 		})
 	}
+}
+
+func TestNodeUnstageVolumeAbortedPreservesHealthChecker(t *testing.T) {
+	t.Parallel()
+
+	volID := "0001-0009-cluster-1-0000000000000001-ab2c3d4e-1111-2222-3333-444455556666"
+	stagingPath := t.TempDir()
+
+	healthChecker := hc.NewHealthCheckManager()
+	require.NoError(t, healthChecker.StartSharedChecker(volID, stagingPath, hc.NoOpCheckerType))
+
+	ns := &NodeServer{
+		DefaultNodeServer: csicommon.NewDefaultNodeServer(
+			&csicommon.CSIDriver{}, "rbd", "", map[string]string{}, map[string]string{},
+		),
+		VolumeLocks:   util.NewIDLocker(),
+		healthChecker: healthChecker,
+	}
+
+	require.True(t, ns.VolumeLocks.TryAcquire(volID))
+	defer ns.VolumeLocks.Release(volID)
+
+	_, err := ns.NodeUnstageVolume(t.Context(), &csi.NodeUnstageVolumeRequest{
+		VolumeId:          volID,
+		StagingTargetPath: stagingPath,
+	})
+	require.Equal(t, codes.Aborted, status.Code(err))
+
+	healthy, hcErr := healthChecker.IsHealthy(volID, "")
+	require.NoError(t, hcErr)
+	require.True(t, healthy)
+
+	healthChecker.StopSharedChecker(volID)
 }
