@@ -464,6 +464,14 @@ func (ri *rbdImage) configureFileEncryption(ctx context.Context, kmsID string, c
 	if err != nil {
 		return err
 	}
+
+	// the kmip KMS answers the GetSecret capability probe below, but the
+	// combination with fscrypt on RBD has not been tested yet
+	if kmsapi.IsKMIP(kms) {
+		return fmt.Errorf("KMS %q uses the kmip provider, which is not tested "+
+			"with fscrypt file encryption on RBD", kmsID)
+	}
+
 	// Not usesable for filestorage encryption
 	ri.fileEncryption, err = util.NewVolumeEncryption(kmsID, kms, nil)
 
