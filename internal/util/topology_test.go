@@ -332,6 +332,34 @@ func TestFindPoolAndTopology(t *testing.T) {
 	checkAndReportError(t, "expected success got:", err)
 }
 
+// TestGetTopologyFromDomainLabelsCrushLocation passes a crushLocation, so no
+// Kubernetes client is needed (reading the node labels would fail here).
+func TestGetTopologyFromDomainLabelsCrushLocation(t *testing.T) {
+	t.Parallel()
+
+	crushLocation := map[string]string{"region": "eu", "datacenter": "ams", "rack": "r1"}
+
+	topology, err := GetTopologyFromDomainLabels("region,datacenter", "node1", "rbd.csi.ceph.com", crushLocation)
+	checkAndReportError(t, "expected success got:", err)
+
+	want := map[string]string{
+		"topology.rbd.csi.ceph.com/region":     "eu",
+		"topology.rbd.csi.ceph.com/datacenter": "ams",
+	}
+	if len(topology) != len(want) {
+		t.Fatalf("expected topology %v, got %v", want, topology)
+	}
+	for k, v := range want {
+		if topology[k] != v {
+			t.Errorf("expected topology %v, got %v", want, topology)
+		}
+	}
+
+	// a domain label that is not part of the crush location is an error
+	_, err = GetTopologyFromDomainLabels("region,zone", "node1", "rbd.csi.ceph.com", crushLocation)
+	checkError(t, "expected failure due to missing domain label, got success", err)
+}
+
 /*
 // TODO: To test GetTopologyFromDomainLabels we need it to accept a k8s client interface, to mock k8sGetNdeLabels output
 func TestGetTopologyFromDomainLabels(t *testing.T) {
