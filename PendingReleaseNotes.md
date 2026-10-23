@@ -23,6 +23,9 @@
    context, failback to volume context for backward compatibility when node-server
    is updated, but provisioner is not.
 
+1. Added an optional `--config` command line argument to set the path of the
+   Ceph-CSI config file, defaults to: `/etc/ceph-csi-config/config.json`.
+
 ## NOTE
 
 - The `--setmetadata` flag has been removed. The flag was deprecated in

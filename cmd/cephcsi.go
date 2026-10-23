@@ -69,6 +69,7 @@ func init() {
 	flag.StringVar(&conf.PluginPath, "pluginpath", defaultPluginPath, "plugin path")
 	flag.StringVar(&conf.StagingPath, "stagingpath", defaultStagingPath, "staging path")
 	flag.StringVar(&conf.ClusterName, "clustername", "", "name of the cluster")
+	flag.StringVar(&util.CsiConfigFile, "config", util.CsiConfigFile, "path to the Ceph-CSI config file")
 	flag.BoolVar(&conf.EnableFencing, "enable-fencing", false, "enable fencing of nodes during non-graceful shutdowns")
 	flag.StringVar(&conf.InstanceID, "instanceid", "default", "Unique ID distinguishing this instance of Ceph-CSI"+
 		" among other instances, when sharing Ceph clusters across CSI instances for provisioning")
