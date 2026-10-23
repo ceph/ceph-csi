@@ -68,6 +68,12 @@ func init() {
 	flag.StringVar(&conf.NodeID, "nodeid", "", "node id")
 	flag.StringVar(&conf.PluginPath, "pluginpath", defaultPluginPath, "plugin path")
 	flag.StringVar(&conf.StagingPath, "stagingpath", defaultStagingPath, "staging path")
+	flag.StringVar(
+		&conf.ConfigFile,
+		"configfile",
+		util.CsiConfigFile,
+		"location of the CSI config file (overridden by the CEPH_CSI_CONFIG env var, if set)",
+	)
 	flag.StringVar(&conf.ClusterName, "clustername", "", "name of the cluster")
 	flag.BoolVar(&conf.EnableFencing, "enable-fencing", false, "enable fencing of nodes during non-graceful shutdowns")
 	flag.StringVar(&conf.InstanceID, "instanceid", "default", "Unique ID distinguishing this instance of Ceph-CSI"+
@@ -208,6 +214,13 @@ func main() {
 		os.Exit(0)
 	}
 	log.DefaultLog("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
+
+	// CEPH_CSI_CONFIG takes precedence over -configfile, so the config file
+	// location can be overridden without changing how the container starts.
+	if envConfigFile := os.Getenv("CEPH_CSI_CONFIG"); envConfigFile != "" {
+		conf.ConfigFile = envConfigFile
+	}
+	util.CsiConfigFile = conf.ConfigFile
 
 	if err := util.InitFeatureGates(conf.FeatureGates); err != nil {
 		logAndExit(err.Error())

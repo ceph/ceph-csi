@@ -35,12 +35,15 @@ const (
 	// CSI-specific objects and keys for CephFS volumes.
 	defaultCsiCephFSRadosNamespace = "csi"
 
-	// CsiConfigFile is the location of the CSI config file.
-	CsiConfigFile = "/etc/ceph-csi-config/config.json"
-
 	// ClusterIDKey is the name of the key containing clusterID.
 	ClusterIDKey = "clusterID"
 )
+
+// CsiConfigFile is the location of the CSI config file. It defaults to
+// /etc/ceph-csi-config/config.json, and can be overridden at runtime with
+// the -configfile command-line flag or the CEPH_CSI_CONFIG environment
+// variable, set in cmd/cephcsi.go before any driver code runs.
+var CsiConfigFile = "/etc/ceph-csi-config/config.json"
 
 // Expected JSON structure in the passed in config file is,
 //nolint:godot // example json content should not contain unwanted dot.

@@ -106,6 +106,7 @@ type Config struct {
 	PluginPath      string // location of cephcsi plugin
 	StagingPath     string // location of cephcsi staging path
 	DomainLabels    string // list of domain labels to read from the node
+	ConfigFile      string // location of the CSI config file
 	// metrics related flags
 	MetricsPath string // path of prometheus endpoint where metrics will be available
 	MetricsIP   string // TCP port for liveness/ metrics requests
