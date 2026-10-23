@@ -583,7 +583,7 @@ func (l *luksWrapper) Format(devicePath, passphrase string, cipherOptions *Encry
 		"--hash",
 		"sha256",
 	}
-	if cipherOptions != nil {
+	if cipherOptions != nil && cipherOptions.Cipher() != "" {
 		args = append(args, "--cipher", cipherOptions.Cipher())
 		if cipherOptions.IntegrityMode() != nil {
 			args = append(args, "--integrity", *cipherOptions.IntegrityMode())
