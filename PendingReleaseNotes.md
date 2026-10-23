@@ -23,6 +23,13 @@
    context, failback to volume context for backward compatibility when node-server
    is updated, but provisioner is not.
 
+1. Added a `--configfile` command-line flag (and `CEPH_CSI_CONFIG` environment
+   variable, which takes precedence) to override the location of the CSI
+   config file, previously hardcoded to `/etc/ceph-csi-config/config.json`.
+   Orchestrators that cannot bind-mount a file at that exact path can now
+   point cephcsi at wherever they placed it instead. Unset, behavior is
+   unchanged.
+
 ## NOTE
 
 - The `--setmetadata` flag has been removed. The flag was deprecated in
