@@ -120,6 +120,48 @@ node('cico-workspace') {
 	}
 
 	try {
+		stage('update and reboot bare-metal machine') {
+			// when updating fails, skip the reboot and continue
+			def update_rc = sh(
+				script: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@\${CICO_NODE} 'dnf -y update'",
+				returnStatus: true
+			)
+			if (update_rc != 0) {
+				echo "dnf update failed (rc=${update_rc}), skipping reboot"
+				return
+			}
+
+			// the boot_id changes with every boot, it is used to verify
+			// that the node was really rebooted
+			def boot_id = sh(
+				script: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@\${CICO_NODE} 'cat /proc/sys/kernel/random/boot_id'",
+				returnStdout: true
+			).trim()
+
+			// the ssh connection gets terminated by the reboot, the exit
+			// code is not relevant. The 'sleep' keeps the command running
+			// while the reboot is initiated, so that reconnecting does not
+			// reach the node before it went down.
+			sh(
+				script: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@\${CICO_NODE} 'reboot && sleep 60'",
+				returnStatus: true
+			)
+
+			def firstAttempt = true
+			retry(30) {
+				if (!firstAttempt) {
+					sleep(time: 20, unit: 'SECONDS')
+				}
+				firstAttempt = false
+				def new_boot_id = sh(
+					script: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@\${CICO_NODE} 'cat /proc/sys/kernel/random/boot_id'",
+					returnStdout: true
+				).trim()
+				if (new_boot_id == boot_id) {
+					error("node has not rebooted yet, boot_id is still ${boot_id}")
+				}
+			}
+		}
 		stage('prepare bare-metal machine') {
 			if (params.ghprbPullId != null) {
 				ref = "pull/${ghprbPullId}/merge"
