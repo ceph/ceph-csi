@@ -377,9 +377,9 @@ func IsShallowVolumeSupported(req *csi.CreateVolumeRequest) bool {
 }
 
 func IsVolumeCreateRO(caps []*csi.VolumeCapability) bool {
-	for _, cap := range caps {
-		if cap.GetAccessMode() != nil {
-			switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
+	for _, capability := range caps {
+		if capability.GetAccessMode() != nil {
+			switch capability.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 			case csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY:
 				return true
