@@ -632,10 +632,10 @@ func IsFileRWO(caps []*csi.VolumeCapability) bool {
 
 	// to preserve backward compatibility we allow RWO filemode, ideally SINGLE_NODE_WRITER check is good enough,
 	// however more granular level check could help us in future, so keeping it here as an additional measure.
-	for _, cap := range caps {
-		if cap.GetAccessMode() != nil {
-			if cap.GetMount() != nil {
-				switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
+	for _, capability := range caps {
+		if capability.GetAccessMode() != nil {
+			if capability.GetMount() != nil {
+				switch capability.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 				case csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 					csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
 					csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER:
@@ -651,9 +651,9 @@ func IsFileRWO(caps []*csi.VolumeCapability) bool {
 // IsReaderOnly check and set return value true only when the access mode is `READER ONLY` regardless of file
 // or block mode.
 func IsReaderOnly(caps []*csi.VolumeCapability) bool {
-	for _, cap := range caps {
-		if cap.GetAccessMode() != nil {
-			switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
+	for _, capability := range caps {
+		if capability.GetAccessMode() != nil {
+			switch capability.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 			case csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY:
 				return true
@@ -670,8 +670,8 @@ func AreAllCapabilitiesReaderOnly(caps []*csi.VolumeCapability) bool {
 		return false
 	}
 
-	for _, cap := range caps {
-		accessMode := cap.GetAccessMode()
+	for _, capability := range caps {
+		accessMode := capability.GetAccessMode()
 		if accessMode == nil {
 			return false
 		}
@@ -700,15 +700,15 @@ func IsBlockMultiWriter(caps []*csi.VolumeCapability) (bool, bool) {
 	// block has been set and returned if the passed in capability is of block volume mode.
 	var block bool
 
-	for _, cap := range caps {
-		if cap.GetAccessMode() != nil {
-			switch cap.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
+	for _, capability := range caps {
+		if capability.GetAccessMode() != nil {
+			switch capability.GetAccessMode().GetMode() { //nolint:exhaustive // only check what we want
 			case csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER:
 				multiWriter = true
 			}
 		}
-		if cap.GetBlock() != nil {
+		if capability.GetBlock() != nil {
 			block = true
 		}
 	}
