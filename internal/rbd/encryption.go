@@ -410,6 +410,9 @@ func parseCipherOptions(volOptions map[string]string) (*cryptsetup.EncryptionOpt
 		if err := opts.SetAllowDiscards(allowDiscards); err != nil {
 			return nil, fmt.Errorf("failed to set allow discards: %w", err)
 		}
+		if opts.AllowDiscards() && opts.IntegrityMode() != nil {
+			return nil, errors.New("encryptionAllowDiscards cannot be enabled with integrityMode")
+		}
 		optsSet = true
 	}
 	if !optsSet {
