@@ -69,10 +69,14 @@ func (ns *NodeServer) setupDHCHAPAuth(
 		defer cr.DeleteCredentials()
 
 		rbdVol, err := rbdutil.GenVolFromVolID(ctx, volumeID, cr, secrets)
+		defer func() {
+			if rbdVol != nil {
+				rbdVol.Destroy(ctx)
+			}
+		}()
 		if err != nil {
 			return fmt.Errorf("failed to get volume: %w", err)
 		}
-		defer rbdVol.Destroy(ctx)
 
 		dekStore := nvmeof.NewRBDVolumeDEKStore(rbdVol)
 		securityKeys.SetDEKStore(dekStore)
