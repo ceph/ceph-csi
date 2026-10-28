@@ -49,6 +49,8 @@ type SnapshotClient interface {
 	UnsetAllSnapshotMetadata(keys []string) error
 	// ListSnapshotMetadata lists all the metadata on subvolume snapshot.
 	ListSnapshotMetadata() (map[string]string, error)
+	// GetSnapshotPath returns the absolute CephFS path of the subvolume snapshot.
+	GetSnapshotPath(ctx context.Context) (string, error)
 }
 
 // snapshotClient is the implementation of SnapshotClient interface.
@@ -159,6 +161,33 @@ func (s *snapshotClient) GetSnapshotInfo(ctx context.Context) (SnapshotInfo, err
 	snap.HasPendingClones = info.HasPendingClones
 
 	return snap, nil
+}
+
+// GetSnapshotPath returns the absolute CephFS path of the subvolume snapshot.
+//
+// Similar To:
+//
+//	ceph fs subvolume snapshot getpath <volume> --group-name=<group> <subvolume> <snapshot>
+func (s *snapshotClient) GetSnapshotPath(ctx context.Context) (string, error) {
+	fsa, err := s.conn.GetFSAdmin()
+	if err != nil {
+		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
+		return "", err
+	}
+
+	snapPath, err := fsa.SubVolumeSnapshotPath(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get path for subvolume snapshot %s %s in fs %s: %s",
+			s.VolID, s.SnapshotID, s.FsName, err)
+		if _, ok := errors.AsType[admin.NotImplementedError](err); ok {
+			return "", cerrors.ErrInvalidCommand
+		}
+
+		return "", err
+	}
+
+	return snapPath, nil
 }
 
 // CloneSnapshot clones the snapshot of the subvolume.
