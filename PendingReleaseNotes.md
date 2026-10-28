@@ -2,6 +2,17 @@
 
 ## Breaking changes
 
+1. RBD and NVMe-oF: ext4 filesystems are now mounted with `errors=remount-ro`
+   by default, instead of the ext4 kernel default of `errors=continue`. When
+   ext4 detects an error in the filesystem, for example a directory block that
+   fails its checksum, the filesystem is remounted read-only so that the
+   workload does not keep writing to a damaged filesystem. The default
+   is used the next time a volume is staged on a node, there is no need to
+   update the `mountOptions` of the StorageClass or of existing PVs. Workloads
+   that need the previous behavior can set `errors=continue` in the
+   `mountOptions` of the StorageClass. Existing PVs need the option added to
+   their `spec.mountOptions` as well.
+
 ## Features
 
 1. Added an optional `TLS_MIN_VERSION` setting to the `kmip` KMS provider,
