@@ -213,6 +213,10 @@ func (ve *VolumeEncryption) GetNewCryptoPassphrase(length int) (string, error) {
 }
 
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.
+//
+// The passphrase has to use the standard base64 alphabet. Some KMS providers
+// (KeyProtect) take the passphrase as the plaintext of a wrap operation, and
+// reject anything that is not standard base64.
 func generateNewEncryptionPassphrase(length int) (string, error) {
 	bytesPassphrase := make([]byte, length)
 	_, err := rand.Read(bytesPassphrase)
@@ -220,7 +224,7 @@ func generateNewEncryptionPassphrase(length int) (string, error) {
 		return "", err
 	}
 
-	return base64.URLEncoding.EncodeToString(bytesPassphrase), nil
+	return base64.StdEncoding.EncodeToString(bytesPassphrase), nil
 }
 
 // VolumeMapper returns file name and it's path to where encrypted device should be open.
