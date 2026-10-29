@@ -22,9 +22,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -2311,6 +2313,12 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 	if err == nil && existingVal == value {
 		return nil
 	}
+	// conf_ keys are validated and applied live by librbd, others go
+	// directly to the header object and avoid the exclusive lock.
+	if !strings.HasPrefix(key, metadataConfPrefix) {
+		return ri.clsMetadataOp(clsMetadataSet, encodeClsMetadataSet(map[string]string{key: value}))
+	}
+
 	image, err := ri.open()
 	if err != nil {
 		return err
@@ -2331,6 +2339,10 @@ func (ri *rbdImage) RemoveMetadata(key string) error {
 		return nil
 	case err != nil:
 		return err
+	}
+
+	if !strings.HasPrefix(key, metadataConfPrefix) {
+		return ri.clsMetadataOp(clsMetadataRm, encodeClsMetadataRemove(key))
 	}
 
 	image, err := ri.open()
@@ -2565,63 +2577,128 @@ func genVolFromVolIDWithMigration(
 	return rv, err
 }
 
-// setAllMetadata set all the metadata from arg parameters on RBD image.
-func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
-	image, err := rv.open()
+// desiredMetadata returns the metadata that should be set on the RBD image:
+// parameters plus the cluster name and mounter when they are set.
+func (rv *rbdVolume) desiredMetadata(parameters map[string]string) map[string]string {
+	desired := make(map[string]string, len(parameters)+2)
+	maps.Copy(desired, parameters)
+	if rv.ClusterName != "" {
+		desired[clusterNameKey] = rv.ClusterName
+	}
+	if rv.Mounter != "" {
+		desired[mounterKey] = rv.Mounter
+	}
+
+	return desired
+}
+
+// diffMetadata returns the entries of desired that are missing from existing
+// or have a different value.
+func diffMetadata(desired, existing map[string]string) map[string]string {
+	mismatched := make(map[string]string, len(desired))
+	for k, v := range desired {
+		if ev, ok := existing[k]; !ok || ev != v {
+			mismatched[k] = v
+		}
+	}
+
+	return mismatched
+}
+
+// readMetadata opens the image read-only and returns the current value for
+// each key in keys. Keys that are not set on the image are omitted from the
+// returned map.
+func (rv *rbdVolume) readMetadata(keys []string) (map[string]string, error) {
+	image, err := rv.openReadOnly()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer image.Close() //nolint:errcheck // not a critical failure
 
-	for k, v := range parameters {
-		err := image.SetMetadata(k, v)
+	all, err := image.ListMetadata()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list metadata on image %q: %w", rv, err)
+	}
+
+	existing := make(map[string]string, len(keys))
+	for _, k := range keys {
+		if v, ok := all[k]; ok {
+			existing[k] = v
+		}
+	}
+
+	return existing, nil
+}
+
+// setAllMetadata set all the metadata from arg parameters on RBD image. The
+// image is opened read-only first, and only opened read-write when there are
+// keys that are missing or have a different value.
+func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
+	desired := rv.desiredMetadata(parameters)
+	if len(desired) == 0 {
+		return nil
+	}
+
+	existing, err := rv.readMetadata(slices.Collect(maps.Keys(desired)))
+	if err != nil {
+		return err
+	}
+
+	mismatched := diffMetadata(desired, existing)
+	if len(mismatched) == 0 {
+		return nil
+	}
+
+	// all non-conf keys are set with a single cls call, conf keys need librbd
+	confKeys := make(map[string]string)
+	clsKeys := make(map[string]string, len(mismatched))
+	for k, v := range mismatched {
+		if strings.HasPrefix(k, metadataConfPrefix) {
+			confKeys[k] = v
+		} else {
+			clsKeys[k] = v
+		}
+	}
+
+	if len(clsKeys) > 0 {
+		err = rv.clsMetadataOp(clsMetadataSet, encodeClsMetadataSet(clsKeys))
+		if err != nil {
+			return fmt.Errorf("failed to set metadata keys %v on image %q: %w", slices.Sorted(maps.Keys(clsKeys)), rv, err)
+		}
+	}
+
+	for k, v := range confKeys {
+		err = rv.SetMetadata(k, v)
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)
-		}
-	}
-
-	if rv.ClusterName != "" {
-		err := image.SetMetadata(clusterNameKey, rv.ClusterName)
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w",
-				clusterNameKey, rv.ClusterName, err)
-		}
-	}
-
-	if rv.Mounter != "" {
-		err := image.SetMetadata(mounterKey, rv.Mounter)
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w",
-				mounterKey, rv.Mounter, err)
 		}
 	}
 
 	return nil
 }
 
-// unsetAllMetadata unset all the metadata from arg keys on RBD image.
+// unsetAllMetadata unset all the metadata from arg keys (plus the cluster
+// name and mounter) on RBD image. The image is opened read-only first to find
+// the keys that are set, and only opened read-write when there is something
+// to remove.
 func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
-	image, err := rv.open()
+	allKeys := append(slices.Clone(keys), clusterNameKey, mounterKey)
+
+	existing, err := rv.readMetadata(allKeys)
 	if err != nil {
 		return err
 	}
-	defer image.Close() //nolint:errcheck // not a critical failure
+	if len(existing) == 0 {
+		return nil
+	}
 
-	for _, key := range keys {
-		err := image.RemoveMetadata(key)
-		if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-			return fmt.Errorf("failed to unset metadata key %q on %q: %w", key, rv, err)
+	for k := range existing {
+		// a key may get removed concurrently after the read, treat that as
+		// success
+		err := rv.RemoveMetadata(k)
+		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+			return fmt.Errorf("failed to unset metadata key %q on %q: %w", k, rv, err)
 		}
-	}
-
-	err = image.RemoveMetadata(clusterNameKey)
-	if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-		return fmt.Errorf("failed to unset metadata key %q on %q: %w", clusterNameKey, rv, err)
-	}
-
-	err = image.RemoveMetadata(mounterKey)
-	if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-		return fmt.Errorf("failed to unset metadata key %q on %q: %w", mounterKey, rv, err)
 	}
 
 	return nil

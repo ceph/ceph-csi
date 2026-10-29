@@ -1348,6 +1348,8 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	// Update the metadata on snapshot not on the original image
 	rbdVol.RbdImageName = rbdSnap.RbdSnapName
+	// the clone has its own image ID, drop the cached ID of the source image
+	rbdVol.ImageID = ""
 	rbdVol.ClusterName = cs.ClusterName
 
 	defer func() {
