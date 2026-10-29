@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/require"
 )
 
 func checkError(t *testing.T, msg string, err error) {
@@ -330,6 +331,70 @@ func TestFindPoolAndTopology(t *testing.T) {
 	_, _, topoSegment, err = MatchPoolAndTopology(&validMultipleTopoPools, &validAccReq, pool1)
 	err = checkOutput(err, pool1, topoSegment)
 	checkAndReportError(t, "expected success got:", err)
+}
+
+func TestParseTopologyLabels(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		in      string
+		want    map[string]string
+		wantErr bool
+	}{
+		{name: "empty", in: "", want: nil},
+		{name: "single", in: "region:eu", want: map[string]string{"region": "eu"}},
+		{
+			name: "multiple",
+			in:   "region:eu,datacenter:ams",
+			want: map[string]string{"region": "eu", "datacenter": "ams"},
+		},
+		{name: "blank value is discarded", in: "region:eu,zone:", want: map[string]string{"region": "eu"}},
+		{name: "missing key", in: ":eu", wantErr: true},
+		{name: "missing separator", in: "region", wantErr: true},
+		{name: "empty entry", in: "region:eu,", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := ParseTopologyLabels(tt.in)
+			if tt.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestGetTopologyFromDomainLabelsTopologyLabels passes topologyLabels, so no
+// Kubernetes client is needed (reading the node labels would fail here).
+func TestGetTopologyFromDomainLabelsTopologyLabels(t *testing.T) {
+	t.Parallel()
+
+	topologyLabels := map[string]string{"region": "eu", "datacenter": "ams", "rack": "r1"}
+
+	// only the requested domain labels are used
+	topology, err := GetTopologyFromDomainLabels("region,datacenter", "node1", "rbd.csi.ceph.com", topologyLabels)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{
+		"topology.rbd.csi.ceph.com/region":     "eu",
+		"topology.rbd.csi.ceph.com/datacenter": "ams",
+	}, topology)
+
+	// without domain labels, all topologyLabels are used
+	topology, err = GetTopologyFromDomainLabels("", "node1", "rbd.csi.ceph.com", topologyLabels)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{
+		"topology.rbd.csi.ceph.com/region":     "eu",
+		"topology.rbd.csi.ceph.com/datacenter": "ams",
+		"topology.rbd.csi.ceph.com/rack":       "r1",
+	}, topology)
+
+	// a domain label that is not part of the topology labels is an error
+	_, err = GetTopologyFromDomainLabels("region,zone", "node1", "rbd.csi.ceph.com", topologyLabels)
+	require.Error(t, err)
 }
 
 /*

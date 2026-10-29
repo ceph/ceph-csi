@@ -26,6 +26,13 @@
 1. Added an optional `--config` command line argument to set the path of the
    Ceph-CSI config file, defaults to: `/etc/ceph-csi-config/config.json`.
 
+1. Added the `--topology-labels` flag for the RBD and CephFS drivers. It takes
+   node labels in the format `label:value,label:value` and is used instead of
+   the Kubernetes node labels to determine the topology domains. Unless
+   `--domainlabels` is set, all given labels are used as domain labels.
+   This makes topology usable on non-Kubernetes clusters, by specifying the
+   labels for an instance directly.
+
 ## NOTE
 
 - The `--setmetadata` flag has been removed. The flag was deprecated in

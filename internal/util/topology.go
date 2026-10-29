@@ -19,6 +19,8 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -35,10 +37,47 @@ const (
 	topologyPoolsParam = "topologyConstrainedPools"
 )
 
+// ParseTopologyLabels parses a string in the format "label:value,label:value,..."
+// (e.g. "failure-domain/region:eu,failure-domain/zone:ams") into a map.
+// An empty string results in a nil map. Entries with a blank value are
+// discarded with a warning, so that callers can pass unset variables.
+func ParseTopologyLabels(topologyLabels string) (map[string]string, error) {
+	if topologyLabels == "" {
+		return nil, nil
+	}
+
+	m := make(map[string]string)
+	for kv := range strings.SplitSeq(topologyLabels, labelSeparator) {
+		key, value, ok := strings.Cut(kv, ":")
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if !ok || key == "" {
+			return nil, fmt.Errorf("invalid topology label %q, expected format <label>:<value>", kv)
+		}
+		if value == "" {
+			log.WarningLogMsg("ignoring topology label %q with a blank value", key)
+
+			continue
+		}
+		m[key] = value
+	}
+
+	return m, nil
+}
+
 // GetTopologyFromDomainLabels returns the CSI topology map, determined from
 // the domain labels and their values from the CO system
 // Expects domainLabels in arg to be in the format "[prefix/]<name>,[prefix/]<name>,...",.
-func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map[string]string, error) {
+// When topologyLabels is not empty, it is used as the node labels instead of
+// reading the labels of the node from the CO system. The keys of topologyLabels
+// are matched as-is against domainLabels (including their prefix). If
+// domainLabels is empty, all keys of topologyLabels are used as domain labels.
+func GetTopologyFromDomainLabels(
+	domainLabels, nodeName, driverName string,
+	topologyLabels map[string]string,
+) (map[string]string, error) {
+	if domainLabels == "" && len(topologyLabels) > 0 {
+		domainLabels = strings.Join(slices.Sorted(maps.Keys(topologyLabels)), labelSeparator)
+	}
 	if domainLabels == "" {
 		return nil, nil
 	}
@@ -68,9 +107,13 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 		labelCount++
 	}
 
-	nodeLabels, err := k8s.GetNodeLabels(nodeName)
-	if err != nil {
-		return nil, err
+	nodeLabels := topologyLabels
+	if len(nodeLabels) == 0 {
+		var err error
+		nodeLabels, err = k8s.GetNodeLabels(nodeName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Determine values for requested labels from node labels
