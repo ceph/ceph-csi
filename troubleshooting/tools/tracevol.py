@@ -43,6 +43,7 @@ import re
 import prettytable
 PARSER = argparse.ArgumentParser()
 ARGS=None # just so that the linter is happy, ARGS is global already.
+DEFAULT_CSI_DIRECTORY_SHARDS = 11
 
 # -p pvc-test -k /home/.kube/config -n default -rn rook-ceph
 PARSER.add_argument("-p", "--pvcname", default="", help="PVC name")
@@ -66,6 +67,8 @@ PARSER.add_argument("-cm", "--configmap", default="ceph-csi-config",
                     help="configmap name which holds the cephcsi configuration")
 PARSER.add_argument("-cmn", "--configmapnamespace", default="default",
                     help="namespace where configmap exists")
+PARSER.add_argument("--instanceid", default="default",
+                    help="ceph-csi instance ID")
 
 
 def list_pvc_vol_name_mapping(arg):
@@ -187,34 +190,11 @@ def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     validate pvc information in rados
     """
     omapkey = f'csi.volume.{pvc_name}'
-    cmd = ['rados', 'getomapval', 'csi.volumes.default',
-           omapkey, "--pool", pool_name]
-    if not arg.userkey:
-        cmd += ["--id", arg.userid, "--key", arg.userkey]
-    if not is_rbd:
-        cmd += ["--namespace", "csi"]
-    if arg.toolboxdeployed is True:
-        kube = get_cmd_prefix(arg)
-        cmd = kube + cmd
-    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
-        stdout, stderr = out.communicate()
-
-    if stderr is not None:
-        return False
-    name = b''
-    lines = [x.strip() for x in stdout.split(b"\n")]
-    for line in lines:
-        if b' ' not in line:
-            continue
-        if b'value' in line and b'bytes' in line:
-            continue
-        part = re.findall(br'[A-Za-z0-9\-]+', line)
-        if part:
-            name += part[-1]
-    if name.decode() != image_id:
+    omapobj = f'csi.volumes.{arg.instanceid}'
+    name = get_val_from_csi_directory(omapobj, omapkey, pool_name, is_rbd)
+    if name != image_id:
         if arg.debug:
-            decoded_name = name.decode()
-            print(f"expected image Id {image_id} found Id in rados {decoded_name}")
+            print(f"expected image Id {image_id} found Id in rados {name}")
         return False
     return True
 
@@ -643,15 +623,45 @@ def get_val_from_omap(obj, key, pool, is_rbd, regex=br'[A-Za-z0-9\-]+'):
 
     return result.decode()
 
+def fnv32a(key):
+    """
+    Returns the 32-bit FNV-1a hash for a string.
+    """
+    hval = 0x811c9dc5
+    for byte in key.encode():
+        hval ^= byte
+        hval = (hval * 0x01000193) & 0xffffffff
+    return hval
+
+def get_csi_directory_shard(base_oid, key):
+    """
+    Returns the sharded csiDirectory object for a key.
+    """
+    shard = fnv32a(key) % DEFAULT_CSI_DIRECTORY_SHARDS
+    return f"{base_oid}.{shard}"
+
+def get_val_from_csi_directory(base_oid, key, pool, is_rbd):
+    """
+    Retrieve a value from sharded csiDirectory with legacy oid fallback.
+    """
+    shard_oid = get_csi_directory_shard(base_oid, key)
+    val = get_val_from_omap(shard_oid, key, pool, is_rbd)
+    if val:
+        return val
+
+    return get_val_from_omap(base_oid, key, pool, is_rbd)
+
 def check_snap_content_name_in_rados(snap_uuid, snap_content_name, pool, is_rbd):
     """
-    Validates if snapshot content name is listed in csi.snaps.default omap
+    Validates if the snapshot content name is listed in the sharded
+    `csi.snaps.<instanceid>.<shard>` journal omap, with fallback to the
+    legacy unsharded `csi.snaps.<instanceid>` oid.
     """
     snap_content_name = snap_content_name.replace("snapcontent", "snapshot")
-    omap_obj = "csi.snaps.default"
+    omap_obj = f"csi.snaps.{ARGS.instanceid}"
     omap_key = f'csi.snap.{snap_content_name}'
 
-    val = get_val_from_omap(omap_obj, omap_key, pool, is_rbd)
+    val = get_val_from_csi_directory(omap_obj, omap_key, pool, is_rbd)
     if val != snap_uuid:
         if ARGS.debug:
             print(f"expected image Id {snap_uuid} found Id in rados {val}")
