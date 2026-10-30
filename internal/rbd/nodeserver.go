@@ -1314,14 +1314,14 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	volID := req.GetVolumeId()
 
-	ns.healthChecker.StopSharedChecker(volID)
-
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
+
+	ns.healthChecker.StopSharedChecker(volID)
 
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := getStagingTargetPath(req)
