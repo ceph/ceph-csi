@@ -36,7 +36,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/lock"
 	"github.com/ceph/ceph-csi/internal/util/log"
-	"github.com/ceph/ceph-csi/pkg/util/kernel"
 )
 
 // NodeServer struct of ceph nvmeof driver with supported methods of CSI
@@ -48,9 +47,6 @@ type NodeServer struct {
 	volumeLocks *util.IDLocker
 
 	initiator nvmeof.NVMeInitiator
-
-	// dhchapUnsupportedKernelErr stores the error returned when the running kernel does not support DH-CHAP.
-	dhchapUnsupportedKernelErr error
 
 	// securityKeys manages DH-CHAP and PSK\TLS keys
 	securityKeys nvmeof.SecurityKeyManager
@@ -105,17 +101,6 @@ const (
 	authenticationKMSID = "authenticationKMSID"
 )
 
-var dhchapSupport = []kernel.KernelVersion{
-	{
-		Version:      6,
-		PatchLevel:   0,
-		SubLevel:     0,
-		ExtraVersion: 0,
-		Distribution: "",
-		Backport:     false,
-	},
-}
-
 // NewNodeServer initialize a node server for ceph CSI driver.
 func NewNodeServer(
 	d *csicommon.CSIDriver,
@@ -125,28 +110,18 @@ func NewNodeServer(
 	// Create NVMe initiator
 	nvmeInitiator := nvmeof.NewNVMeInitiator()
 	ns := &NodeServer{
-		DefaultNodeServer:          *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
-		initiator:                  nvmeInitiator,
-		volumeLocks:                util.NewIDLocker(),
-		dhchapUnsupportedKernelErr: nil,
-		securityKeys:               nil, // Initialize lazily when needed
-		nodeID:                     nodeID,
-		mountCache:                 nvmeutil.NewMountCache(),
-		stageUnstageLock:           lock.NewGroupLock(),
+		DefaultNodeServer: *csicommon.NewDefaultNodeServer(d, t, "", map[string]string{}, map[string]string{}),
+		initiator:         nvmeInitiator,
+		volumeLocks:       util.NewIDLocker(),
+		securityKeys:      nil, // Initialize lazily when needed
+		nodeID:            nodeID,
+		mountCache:        nvmeutil.NewMountCache(),
+		stageUnstageLock:  lock.NewGroupLock(),
 	}
 
 	// Load nvme kernel modules
 	if err := nvmeInitiator.LoadKernelModules(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to load NVMe kernel modules: %w", err)
-	}
-
-	kernelRelease, err := kernel.GetKernelVersion()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kernel version: %w", err)
-	} else if !kernel.CheckKernelSupport(kernelRelease, dhchapSupport) {
-		ns.dhchapUnsupportedKernelErr = fmt.Errorf(
-			"DH-CHAP requires kernel v6.0.0 or newer, running on %s",
-			kernelRelease)
 	}
 
 	// Initialize mounted devices cache on startup to ensure we have an accurate view.
@@ -248,10 +223,6 @@ func (ns *NodeServer) NodeStageVolume(
 		}
 	}()
 	if err != nil {
-		// Return InvalidArgument for unsupported kernel (DH-CHAP requires kernel v6.0.0+)
-		if ns.dhchapUnsupportedKernelErr != nil && errors.Is(err, ns.dhchapUnsupportedKernelErr) {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -767,9 +738,6 @@ func (ns *NodeServer) connectToSubsystem(
 
 	// Setup DH-CHAP authentication if required
 	if info.DhchapMode != nvmeof.DHCHAPEmpty && info.DhchapMode != nvmeof.DHCHAPModeNone {
-		if ns.dhchapUnsupportedKernelErr != nil {
-			return "", ns.dhchapUnsupportedKernelErr
-		}
 
 		if err := ns.setupDHCHAPAuth(ctx, volumeID, info, secrets, authKMSID, connectReq); err != nil {
 			return "", err
