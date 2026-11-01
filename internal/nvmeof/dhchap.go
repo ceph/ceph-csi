@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -64,6 +65,48 @@ import (
 //   2. Decrypt key using KMS (DecryptDEK)
 //   3. Return plaintext DH-CHAP key for nvme connect
 //
+
+// ErrDHCHAPUnsupported is returned when the running kernel does not offer the DH-CHAP connect options.
+var ErrDHCHAPUnsupported = errors.New(
+	"node kernel does not support NVMe DH-CHAP authentication " +
+		"(dhchap_secret/dhchap_ctrl_secret not offered by /dev/nvme-fabrics)")
+
+// nvmeFabricsDevice is the nvme-fabrics character device. Reading it returns the
+// connect options accepted by the running kernel.
+const nvmeFabricsDevice = "/dev/nvme-fabrics"
+
+// CheckDHCHAPSupport reports whether the running kernel accepts the DH-CHAP connect options.
+// It returns ErrDHCHAPUnsupported only when the options list was read and the DH-CHAP options
+// are missing. If the list cannot be read (or is empty), the read error is returned instead,
+// as support cannot be determined.
+func CheckDHCHAPSupport() error {
+	return checkDHCHAPSupport(nvmeFabricsDevice)
+}
+
+// checkDHCHAPSupport does the work of CheckDHCHAPSupport for the given nvme-fabrics device path.
+func checkDHCHAPSupport(device string) error {
+	data, err := os.ReadFile(device) // #nosec:G304, the device is the constant nvmeFabricsDevice, or a test file.
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", device, err)
+	}
+
+	list := strings.TrimSpace(string(data))
+	if list == "" {
+		return fmt.Errorf("%s returned no options", device)
+	}
+
+	options := map[string]bool{}
+	for opt := range strings.SplitSeq(list, ",") {
+		name, _, _ := strings.Cut(opt, "=")
+		options[name] = true
+	}
+
+	if !options["dhchap_secret"] || !options["dhchap_ctrl_secret"] {
+		return ErrDHCHAPUnsupported
+	}
+
+	return nil
+}
 
 // DH-CHAP modes.
 const (

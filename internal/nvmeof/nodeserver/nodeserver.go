@@ -223,6 +223,9 @@ func (ns *NodeServer) NodeStageVolume(
 		}
 	}()
 	if err != nil {
+		if errors.Is(err, nvmeof.ErrDHCHAPUnsupported) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -738,6 +741,13 @@ func (ns *NodeServer) connectToSubsystem(
 
 	// Setup DH-CHAP authentication if required
 	if info.DhchapMode != nvmeof.DHCHAPEmpty && info.DhchapMode != nvmeof.DHCHAPModeNone {
+		// Fail early if the kernel does not offer DH-CHAP. If that can not be determined,
+		// continue and let nvme connect report the real error.
+		if err := nvmeof.CheckDHCHAPSupport(); errors.Is(err, nvmeof.ErrDHCHAPUnsupported) {
+			return "", err
+		} else if err != nil {
+			log.WarningLog(ctx, "unable to determine DH-CHAP kernel support, trying to connect anyway: %v", err)
+		}
 
 		if err := ns.setupDHCHAPAuth(ctx, volumeID, info, secrets, authKMSID, connectReq); err != nil {
 			return "", err
