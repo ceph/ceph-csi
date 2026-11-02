@@ -1,9 +1,9 @@
 ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
-ARG BASE_IMAGE
+ARG BASE_IMAGE="quay.io/rockylinux/rockylinux:10"
 ARG FINAL_BASE_IMAGE="quay.io/rockylinux/rockylinux:10-minimal"
 
-FROM ${BASE_IMAGE} as updated_base
+FROM ${BASE_IMAGE} AS updated_base
 
 ARG CEPH_RELEASE_RPM
 
@@ -14,7 +14,7 @@ RUN rpm -ivh ${CEPH_RELEASE_RPM} \
     && dnf clean all \
     && rm -rf /var/cache/dnf /var/cache/yum
 
-FROM updated_base as builder
+FROM updated_base AS builder
 
 LABEL stage="build"
 
@@ -53,8 +53,9 @@ ENV GOROOT=${GOROOT} \
     CGO_ENABLED=1 \
     GIT_COMMIT="${GIT_COMMIT}" \
     ENV_CSI_IMAGE_VERSION="${CSI_IMAGE_VERSION}" \
-    ENV_CSI_IMAGE_NAME="${CSI_IMAGE_NAME}" \
-    PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
+    ENV_CSI_IMAGE_NAME="${CSI_IMAGE_NAME}"
+
+ENV PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
 
 
 WORKDIR ${SRC_DIR}
@@ -70,6 +71,8 @@ FROM ${FINAL_BASE_IMAGE}
 
 ARG SRC_DIR
 ARG CEPH_RELEASE_RPM
+ARG CSI_IMAGE_VERSION=canary
+ARG GO_ARCH
 
 LABEL maintainers="Ceph-CSI Authors" \
     version=${CSI_IMAGE_VERSION} \

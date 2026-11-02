@@ -18,8 +18,9 @@ ENV \
  GOPATH=${GOPATH} \
  GOROOT=${GOROOT} \
  GO111MODULE=on \
- CEPHCSIPATH=/go/src/github.com/ceph/ceph-csi \
- PATH="${GOPATH}/bin:${GOROOT}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
+ CEPHCSIPATH=/go/src/github.com/ceph/ceph-csi
+
+ENV PATH="${GOPATH}/bin:${GOROOT}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
 
 COPY build.env /
 
