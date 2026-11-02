@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE="quay.io/rockylinux/rockylinux:10"
 FROM ${BASE_IMAGE}
 
 ARG GOROOT=/usr/local/go
@@ -6,8 +6,9 @@ ARG GOARCH
 
 ENV GOPATH=/go \
  GOROOT=${GOROOT} \
- GO111MODULE=on \
- PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
+ GO111MODULE=on
+
+ENV PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
 
 COPY build.env /
 

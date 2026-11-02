@@ -1,7 +1,7 @@
 ARG WORK_DIR="/home/src"
 ARG BASE_IMAGE="golang:1.26"
 
-FROM ${BASE_IMAGE} as builder
+FROM ${BASE_IMAGE} AS builder
 
 ARG WORK_DIR
 
