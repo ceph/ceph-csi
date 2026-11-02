@@ -24,6 +24,11 @@ GITHUB_EMAIL=${GITHUB_EMAIL:-"ceph-csi-bot@users.noreply.github.com"}
 build_push_images() {
 	# "docker manifest" requires experimental feature enabled
 	export DOCKER_CLI_EXPERIMENTAL=enabled
+	# the buildx backend publishes both image and attestation manifest
+	# which makes the manifest of type list. Any attempt to modify the
+	# resultant manifests fail with: "xxxx is a manifest list".
+	# this override ensures we don't get attestation in the generated manifest.
+	export BUILDX_NO_DEFAULT_ATTESTATIONS=1
 
 	build_env="build.env"
 	baseimg=$(awk -F = '/^BASE_IMAGE=/ {print $NF}' "${build_env}")
