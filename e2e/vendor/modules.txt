@@ -654,7 +654,7 @@ gopkg.in/evanphx/json-patch.v4
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# k8s.io/api v0.37.1 => k8s.io/api v0.37.1
+# k8s.io/api v0.37.2 => k8s.io/api v0.37.1
 ## explicit; go 1.26.0
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -728,7 +728,7 @@ k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
 k8s.io/apiextensions-apiserver/pkg/features
-# k8s.io/apimachinery v0.37.1
+# k8s.io/apimachinery v0.37.2
 ## explicit; go 1.26.0
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -796,7 +796,7 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.37.1
+# k8s.io/apiserver v0.37.2
 ## explicit; go 1.26.0
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/configuration
@@ -859,7 +859,7 @@ k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/genericiooptions
 k8s.io/cli-runtime/pkg/printers
 k8s.io/cli-runtime/pkg/resource
-# k8s.io/client-go v0.37.1 => k8s.io/client-go v0.37.1
+# k8s.io/client-go v0.37.2 => k8s.io/client-go v0.37.1
 ## explicit; go 1.26.0
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
 k8s.io/client-go/applyconfigurations/admissionregistration/v1alpha1
@@ -1155,11 +1155,11 @@ k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/watchlist
 k8s.io/client-go/util/workqueue
-# k8s.io/cloud-provider v0.37.1
+# k8s.io/cloud-provider v0.37.2
 ## explicit; go 1.26.0
 k8s.io/cloud-provider/volume
 k8s.io/cloud-provider/volume/helpers
-# k8s.io/component-base v0.37.1
+# k8s.io/component-base v0.37.2
 ## explicit; go 1.26.0
 k8s.io/component-base/cli/flag
 k8s.io/component-base/compatibility
@@ -1181,13 +1181,13 @@ k8s.io/component-base/tracing
 k8s.io/component-base/tracing/api/v1
 k8s.io/component-base/version
 k8s.io/component-base/zpages/features
-# k8s.io/component-helpers v0.37.1
+# k8s.io/component-helpers v0.37.2
 ## explicit; go 1.26.0
 k8s.io/component-helpers/node/util/sysctl
 k8s.io/component-helpers/resource
 k8s.io/component-helpers/scheduling/corev1
 k8s.io/component-helpers/scheduling/corev1/nodeaffinity
-# k8s.io/controller-manager v0.37.1
+# k8s.io/controller-manager v0.37.2
 ## explicit; go 1.26.0
 k8s.io/controller-manager/pkg/features
 # k8s.io/klog/v2 v2.140.0
@@ -1257,7 +1257,7 @@ k8s.io/kubectl/pkg/validation
 ## explicit; go 1.26.0
 k8s.io/kubelet/pkg/apis
 k8s.io/kubelet/pkg/apis/stats/v1alpha1
-# k8s.io/kubernetes v1.37.1
+# k8s.io/kubernetes v1.37.2
 ## explicit; go 1.26.0
 k8s.io/kubernetes/pkg/api/legacyscheme
 k8s.io/kubernetes/pkg/api/service
@@ -1331,11 +1331,11 @@ k8s.io/kubernetes/test/utils/kubeconfig
 # k8s.io/mount-utils v0.37.0
 ## explicit; go 1.26.0
 k8s.io/mount-utils
-# k8s.io/pod-security-admission v0.37.1
+# k8s.io/pod-security-admission v0.37.2
 ## explicit; go 1.26.0
 k8s.io/pod-security-admission/api
 k8s.io/pod-security-admission/policy
-# k8s.io/streaming v0.37.1
+# k8s.io/streaming v0.37.2
 ## explicit; go 1.26.0
 k8s.io/streaming/pkg/httpstream
 k8s.io/streaming/pkg/httpstream/spdy
