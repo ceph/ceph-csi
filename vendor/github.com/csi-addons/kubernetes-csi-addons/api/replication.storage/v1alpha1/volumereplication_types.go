@@ -30,29 +30,33 @@ const (
 // "ConditionDegraded" means the condition is not fulfilled.
 // "ConditionResyncing" means the condition is resyncing.
 const (
-	ConditionCompleted   = "Completed"
-	ConditionDegraded    = "Degraded"
-	ConditionResyncing   = "Resyncing"
-	ConditionValidated   = "Validated"
-	ConditionReplicating = "Replicating"
+	ConditionCompleted                = "Completed"
+	ConditionDegraded                 = "Degraded"
+	ConditionResyncing                = "Resyncing"
+	ConditionValidated                = "Validated"
+	ConditionReplicating              = "Replicating"
+	ConditionDestinationInfoAvailable = "DestinationInfoAvailable"
 )
 
 // These are valid messages for various conditions and states of volume replication.
 const (
-	MessagePromoted                = "is promoted to primary and replicating to secondary"
-	MessageHealthy                 = "is healthy"
-	MessageNotResyncing            = "is not resyncing"
-	MessageValidated               = "is validated and met all prerequisites"
-	MessageFailedPromoted          = "failed to promote"
-	MessageFailedDemoted           = "failed to demote"
-	MessageFailedPreCondition      = "failed to meet prerequisite"
-	MessageDemoted                 = "is demoted to secondary"
-	MessageDegraded                = "is degraded"
-	MessageResyncTriggered         = "is resyncing changes from primary to secondary"
-	MessageResyncFailed            = "failed to resync"
-	MessageReplicating             = "is replicating"
-	MessageNotReplicating          = "is not replicating"
-	MessageUnknownReplicationState = "replication status is unknown"
+	MessagePromoted                 = "is promoted to primary and replicating to secondary"
+	MessageHealthy                  = "is healthy"
+	MessageNotResyncing             = "is not resyncing"
+	MessageValidated                = "is validated and met all prerequisites"
+	MessageFailedPromoted           = "failed to promote"
+	MessageFailedDemoted            = "failed to demote"
+	MessageFailedPreCondition       = "failed to meet prerequisite"
+	MessageDemoted                  = "is demoted to secondary"
+	MessageDegraded                 = "is degraded"
+	MessageResyncTriggered          = "is resyncing changes from primary to secondary"
+	MessageResyncFailed             = "failed to resync"
+	MessageReplicating              = "is replicating"
+	MessageNotReplicating           = "is not replicating"
+	MessageUnknownReplicationState  = "replication status is unknown"
+	MessageDestinationInfoAvailable = "destination info is available"
+	MessageDestinationInfoPending   = "destination info is pending update"
+	MessageDestinationInfoFailed    = "failed to get destination info"
 )
 
 type Source string
@@ -95,6 +99,12 @@ const (
 	Replicating = "Replicating"
 	// NotReplicating condition represents that the volume/group is not replicating.
 	NotReplicating = "NotReplicating"
+	// DestinationInfoUpdated represents that the destination info has been updated.
+	DestinationInfoUpdated = "DestinationInfoUpdated"
+	// DestinationInfoPending represents that the destination info is pending update.
+	DestinationInfoPending = "DestinationInfoPending"
+	// FailedToGetDestinationInfo represents the failure to get destination info.
+	FailedToGetDestinationInfo = "FailedToGetDestinationInfo"
 )
 
 // ReplicationState represents the replication operations to be performed on the volume.
@@ -167,6 +177,11 @@ type VolumeReplicationStatus struct {
 	LastSyncTime       *metav1.Time     `json:"lastSyncTime,omitempty"`
 	LastSyncBytes      *int64           `json:"lastSyncBytes,omitempty"`
 	LastSyncDuration   *metav1.Duration `json:"lastSyncDuration,omitempty"`
+	// DestinationVolumeID is the volume ID on the destination/target side.
+	// This field is set when the SP reports different source and destination
+	// volume IDs.
+	// +optional
+	DestinationVolumeID string `json:"destinationVolumeID,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -197,8 +212,4 @@ type VolumeReplicationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VolumeReplication `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&VolumeReplication{}, &VolumeReplicationList{})
 }
