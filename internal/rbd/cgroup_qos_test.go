@@ -18,10 +18,15 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 func TestParseCgroupQoSParams(t *testing.T) {
@@ -495,4 +500,104 @@ func TestWriteIOMax(t *testing.T) {
 	if string(got) != want {
 		t.Errorf("writeIOMax() content mismatch: got %q, want %q", string(got), want)
 	}
+}
+
+func TestAcquirePodLock(t *testing.T) {
+	t.Parallel()
+
+	t.Run("acquires free lock immediately", func(t *testing.T) {
+		t.Parallel()
+
+		locks := util.NewIDLocker()
+		if err := acquirePodLock(context.Background(), locks, "pod-a"); err != nil {
+			t.Fatalf("acquirePodLock() error = %v, want nil", err)
+		}
+		if locks.TryAcquire("pod-a") {
+			t.Error("lock for pod-a is not held after acquirePodLock()")
+		}
+	})
+
+	t.Run("acquires after holder releases", func(t *testing.T) {
+		t.Parallel()
+
+		locks := util.NewIDLocker()
+		if !locks.TryAcquire("pod-a") {
+			t.Fatal("failed to take initial lock")
+		}
+
+		released := make(chan struct{})
+		go func() {
+			time.Sleep(5 * podLockInterval)
+			locks.Release("pod-a")
+			close(released)
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := acquirePodLock(ctx, locks, "pod-a"); err != nil {
+			t.Fatalf("acquirePodLock() error = %v, want nil", err)
+		}
+
+		select {
+		case <-released:
+		default:
+			t.Error("acquirePodLock() returned before the holder released the lock")
+		}
+		if locks.TryAcquire("pod-a") {
+			t.Error("lock for pod-a is not held after acquirePodLock()")
+		}
+	})
+
+	t.Run("different pod UIDs do not block", func(t *testing.T) {
+		t.Parallel()
+
+		locks := util.NewIDLocker()
+		if !locks.TryAcquire("pod-a") {
+			t.Fatal("failed to take initial lock")
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), podLockInterval)
+		defer cancel()
+		if err := acquirePodLock(ctx, locks, "pod-b"); err != nil {
+			t.Fatalf("acquirePodLock() error = %v, want nil", err)
+		}
+	})
+
+	t.Run("deadline while contended returns ErrAborted", func(t *testing.T) {
+		t.Parallel()
+
+		locks := util.NewIDLocker()
+		if !locks.TryAcquire("pod-a") {
+			t.Fatal("failed to take initial lock")
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*podLockInterval)
+		defer cancel()
+		err := acquirePodLock(ctx, locks, "pod-a")
+		if !errors.Is(err, rbderrors.ErrAborted) {
+			t.Fatalf("acquirePodLock() error = %v, want %v", err, rbderrors.ErrAborted)
+		}
+		if locks.TryAcquire("pod-a") {
+			t.Error("holder's lock for pod-a was released by acquirePodLock()")
+		}
+	})
+
+	t.Run("cancellation while contended returns ErrAborted", func(t *testing.T) {
+		t.Parallel()
+
+		locks := util.NewIDLocker()
+		if !locks.TryAcquire("pod-a") {
+			t.Fatal("failed to take initial lock")
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := acquirePodLock(ctx, locks, "pod-a")
+		if !errors.Is(err, rbderrors.ErrAborted) {
+			t.Fatalf("acquirePodLock() error = %v, want %v", err, rbderrors.ErrAborted)
+		}
+		if locks.TryAcquire("pod-a") {
+			t.Error("holder's lock for pod-a was released by acquirePodLock()")
+		}
+	})
 }
