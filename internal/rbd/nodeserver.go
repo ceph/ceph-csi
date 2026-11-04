@@ -906,20 +906,6 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 	defer ns.VolumeLocks.Release(targetPath)
 
-	// A single pod can have multiple volumes, each triggering a separate
-	// NodePublishVolume RPC. Serialize operations per pod to prevent
-	// concurrent calls from racing on the pod's cgroup io.max file
-	// during QoS application.
-	podUID := req.GetVolumeContext()[util.VolumeContextPodUIDKey]
-	if podUID != "" {
-		if acquired := ns.VolumeLocks.TryAcquire(podUID); !acquired {
-			log.ErrorLog(ctx, util.PodOperationAlreadyExistsFmt, podUID)
-
-			return nil, status.Errorf(codes.Aborted, util.PodOperationAlreadyExistsFmt, podUID)
-		}
-		defer ns.VolumeLocks.Release(podUID)
-	}
-
 	// Check if that target path exists properly
 	isMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
 	if err != nil {
@@ -954,6 +940,11 @@ func (ns *NodeServer) NodePublishVolume(
 	err = ns.applyCgroupQoSIfConfigured(ctx, req)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to apply cgroup QoS for volume %s: %v", volID, err)
+		// Timed out waiting for the pod lock; let kubelet retry so QoS
+		// limits are not silently skipped.
+		if errors.Is(err, rbderrors.ErrAborted) {
+			return nil, status.Error(codes.Aborted, err.Error())
+		}
 	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
@@ -1024,15 +1015,29 @@ func (ns *NodeServer) applyCgroupQoSIfConfigured(
 	}
 	defer rv.Destroy(ctx)
 
-	// Apply cgroup QoS.
-	err = rv.applyCgroupQoSForVolume(ctx, devicePath, podUID)
+	qos, err := rv.getCgroupQoSForDevice(ctx, devicePath)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to apply cgroup QoS for volume %s: %v", volID, err)
-
 		return err
 	}
+	if qos == nil {
+		return nil
+	}
 
-	log.DebugLog(ctx, "successfully applied cgroup QoS for volume %s", volID)
+	// A pod can have multiple volumes published concurrently; serialize only
+	// the io.max update so volumes without QoS are never blocked.
+	err = acquirePodLock(ctx, ns.VolumeLocks, podUID)
+	if err != nil {
+		return err
+	}
+	defer ns.VolumeLocks.Release(podUID)
+
+	log.UsefulLog(ctx, "applying cgroup QoS for volume %s on device %s to pod %s", volID, qos.deviceID, podUID)
+	err = qos.applyCgroupQoS(ctx, podUID)
+	if err != nil {
+		return fmt.Errorf("failed to apply cgroup QoS for volume %s: %w", volID, err)
+	}
+
+	log.UsefulLog(ctx, "successfully applied cgroup QoS for volume %s", volID)
 
 	return nil
 }
