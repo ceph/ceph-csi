@@ -26,11 +26,13 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"golang.org/x/sys/unix"
 
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
+	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -427,44 +429,53 @@ func (rv *rbdVolume) RegenerateCgroupQoS(
 	return nil
 }
 
-// applyCgroupQoSForVolume applies cgroup v2 QoS limits to the pod mounting this volume.
-func (rv *rbdVolume) applyCgroupQoSForVolume(ctx context.Context, devicePath, podUID string) error {
-	if podUID == "" {
-		log.DebugLog(ctx, "pod UID not available, skipping cgroup QoS (podInfoOnMount may not be enabled)")
+const (
+	podLockTimeout  = 10 * time.Second
+	podLockInterval = 100 * time.Millisecond
+)
 
-		return nil
+// acquirePodLock waits up to podLockTimeout for the lock on the pod UID.
+func acquirePodLock(ctx context.Context, locks *util.IDLocker, podUID string) error {
+	ctx, cancel := context.WithTimeout(ctx, podLockTimeout)
+	defer cancel()
+
+	ticker := time.NewTicker(podLockInterval)
+	defer ticker.Stop()
+
+	for !locks.TryAcquire(podUID) {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("%w: "+util.PodOperationAlreadyExistsFmt, rbderrors.ErrAborted, podUID)
+		case <-ticker.C:
+		}
 	}
 
+	return nil
+}
+
+// getCgroupQoSForDevice reads the cgroup QoS parameters of the volume from
+// its image metadata and resolves the device ID of devicePath. It returns nil
+// if no QoS is configured for the volume.
+func (rv *rbdVolume) getCgroupQoSForDevice(ctx context.Context, devicePath string) (*cgroupQoS, error) {
 	// Retrieve cgroup QoS parameters from image metadata.
 	qosParams, err := rv.getCgroupQoS(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve cgroup QoS for volume %s: %w", rv.VolID, err)
+		return nil, fmt.Errorf("failed to retrieve cgroup QoS for volume %s: %w", rv.VolID, err)
 	}
 
 	// If no QoS parameters configured, nothing to do.
 	if len(qosParams) == 0 {
 		log.DebugLog(ctx, "no cgroup QoS configured for volume %s", rv.VolID)
 
-		return nil
+		return nil, nil
 	}
 
 	// Get device ID (major:minor).
 	qos := parseCgroupQoSParams(qosParams)
 	qos.deviceID, err = getDeviceID(devicePath)
 	if err != nil {
-		return fmt.Errorf("failed to get device ID for %s: %w", devicePath, err)
+		return nil, fmt.Errorf("failed to get device ID for %s: %w", devicePath, err)
 	}
 
-	log.UsefulLog(ctx, "applying cgroup QoS for volume %s on device %s to pod %s",
-		rv.VolID, qos.deviceID, podUID)
-
-	// Apply QoS to all containers in the pod.
-	err = qos.applyCgroupQoS(ctx, podUID)
-	if err != nil {
-		return fmt.Errorf("failed to apply cgroup QoS for volume %s: %w", rv.VolID, err)
-	}
-
-	log.UsefulLog(ctx, "successfully applied cgroup QoS for volume %s", rv.VolID)
-
-	return nil
+	return qos, nil
 }
