@@ -6900,7 +6900,34 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to validate clone cgroup QoS: %v", err)
 			}
 
-			// Cleanup
+			// Mount the snapshot-restore clone and confirm the node io.max
+			// reflects the clone's own VAC (low), not the parent's (medium).
+			app, err = loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app for snapshot-restore clone: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+			err = createApp(f.ClientSet, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create app for snapshot-restore clone: %v", err)
+			}
+			appPod, err = f.ClientSet.CoreV1().Pods(f.UniqueName).Get(
+				context.TODO(), app.Name, metav1.GetOptions{})
+			if err != nil {
+				logAndFail("failed to get snapshot-restore clone app pod: %v", err)
+			}
+			err = validateIOMax(f, appPod, pvcClone, wantsLow, rbdDeployment.getDaemonsetName())
+			if err != nil {
+				logAndFail("failed to validate io.max for snapshot-restore clone: %v", err)
+			}
+			err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot-restore clone app: %v", err)
+			}
+
+			// Clean up the snapshot-restore clone and snapshot, keeping the
+			// parent PVC alive for the PVC-to-PVC smart clone below.
 			err = deleteSnapshot(&snap, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete snapshot: %v", err)
@@ -6908,6 +6935,60 @@ var _ = Describe("RBD", func() {
 			err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete clone PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool) // parent only
+
+			// Create a PVC-to-PVC smart clone from the parent with a different
+			// VAC (high) to assert QoS non-propagation at the node io.max level.
+			pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load smart clone PVC: %v", err)
+			}
+			pvcSmartClone.Namespace = f.UniqueName
+			pvcSmartClone.Spec.VolumeAttributesClassName = &cgroupHighVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create smart clone PVC: %v", err)
+			}
+			// parent + temp clone + smart clone
+			validateRBDImageCount(f, 3, defaultRBDPool)
+
+			// Validate smart clone has its own QoS (high), NOT parent's (medium)
+			err = validateCgroupQoS(f, pvcSmartClone, wantsHigh)
+			if err != nil {
+				logAndFail("failed to validate smart clone cgroup QoS: %v", err)
+			}
+
+			// Mount the smart clone and confirm the node io.max reflects the
+			// smart clone's own VAC (high), not the parent's (medium).
+			app, err = loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app for smart clone: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcSmartClone.Name
+			err = createApp(f.ClientSet, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create app for smart clone: %v", err)
+			}
+			appPod, err = f.ClientSet.CoreV1().Pods(f.UniqueName).Get(
+				context.TODO(), app.Name, metav1.GetOptions{})
+			if err != nil {
+				logAndFail("failed to get smart clone app pod: %v", err)
+			}
+			err = validateIOMax(f, appPod, pvcSmartClone, wantsHigh, rbdDeployment.getDaemonsetName())
+			if err != nil {
+				logAndFail("failed to validate io.max for smart clone: %v", err)
+			}
+			err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete smart clone app: %v", err)
+			}
+
+			// Cleanup
+			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete smart clone PVC: %v", err)
 			}
 			err = deletePVCAndValidatePV(f.ClientSet, pvcParent, deployTimeout)
 			if err != nil {
