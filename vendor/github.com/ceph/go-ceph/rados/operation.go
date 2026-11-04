@@ -5,6 +5,8 @@ import "C"
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"unsafe"
 
@@ -33,7 +35,8 @@ const (
 
 // OperationError is an error type that may be returned by an Operate call.
 // It captures the error from the operate call itself and any errors from
-// steps that can return an error.
+// steps that can return an error. Error and Unwrap list the step errors in
+// step order.
 type OperationError struct {
 	kind       opKind
 	OpError    error
@@ -46,9 +49,9 @@ func (e OperationError) Error() string {
 		subErrors = append(subErrors,
 			fmt.Sprintf("op=%s", e.OpError))
 	}
-	for idx, es := range e.StepErrors {
+	for _, idx := range slices.Sorted(maps.Keys(e.StepErrors)) {
 		subErrors = append(subErrors,
-			fmt.Sprintf("Step#%d=%s", idx, es))
+			fmt.Sprintf("Step#%d=%s", idx, e.StepErrors[idx]))
 	}
 	return fmt.Sprintf(
 		"%s operation error: %s",
@@ -61,8 +64,8 @@ func (e OperationError) Unwrap() []error {
 	if e.OpError != nil {
 		subErrors = append(subErrors, e.OpError)
 	}
-	for _, es := range e.StepErrors {
-		subErrors = append(subErrors, es)
+	for _, idx := range slices.Sorted(maps.Keys(e.StepErrors)) {
+		subErrors = append(subErrors, e.StepErrors[idx])
 	}
 	return subErrors
 }
@@ -108,6 +111,8 @@ func (o *operation) free() {
 
 // update the operation and the steps it contains. The top-level result
 // of the rados call is passed in as ret and used to construct errors.
+// Only a negative ret is an error: reads can return positive values, and
+// writes can with RETURNVEC or an empty transaction.
 // The update call of each step is used to update the contents of each
 // step and gather any errors from those steps.
 func (o *operation) update(kind opKind, ret C.int) error {
@@ -117,12 +122,12 @@ func (o *operation) update(kind opKind, ret C.int) error {
 			stepErrors[i] = err
 		}
 	}
-	if ret == 0 && len(stepErrors) == 0 {
+	if ret >= 0 && len(stepErrors) == 0 {
 		return nil
 	}
 	return OperationError{
 		kind:       kind,
-		OpError:    getError(ret),
+		OpError:    getErrorIfNegative(ret),
 		StepErrors: stepErrors,
 	}
 }

@@ -22,10 +22,15 @@ func (w *WriteOp) SetXattr(name string, value []byte) {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 
+	var cValue *C.char
+	if len(value) > 0 {
+		cValue = (*C.char)(unsafe.Pointer(&value[0]))
+	}
+
 	C.rados_write_op_setxattr(
 		w.op,
 		cName,
-		(*C.char)(unsafe.Pointer(&value[0])),
+		cValue,
 		C.size_t(len(value)),
 	)
 }

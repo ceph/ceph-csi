@@ -36,6 +36,14 @@ func (ioctx *IOContext) Checksum(oid string, checksumType ChecksumType, dst []by
 		opts.InitValue = make([]byte, initLen)
 	}
 
+	var cInitValue, cDst *C.char
+	if len(opts.InitValue) > 0 {
+		cInitValue = (*C.char)(unsafe.Pointer(&opts.InitValue[0]))
+	}
+	if len(dst) > 0 {
+		cDst = (*C.char)(unsafe.Pointer(&dst[0]))
+	}
+
 	// call library
 	coid := C.CString(oid)
 	defer C.free(unsafe.Pointer(coid))
@@ -44,12 +52,12 @@ func (ioctx *IOContext) Checksum(oid string, checksumType ChecksumType, dst []by
 		ioctx.ioctx,
 		coid,
 		C.rados_checksum_type_t(checksumType),
-		(*C.char)(unsafe.Pointer(&opts.InitValue[0])),
+		cInitValue,
 		C.size_t(len(opts.InitValue)),
 		C.size_t(opts.Len),
 		C.uint64_t(opts.Off),
 		C.size_t(opts.ChunkSize),
-		(*C.char)(unsafe.Pointer(&dst[0])),
+		cDst,
 		C.size_t(len(dst)),
 	))
 }

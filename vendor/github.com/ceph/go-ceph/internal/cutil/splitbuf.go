@@ -31,13 +31,14 @@ func SplitSparseBuffer(b []byte) []string {
 // keepEmpty=true case. Optimizing the functions is a job for another day.
 func splitBufStrings(b []byte, keepEmpty bool) []string {
 	values := make([]string, 0)
-	// the final null byte should be the terminating null in C
-	// we never want to preserve the empty string after it
-	if len(b) > 0 && b[len(b)-1] == 0 {
-		b = b[:len(b)-1]
-	}
+	// an empty buffer contains no strings at all
 	if len(b) == 0 {
 		return values
+	}
+	// the final null byte should be the terminating null in C
+	// we never want to preserve the empty string after it
+	if b[len(b)-1] == 0 {
+		b = b[:len(b)-1]
 	}
 	for _, s := range bytes.Split(b, []byte{0}) {
 		if !keepEmpty && len(s) == 0 {

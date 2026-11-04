@@ -45,7 +45,7 @@ func (s *ReadOpOmapGetValsByKeysStep) free() {
 }
 
 func (s *ReadOpOmapGetValsByKeysStep) update() error {
-	err := getError(*s.prval)
+	err := getErrorIfNegative(*s.prval)
 	s.canIterate = (err == nil)
 
 	return err

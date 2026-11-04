@@ -70,7 +70,7 @@ func (gos *GetOmapStep) update() error {
 		gos.canIterate = false
 		return gos.err
 	}
-	err := getError(*gos.rval)
+	err := getErrorIfNegative(*gos.rval)
 	gos.canIterate = (err == nil)
 	return err
 }

@@ -22,9 +22,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -2561,63 +2563,106 @@ func genVolFromVolIDWithMigration(
 	return rv, err
 }
 
-// setAllMetadata set all the metadata from arg parameters on RBD image.
+// desiredMetadata returns the metadata that should be set on the RBD image:
+// parameters plus the cluster name and mounter when they are set.
+func (rv *rbdVolume) desiredMetadata(parameters map[string]string) map[string]string {
+	desired := make(map[string]string, len(parameters)+2)
+	maps.Copy(desired, parameters)
+	if rv.ClusterName != "" {
+		desired[clusterNameKey] = rv.ClusterName
+	}
+	if rv.Mounter != "" {
+		desired[mounterKey] = rv.Mounter
+	}
+
+	return desired
+}
+
+// diffMetadata returns the entries of desired that are missing from existing
+// or have a different value.
+func diffMetadata(desired, existing map[string]string) map[string]string {
+	mismatched := make(map[string]string, len(desired))
+	for k, v := range desired {
+		if ev, ok := existing[k]; !ok || ev != v {
+			mismatched[k] = v
+		}
+	}
+
+	return mismatched
+}
+
+// readMetadata returns the current value for each key in keys. Keys that are
+// not set on the image are omitted from the returned map.
+func readMetadata(image *librbd.Image, keys []string) (map[string]string, error) {
+	all, err := image.ListMetadata()
+	if err != nil {
+		return nil, err
+	}
+
+	existing := make(map[string]string, len(keys))
+	for _, k := range keys {
+		if v, ok := all[k]; ok {
+			existing[k] = v
+		}
+	}
+
+	return existing, nil
+}
+
+// setAllMetadata set all the metadata from arg parameters on RBD image. Keys
+// that already have the desired value are not written again, so idempotent
+// retries do not issue metadata_set calls.
 func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
+	desired := rv.desiredMetadata(parameters)
+	if len(desired) == 0 {
+		return nil
+	}
+
 	image, err := rv.open()
 	if err != nil {
 		return err
 	}
 	defer image.Close() //nolint:errcheck // not a critical failure
 
-	for k, v := range parameters {
-		err := image.SetMetadata(k, v)
+	existing, err := readMetadata(image, slices.Collect(maps.Keys(desired)))
+	if err != nil {
+		return fmt.Errorf("failed to list metadata on image %q: %w", rv, err)
+	}
+
+	for k, v := range diffMetadata(desired, existing) {
+		err = image.SetMetadata(k, v)
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)
-		}
-	}
-
-	if rv.ClusterName != "" {
-		err := image.SetMetadata(clusterNameKey, rv.ClusterName)
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w",
-				clusterNameKey, rv.ClusterName, err)
-		}
-	}
-
-	if rv.Mounter != "" {
-		err := image.SetMetadata(mounterKey, rv.Mounter)
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w",
-				mounterKey, rv.Mounter, err)
 		}
 	}
 
 	return nil
 }
 
-// unsetAllMetadata unset all the metadata from arg keys on RBD image.
+// unsetAllMetadata unset all the metadata from arg keys (plus the cluster
+// name and mounter) on RBD image. Only the keys that are set are removed, so
+// idempotent retries do not issue metadata_remove calls.
 func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
+	allKeys := append(slices.Clone(keys), clusterNameKey, mounterKey)
+
 	image, err := rv.open()
 	if err != nil {
 		return err
 	}
 	defer image.Close() //nolint:errcheck // not a critical failure
 
-	for _, key := range keys {
-		err := image.RemoveMetadata(key)
-		if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-			return fmt.Errorf("failed to unset metadata key %q on %q: %w", key, rv, err)
+	existing, err := readMetadata(image, allKeys)
+	if err != nil {
+		return fmt.Errorf("failed to list metadata on image %q: %w", rv, err)
+	}
+
+	for k := range existing {
+		// a key may get removed concurrently between the read and the
+		// remove, treat that as success
+		err = image.RemoveMetadata(k)
+		if err != nil && !errors.Is(err, librbd.ErrNotFound) {
+			return fmt.Errorf("failed to unset metadata key %q on %q: %w", k, rv, err)
 		}
-	}
-
-	err = image.RemoveMetadata(clusterNameKey)
-	if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-		return fmt.Errorf("failed to unset metadata key %q on %q: %w", clusterNameKey, rv, err)
-	}
-
-	err = image.RemoveMetadata(mounterKey)
-	if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-		return fmt.Errorf("failed to unset metadata key %q on %q: %w", mounterKey, rv, err)
 	}
 
 	return nil
