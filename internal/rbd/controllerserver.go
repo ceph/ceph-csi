@@ -676,6 +676,22 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		return nil, err
 	}
 
+	// Apply QoS parameters from VolumeAttributesClass if present
+	// or else remove the QoS metadata from the image.
+	// This handles both traditional NBD QoS and cgroup v2 QoS.
+	// Use the existing image size (refreshed by Exists) for capacity-based QoS,
+	// so replaying CreateVolume with the original request size does not shrink an
+	// already expanded volume's limits.
+	if mutableParameters := req.GetMutableParameters(); len(mutableParameters) > 0 {
+		rbdVol.RequestedVolSize = rbdVol.VolSize
+		err = rbdVol.modifyVolumeAttributes(ctx, mutableParameters)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to apply QoS for rbd image: %s with error: %v", rbdVol, err)
+
+			return nil, err
+		}
+	}
+
 	return buildCreateVolumeResponse(ctx, req, rbdVol)
 }
 
