@@ -6412,9 +6412,32 @@ var _ = Describe("RBD", func() {
 				return
 			}
 
+			// Remove the csi-rbdplugin-controller container so the internal PV
+			// controller does not reconcile volumes and re-apply cgroup QoS from
+			// the VolumeAttributesClass. Without this, the controller masks the
+			// QoS that CreateVolume/ControllerModifyVolume are responsible for
+			// (notably for clones). Use the selected driver's deployment name so
+			// this also works in operator-deployment mode.
+			provisionerDeployment := rbdDeployment.getDeploymentName()
+			controllerContainer, err := removeDeploymentContainer(
+				f.ClientSet, cephCSINamespace, provisionerDeployment, rbdControllerContainerName, deployTimeout)
+			if err != nil {
+				logAndFail("failed to remove csi-rbdplugin-controller: %v", err)
+			}
+			// Restore the controller when this test exits, even on failure, so
+			// later specs and the existing deployment (with --deploy-rbd=false)
+			// keep the PV controller instead of relying on a later test to do it.
+			defer func() {
+				if rErr := restoreDeploymentContainer(
+					f.ClientSet, cephCSINamespace, provisionerDeployment, controllerContainer, deployTimeout,
+				); rErr != nil {
+					logAndFail("failed to add back csi-rbdplugin-controller: %v", rErr)
+				}
+			}()
+
 			// Recreate the StorageClass with krbd mounter and controller-modify-secret
 			// for VAC modifications.
-			err := deleteResource(rbdExamplePath + "storageclass.yaml")
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
 			if err != nil {
 				logAndFail("failed to delete storageclass: %v", err)
 			}
@@ -7313,6 +7336,10 @@ var _ = Describe("RBD", func() {
 
 				return
 			}
+
+			// This test relies on the PV controller, which the deployment runs by
+			// default. Tests that remove it restore it in their own cleanup, so no
+			// ordering between specs is required.
 
 			vacName := "cgroup-qos-regen"
 			qosParams := map[string]string{
