@@ -114,12 +114,10 @@ type DeploymentMethod interface {
 	getDeploymentName() string
 	getDaemonsetName() string
 	getPodSelector() string
-	setClusterName(clusterName string) error
-	setEnableFencing(enable bool) error
+	applyClusterConfig(clusterName string, enableFencing bool, domainLabels []string) error
 }
 type RBDDeploymentMethod interface {
 	DeploymentMethod
-	setDomainLabels(labels []string) error
 }
 type CephFSDeploymentMethod interface {
 	DeploymentMethod
@@ -150,6 +148,13 @@ func (d *DriverInfo) getPodSelector() string {
 	return fmt.Sprintf("app in (%s, %s)", d.deploymentName, d.daemonsetName)
 }
 
+// applyClusterConfig handles the driver settings that are specific to the
+// operator deployment. Deployments from YAML manifests only need the cluster
+// name passed to the driver containers.
+func (d *DriverInfo) applyClusterConfig(clusterName string, _ bool, _ []string) error {
+	return d.setClusterName(clusterName)
+}
+
 func (d *DriverInfo) setClusterName(clusterName string) error {
 	err := waitForContainersArgsUpdate(d.clientSet, cephCSINamespace, d.deploymentName,
 		"clustername", clusterName, d.driverContainers, deployTimeout)
@@ -157,12 +162,6 @@ func (d *DriverInfo) setClusterName(clusterName string) error {
 		return fmt.Errorf("timeout waiting for clustername arg update %s/%s: %v", cephCSINamespace, d.deploymentName, err)
 	}
 
-	return nil
-}
-
-func (d *DriverInfo) setEnableFencing(enable bool) error {
-	// No-op as fencing is enabled in the yaml files by default, disabling is not needed.
-	// Required implementation in OperatorDeployment.
 	return nil
 }
 

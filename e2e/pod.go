@@ -88,14 +88,22 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 		}
 		dNum := ds.Status.DesiredNumberScheduled
 		ready := ds.Status.NumberReady
+		updated := ds.Status.UpdatedNumberScheduled
 		framework.Logf(
-			"%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)",
+			"%d / %d pods ready, %d updated in namespace '%s' in daemonset '%s' (%d seconds elapsed)",
 			ready,
 			dNum,
+			updated,
 			ns,
 			ds.ObjectMeta.Name,
 			int(time.Since(start).Seconds()))
 		if ready != dNum {
+			return false, nil
+		}
+		// After a rollout the old pods may still be Ready, so also require
+		// the controller to have observed the generation and every scheduled
+		// pod to run the updated template.
+		if ds.Status.ObservedGeneration < ds.Generation || updated != dNum {
 			return false, nil
 		}
 

@@ -251,14 +251,9 @@ var _ = Describe(cephfsType, func() {
 			}
 		}
 
-		err = cephFSDeployment.setClusterName(defaultClusterName)
+		err = cephFSDeployment.applyClusterConfig(defaultClusterName, true, nil)
 		if err != nil {
-			logAndFail("failed to set cluster name: %v", err)
-		}
-
-		err = cephFSDeployment.setEnableFencing(true)
-		if err != nil {
-			logAndFail("failed to enable fencing: %v", err)
+			logAndFail("failed to configure the CephFS deployment: %v", err)
 		}
 
 		err = createSubvolumegroup(f, fileSystemName, subvolumegroup)
