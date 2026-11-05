@@ -6335,6 +6335,121 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to validate qos: %v", err)
 			}
 
+			// a partial VAC that applies only the read limits; a clone using it
+			// must keep exactly these and drop every other inherited key.
+			partialVACName := "partial-nbd"
+			err = createRBDVolumeAttributesClass(f.ClientSet, partialVACName, map[string]string{
+				"baseReadIops": "2000",
+				"baseReadBps":  "209715200",
+			})
+			if err != nil {
+				logAndFail("failed to create volumeattributesclass: %v", err)
+			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, partialVACName)
+				if err != nil {
+					logAndFail("failed to delete volumeattributesclass: %v", err)
+				}
+			}()
+
+			// read limits applied by the partial VAC must be present; every other
+			// NBD QoS key (including the parent's per-GiB metadata) must be absent.
+			partialWants := map[string]string{
+				"rbd_qos_read_iops_limit": "2000",
+				"rbd_qos_read_bps_limit":  "209715200",
+			}
+			keep := map[string]bool{
+				"conf_rbd_qos_read_iops_limit": true,
+				"conf_rbd_qos_read_bps_limit":  true,
+				"rbd_base_qos_read_iops_limit": true,
+				"rbd_base_qos_read_bps_limit":  true,
+			}
+			var partialAbsent []string
+			for _, k := range nbdQoSImageMetaKeys() {
+				if !keep[k] {
+					partialAbsent = append(partialAbsent, k)
+				}
+			}
+
+			// recreate a snapshot of the flex-VAC parent for the restore cases.
+			snap = getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+			err = createSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot: %v", err)
+			}
+
+			// a clone without a VAC must inherit no NBD QoS
+			noVACClone := func(clonePath, name string) {
+				clone, err := loadPVC(clonePath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				// use a unique name so these cases do not collide with the parent
+				// and clone PVCs that are still alive from the cases above.
+				clone.Name = name
+				clone.Namespace = f.UniqueName
+				clone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
+				err = createPVCAndvalidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone PVC: %v", err)
+				}
+				err = validateQOSAbsent(f, clone, nbdQoSImageMetaKeys())
+				if err != nil {
+					logAndFail("clone without a VAC inherited NBD QoS: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone PVC: %v", err)
+				}
+			}
+
+			// a clone with a partial VAC keeps only its own limits; the parent's
+			// omitted limits and per-GiB metadata must not survive.
+			partialVACClone := func(clonePath, name string) {
+				clone, err := loadPVC(clonePath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				clone.Name = name
+				clone.Namespace = f.UniqueName
+				clone.Spec.VolumeAttributesClassName = &partialVACName
+				clone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
+				err = createPVCAndvalidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone PVC: %v", err)
+				}
+				err = validateQOS(f, clone, partialWants)
+				if err != nil {
+					logAndFail("clone with a partial VAC missing its own limits: %v", err)
+				}
+				err = validateQOSAbsent(f, clone, partialAbsent)
+				if err != nil {
+					logAndFail("clone with a partial VAC kept inherited limits: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone PVC: %v", err)
+				}
+			}
+
+			for _, tc := range []struct {
+				clonePath string
+				name      string
+			}{
+				{pvcClonePath, "nbd-qos-restore"},
+				{pvcSmartClonePath, "nbd-qos-smart"},
+			} {
+				noVACClone(tc.clonePath, tc.name+"-novac")
+				partialVACClone(tc.clonePath, tc.name+"-partial")
+			}
+
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+
 			// delete parent pvc and clone pvc
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
