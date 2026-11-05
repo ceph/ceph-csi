@@ -172,12 +172,13 @@ func (h *nbdQoSHandler) Clear(ctx context.Context) error {
 	return h.volume.removeQOS(ctx)
 }
 
-// removeQOS removes every traditional NBD QoS key from the image: the rbd config
-// overrides (conf_rbd_qos_*) set by ApplyQOS and the capacity-based QoS metadata
-// (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit, rbd_base_qos_vol_size)
-// saved by SaveQOS.
-func (rv *rbdVolume) removeQOS(ctx context.Context) error {
-	keys := []string{
+// nbdQoSMetadataKeys returns every image-metadata key used for traditional NBD
+// QoS: the rbd config overrides (conf_rbd_qos_*) set by ApplyQOS and the
+// capacity-based QoS metadata (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit,
+// rbd_base_qos_vol_size) saved by SaveQOS. Clearing these keys drops both the
+// applied limits and the inputs used to recalculate them on expansion.
+func nbdQoSMetadataKeys() []string {
+	return []string{
 		// rbd config overrides set by ApplyQOS.
 		metadataConfPrefix + iopsLimit,
 		metadataConfPrefix + readIopsLimit,
@@ -196,8 +197,21 @@ func (rv *rbdVolume) removeQOS(ctx context.Context) error {
 		bpsPerGiBLimit, readBpsPerGiBLimit, writeBpsPerGiBLimit,
 		baseQosVolSize,
 	}
-	for _, k := range keys {
-		err := rv.RemoveMetadata(k)
+}
+
+// removeQOS removes every traditional NBD QoS key from the image: the rbd config
+// overrides (conf_rbd_qos_*) set by ApplyQOS and the capacity-based QoS metadata
+// (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit, rbd_base_qos_vol_size)
+// saved by SaveQOS.
+func (rv *rbdVolume) removeQOS(ctx context.Context) error {
+	image, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close() //nolint:errcheck // not a critical failure
+
+	for _, k := range nbdQoSMetadataKeys() {
+		err := image.RemoveMetadata(k)
 		if err != nil && !errors.Is(err, librbd.ErrNotExist) {
 			log.ErrorLog(ctx, "failed to remove QoS metadata %s: %v", k, err)
 
