@@ -6417,10 +6417,10 @@ var _ = Describe("RBD", func() {
 
 			// Create low-tier VAC
 			lowQosParams := map[string]string{
-				"maxReadIops":            "500",
-				"maxWriteIops":           "500",
-				"maxReadBps":  "52428800", // 50 MB/s
-				"maxWriteBps": "52428800",
+				"maxReadIops":  "500",
+				"maxWriteIops": "500",
+				"maxReadBps":   "52428800", // 50 MB/s
+				"maxWriteBps":  "52428800",
 			}
 			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupLowVACName, lowQosParams)
 			if err != nil {
@@ -6435,10 +6435,10 @@ var _ = Describe("RBD", func() {
 
 			// Create medium-tier VAC
 			mediumQosParams := map[string]string{
-				"maxReadIops":            "1000",
-				"maxWriteIops":           "1000",
-				"maxReadBps":  "104857600", // 100 MB/s
-				"maxWriteBps": "104857600",
+				"maxReadIops":  "1000",
+				"maxWriteIops": "1000",
+				"maxReadBps":   "104857600", // 100 MB/s
+				"maxWriteBps":  "104857600",
 			}
 			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupMediumVACName, mediumQosParams)
 			if err != nil {
@@ -6453,10 +6453,10 @@ var _ = Describe("RBD", func() {
 
 			// Create high-tier VAC
 			highQosParams := map[string]string{
-				"maxReadIops":            "2000",
-				"maxWriteIops":           "2000",
-				"maxReadBps":  "209715200", // 200 MB/s
-				"maxWriteBps": "209715200",
+				"maxReadIops":  "2000",
+				"maxWriteIops": "2000",
+				"maxReadBps":   "209715200", // 200 MB/s
+				"maxWriteBps":  "209715200",
 			}
 			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupHighVACName, highQosParams)
 			if err != nil {
@@ -6486,10 +6486,10 @@ var _ = Describe("RBD", func() {
 
 			// Validate metadata
 			wantsMedium := map[string]string{
-				"maxReadIops":            "1000",
-				"maxWriteIops":           "1000",
-				"maxReadBps":  "104857600",
-				"maxWriteBps": "104857600",
+				"maxReadIops":  "1000",
+				"maxWriteIops": "1000",
+				"maxReadBps":   "104857600",
+				"maxWriteBps":  "104857600",
 			}
 			err = validateCgroupQoS(f, pvc, wantsMedium)
 			if err != nil {
@@ -6544,10 +6544,10 @@ var _ = Describe("RBD", func() {
 			validateRBDImageCount(f, 1, defaultRBDPool)
 
 			wantsLow := map[string]string{
-				"maxReadIops":            "500",
-				"maxWriteIops":           "500",
-				"maxReadBps":  "52428800",
-				"maxWriteBps": "52428800",
+				"maxReadIops":  "500",
+				"maxWriteIops": "500",
+				"maxReadBps":   "52428800",
+				"maxWriteBps":  "52428800",
 			}
 			err = validateCgroupQoS(f, pvcBlock, wantsLow)
 			if err != nil {
@@ -6610,10 +6610,10 @@ var _ = Describe("RBD", func() {
 			validateRBDImageCount(f, 1, defaultRBDPool)
 
 			wantsHigh := map[string]string{
-				"maxReadIops":            "2000",
-				"maxWriteIops":           "2000",
-				"maxReadBps":  "209715200",
-				"maxWriteBps": "209715200",
+				"maxReadIops":  "2000",
+				"maxWriteIops": "2000",
+				"maxReadBps":   "209715200",
+				"maxWriteBps":  "209715200",
 			}
 			err = validateCgroupQoS(f, pvcRWOP, wantsHigh)
 			if err != nil {
