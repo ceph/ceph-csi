@@ -7016,10 +7016,36 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to delete smart clone app: %v", err)
 			}
 
-			// Cleanup
+			// Delete the smart clone that had a VAC; keep the parent alive for
+			// the no-VAC clone below.
 			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete smart clone PVC: %v", err)
+			}
+
+			// Create a PVC-to-PVC smart clone WITHOUT a VolumeAttributesClass.
+			// Such a clone must carry no cgroup QoS metadata on its image: it has
+			// no VAC of its own and cgroup QoS is not propagated from the parent.
+			pvcSmartCloneNoVAC, err := loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load no-VAC smart clone PVC: %v", err)
+			}
+			pvcSmartCloneNoVAC.Namespace = f.UniqueName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartCloneNoVAC, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create no-VAC smart clone PVC: %v", err)
+			}
+
+			// Validate the clone image has no cgroup QoS metadata at all.
+			err = validateCgroupQoS(f, pvcSmartCloneNoVAC, map[string]string{})
+			if err != nil {
+				logAndFail("failed to validate no-VAC smart clone has no QoS metadata: %v", err)
+			}
+
+			// Cleanup
+			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartCloneNoVAC, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete no-VAC smart clone PVC: %v", err)
 			}
 			err = deletePVCAndValidatePV(f.ClientSet, pvcParent, deployTimeout)
 			if err != nil {
