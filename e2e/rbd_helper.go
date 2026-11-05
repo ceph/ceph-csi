@@ -204,6 +204,14 @@ func createRBDStorageClass(
 	})
 }
 
+// rbdControllerContainerName is the ceph-csi internal controller container in
+// the provisioner deployment. It reconciles PersistentVolumes and, among other
+// things, restores cgroup v2 QoS from the VolumeAttributesClass. Tests that need
+// to observe what CreateVolume/ControllerModifyVolume set on their own remove it
+// with removeDeploymentContainer first, otherwise this controller re-applies the
+// QoS and masks any gap in those paths.
+const rbdControllerContainerName = "csi-rbdplugin-controller"
+
 // createKRBDStorageClassWithModifySecret creates a StorageClass configured for
 // krbd mounter (default) with controller-modify-secret for VolumeAttributesClass support.
 // This is required for testing cgroup v2 QoS with VAC modification.
