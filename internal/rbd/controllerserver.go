@@ -878,7 +878,10 @@ func (cs *ControllerServer) createBackingImage(
 		}
 		defer cs.OperationLocks.ReleaseCloneLock(parentVol.VolID)
 
-		return rbdVol.createCloneFromImage(ctx, parentVol)
+		err = rbdVol.createCloneFromImage(ctx, parentVol)
+		if err != nil {
+			return err
+		}
 	default:
 		err = createImage(ctx, rbdVol, cr)
 		if err != nil {
@@ -902,18 +905,21 @@ func (cs *ControllerServer) createBackingImage(
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	// Apply QoS parameters from VolumeAttributesClass if present.
+	if len(mutableParameters) == 0 && parentVol == nil && rbdSnap == nil {
+		return nil
+	}
+
+	// Apply QoS parameters from VolumeAttributesClass if present
+	// or else remove the QoS metadata from the image.
 	// This handles both traditional NBD QoS and cgroup v2 QoS.
-	if len(mutableParameters) > 0 {
-		// Set RequestedVolSize for QoS capacity-based calculations.
-		rbdVol.RequestedVolSize = rbdVol.VolSize
+	// Set RequestedVolSize for QoS capacity-based calculations.
+	rbdVol.RequestedVolSize = rbdVol.VolSize
 
-		err = rbdVol.modifyVolumeAttributes(ctx, mutableParameters)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to apply QoS for rbd image: %s with error: %v", rbdVol, err)
+	err = rbdVol.modifyVolumeAttributes(ctx, mutableParameters)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to apply QoS for rbd image: %s with error: %v", rbdVol, err)
 
-			return status.Error(codes.Internal, err.Error())
-		}
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	return nil
