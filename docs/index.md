@@ -27,14 +27,18 @@ straightforward.
 
 ### Deployment
 
-The preferred way to deploy Ceph-CSI on Kubernetes is via the
-[Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator), which manages
-the full lifecycle of the drivers including upgrades and configuration.
+!!! important "Deployment Method Change"
+    **Helm charts and manual YAML deployments are DEPRECATED** as of v3.18 and will be removed in v3.19.
+    
+    The [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) is now the **only supported deployment method** for Kubernetes, managing the full lifecycle of the drivers including upgrades and configuration.
 
-- [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) - Operator-based
-  deployment (recommended)
-- [RBD Deployment Guide](rbd/deploy.md) - Deploy the RBD CSI driver manually
-- [CephFS Deployment Guide](cephfs/deploy.md) - Deploy the CephFS CSI driver manually
+**Supported Deployment:**
+- [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) - Operator-based deployment (**recommended and supported**)
+
+**Deprecated Deployment Methods (untested, will be removed in v3.19):**
+- [RBD Deployment Guide](rbd/deploy.md) - Manual YAML deployment (deprecated)
+- [CephFS Deployment Guide](cephfs/deploy.md) - Manual YAML deployment (deprecated)
+- Helm charts in `charts/` directory (deprecated)
 
 ### Features
 

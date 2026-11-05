@@ -9,6 +9,13 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
 [![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/ceph/ceph-csi/devel)](https://www.tickgit.com/browse?repo=github.com/ceph/ceph-csi&branch=devel)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/5940/badge)](https://bestpractices.coreinfrastructure.org/projects/5940)
 
+> [!IMPORTANT]
+> **Deployment Method Change**: As of Ceph-CSI v3.17, the [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) is the **officially supported deployment method** for Kubernetes.
+>
+> **Helm charts and manual YAML deployments are deprecated** and will be removed in v3.19. Please migrate to the operator for automated lifecycle management, upgrades, and configuration.
+>
+> See the [deprecation notice](deploy/DEPRECATION.md) for migration guidance.
+
 - [Ceph CSI](#ceph-csi)
    - [Overview](#overview)
    - [Project status](#project-status)
@@ -34,12 +41,16 @@ Ceph CSI plugins implement an interface between a CSI-enabled Container Orchestr
 (CO) and Ceph clusters. They enable dynamically provisioning Ceph volumes and
 attaching them to workloads.
 
-Independent CSI plugins are provided to support RBD and CephFS backed volumes,
+Independent CSI plugins are provided to support RBD and CephFS backed volumes.
 
-- For details about configuration and deployment of RBD plugin, please refer
-  [rbd doc](https://ceph.github.io/ceph-csi/rbd/deploy/) and
-  for CephFS plugin configuration and deployment please
-  refer [cephFS doc](https://ceph.github.io/ceph-csi/cephfs/deploy/).
+**Recommended Deployment:**
+- Use the [Ceph-CSI Operator](https://ceph.github.io/ceph-csi-operator) for automated deployment and lifecycle management
+
+**Deprecated Deployment Methods (will be removed in v3.19):**
+- Manual YAML deployments: [RBD](https://ceph.github.io/ceph-csi/rbd/deploy/) | [CephFS](https://ceph.github.io/ceph-csi/cephfs/deploy/)
+- Helm charts in `./charts/` directory
+
+**Additional Resources:**
 - For example usage of the RBD and CephFS CSI plugins, see examples in `examples/`.
 - Stale resource cleanup, please refer [cleanup doc](https://ceph.github.io/ceph-csi/resource-cleanup/).
 
