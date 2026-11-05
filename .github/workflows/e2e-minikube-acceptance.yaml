@@ -1,6 +1,8 @@
 ---
 # Acceptance quick e2e: minikube + Rook Ceph smoke on every PR.
 # Complements (does NOT replace) CentOS mini-e2e via ok-to-test.
+# Runs once per supported base image: Rocky Linux 10 (the build.env default)
+# and a Rocky Linux 9 variant that matches the -rocky9 published images.
 name: e2e-minikube-acceptance
 "on":
   pull_request:
@@ -28,8 +30,17 @@ env:
 
 jobs:
   e2e-acceptance:
+    name: e2e-acceptance-${{ matrix.variant }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Base image as configured in build.env (Rocky Linux 10)
+          - variant: default
+          # Rocky Linux 9 runtime, matching the -rocky9 published images
+          - variant: rocky9
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -38,6 +49,20 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
+
+      - name: Patch build.env for Rocky Linux 9
+        if: matrix.variant == 'rocky9'
+        run: |
+          # shellcheck source=build.env
+          source build.env
+          final_base_image=quay.io/rockylinux/rockylinux:9-minimal
+          image_version=${CSI_IMAGE_VERSION}-rocky9
+          sed -i \
+            -e 's|^BASE_IMAGE=.*|BASE_IMAGE=quay.io/rockylinux/rockylinux:9|' \
+            -e "s|^FINAL_BASE_IMAGE=.*|FINAL_BASE_IMAGE=${final_base_image}|" \
+            -e '/^CEPH_RELEASE_RPM=/s/el10/el9/g' \
+            -e "s|^CSI_IMAGE_VERSION=.*|CSI_IMAGE_VERSION=${image_version}|" \
+            build.env
 
       - name: Source build.env
         run: |
@@ -131,6 +156,6 @@ jobs:
         if: '!success()'
         uses: actions/upload-artifact@v7
         with:
-          name: acceptance-e2e-logs
+          name: acceptance-e2e-logs-${{ matrix.variant }}
           path: /tmp/acceptance-e2e-logs/
           retention-days: 7
