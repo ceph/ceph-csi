@@ -36,6 +36,7 @@ import (
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	testutils "k8s.io/kubernetes/test/utils"
 )
 
 // execCommandInPodWithName run command in pod using podName.
@@ -487,4 +488,253 @@ func waitForContainersArgsUpdate(
 	}
 
 	return nil
+}
+
+// updateDeploymentContainers scales the deployment down to zero, applies mutate
+// to the pod template's container list, scales it back to the original replica
+// count and waits for the rollout to complete. It is used to add or remove a
+// single container without touching the rest of the deployment. If any step
+// after scale-down fails, it rolls the deployment back to the original container
+// list and replica count so the shared provisioner is not left broken for later
+// tests.
+func updateDeploymentContainers(
+	c kubernetes.Interface,
+	ns,
+	deploymentName string,
+	mutate func([]v1.Container) []v1.Container,
+	timeout int,
+) error {
+	ctx := context.TODO()
+
+	err := waitForDeploymentInAvailableState(c, deploymentName, ns, timeout)
+	if err != nil {
+		return fmt.Errorf("deployment %s/%s did not become available yet: %w", ns, deploymentName, err)
+	}
+
+	// Capture the original pod template containers and replica count before any
+	// mutation, so a failure after scale-down can restore the deployment instead
+	// of leaving the shared provisioner at zero replicas or with a container
+	// removed.
+	original, err := c.AppsV1().Deployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get deployment %s/%s: %w", ns, deploymentName, err)
+	}
+	originalContainers := make([]v1.Container, len(original.Spec.Template.Spec.Containers))
+	copy(originalContainers, original.Spec.Template.Spec.Containers)
+
+	// Scale down to 0 so the pod template can be updated safely.
+	scale, err := c.AppsV1().Deployments(ns).GetScale(ctx, deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get scale deployment %s/%s: %w", ns, deploymentName, err)
+	}
+	count := scale.Spec.Replicas
+	// Register rollback before scaling down: an API error can occur after the
+	// server has already applied the scale change.
+	rollback := true
+	defer func() {
+		if rollback {
+			if rbErr := restoreDeploymentState(c, ns, deploymentName, originalContainers, count, timeout); rbErr != nil {
+				framework.Logf("failed to roll back deployment %s/%s: %v", ns, deploymentName, rbErr)
+			}
+		}
+	}()
+
+	scale.ResourceVersion = "" // indicate the scale update should be unconditional
+	scale.Spec.Replicas = 0
+	err = waitForDeploymentUpdateScale(c, ns, deploymentName, scale, timeout)
+	if err != nil {
+		return err
+	}
+
+	// Wait until the deployment reports the scale-down and, crucially, until the
+	// old pods are actually gone. DeploymentStatus.Replicas can reach zero while
+	// pods are still terminating, so a lingering container (for example the PV
+	// controller) could keep reconciling while the test runs.
+	err = waitForDeploymentRollout(c, ns, deploymentName, timeout)
+	if err != nil {
+		return err
+	}
+	err = waitForDeploymentPodsGone(c, ns, deploymentName, timeout)
+	if err != nil {
+		return err
+	}
+
+	// Update the container list.
+	deployment, err := c.AppsV1().Deployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get deployment %s/%s: %w", ns, deploymentName, err)
+	}
+	deployment.Spec.Template.Spec.Containers = mutate(deployment.Spec.Template.Spec.Containers)
+	// clear creationTimestamp, generation, resourceVersion, and uid
+	deployment.CreationTimestamp = metav1.Time{}
+	deployment.Generation = 0
+	deployment.ResourceVersion = "0"
+	deployment.UID = ""
+	err = waitForDeploymentUpdate(c, deployment, timeout)
+	if err != nil {
+		return err
+	}
+
+	// Scale back up to the original count and wait for the rollout to fully
+	// complete (latest generation observed, all replicas updated and ready).
+	scale.Spec.Replicas = count
+	err = waitForDeploymentUpdateScale(c, ns, deploymentName, scale, timeout)
+	if err != nil {
+		return err
+	}
+	err = waitForDeploymentRollout(c, ns, deploymentName, timeout)
+	if err != nil {
+		return err
+	}
+
+	rollback = false
+
+	return nil
+}
+
+// waitForDeploymentPodsGone waits until no pods matching the deployment's
+// selector remain in the namespace. DeploymentStatus.Replicas can reach zero
+// while pods are still terminating, so callers that must be sure the old pods
+// (for example a controller that keeps reconciling) are truly gone use this
+// after scaling the deployment down.
+func waitForDeploymentPodsGone(c kubernetes.Interface, ns, name string, timeout int) error {
+	deployment, err := c.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get deployment %s/%s: %w", ns, name, err)
+	}
+	selector, err := metav1.LabelSelectorAsSelector(deployment.Spec.Selector)
+	if err != nil {
+		return fmt.Errorf("invalid selector for deployment %s/%s: %w", ns, name, err)
+	}
+
+	t := time.Duration(timeout) * time.Minute
+	start := time.Now()
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(ctx context.Context) (bool, error) {
+		pods, err := c.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("error listing pods for deployment %s/%s: %w", ns, name, err)
+		}
+		if len(pods.Items) == 0 {
+			return true, nil
+		}
+		framework.Logf("waiting for %d pod(s) of deployment %s/%s to terminate (%d seconds elapsed)",
+			len(pods.Items), ns, name, int(time.Since(start).Seconds()))
+
+		return false, nil
+	})
+}
+
+// restoreDeploymentState restores a deployment's pod template containers and
+// replica count. It rolls back a partially applied updateDeploymentContainers so
+// a failed test does not leave the shared provisioner broken for later specs.
+func restoreDeploymentState(
+	c kubernetes.Interface,
+	ns,
+	deploymentName string,
+	containers []v1.Container,
+	count int32,
+	timeout int,
+) error {
+	ctx := context.TODO()
+	deployment, err := c.AppsV1().Deployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get deployment %s/%s: %w", ns, deploymentName, err)
+	}
+	deployment.Spec.Template.Spec.Containers = containers
+	// clear creationTimestamp, generation, resourceVersion, and uid
+	deployment.CreationTimestamp = metav1.Time{}
+	deployment.Generation = 0
+	deployment.ResourceVersion = "0"
+	deployment.UID = ""
+	err = waitForDeploymentUpdate(c, deployment, timeout)
+	if err != nil {
+		return err
+	}
+
+	scale, err := c.AppsV1().Deployments(ns).GetScale(ctx, deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get scale deployment %s/%s: %w", ns, deploymentName, err)
+	}
+	scale.ResourceVersion = "" // indicate the scale update should be unconditional
+	scale.Spec.Replicas = count
+
+	return waitForDeploymentUpdateScale(c, ns, deploymentName, scale, timeout)
+}
+
+// waitForDeploymentRollout waits until the deployment's current spec is fully
+// rolled out: the latest generation is observed and all replicas are updated,
+// present and available. It reuses the upstream testutils.WaitForDeploymentComplete
+// check (deploymentutil.DeploymentComplete) and works for scaling both to zero
+// and back up.
+func waitForDeploymentRollout(c kubernetes.Interface, ns, name string, timeout int) error {
+	d, err := c.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get deployment %s/%s: %w", ns, name, err)
+	}
+
+	return testutils.WaitForDeploymentComplete(c, d, framework.Logf, poll, time.Duration(timeout)*time.Minute)
+}
+
+// removeDeploymentContainer removes the named container from the deployment and
+// returns its spec so restoreDeploymentContainer can add it back later. Returning
+// the container keeps each caller's remove/restore pair self-contained, without
+// sharing state across tests. It works for any container in any deployment.
+func removeDeploymentContainer(
+	c kubernetes.Interface,
+	ns,
+	deploymentName,
+	containerName string,
+	timeout int,
+) (v1.Container, error) {
+	var removed *v1.Container
+	err := updateDeploymentContainers(c, ns, deploymentName,
+		func(containers []v1.Container) []v1.Container {
+			out := make([]v1.Container, 0, len(containers))
+			for i := range containers {
+				if containers[i].Name == containerName {
+					cp := containers[i]
+					removed = &cp
+
+					continue
+				}
+				out = append(out, containers[i])
+			}
+
+			return out
+		}, timeout)
+	if err != nil {
+		return v1.Container{}, err
+	}
+	if removed == nil {
+		return v1.Container{}, fmt.Errorf("container %q not found in deployment %s/%s", containerName, ns, deploymentName)
+	}
+
+	return *removed, nil
+}
+
+// restoreDeploymentContainer adds the container returned by
+// removeDeploymentContainer back to the deployment. It is a no-op when a
+// container with the same name is already present, so it stays idempotent.
+func restoreDeploymentContainer(
+	c kubernetes.Interface,
+	ns,
+	deploymentName string,
+	container v1.Container,
+	timeout int,
+) error {
+	return updateDeploymentContainers(c, ns, deploymentName,
+		func(containers []v1.Container) []v1.Container {
+			for i := range containers {
+				if containers[i].Name == container.Name {
+					return containers // already present
+				}
+			}
+
+			return append(containers, container)
+		}, timeout)
 }
