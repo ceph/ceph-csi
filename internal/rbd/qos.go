@@ -163,12 +163,49 @@ func (h *nbdQoSHandler) Apply(ctx context.Context, params map[string]string) err
 	return h.volume.SaveQOS(ctx, params)
 }
 
-// Clear removes all traditional NBD QoS settings.
+// Clear removes all traditional NBD QoS settings, including the rbd config
+// overrides applied via ApplyQOS and the capacity-based QoS metadata saved via
+// SaveQOS. Applying empty parameters is not enough: it would leave inherited
+// (for example cloned) limits on the image, so the metadata is removed
+// explicitly.
 func (h *nbdQoSHandler) Clear(ctx context.Context) error {
-	// Pass empty params to clear QoS settings.
-	emptyParams := map[string]string{}
+	return h.volume.removeQOS(ctx)
+}
 
-	return h.Apply(ctx, emptyParams)
+// removeQOS removes every traditional NBD QoS key from the image: the rbd config
+// overrides (conf_rbd_qos_*) set by ApplyQOS and the capacity-based QoS metadata
+// (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit, rbd_base_qos_vol_size)
+// saved by SaveQOS.
+func (rv *rbdVolume) removeQOS(ctx context.Context) error {
+	keys := []string{
+		// rbd config overrides set by ApplyQOS.
+		metadataConfPrefix + iopsLimit,
+		metadataConfPrefix + readIopsLimit,
+		metadataConfPrefix + writeIopsLimit,
+		metadataConfPrefix + bpsLimit,
+		metadataConfPrefix + readBpsLimit,
+		metadataConfPrefix + writeBpsLimit,
+		// capacity-based QoS metadata saved by SaveQOS.
+		baseQosIopsLimit, maxQosIopsLimit,
+		baseQosReadIopsLimit, maxQosReadIopsLimit,
+		baseQosWriteIopsLimit, maxQosWriteIopsLimit,
+		baseQosBpsLimit, maxQosBpsLimit,
+		baseQosReadBpsLimit, maxQosReadBpsLimit,
+		baseQosWriteBpsLimit, maxQosWriteBpsLimit,
+		iopsPerGiBLimit, readIopsPerGiBLimit, writeIopsPerGiBLimit,
+		bpsPerGiBLimit, readBpsPerGiBLimit, writeBpsPerGiBLimit,
+		baseQosVolSize,
+	}
+	for _, k := range keys {
+		err := rv.RemoveMetadata(k)
+		if err != nil && !errors.Is(err, librbd.ErrNotExist) {
+			log.ErrorLog(ctx, "failed to remove QoS metadata %s: %v", k, err)
+
+			return fmt.Errorf("failed to remove QoS metadata %s: %w", k, err)
+		}
+	}
+
+	return nil
 }
 
 func parseQosParams(
