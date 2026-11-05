@@ -83,6 +83,12 @@ spec:
         controllerPlugin:
             deploymentStrategy:
                 type: Recreate
+        # Speed up leader hand-over after a Recreate rollout. The defaults
+        # (137s lease, 107s renew, 26s retry) make e2e waits too long.
+        leaderElection:
+            leaseDuration: 30
+            renewDeadline: 20
+            retryPeriod: 5
         generateOMapInfo: true
         enableMetadata: true
         log:

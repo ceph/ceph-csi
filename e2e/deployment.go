@@ -163,20 +163,33 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 			return false, err
 		}
 
-		// TODO need to check rolling update
-
-		// When the deployment status and its underlying resources reach the
-		// desired state, we're done
-		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
-			return true, nil
+		desired := int32(1)
+		if deployment.Spec.Replicas != nil {
+			desired = *deployment.Spec.Replicas
 		}
-		framework.Logf(
-			"deployment status: expected replica count %d running replica count %d",
-			deployment.Status.Replicas,
-			deployment.Status.ReadyReplicas)
-		reason = fmt.Sprintf("deployment status: %#v", deployment.Status.String())
 
-		return false, nil
+		// During a Recreate rollout the old pod stays Ready until it
+		// terminates, so comparing Replicas to ReadyReplicas alone returns
+		// before the new pods exist. Require the controller to have observed
+		// the current generation and all replicas to be updated and ready.
+		status := deployment.Status
+		if status.ObservedGeneration < deployment.Generation ||
+			status.UpdatedReplicas != desired ||
+			status.Replicas != desired ||
+			status.ReadyReplicas != desired ||
+			status.AvailableReplicas != desired {
+			framework.Logf(
+				"deployment %s/%s not ready: generation %d (observed %d), "+
+					"desired %d, replicas %d, updated %d, ready %d, available %d",
+				ns, name, deployment.Generation, status.ObservedGeneration,
+				desired, status.Replicas, status.UpdatedReplicas,
+				status.ReadyReplicas, status.AvailableReplicas)
+			reason = fmt.Sprintf("deployment status: %#v", status.String())
+
+			return false, nil
+		}
+
+		return true, nil
 	})
 
 	if wait.Interrupted(err) {

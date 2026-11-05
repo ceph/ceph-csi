@@ -124,10 +124,6 @@ type RBDDeployment struct {
 	DriverInfo
 }
 
-func (r *RBDDeployment) setDomainLabels(labels []string) error {
-	return nil
-}
-
 func deployRBDPlugin() {
 	// delete objects deployed by rook
 	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
@@ -428,19 +424,13 @@ var _ = Describe("RBD", func() {
 			nbdMapOptions = "nbd:debug-rbd=20,io-timeout=330"
 		}
 
-		err = rbdDeployment.setDomainLabels([]string{nodeRegionLabel, nodeZoneLabel})
+		// Apply all the operator settings at once. A single patch means the
+		// rollout wait below covers every change, and no later patch can
+		// trigger a second rollout before the first volume is created.
+		err = rbdDeployment.applyClusterConfig(defaultClusterName, true,
+			[]string{nodeRegionLabel, nodeZoneLabel})
 		if err != nil {
-			logAndFail("failed to set domain labels: %v", err)
-		}
-
-		err = rbdDeployment.setEnableFencing(true)
-		if err != nil {
-			logAndFail("failed to enable fencing: %v", err)
-		}
-
-		err = rbdDeployment.setClusterName(defaultClusterName)
-		if err != nil {
-			logAndFail("failed to set cluster name: %v", err)
+			logAndFail("failed to configure the RBD deployment: %v", err)
 		}
 	}, OncePerOrdered)
 

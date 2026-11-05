@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
 )
 
 const (
@@ -66,50 +68,82 @@ func (r *OperatorDeployment) getPodSelector() string {
 	return fmt.Sprintf("app in (%s, %s)", r.deploymentName, r.daemonsetName)
 }
 
-func (OperatorDeployment) setClusterName(value string) error {
-	command := []string{
-		"operatorconfigs.csi.ceph.io",
-		OperatorConfigName,
-		"--type=merge",
-		"-p",
-		fmt.Sprintf(`{"spec": {"driverSpecDefaults": {"clusterName": %q}}}`, value),
-	}
-
-	// Patch the operator config
-	err := retryKubectlArgs(cephCSINamespace, kubectlPatch, deployTimeout, command...)
+// applyClusterConfig applies all driver settings in a single OperatorConfig
+// patch and waits for the resulting rollout. Patching them separately can let
+// the generation-change wait observe an earlier patch while a later one is
+// still pending, and the first volume then races the pod replacement.
+func (r OperatorDeployment) applyClusterConfig(clusterName string, enableFencing bool, domainLabels []string) error {
+	current, err := getOperatorConfigDefaults(cephCSINamespace)
 	if err != nil {
-		return fmt.Errorf("failed to set cluster name: %w", err)
+		return err
 	}
 
-	return nil
-}
+	defaults := current.Spec.DriverSpecDefaults
+	fencingMatches := defaults.EnableFencing != nil && *defaults.EnableFencing == enableFencing
+	labelsMatch := len(domainLabels) == 0 || slices.Equal(defaults.NodePlugin.Topology.DomainLabels, domainLabels)
+	if defaults.ClusterName == clusterName && fencingMatches && labelsMatch {
+		framework.Logf("operator config already has clusterName %q and enableFencing %t, skipping patch",
+			clusterName, enableFencing)
 
-func (r OperatorDeployment) setEnableFencing(enable bool) error {
+		return r.waitForDriverReady(clusterName, enableFencing, domainLabels)
+	}
+
 	oldGeneration, err := getDeploymentGeneration(r.clientSet, r.deploymentName, cephCSINamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get deployment generation before patching: %w", err)
 	}
 
+	driverDefaults := map[string]interface{}{
+		"clusterName":   clusterName,
+		"enableFencing": enableFencing,
+	}
+	if len(domainLabels) > 0 {
+		driverDefaults["nodePlugin"] = map[string]interface{}{
+			"topology": map[string]interface{}{"domainLabels": domainLabels},
+		}
+	}
+	patch, err := json.Marshal(map[string]interface{}{
+		"spec": map[string]interface{}{"driverSpecDefaults": driverDefaults},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal operator config patch: %w", err)
+	}
+
 	command := []string{
 		"operatorconfigs.csi.ceph.io",
 		OperatorConfigName,
 		"--type=merge",
 		"-p",
-		fmt.Sprintf(`{"spec": {"driverSpecDefaults": {"enableFencing": %t}}}`, enable),
+		string(patch),
 	}
-
 	err = retryKubectlArgs(cephCSINamespace, kubectlPatch, deployTimeout, command...)
 	if err != nil {
-		return fmt.Errorf("failed to set enable fencing: %w", err)
+		return fmt.Errorf("failed to apply operator config: %w", err)
 	}
 
 	changed, err := waitForDeploymentGenerationChange(r.clientSet, r.deploymentName, cephCSINamespace, oldGeneration)
 	if err != nil {
 		return fmt.Errorf("error checking deployment %s generation: %w", r.deploymentName, err)
 	}
-
 	if !changed {
-		return nil
+		// A change limited to the topology labels only bumps the node
+		// DaemonSet, so the deployment generation stays the same.
+		framework.Logf("deployment %s/%s generation unchanged after patch, waiting for the workload arguments",
+			cephCSINamespace, r.deploymentName)
+	}
+
+	return r.waitForDriverReady(clusterName, enableFencing, domainLabels)
+}
+
+// waitForDriverReady waits until this driver's workload templates contain the
+// requested settings and the resulting rollout has completed. It is used both
+// after a patch and when the shared OperatorConfig already matched, since
+// another driver may have applied the values while this driver's pods were
+// still rolling out.
+func (r OperatorDeployment) waitForDriverReady(clusterName string, enableFencing bool, domainLabels []string) error {
+	err := r.waitForDriverArgs(clusterName, enableFencing, domainLabels)
+	if err != nil {
+		return err
 	}
 
 	err = waitForCSI(r.clientSet, r.deploymentName, r.daemonsetName, cephCSINamespace, deployTimeout)
@@ -123,6 +157,123 @@ func (r OperatorDeployment) setEnableFencing(enable bool) error {
 	}
 
 	return nil
+}
+
+// waitForDriverArgs waits until the controller and node plugin templates
+// contain the requested container arguments. Checking the workload templates
+// instead of the OperatorConfig avoids skipping the rollout wait while the
+// operator has not reconciled this driver yet.
+func (r OperatorDeployment) waitForDriverArgs(clusterName string, enableFencing bool, domainLabels []string) error {
+	// The controller plugin gets the cluster name and fencing args, the node
+	// plugin gets fencing and topology labels (the operator does not pass the
+	// cluster name to node plugin containers).
+	controllerArgs := []string{fmt.Sprintf("--enable-fencing=%t", enableFencing)}
+	if clusterName != "" {
+		controllerArgs = append(controllerArgs, "--clustername="+clusterName)
+	}
+	nodeArgs := []string{fmt.Sprintf("--enable-fencing=%t", enableFencing)}
+	if len(domainLabels) > 0 {
+		nodeArgs = append(nodeArgs, "--domainlabels="+strings.Join(domainLabels, ","))
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		deploy, err := r.clientSet.AppsV1().Deployments(cephCSINamespace).Get(ctx, r.deploymentName, metav1.GetOptions{})
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+
+			return false, err
+		}
+
+		daemonset, err := r.clientSet.AppsV1().DaemonSets(cephCSINamespace).Get(ctx, r.daemonsetName, metav1.GetOptions{})
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+
+			return false, err
+		}
+
+		missing := missingContainerArgs(deploy.Spec.Template.Spec.Containers, controllerArgs)
+		if len(missing) == 0 {
+			missing = missingContainerArgs(daemonset.Spec.Template.Spec.Containers, nodeArgs)
+		}
+		if len(missing) > 0 {
+			framework.Logf("deployment %s/%s and daemonset %s/%s still missing args %v, waiting",
+				cephCSINamespace, r.deploymentName, cephCSINamespace, r.daemonsetName, missing)
+
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+func missingContainerArgs(containers []v1.Container, wantArgs []string) []string {
+	missing := make([]string, 0, len(wantArgs))
+	for _, want := range wantArgs {
+		found := false
+		for i := range containers {
+			if slices.Contains(containers[i].Args, want) {
+				found = true
+
+				break
+			}
+		}
+		if !found {
+			missing = append(missing, want)
+		}
+	}
+
+	return missing
+}
+
+// operatorConfigDefaults is the subset of the OperatorConfig spec that the
+// acceptance tests modify.
+type operatorConfigDefaults struct {
+	Spec struct {
+		DriverSpecDefaults struct {
+			ClusterName   string `json:"clusterName"`
+			EnableFencing *bool  `json:"enableFencing"`
+			NodePlugin    struct {
+				Topology struct {
+					DomainLabels []string `json:"domainLabels"`
+				} `json:"topology"`
+			} `json:"nodePlugin"`
+		} `json:"driverSpecDefaults"`
+	} `json:"spec"`
+}
+
+func getOperatorConfigDefaults(namespace string) (*operatorConfigDefaults, error) {
+	args := []string{
+		"get",
+		"operatorconfigs.csi.ceph.io",
+		OperatorConfigName,
+		"-o",
+		"json",
+	}
+
+	out, err := e2ekubectl.RunKubectl(namespace, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get operator config: %w", err)
+	}
+
+	cfg := &operatorConfigDefaults{}
+	err = json.Unmarshal([]byte(out), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse operator config: %w", err)
+	}
+
+	return cfg, nil
 }
 
 func getDeploymentGeneration(c clientset.Interface, name, ns string) (int64, error) {
@@ -269,35 +420,4 @@ func waitForLeaderLeaseTransfer(c clientset.Interface, ns string) error {
 
 		return true, nil
 	})
-}
-
-func (OperatorDeployment) setDomainLabels(labels []string) error {
-	// Define the patch operations
-	patchOps := []map[string]interface{}{
-		{"op": "add", "path": "/spec/driverSpecDefaults/nodePlugin", "value": map[string]interface{}{}},
-		{"op": "add", "path": "/spec/driverSpecDefaults/nodePlugin/topology", "value": map[string]interface{}{}},
-		{"op": "add", "path": "/spec/driverSpecDefaults/nodePlugin/topology/domainLabels", "value": labels},
-	}
-
-	// Serialize to JSON
-	patchJSON, err := json.Marshal(patchOps)
-	if err != nil {
-		return fmt.Errorf("failed to marshal patch JSON: %w", err)
-	}
-
-	command := []string{
-		"operatorconfigs.csi.ceph.io",
-		OperatorConfigName,
-		"--type=json",
-		"-p",
-		string(patchJSON),
-	}
-
-	// Patch the operator config
-	err = retryKubectlArgs(cephCSINamespace, kubectlPatch, deployTimeout, command...)
-	if err != nil {
-		return fmt.Errorf("failed to set domain labels: %w", err)
-	}
-
-	return nil
 }
