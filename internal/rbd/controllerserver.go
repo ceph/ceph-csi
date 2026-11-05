@@ -641,6 +641,20 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 			return nil, err
 		}
 
+		// If the controller restarted after cloning the snapshot but before the
+		// normal restore path cleared the inherited NBD QoS image-meta (for
+		// example restoring a snapshot created before clones stopped inheriting
+		// QoS), that metadata is still on the image. A partial
+		// VolumeAttributesClass applied below only overwrites the supplied keys
+		// and would leave the inherited write/total limits and per-GiB metadata
+		// behind, so clear it here as createVolumeFromSnapshot does.
+		err = rbdVol.unsetAllMetadata(nbdQoSMetadataKeys())
+		if err != nil {
+			log.ErrorLog(ctx, "failed to unset QoS metadata on rbd image %q: %v", rbdVol, err)
+
+			return nil, err
+		}
+
 		// expand the image if the requested size is greater than the current size
 		err = rbdVol.expand()
 		if err != nil {
@@ -651,8 +665,21 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 
 	// rbdVol is a clone from parentVol
 	case vcs.GetVolume() != nil:
+		// If the controller restarted after cloning but before the normal clone
+		// path cleared the inherited NBD QoS image-meta (for example a clone of a
+		// parent created before clones stopped inheriting QoS), that metadata is
+		// still on the image. A partial VolumeAttributesClass applied below only
+		// overwrites the supplied keys and would leave the inherited write/total
+		// limits and per-GiB metadata behind, so clear it here as the clone path does.
+		err := rbdVol.unsetAllMetadata(nbdQoSMetadataKeys())
+		if err != nil {
+			log.ErrorLog(ctx, "failed to unset QoS metadata on rbd image %q: %v", rbdVol, err)
+
+			return nil, err
+		}
+
 		// expand the image if the requested size is greater than the current size
-		err := rbdVol.expand()
+		err = rbdVol.expand()
 		if err != nil {
 			log.ErrorLog(ctx, "failed to resize volume %s: %v", rbdVol, err)
 
@@ -838,6 +865,18 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 	err = rbdVol.unsetAllMetadata(k8s.GetSnapshotMetadataKeys())
 	if err != nil {
 		log.ErrorLog(ctx, "failed to unset snapshot metadata on rbd image %q: %v", rbdVol, err)
+
+		return err
+	}
+
+	// A volume restored from a snapshot whose backing image still carries the
+	// parent's NBD QoS image-meta (for example a snapshot created before clones
+	// stopped inheriting QoS) would inherit it through the clone. Clear it so the
+	// restored volume starts clean; its own VolumeAttributesClass is applied later
+	// by modifyVolumeAttributes.
+	err = rbdVol.unsetAllMetadata(nbdQoSMetadataKeys())
+	if err != nil {
+		log.ErrorLog(ctx, "failed to unset QoS metadata on rbd image %q: %v", rbdVol, err)
 
 		return err
 	}
@@ -1395,6 +1434,14 @@ func (cs *ControllerServer) CreateSnapshot(
 	}()
 
 	err = rbdVol.unsetAllMetadata(k8s.GetVolumeMetadataKeys())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// The snapshot backing image is cloned from the parent and inherits its NBD
+	// QoS image-meta. Clear it so volumes restored from this snapshot do not
+	// inherit the parent's QoS; the restored volume's own VolumeAttributesClass
+	// is applied later by modifyVolumeAttributes.
+	err = rbdVol.removeQOS(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
