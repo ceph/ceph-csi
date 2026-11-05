@@ -1530,6 +1530,57 @@ func validateQOS(f *framework.Framework,
 	return nil
 }
 
+// nbdQoSImageMetaKeys returns every rbd image-meta key used for traditional NBD
+// QoS: the conf_rbd_qos_* overrides applied to the image and the capacity-based
+// QoS metadata (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit,
+// rbd_base_qos_vol_size). It is used to assert that a clone or restored volume did
+// not inherit the parent's NBD QoS.
+func nbdQoSImageMetaKeys() []string {
+	return []string{
+		// conf_ overrides applied to the image
+		"conf_rbd_qos_iops_limit",
+		"conf_rbd_qos_read_iops_limit",
+		"conf_rbd_qos_write_iops_limit",
+		"conf_rbd_qos_bps_limit",
+		"conf_rbd_qos_read_bps_limit",
+		"conf_rbd_qos_write_bps_limit",
+		// capacity-based QoS metadata
+		"rbd_base_qos_iops_limit", "rbd_max_qos_iops_limit",
+		"rbd_base_qos_read_iops_limit", "rbd_max_qos_read_iops_limit",
+		"rbd_base_qos_write_iops_limit", "rbd_max_qos_write_iops_limit",
+		"rbd_base_qos_bps_limit", "rbd_max_qos_bps_limit",
+		"rbd_base_qos_read_bps_limit", "rbd_max_qos_read_bps_limit",
+		"rbd_base_qos_write_bps_limit", "rbd_max_qos_write_bps_limit",
+		"rbd_iops_per_gib_limit", "rbd_read_iops_per_gib_limit", "rbd_write_iops_per_gib_limit",
+		"rbd_bps_per_gib_limit", "rbd_read_bps_per_gib_limit", "rbd_write_bps_per_gib_limit",
+		"rbd_base_qos_vol_size",
+	}
+}
+
+// validateQOSAbsent verifies that none of the given rbd image-meta keys are set on
+// the image backing the PVC. getImageMeta returns an error when a key is not set,
+// so a successful read with a non-empty value means the key survived and the clone
+// inherited it.
+func validateQOSAbsent(f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	keys []string,
+) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+	for _, k := range keys {
+		val, err := getImageMeta(rbdImageSpec, k, f)
+		if err == nil && val != "" {
+			return fmt.Errorf("QoS metadata %q should be absent but found value %q", k, val)
+		}
+	}
+
+	return nil
+}
+
 // validateCgroupQoS validates cgroup v2 QoS parameters stored in RBD image metadata.
 // The wants map uses VolumeAttributesClass parameter names as keys:
 //   - "maxReadIops", "maxWriteIops"
