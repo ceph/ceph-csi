@@ -40,6 +40,9 @@ endif
 CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/cephcsi)
 CSI_IMAGE_VERSION=$(shell . $(CURDIR)/build.env ; echo $${CSI_IMAGE_VERSION})
 CSI_IMAGE=$(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
+# Tag for the builder stage of the ceph-csi image, used when compiling with a
+# pulled image. Keep it distinct from the Dockerfile.devel image.
+BUILDER_IMAGE ?= $(CSI_IMAGE_NAME):builder
 
 # Pass USE_PULLED_IMAGE=yes to skip building a new :test or :devel image.
 USE_PULLED_IMAGE?=no
@@ -240,10 +243,16 @@ run-e2e:
 	@test -n "$(shell which $(CONTAINER_CMD) 2>/dev/null)" || { echo "Missing container support, install Podman or Docker"; exit 1; }
 	@echo "$(CONTAINER_CMD)" > .container-cmd
 
+# Image and marker used to run containerized builds. Callers that compile in a
+# pre-built image (USE_PULLED_IMAGE=yes) can point these at a different tag so
+# the Dockerfile.devel image stays available for other targets.
+DEVEL_IMAGE ?= $(CSI_IMAGE_NAME):devel
+DEVEL_CONTAINER_ID ?= .devel-container-id
+
 .PHONY: containerized-build containerized-test
 containerized-build: TARGET = cephcsi
-containerized-build: .container-cmd .devel-container-id
-	$(CONTAINER_CMD) run $(CPUSET) --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET) CONTAINERIZED=yes
+containerized-build: .container-cmd $(DEVEL_CONTAINER_ID)
+	$(CONTAINER_CMD) run $(CPUSET) --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(DEVEL_IMAGE) make $(TARGET) CONTAINERIZED=yes
 
 containerized-test: TARGET = test
 containerized-test: REBASE ?= 0
@@ -257,16 +266,16 @@ mkdocs:
 
 ifeq ($(USE_PULLED_IMAGE),no)
 # create a (cached) container image with dependencies for building cephcsi
-.devel-container-id: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
-.devel-container-id: .container-cmd scripts/Dockerfile.devel
-	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
-	$(RM) .devel-container-id
-	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) --build-arg GOARCH=$(GOARCH) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
-	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
+$(DEVEL_CONTAINER_ID): GOARCH ?= $(shell go env GOARCH 2>/dev/null)
+$(DEVEL_CONTAINER_ID): .container-cmd scripts/Dockerfile.devel
+	[ ! -f $(DEVEL_CONTAINER_ID) ] || $(CONTAINER_CMD) rmi $(DEVEL_IMAGE)
+	$(RM) $(DEVEL_CONTAINER_ID)
+	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) --build-arg GOARCH=$(GOARCH) -t $(DEVEL_IMAGE) -f ./scripts/Dockerfile.devel .
+	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(DEVEL_IMAGE) > $(DEVEL_CONTAINER_ID)
 else
-# create the .devel-container-id file based on pulled image
-.devel-container-id: .container-cmd
-	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
+# create the marker file based on the pulled image
+$(DEVEL_CONTAINER_ID): .container-cmd
+	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(DEVEL_IMAGE) > $(DEVEL_CONTAINER_ID)
 endif
 
 ifeq ($(USE_PULLED_IMAGE),no)
@@ -283,10 +292,21 @@ else
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 endif
 
+# Build arguments shared by the ceph-csi image and its builder stage.
+CEPHCSI_IMAGE_BUILD_ARGS = -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE) --build-arg FINAL_BASE_IMAGE=$(FINAL_BASE_IMAGE) --build-arg CEPH_RELEASE_RPM=$(CEPH_RELEASE_RPM) --build-arg GO_BUILD_VERBOSE=$(GO_BUILD_VERBOSE)
+
 image-cephcsi: CEPH_RELEASE_RPM ?= $(shell . $(CURDIR)/build.env ; echo $${CEPH_RELEASE_RPM})
 image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 image-cephcsi: .container-cmd
-	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE) --build-arg FINAL_BASE_IMAGE=$(FINAL_BASE_IMAGE) --build-arg CEPH_RELEASE_RPM=$(CEPH_RELEASE_RPM) --build-arg GO_BUILD_VERBOSE=$(GO_BUILD_VERBOSE)
+	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) $(CEPHCSI_IMAGE_BUILD_ARGS)
+
+# Build only the builder stage and tag it as the builder image. The e2e.test
+# binary can then be compiled with USE_PULLED_IMAGE=yes, reusing the Go build
+# cache populated by the cephcsi build instead of building Dockerfile.devel.
+image-cephcsi-builder: CEPH_RELEASE_RPM ?= $(shell . $(CURDIR)/build.env ; echo $${CEPH_RELEASE_RPM})
+image-cephcsi-builder: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
+image-cephcsi-builder: .container-cmd
+	$(CONTAINER_CMD) build $(CPUSET) --target builder -t $(BUILDER_IMAGE) $(CEPHCSI_IMAGE_BUILD_ARGS)
 
 push-image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 push-image-cephcsi: .container-cmd image-cephcsi
@@ -308,5 +328,7 @@ clean:
 	$(RM) e2e.test
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
 	$(RM) .devel-container-id
+	[ ! -f .builder-container-id ] || $(CONTAINER_CMD) rmi $(BUILDER_IMAGE)
+	$(RM) .builder-container-id
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
 	$(RM) .test-container-id

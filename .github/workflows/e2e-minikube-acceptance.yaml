@@ -76,12 +76,15 @@ jobs:
           docker pull "$ROOK_CEPH_CLUSTER_IMAGE"
 
       - name: Build ceph-csi image
-        run: make image-cephcsi
+        run: make image-cephcsi-builder image-cephcsi
         env:
           CONTAINER_CMD: docker
 
       - name: Build e2e.test
-        run: make containerized-build TARGET=e2e.test
+        run: >-
+          make containerized-build TARGET=e2e.test USE_PULLED_IMAGE=yes
+          CONTAINER_CMD=docker DEVEL_IMAGE=quay.io/cephcsi/cephcsi:builder
+          DEVEL_CONTAINER_ID=.builder-container-id
 
       - name: Load ceph-csi image
         run: scripts/minikube.sh cephcsi
