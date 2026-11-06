@@ -14,7 +14,8 @@ allowedCapabilities:
 allowHostDirVolumePlugin: true
 allowHostIPC: true
 allowHostNetwork: true
-allowHostPID: true
+# Set to true when netNamespaceFilePath is configured
+allowHostPID: false
 # Set to false as we write to RootFilesystem inside container
 readOnlyRootFilesystem: false
 requiredDropCapabilities:
