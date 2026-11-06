@@ -25,6 +25,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	cephcsi "github.com/ceph/ceph-csi/api/deploy/kubernetes"
@@ -83,23 +84,51 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	if err != nil {
 		return err
 	}
-	cm.Data["config.json"] = string(data)
-	cm.Namespace = cephCSINamespace
-	// if the configmap is present update it,during cephcsi helm charts
-	// deployment empty configmap gets created we need to override it
-	_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Get(context.TODO(), cm.Name, metav1.GetOptions{})
 
-	if err == nil {
-		_, updateErr := c.CoreV1().ConfigMaps(cephCSINamespace).Update(context.TODO(), &cm, metav1.UpdateOptions{})
-		if updateErr != nil {
-			return fmt.Errorf("failed to update configmap: %w", updateErr)
+	return updateConfigMapConfigData(c, cm.Name, string(data))
+}
+
+// updateConfigMapConfigData sets the config.json entry on an existing ConfigMap
+// or creates the ConfigMap when it does not exist. Only the config.json entry is
+// modified so metadata managed by other components, such as the owner references
+// set by the ceph-csi-operator, is preserved.
+func updateConfigMapConfigData(c kubernetes.Interface, name, data string) error {
+	// A conflicting update or a Create that races with the operator's own
+	// Create is retried by re-reading the ConfigMap.
+	retryable := func(err error) bool {
+		return apierrs.IsConflict(err) || apierrs.IsAlreadyExists(err)
+	}
+	err := retry.OnError(retry.DefaultRetry, retryable, func() error {
+		configMaps := c.CoreV1().ConfigMaps(cephCSINamespace)
+		cm, err := configMaps.Get(context.TODO(), name, metav1.GetOptions{})
+		if apierrs.IsNotFound(err) {
+			cm = &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: cephCSINamespace,
+				},
+				Data: map[string]string{"config.json": data},
+			}
+			_, err = configMaps.Create(context.TODO(), cm, metav1.CreateOptions{})
+
+			return err
 		}
-	}
-	if apierrs.IsNotFound(err) {
-		_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Create(context.TODO(), &cm, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+		if cm.Data == nil {
+			cm.Data = map[string]string{}
+		}
+		cm.Data["config.json"] = data
+		_, err = configMaps.Update(context.TODO(), cm, metav1.UpdateOptions{})
+
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update configmap %q: %w", name, err)
 	}
 
-	return err
+	return nil
 }
 
 // createCustomConfigMap provides multiple clusters information.
@@ -155,13 +184,6 @@ func createCustomConfigMap(
 	if err != nil {
 		return err
 	}
-	cm.Data["config.json"] = string(data)
-	cm.Namespace = cephCSINamespace
-	// since a configmap is already created, update the existing configmap
-	_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Update(context.TODO(), &cm, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to update configmap: %w", err)
-	}
 
-	return nil
+	return updateConfigMapConfigData(c, cm.Name, string(data))
 }
