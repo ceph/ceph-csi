@@ -672,6 +672,20 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		return nil, err
 	}
 
+	// Apply QoS parameters from VolumeAttributesClass if present
+	// or else remove the QoS metadata from the image.
+	// This handles both traditional NBD QoS and cgroup v2 QoS.
+	// Use the existing image size (refreshed by Exists) for capacity-based QoS,
+	// so replaying CreateVolume with the original request size does not shrink an
+	// already expanded volume's limits.
+	rbdVol.RequestedVolSize = rbdVol.VolSize
+	err = rbdVol.modifyVolumeAttributes(ctx, req.GetMutableParameters())
+	if err != nil {
+		log.ErrorLog(ctx, "failed to apply QoS for rbd image: %s with error: %v", rbdVol, err)
+
+		return nil, err
+	}
+
 	return buildCreateVolumeResponse(ctx, req, rbdVol)
 }
 
@@ -822,6 +836,18 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 		return err
 	}
 
+	// A volume restored from a snapshot whose backing image still carries the
+	// parent's NBD QoS image-meta (for example a snapshot created before clones
+	// stopped inheriting QoS) would inherit it through the clone. Clear it so the
+	// restored volume starts clean; its own VolumeAttributesClass is applied later
+	// by modifyVolumeAttributes.
+	err = rbdVol.unsetAllMetadata(nbdQoSMetadataKeys())
+	if err != nil {
+		log.ErrorLog(ctx, "failed to unset QoS metadata on rbd image %q: %v", rbdVol, err)
+
+		return err
+	}
+
 	log.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol, rbdSnap)
 
 	err = parentVol.copyEncryptionConfig(ctx, &rbdVol.rbdImage, true)
@@ -878,7 +904,10 @@ func (cs *ControllerServer) createBackingImage(
 		}
 		defer cs.OperationLocks.ReleaseCloneLock(parentVol.VolID)
 
-		return rbdVol.createCloneFromImage(ctx, parentVol)
+		err = rbdVol.createCloneFromImage(ctx, parentVol)
+		if err != nil {
+			return err
+		}
 	default:
 		err = createImage(ctx, rbdVol, cr)
 		if err != nil {
@@ -902,18 +931,21 @@ func (cs *ControllerServer) createBackingImage(
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	// Apply QoS parameters from VolumeAttributesClass if present.
+	if len(mutableParameters) == 0 && parentVol == nil && rbdSnap == nil {
+		return nil
+	}
+
+	// Apply QoS parameters from VolumeAttributesClass if present
+	// or else remove the QoS metadata from the image.
 	// This handles both traditional NBD QoS and cgroup v2 QoS.
-	if len(mutableParameters) > 0 {
-		// Set RequestedVolSize for QoS capacity-based calculations.
-		rbdVol.RequestedVolSize = rbdVol.VolSize
+	// Set RequestedVolSize for QoS capacity-based calculations.
+	rbdVol.RequestedVolSize = rbdVol.VolSize
 
-		err = rbdVol.modifyVolumeAttributes(ctx, mutableParameters)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to apply QoS for rbd image: %s with error: %v", rbdVol, err)
+	err = rbdVol.modifyVolumeAttributes(ctx, mutableParameters)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to apply QoS for rbd image: %s with error: %v", rbdVol, err)
 
-			return status.Error(codes.Internal, err.Error())
-		}
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	return nil
@@ -1361,6 +1393,14 @@ func (cs *ControllerServer) CreateSnapshot(
 	}()
 
 	err = rbdVol.unsetAllMetadata(k8s.GetVolumeMetadataKeys())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// The snapshot backing image is cloned from the parent and inherits its NBD
+	// QoS image-meta. Clear it so volumes restored from this snapshot do not
+	// inherit the parent's QoS; the restored volume's own VolumeAttributesClass
+	// is applied later by modifyVolumeAttributes.
+	err = rbdVol.unsetAllMetadata(nbdQoSMetadataKeys())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

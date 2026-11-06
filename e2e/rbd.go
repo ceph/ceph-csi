@@ -6380,6 +6380,134 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to validate qos: %v", err)
 			}
 
+			// a partial VAC that applies only the read limits; a clone using it
+			// must keep exactly these and drop every other inherited key.
+			partialVACName := "partial-nbd"
+			err = createRBDVolumeAttributesClass(f.ClientSet, partialVACName, map[string]string{
+				"baseReadIops": "2000",
+				"baseReadBps":  "209715200",
+			})
+			if err != nil {
+				logAndFail("failed to create volumeattributesclass: %v", err)
+			}
+			defer func() {
+				err = deleteRBDVolumeAttributesClass(f.ClientSet, f, partialVACName)
+				if err != nil {
+					logAndFail("failed to delete volumeattributesclass: %v", err)
+				}
+			}()
+
+			// read limits applied by the partial VAC must be present; every other
+			// NBD QoS key (including the parent's per-GiB metadata) must be absent.
+			partialWants := map[string]string{
+				"rbd_qos_read_iops_limit": "2000",
+				"rbd_qos_read_bps_limit":  "209715200",
+			}
+			keep := map[string]bool{
+				"conf_rbd_qos_read_iops_limit": true,
+				"conf_rbd_qos_read_bps_limit":  true,
+				"rbd_base_qos_read_iops_limit": true,
+				"rbd_base_qos_read_bps_limit":  true,
+			}
+			var partialAbsent []string
+			for _, k := range nbdQoSImageMetaKeys() {
+				if !keep[k] {
+					partialAbsent = append(partialAbsent, k)
+				}
+			}
+
+			// recreate a snapshot of the flex-VAC parent for the restore cases.
+			snap = getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+			err = createSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot: %v", err)
+			}
+
+			// a clone without a VAC must inherit no NBD QoS, before or after an
+			// expansion (there is no base/per-GiB metadata to recalculate from).
+			noVACClone := func(clonePath string) {
+				clone, err := loadPVC(clonePath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				clone.Namespace = f.UniqueName
+				clone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
+				err = createPVCAndvalidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone PVC: %v", err)
+				}
+				err = validateQOSAbsent(f, clone, nbdQoSImageMetaKeys())
+				if err != nil {
+					logAndFail("clone without a VAC inherited NBD QoS: %v", err)
+				}
+				app, err := loadApp(appPath)
+				if err != nil {
+					logAndFail("failed to load app: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = clone.Name
+				err = createApp(f.ClientSet, app, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create app: %v", err)
+				}
+				err = expandPVCSize(f.ClientSet, clone, "400Gi", deployTimeout)
+				if err != nil {
+					logAndFail("failed to expand clone PVC: %v", err)
+				}
+				err = validateQOSAbsent(f, clone, nbdQoSImageMetaKeys())
+				if err != nil {
+					logAndFail("clone without a VAC inherited NBD QoS after expansion: %v", err)
+				}
+				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete app: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone PVC: %v", err)
+				}
+			}
+
+			// a clone with a partial VAC keeps only its own limits; the parent's
+			// omitted limits and per-GiB metadata must not survive.
+			partialVACClone := func(clonePath string) {
+				clone, err := loadPVC(clonePath)
+				if err != nil {
+					logAndFail("failed to load PVC: %v", err)
+				}
+				clone.Namespace = f.UniqueName
+				clone.Spec.VolumeAttributesClassName = &partialVACName
+				clone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse("200Gi")
+				err = createPVCAndvalidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to create clone PVC: %v", err)
+				}
+				err = validateQOS(f, clone, partialWants)
+				if err != nil {
+					logAndFail("clone with a partial VAC missing its own limits: %v", err)
+				}
+				err = validateQOSAbsent(f, clone, partialAbsent)
+				if err != nil {
+					logAndFail("clone with a partial VAC kept inherited limits: %v", err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, clone, deployTimeout)
+				if err != nil {
+					logAndFail("failed to delete clone PVC: %v", err)
+				}
+			}
+
+			for _, clonePath := range []string{pvcClonePath, pvcSmartClonePath} {
+				noVACClone(clonePath)
+				partialVACClone(clonePath)
+			}
+
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+
 			// delete parent pvc and clone pvc
 			err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 			if err != nil {
@@ -6402,9 +6530,32 @@ var _ = Describe("RBD", func() {
 				return
 			}
 
+			// Remove the csi-rbdplugin-controller container so the internal PV
+			// controller does not reconcile volumes and re-apply cgroup QoS from
+			// the VolumeAttributesClass. Without this, the controller masks the
+			// QoS that CreateVolume/ControllerModifyVolume are responsible for
+			// (notably for clones). Use the selected driver's deployment name so
+			// this also works in operator-deployment mode.
+			provisionerDeployment := rbdDeployment.getDeploymentName()
+			controllerContainer, err := removeDeploymentContainer(
+				f.ClientSet, cephCSINamespace, provisionerDeployment, rbdControllerContainerName, deployTimeout)
+			if err != nil {
+				logAndFail("failed to remove csi-rbdplugin-controller: %v", err)
+			}
+			// Restore the controller when this test exits, even on failure, so
+			// later specs and the existing deployment (with --deploy-rbd=false)
+			// keep the PV controller instead of relying on a later test to do it.
+			defer func() {
+				if rErr := restoreDeploymentContainer(
+					f.ClientSet, cephCSINamespace, provisionerDeployment, controllerContainer, deployTimeout,
+				); rErr != nil {
+					logAndFail("failed to add back csi-rbdplugin-controller: %v", rErr)
+				}
+			}()
+
 			// Recreate the StorageClass with krbd mounter and controller-modify-secret
 			// for VAC modifications.
-			err := deleteResource(rbdExamplePath + "storageclass.yaml")
+			err = deleteResource(rbdExamplePath + "storageclass.yaml")
 			if err != nil {
 				logAndFail("failed to delete storageclass: %v", err)
 			}
@@ -6431,10 +6582,10 @@ var _ = Describe("RBD", func() {
 
 			// Create low-tier VAC
 			lowQosParams := map[string]string{
-				"maxReadIops":            "500",
-				"maxWriteIops":           "500",
-				"maxReadBps":  "52428800", // 50 MB/s
-				"maxWriteBps": "52428800",
+				"maxReadIops":  "500",
+				"maxWriteIops": "500",
+				"maxReadBps":   "52428800", // 50 MB/s
+				"maxWriteBps":  "52428800",
 			}
 			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupLowVACName, lowQosParams)
 			if err != nil {
@@ -6449,10 +6600,10 @@ var _ = Describe("RBD", func() {
 
 			// Create medium-tier VAC
 			mediumQosParams := map[string]string{
-				"maxReadIops":            "1000",
-				"maxWriteIops":           "1000",
-				"maxReadBps":  "104857600", // 100 MB/s
-				"maxWriteBps": "104857600",
+				"maxReadIops":  "1000",
+				"maxWriteIops": "1000",
+				"maxReadBps":   "104857600", // 100 MB/s
+				"maxWriteBps":  "104857600",
 			}
 			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupMediumVACName, mediumQosParams)
 			if err != nil {
@@ -6467,10 +6618,10 @@ var _ = Describe("RBD", func() {
 
 			// Create high-tier VAC
 			highQosParams := map[string]string{
-				"maxReadIops":            "2000",
-				"maxWriteIops":           "2000",
-				"maxReadBps":  "209715200", // 200 MB/s
-				"maxWriteBps": "209715200",
+				"maxReadIops":  "2000",
+				"maxWriteIops": "2000",
+				"maxReadBps":   "209715200", // 200 MB/s
+				"maxWriteBps":  "209715200",
 			}
 			err = createRBDVolumeAttributesClass(f.ClientSet, cgroupHighVACName, highQosParams)
 			if err != nil {
@@ -6500,10 +6651,10 @@ var _ = Describe("RBD", func() {
 
 			// Validate metadata
 			wantsMedium := map[string]string{
-				"maxReadIops":            "1000",
-				"maxWriteIops":           "1000",
-				"maxReadBps":  "104857600",
-				"maxWriteBps": "104857600",
+				"maxReadIops":  "1000",
+				"maxWriteIops": "1000",
+				"maxReadBps":   "104857600",
+				"maxWriteBps":  "104857600",
 			}
 			err = validateCgroupQoS(f, pvc, wantsMedium)
 			if err != nil {
@@ -6558,10 +6709,10 @@ var _ = Describe("RBD", func() {
 			validateRBDImageCount(f, 1, defaultRBDPool)
 
 			wantsLow := map[string]string{
-				"maxReadIops":            "500",
-				"maxWriteIops":           "500",
-				"maxReadBps":  "52428800",
-				"maxWriteBps": "52428800",
+				"maxReadIops":  "500",
+				"maxWriteIops": "500",
+				"maxReadBps":   "52428800",
+				"maxWriteBps":  "52428800",
 			}
 			err = validateCgroupQoS(f, pvcBlock, wantsLow)
 			if err != nil {
@@ -6624,10 +6775,10 @@ var _ = Describe("RBD", func() {
 			validateRBDImageCount(f, 1, defaultRBDPool)
 
 			wantsHigh := map[string]string{
-				"maxReadIops":            "2000",
-				"maxWriteIops":           "2000",
-				"maxReadBps":  "209715200",
-				"maxWriteBps": "209715200",
+				"maxReadIops":  "2000",
+				"maxWriteIops": "2000",
+				"maxReadBps":   "209715200",
+				"maxWriteBps":  "209715200",
 			}
 			err = validateCgroupQoS(f, pvcRWOP, wantsHigh)
 			if err != nil {
@@ -6900,7 +7051,34 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to validate clone cgroup QoS: %v", err)
 			}
 
-			// Cleanup
+			// Mount the snapshot-restore clone and confirm the node io.max
+			// reflects the clone's own VAC (low), not the parent's (medium).
+			app, err = loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app for snapshot-restore clone: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+			err = createApp(f.ClientSet, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create app for snapshot-restore clone: %v", err)
+			}
+			appPod, err = f.ClientSet.CoreV1().Pods(f.UniqueName).Get(
+				context.TODO(), app.Name, metav1.GetOptions{})
+			if err != nil {
+				logAndFail("failed to get snapshot-restore clone app pod: %v", err)
+			}
+			err = validateIOMax(f, appPod, pvcClone, wantsLow, rbdDeployment.getDaemonsetName())
+			if err != nil {
+				logAndFail("failed to validate io.max for snapshot-restore clone: %v", err)
+			}
+			err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot-restore clone app: %v", err)
+			}
+
+			// Clean up the snapshot-restore clone and snapshot, keeping the
+			// parent PVC alive for the PVC-to-PVC smart clone below.
 			err = deleteSnapshot(&snap, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete snapshot: %v", err)
@@ -6908,6 +7086,86 @@ var _ = Describe("RBD", func() {
 			err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
 			if err != nil {
 				logAndFail("failed to delete clone PVC: %v", err)
+			}
+			validateRBDImageCount(f, 1, defaultRBDPool) // parent only
+
+			// Create a PVC-to-PVC smart clone from the parent with a different
+			// VAC (high) to assert QoS non-propagation at the node io.max level.
+			pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load smart clone PVC: %v", err)
+			}
+			pvcSmartClone.Namespace = f.UniqueName
+			pvcSmartClone.Spec.VolumeAttributesClassName = &cgroupHighVACName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create smart clone PVC: %v", err)
+			}
+			// parent + temp clone + smart clone
+			validateRBDImageCount(f, 3, defaultRBDPool)
+
+			// Validate smart clone has its own QoS (high), NOT parent's (medium)
+			err = validateCgroupQoS(f, pvcSmartClone, wantsHigh)
+			if err != nil {
+				logAndFail("failed to validate smart clone cgroup QoS: %v", err)
+			}
+
+			// Mount the smart clone and confirm the node io.max reflects the
+			// smart clone's own VAC (high), not the parent's (medium).
+			app, err = loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load app for smart clone: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcSmartClone.Name
+			err = createApp(f.ClientSet, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create app for smart clone: %v", err)
+			}
+			appPod, err = f.ClientSet.CoreV1().Pods(f.UniqueName).Get(
+				context.TODO(), app.Name, metav1.GetOptions{})
+			if err != nil {
+				logAndFail("failed to get smart clone app pod: %v", err)
+			}
+			err = validateIOMax(f, appPod, pvcSmartClone, wantsHigh, rbdDeployment.getDaemonsetName())
+			if err != nil {
+				logAndFail("failed to validate io.max for smart clone: %v", err)
+			}
+			err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete smart clone app: %v", err)
+			}
+
+			// Delete the smart clone that had a VAC; keep the parent alive for
+			// the no-VAC clone below.
+			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete smart clone PVC: %v", err)
+			}
+
+			// Create a PVC-to-PVC smart clone WITHOUT a VolumeAttributesClass.
+			// Such a clone must carry no cgroup QoS metadata on its image: it has
+			// no VAC of its own and cgroup QoS is not propagated from the parent.
+			pvcSmartCloneNoVAC, err := loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load no-VAC smart clone PVC: %v", err)
+			}
+			pvcSmartCloneNoVAC.Namespace = f.UniqueName
+			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartCloneNoVAC, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create no-VAC smart clone PVC: %v", err)
+			}
+
+			// Validate the clone image has no cgroup QoS metadata at all.
+			err = validateCgroupQoS(f, pvcSmartCloneNoVAC, map[string]string{})
+			if err != nil {
+				logAndFail("failed to validate no-VAC smart clone has no QoS metadata: %v", err)
+			}
+
+			// Cleanup
+			err = deletePVCAndValidatePV(f.ClientSet, pvcSmartCloneNoVAC, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete no-VAC smart clone PVC: %v", err)
 			}
 			err = deletePVCAndValidatePV(f.ClientSet, pvcParent, deployTimeout)
 			if err != nil {
@@ -7222,6 +7480,10 @@ var _ = Describe("RBD", func() {
 
 				return
 			}
+
+			// This test relies on the PV controller, which the deployment runs by
+			// default. Tests that remove it restore it in their own cleanup, so no
+			// ordering between specs is required.
 
 			vacName := "cgroup-qos-regen"
 			qosParams := map[string]string{
