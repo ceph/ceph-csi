@@ -18,10 +18,14 @@ package kms
 
 import (
 	"errors"
+	"os"
 	"testing"
 
+	"github.com/hashicorp/vault/api"
 	loss "github.com/libopenstorage/secrets"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ceph/ceph-csi/internal/util/file"
 )
 
 func TestDetectAuthMountPath(t *testing.T) {
@@ -110,4 +114,57 @@ func TestVaultKMSRegistered(t *testing.T) {
 	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeVault]
 	require.True(t, ok)
+}
+
+func TestInitCertificatesConfigParsing(t *testing.T) {
+	t.Parallel()
+
+	t.Run("invalid config type returns error", func(t *testing.T) {
+		t.Parallel()
+		vc := &vaultConnection{vaultConfig: make(map[string]any)}
+		config := map[string]any{"vaultCAFromSecret": 12345} // wrong type
+		err := vc.initCertificates(config, nil)
+		require.Error(t, err)
+		require.True(t, errors.Is(err, errConfigOptionInvalid))
+	})
+
+	t.Run("empty config is a no-op", func(t *testing.T) {
+		t.Parallel()
+		vc := &vaultConnection{vaultConfig: make(map[string]any)}
+		err := vc.initCertificates(map[string]any{}, nil)
+		require.NoError(t, err)
+		_, hasCA := vc.vaultConfig[api.EnvVaultCACert]
+		require.False(t, hasCA)
+		_, hasCert := vc.vaultConfig[api.EnvVaultClientCert]
+		require.False(t, hasCert)
+		_, hasKey := vc.vaultConfig[api.EnvVaultClientKey]
+		require.False(t, hasKey)
+	})
+}
+
+func TestDestroyRemovesAllTempFiles(t *testing.T) {
+	t.Parallel()
+
+	caFile, err := file.CreateTempFile("vault-ca-cert", "fake-ca")
+	require.NoError(t, err)
+	certFile, err := file.CreateTempFile("vault-client-cert", "fake-cert")
+	require.NoError(t, err)
+	keyFile, err := file.CreateTempFile("vault-client-cert-key", "fake-key")
+	require.NoError(t, err)
+
+	vc := &vaultConnection{
+		vaultConfig: map[string]any{
+			api.EnvVaultCACert:     caFile.Name(),
+			api.EnvVaultClientCert: certFile.Name(),
+			api.EnvVaultClientKey:  keyFile.Name(),
+		},
+	}
+	vc.Destroy()
+
+	_, err = os.Stat(caFile.Name())
+	require.True(t, os.IsNotExist(err), "CA cert temp file should be removed")
+	_, err = os.Stat(certFile.Name())
+	require.True(t, os.IsNotExist(err), "client cert temp file should be removed")
+	_, err = os.Stat(keyFile.Name())
+	require.True(t, os.IsNotExist(err), "client key temp file should be removed")
 }
