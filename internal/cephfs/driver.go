@@ -31,7 +31,6 @@ import (
 	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -111,8 +110,8 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 		fsutil.RadosNamespace = conf.RadosNamespaceCephFS
 	}
 
-	if conf.IsNodeServer && k8s.RunsOnKubernetes() {
-		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
+	if conf.IsNodeServer {
+		nodeLabels, err = util.GetNodeLabels(conf.NodeID, conf.TopologyLabels)
 		if err != nil {
 			log.FatalLogMsg("%v", err.Error())
 		}
@@ -164,7 +163,8 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 	fs.is = NewIdentityServer(fs.cd)
 
 	if conf.IsNodeServer {
-		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
+		topology, err = util.GetTopologyFromDomainLabels(
+			conf.DomainLabels, conf.NodeID, conf.DriverName, conf.TopologyLabels)
 		if err != nil {
 			log.FatalLogMsg("%v", err.Error())
 		}
@@ -179,7 +179,8 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 		fs.cs = NewControllerServer(fs.cd, conf.ClusterName)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
-		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
+		topology, err = util.GetTopologyFromDomainLabels(
+			conf.DomainLabels, conf.NodeID, conf.DriverName, conf.TopologyLabels)
 		if err != nil {
 			log.FatalLogMsg("%v", err.Error())
 		}
