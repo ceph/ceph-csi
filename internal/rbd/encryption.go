@@ -582,7 +582,7 @@ func (rv *rbdVolume) RotateEncryptionKey(ctx context.Context) error {
 	useNbd := rv.Mounter == rbdNbdMounter && hasNBD
 	devicePath, found := waitForPath(ctx, rv.Pool, rv.RadosNamespace, rv.RbdImageName, 1, useNbd)
 	if !found {
-		return fmt.Errorf("failed to get the device path for %q: %w", rv, err)
+		return fmt.Errorf("failed to get the device path for %q", rv)
 	}
 
 	// Step 1: Get the current passphrase
