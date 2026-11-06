@@ -32,6 +32,32 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
+func TestSnapAndChildrenInfoAddChildren(t *testing.T) {
+	t.Parallel()
+
+	// Names alone are not unique: keep children in different pools and
+	// namespaces distinct, including children in the default namespace.
+	children := []librbd.ImageSpec{
+		{ImageName: "snapshot", ImageID: "1", PoolName: "pool-a", PoolID: 1, PoolNamespace: "ns-a"},
+		{ImageName: "clone-temp", ImageID: "2", PoolName: "pool-b", PoolID: 2, PoolNamespace: "ns-a"},
+		{ImageName: "clone-temp", ImageID: "3", PoolName: "pool-a", PoolID: 1, PoolNamespace: "ns-b"},
+		{ImageName: "snapshot", ImageID: "4", PoolName: "pool-b", PoolID: 2},
+		{ImageName: "trashed-temp", ImageID: "5", PoolName: "pool-b", Trash: true},
+		{ImageName: "trashed-snapshot", ImageID: "6", PoolName: "pool-a", Trash: true},
+	}
+	info := &snapAndChildrenInfo{}
+	info.addChildren(children)
+	assert.Equal(t, []librbd.ImageSpec{children[1], children[2]}, info.TempCloneChildren)
+	assert.Equal(t, []librbd.ImageSpec{children[0], children[3]}, info.VolumeSnapshotChildren)
+
+	for _, children := range [][]librbd.ImageSpec{nil, {children[4], children[5]}} {
+		info := &snapAndChildrenInfo{}
+		info.addChildren(children)
+		assert.Empty(t, info.TempCloneChildren)
+		assert.Empty(t, info.VolumeSnapshotChildren)
+	}
+}
+
 func TestIsClone(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

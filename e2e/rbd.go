@@ -4223,6 +4223,21 @@ var _ = Describe("RBD", func() {
 			}
 		})
 
+		for _, location := range []struct {
+			name               string
+			differentPool      bool
+			differentNamespace bool
+		}{
+			{name: "same pool and namespace"},
+			{name: "different pool", differentPool: true},
+			{name: "different namespace", differentNamespace: true},
+			{name: "different pool and namespace", differentPool: true, differentNamespace: true},
+		} {
+			It("flatten a child ("+location.name+") when creating a snapshot", Label("acceptance"), func() {
+				validateChildFlattenLocation(f, location.differentPool, location.differentNamespace)
+			})
+		}
+
 		It("create rbd clones in different pool", func() {
 			clonePool := "clone-test"
 			// create pool for clones
