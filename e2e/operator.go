@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	cephcsiv1 "github.com/ceph/ceph-csi-operator/api/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,15 +74,12 @@ func (r *OperatorDeployment) getPodSelector() string {
 // the generation-change wait observe an earlier patch while a later one is
 // still pending, and the first volume then races the pod replacement.
 func (r OperatorDeployment) applyClusterConfig(clusterName string, enableFencing bool, domainLabels []string) error {
-	current, err := getOperatorConfigDefaults(cephCSINamespace)
+	current, err := getOperatorConfig(cephCSINamespace)
 	if err != nil {
 		return err
 	}
 
-	defaults := current.Spec.DriverSpecDefaults
-	fencingMatches := defaults.EnableFencing != nil && *defaults.EnableFencing == enableFencing
-	labelsMatch := len(domainLabels) == 0 || slices.Equal(defaults.NodePlugin.Topology.DomainLabels, domainLabels)
-	if defaults.ClusterName == clusterName && fencingMatches && labelsMatch {
+	if driverSpecMatches(current.Spec.DriverSpecDefaults, clusterName, enableFencing, domainLabels) {
 		framework.Logf("operator config already has clusterName %q and enableFencing %t, skipping patch",
 			clusterName, enableFencing)
 
@@ -93,6 +91,9 @@ func (r OperatorDeployment) applyClusterConfig(clusterName string, enableFencing
 		return fmt.Errorf("failed to get deployment generation before patching: %w", err)
 	}
 
+	// Build the patch from maps instead of cephcsiv1.DriverSpec: the typed
+	// struct marshals non-pointer fields such as imagePullPolicy without
+	// omitempty, which would reset unrelated settings in the shared config.
 	driverDefaults := map[string]interface{}{
 		"clusterName":   clusterName,
 		"enableFencing": enableFencing,
@@ -237,23 +238,31 @@ func missingContainerArgs(containers []v1.Container, wantArgs []string) []string
 	return missing
 }
 
-// operatorConfigDefaults is the subset of the OperatorConfig spec that the
-// acceptance tests modify.
-type operatorConfigDefaults struct {
-	Spec struct {
-		DriverSpecDefaults struct {
-			ClusterName   string `json:"clusterName"`
-			EnableFencing *bool  `json:"enableFencing"`
-			NodePlugin    struct {
-				Topology struct {
-					DomainLabels []string `json:"domainLabels"`
-				} `json:"topology"`
-			} `json:"nodePlugin"`
-		} `json:"driverSpecDefaults"`
-	} `json:"spec"`
+// driverSpecMatches reports whether the OperatorConfig already contains the
+// requested driver settings. An empty domainLabels list means the caller does
+// not care about the topology labels.
+func driverSpecMatches(defaults *cephcsiv1.DriverSpec, clusterName string, enableFencing bool, domainLabels []string) bool {
+	if defaults == nil {
+		return false
+	}
+
+	if defaults.ClusterName == nil || *defaults.ClusterName != clusterName {
+		return false
+	}
+
+	if defaults.EnableFencing == nil || *defaults.EnableFencing != enableFencing {
+		return false
+	}
+
+	if len(domainLabels) == 0 {
+		return true
+	}
+
+	return defaults.NodePlugin != nil && defaults.NodePlugin.Topology != nil &&
+		slices.Equal(defaults.NodePlugin.Topology.DomainLabels, domainLabels)
 }
 
-func getOperatorConfigDefaults(namespace string) (*operatorConfigDefaults, error) {
+func getOperatorConfig(namespace string) (*cephcsiv1.OperatorConfig, error) {
 	args := []string{
 		"get",
 		"operatorconfigs.csi.ceph.io",
@@ -267,7 +276,7 @@ func getOperatorConfigDefaults(namespace string) (*operatorConfigDefaults, error
 		return nil, fmt.Errorf("failed to get operator config: %w", err)
 	}
 
-	cfg := &operatorConfigDefaults{}
+	cfg := &cephcsiv1.OperatorConfig{}
 	err = json.Unmarshal([]byte(out), cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse operator config: %w", err)
