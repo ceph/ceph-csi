@@ -970,29 +970,36 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 
 func flattenClonedRbdImages(
 	ctx context.Context,
-	children []string,
-	pool, monitors, radosNamespace, rbdImageName string,
+	children []librbd.ImageSpec,
+	monitors, clusterID string,
 	cr *util.Credentials,
 ) error {
-	rv := &rbdVolume{}
-	rv.Monitors = monitors
-	rv.Pool = pool
-	rv.RadosNamespace = radosNamespace
-	rv.RbdImageName = rbdImageName
+	conn := &util.ClusterConnection{}
 
-	defer rv.Destroy(ctx)
-	err := rv.Connect(cr)
+	defer conn.Destroy()
+	err := conn.Connect(monitors, cr)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to open connection %s; err %v", rv, err)
+		log.ErrorLog(ctx, "failed to connect to cluster %q; err %v", clusterID, err)
 
 		return err
 	}
 
-	for _, childName := range children {
-		rv.RbdImageName = childName
-		err = rv.flattenRbdImage(ctx, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+	for _, child := range children {
+		// Each child needs its own IOContext: children may belong to different
+		// pools or namespaces, including the default (empty) namespace.
+		childImage := &rbdImage{
+			Monitors:       monitors,
+			ClusterID:      clusterID,
+			Pool:           child.PoolName,
+			RadosNamespace: child.PoolNamespace,
+			RbdImageName:   child.ImageName,
+			ImageID:        child.ImageID,
+			conn:           conn.Copy(),
+		}
+		err = childImage.flattenRbdImage(ctx, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+		childImage.Destroy(ctx)
 		if err != nil {
-			log.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
+			log.ErrorLog(ctx, "failed to flatten %s; err %v", childImage, err)
 
 			continue
 		}
@@ -2408,8 +2415,23 @@ func (ri *rbdImage) DisableDeepFlatten() error {
 
 type snapAndChildrenInfo struct {
 	SnapInfoList           []librbd.SnapInfo
-	TempCloneChildren      []string
-	VolumeSnapshotChildren []string
+	TempCloneChildren      []librbd.ImageSpec
+	VolumeSnapshotChildren []librbd.ImageSpec
+}
+
+// addChildren preserves the location of each live child while separating
+// temporary clones so that callers can flatten them first.
+func (info *snapAndChildrenInfo) addChildren(children []librbd.ImageSpec) {
+	for _, child := range children {
+		if child.Trash {
+			continue
+		}
+		if isTempClonedImage(child.ImageName) {
+			info.TempCloneChildren = append(info.TempCloneChildren, child)
+		} else {
+			info.VolumeSnapshotChildren = append(info.VolumeSnapshotChildren, child)
+		}
+	}
 }
 
 // listSnapAndChildren returns list of snapshot names, volume snapshot images and
@@ -2431,24 +2453,10 @@ func (ri *rbdImage) listSnapAndChildren() (*snapAndChildrenInfo, error) {
 		return nil, err
 	}
 
-	tempCloneChildren := make([]string, 0)
-	volSnapChildren := make([]string, 0)
-	for _, child := range childImageSpecList {
-		if child.Trash {
-			continue
-		}
-		if isTempClonedImage(child.ImageName) {
-			tempCloneChildren = append(tempCloneChildren, child.ImageName)
-		} else {
-			volSnapChildren = append(volSnapChildren, child.ImageName)
-		}
-	}
+	info := &snapAndChildrenInfo{SnapInfoList: snaps}
+	info.addChildren(childImageSpecList)
 
-	return &snapAndChildrenInfo{
-		SnapInfoList:           snaps,
-		TempCloneChildren:      tempCloneChildren,
-		VolumeSnapshotChildren: volSnapChildren,
-	}, nil
+	return info, nil
 }
 
 func (ri *rbdImage) isCompatibleEncryption(dst *rbdImage) error {
