@@ -31,16 +31,33 @@ function log_errors() {
 	exit 1
 }
 
+# download_operator_yaml downloads the Rook operator.yaml to the given file, with
+# the Rook deployed CSI drivers and the ceph-csi-operator resources disabled
+function download_operator_yaml() {
+	local file="$1"
+
+	curl -o "${file}" "${ROOK_URL}/operator.yaml"
+	# disable rook deployed csi drivers
+	sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${file}"
+	sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${file}"
+	sed -i 's|ROOK_USE_CSI_OPERATOR: "true"|ROOK_USE_CSI_OPERATOR: "false"|g' "${file}"
+	sed -i 's|ROOK_CREATE_CSI_OPERATOR_RESOURCES: "true"|ROOK_CREATE_CSI_OPERATOR_RESOURCES: "false"|g' "${file}"
+	# newer versions of operator.yaml contain the ceph-csi-operator OperatorConfig and Driver objects, remove them
+	awk '
+		function flush() { if (doc !~ /\nkind: (Driver|OperatorConfig)\n/) printf "%s", doc; doc = "" }
+		/^---$/ { flush() }
+		{ doc = doc $0 "\n" }
+		END { flush() }
+	' "${file}" >"${file}.filtered"
+	mv "${file}.filtered" "${file}"
+}
+
 function deploy_rook() {
 	kubectl_retry create -f "${ROOK_URL}/common.yaml"
 	kubectl_retry create -f "${ROOK_URL}/crds.yaml"
 
 	TEMP_DIR="$(mktemp -d)"
-	curl -o "${TEMP_DIR}/operator.yaml" "${ROOK_URL}/operator.yaml"
-	# disable rook deployed csi drivers
-	sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
-	sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
-	sed -i 's|ROOK_USE_CSI_OPERATOR: "true"|ROOK_USE_CSI_OPERATOR: "false"|g' "${TEMP_DIR}/operator.yaml"
+	download_operator_yaml "${TEMP_DIR}/operator.yaml"
 
 	kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
 	# Override the ceph version which rook installs by default.
@@ -97,7 +114,9 @@ function teardown_rook() {
 	kubectl delete -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl delete -f "${ROOK_URL}/toolbox.yaml"
 	kubectl delete -f "${ROOK_URL}/cluster-test.yaml"
-	kubectl delete -f "${ROOK_URL}/operator.yaml"
+	TEMP_DIR="$(mktemp -d)"
+	download_operator_yaml "${TEMP_DIR}/operator.yaml"
+	kubectl delete -f "${TEMP_DIR}/operator.yaml"
 	kubectl delete -f "${ROOK_URL}/common.yaml"
 	kubectl delete -f "${ROOK_URL}/crds.yaml"
 }
