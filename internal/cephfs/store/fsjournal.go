@@ -137,7 +137,7 @@ func CheckVolExists(ctx context.Context,
 					progressReport.PercentageCloned,
 					progressReport.AmountCloned,
 					progressReport.FilesCloned)
-				log.ErrorLog(ctx, err.Error())
+				log.ErrorLog(ctx, "%s", err.Error())
 			}
 
 			return nil, err
