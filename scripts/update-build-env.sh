@@ -29,6 +29,7 @@ COMPONENTS=(
     "GOLANGCI_VERSION|https://github.com/golangci/golangci-lint|v|golangci-lint"
     "GOPLS_VERSION|https://github.com/golang/tools|gopls/v|gopls"
     "LYCHEE_VERSION|https://github.com/lycheeverse/lychee|lychee-v|lychee"
+    "ROOK_VERSION|https://github.com/rook/rook|v|Rook"
 )
 
 # latest_release <repository> <tag prefix>
