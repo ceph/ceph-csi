@@ -60,19 +60,19 @@ function deploy_rook() {
 	download_operator_yaml "${TEMP_DIR}/operator.yaml"
 
 	kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
+	curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
+	# disable Ceph msgr2, the connections to the Ceph cluster use msgr1
+	sed -i 's|requireMsgr2: true|requireMsgr2: false|g' "${TEMP_DIR}"/cluster-test.yaml
 	# Override the ceph version which rook installs by default.
-	if [ -z "${ROOK_CEPH_CLUSTER_IMAGE}" ]; then
-		kubectl_retry create -f "${ROOK_URL}/cluster-test.yaml"
-	else
+	if [ -n "${ROOK_CEPH_CLUSTER_IMAGE}" ]; then
 		ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH="image: ${ROOK_CEPH_CLUSTER_IMAGE}"
 
-		curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
 		sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
 		sed -i "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
 		sed -i "s/healthCheck:/healthCheck:\n    livenessProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true\n    startupProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true/g" "${TEMP_DIR}"/cluster-test.yaml
-		cat "${TEMP_DIR}"/cluster-test.yaml
-		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
 	fi
+	cat "${TEMP_DIR}"/cluster-test.yaml
+	kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
 
 	rm -rf "${TEMP_DIR}"
 
