@@ -116,7 +116,7 @@ spec:
             - "--default-fstype=ext4"
             - "--extra-create-metadata=true"
             - "--immediate-topology=false"
-            - "--http-endpoint=$(POD_IP):8090"
+            - "--http-endpoint=[$(POD_IP)]:8090"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
@@ -141,7 +141,7 @@ spec:
             - "--leader-election=true"
             - "--extra-create-metadata=true"
             - "--feature-gates=CSIVolumeGroupSnapshot=true"
-            - "--http-endpoint=$(POD_IP):8092"
+            - "--http-endpoint=[$(POD_IP)]:8092"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
@@ -165,7 +165,7 @@ spec:
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
             - "--default-fstype=ext4"
-            - "--http-endpoint=$(POD_IP):8093"
+            - "--http-endpoint=[$(POD_IP)]:8093"
           env:
             - name: ADDRESS
               value: /csi/csi-provisioner.sock
@@ -191,7 +191,7 @@ spec:
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
-            - "--http-endpoint=$(POD_IP):8091"
+            - "--http-endpoint=[$(POD_IP)]:8091"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
