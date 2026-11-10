@@ -152,7 +152,7 @@ spec:
             - "--automaxprocs=true"
             - "--prevent-volume-mode-conversion=true"
 {{- if and .Values.provisioner.provisioner.args .Values.provisioner.provisioner.args.httpEndpointPort }}
-            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.provisioner.args.httpEndpointPort }}"
+            - "--http-endpoint=[$(POD_IP)]:{{ .Values.provisioner.provisioner.args.httpEndpointPort }}"
 {{- end }}
 {{- range .Values.provisioner.provisioner.extraArgs }}
             - "--{{ . }}"
@@ -187,7 +187,7 @@ spec:
             - "--automaxprocs=true"
             - "--feature-gates=CSIVolumeGroupSnapshot={{.Values.provisioner.snapshotter.args.enableVolumeGroupSnapshots }}"
 {{- if and .Values.provisioner.snapshotter.args .Values.provisioner.snapshotter.args.httpEndpointPort }}
-            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.snapshotter.args.httpEndpointPort }}"
+            - "--http-endpoint=[$(POD_IP)]:{{ .Values.provisioner.snapshotter.args.httpEndpointPort }}"
 {{- end }}
 {{- range .Values.provisioner.snapshotter.extraArgs }}
             - "--{{ . }}"
@@ -220,7 +220,7 @@ spec:
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
 {{- if and .Values.provisioner.attacher.args .Values.provisioner.attacher.args.httpEndpointPort }}
-            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.attacher.args.httpEndpointPort }}"
+            - "--http-endpoint=[$(POD_IP)]:{{ .Values.provisioner.attacher.args.httpEndpointPort }}"
 {{- end }}
 {{- range .Values.provisioner.attacher.extraArgs }}
             - "--{{ . }}"
@@ -258,7 +258,7 @@ spec:
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
             - "--automaxprocs=true"
 {{- if and .Values.provisioner.resizer.args .Values.provisioner.resizer.args.httpEndpointPort }}
-            - "--http-endpoint=$(POD_IP):{{ .Values.provisioner.resizer.args.httpEndpointPort }}"
+            - "--http-endpoint=[$(POD_IP)]:{{ .Values.provisioner.resizer.args.httpEndpointPort }}"
 {{- end }}
 {{- range .Values.provisioner.resizer.extraArgs }}
             - "--{{ . }}"
