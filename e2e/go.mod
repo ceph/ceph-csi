@@ -41,7 +41,7 @@ exclude k8s.io/client-go v12.0.0+incompatible
 require (
 	github.com/ceph/ceph-csi-operator/api v0.0.0-20261104115308-e61b2cef6e88
 	github.com/kubernetes-csi/external-snapshot-metadata v1.1.0
-	go.yaml.in/yaml/v2 v2.4.4
+	go.yaml.in/yaml/v2 v2.4.5
 	golang.org/x/sync v0.25.0
 	google.golang.org/grpc v1.85.0
 )
@@ -133,7 +133,7 @@ require (
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
