@@ -17,12 +17,15 @@ limitations under the License.
 package kms
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
+	"errors"
 	"math/big"
 	"net"
 	"testing"
@@ -97,7 +100,7 @@ func TestKMIPConnectTLSMinVersion(t *testing.T) {
 			certificate, caCertPool := kmipTestCertificate(t)
 
 			kms := &kmipKMS{
-				endpoint: kmipTestServer(t, &certificate, test.serverMax),
+				endpoint: kmipTestServer(t, &certificate, test.serverMax, nil),
 				tlsConfig: &tls.Config{
 					MinVersion:   test.clientMin,
 					RootCAs:      caCertPool,
@@ -122,10 +125,77 @@ func TestKMIPConnectTLSMinVersion(t *testing.T) {
 	}
 }
 
+func TestKMIPGetSecretUnsupportedWithCryptoRPC(t *testing.T) {
+	t.Parallel()
+
+	kms := &kmipKMS{
+		useCryptoRPC: true,
+	}
+
+	_, err := kms.GetSecret(context.TODO(), "")
+	require.ErrorIs(t, err, ErrGetSecretUnsupported)
+	require.ErrorContains(t, err, kmipUseCryptoRPC)
+}
+
+func TestKMIPGetSecret(t *testing.T) {
+	t.Parallel()
+
+	keyMaterial := make([]byte, 32)
+	_, err := rand.Read(keyMaterial)
+	require.NoError(t, err)
+
+	kms := kmipTestGetSecretKMS(t, keyMaterial)
+
+	secret, err := kms.GetSecret(context.TODO(), "")
+	require.NoError(t, err)
+	require.Equal(t, base64.StdEncoding.EncodeToString(keyMaterial), secret)
+
+	// the passphrase has to be reproducible for the lifetime of the
+	// volume, a second call must return the identical value
+	again, err := kms.GetSecret(context.TODO(), "")
+	require.NoError(t, err)
+	require.Equal(t, secret, again)
+}
+
+func TestKMIPGetSecretEmptyKey(t *testing.T) {
+	t.Parallel()
+
+	// an empty key must not turn into an empty passphrase
+	kms := kmipTestGetSecretKMS(t, []byte{})
+
+	_, err := kms.GetSecret(context.TODO(), "")
+	require.ErrorContains(t, err, "no key material")
+}
+
+// kmipTestGetSecretKMS returns a kmipKMS with USE_CRYPTO_RPC disabled, whose
+// key is served by a test server with the given key material.
+func kmipTestGetSecretKMS(t *testing.T, keyMaterial []byte) *kmipKMS {
+	t.Helper()
+
+	keyUID := "kmip-test-key-uid"
+	certificate, caCertPool := kmipTestCertificate(t)
+
+	return &kmipKMS{
+		endpoint: kmipTestServer(t, &certificate, tls.VersionTLS13, map[string][]byte{keyUID: keyMaterial}),
+		tlsConfig: &tls.Config{
+			MinVersion:   tls.VersionTLS12,
+			RootCAs:      caCertPool,
+			Certificates: []tls.Certificate{certificate},
+		},
+		uniqueIdentifier: keyUID,
+		readTimeout:      kmipDefaulfReadTimeout,
+		writeTimeout:     kmipDefaultWriteTimeout,
+		useCryptoRPC:     false,
+	}
+}
+
 // kmipTestServer runs an in-process KMIP server behind TLS, offering no more
 // than the given TLS version, and returns its endpoint. It answers the
-// DiscoverVersions exchange that connect() performs, and nothing else.
-func kmipTestServer(t *testing.T, certificate *tls.Certificate, maxVersion uint16) string {
+// DiscoverVersions exchange that connect() performs, and serves the symmetric
+// keys in keys through the Get operation.
+func kmipTestServer(
+	t *testing.T, certificate *tls.Certificate, maxVersion uint16, keys map[string][]byte,
+) string {
 	t.Helper()
 
 	version := kmip.ProtocolVersion{
@@ -137,6 +207,33 @@ func kmipTestServer(t *testing.T, certificate *tls.Certificate, maxVersion uint1
 	mux.Handle(kmip14.OperationDiscoverVersions, &kmip.DiscoverVersionsHandler{
 		SupportedVersions: []kmip.ProtocolVersion{version},
 	})
+
+	if keys != nil {
+		mux.Handle(kmip14.OperationGet, &kmip.GetHandler{
+			Get: func(_ context.Context, payload *kmip.GetRequestPayload) (*kmip.GetResponsePayload, error) {
+				keyMaterial, ok := keys[payload.UniqueIdentifier]
+				if !ok {
+					return nil, kmip.WithResultReason(
+						errors.New("no such key"), kmip14.ResultReasonItemNotFound)
+				}
+
+				return &kmip.GetResponsePayload{
+					ObjectType:       kmip14.ObjectTypeSymmetricKey,
+					UniqueIdentifier: payload.UniqueIdentifier,
+					SymmetricKey: &kmip.SymmetricKey{
+						KeyBlock: kmip.KeyBlock{
+							KeyFormatType: kmip14.KeyFormatTypeRaw,
+							KeyValue: &kmip.KeyValue{
+								KeyMaterial: keyMaterial,
+							},
+							CryptographicAlgorithm: kmip14.CryptographicAlgorithmAES,
+							CryptographicLength:    len(keyMaterial) * 8,
+						},
+					},
+				}, nil
+			},
+		})
+	}
 
 	server := &kmip.Server{
 		Handler: &kmip.StandardProtocolHandler{
