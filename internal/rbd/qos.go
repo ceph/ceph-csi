@@ -163,15 +163,6 @@ func (h *nbdQoSHandler) Apply(ctx context.Context, params map[string]string) err
 	return h.volume.SaveQOS(ctx, params)
 }
 
-// Clear removes all traditional NBD QoS settings, including the rbd config
-// overrides applied via ApplyQOS and the capacity-based QoS metadata saved via
-// SaveQOS. Applying empty parameters is not enough: it would leave inherited
-// (for example cloned) limits on the image, so the metadata is removed
-// explicitly.
-func (h *nbdQoSHandler) Clear(ctx context.Context) error {
-	return h.volume.removeQOS(ctx)
-}
-
 // nbdQoSMetadataKeys returns every image-metadata key used for traditional NBD
 // QoS: the rbd config overrides (conf_rbd_qos_*) set by ApplyQOS and the
 // capacity-based QoS metadata (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit,
