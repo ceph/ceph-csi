@@ -49,9 +49,6 @@ type QoSHandler interface {
 	// For cgroup QoS: stores metadata to be applied later during NodePublishVolume.
 	// For NBD QoS: applies immediately to the rbd-nbd device configuration.
 	Apply(ctx context.Context, params map[string]string) error
-
-	// Clear removes all QoS settings for this type.
-	Clear(ctx context.Context) error
 }
 
 const (
@@ -132,12 +129,6 @@ func (h *cgroupQoSHandler) Validate(params map[string]string) error {
 // The actual QoS is applied during NodePublishVolume via cgroup io.max.
 func (h *cgroupQoSHandler) Apply(ctx context.Context, params map[string]string) error {
 	return h.volume.saveCgroupQoS(ctx, params)
-}
-
-// Clear removes all cgroup v2 QoS metadata from the RBD image.
-func (h *cgroupQoSHandler) Clear(ctx context.Context) error {
-	// Pass empty params to trigger removal of all cgroup QoS metadata.
-	return h.volume.saveCgroupQoS(ctx, map[string]string{})
 }
 
 // cgroupQoS holds cgroup v2 QoS parameters.
@@ -317,43 +308,32 @@ func validateCgroupQoSParams(params map[string]string) error {
 }
 
 // saveCgroupQoS saves cgroup v2 QoS parameters to RBD image metadata.
-// If params is empty or contains no cgroup QoS keys, existing QoS metadata is removed.
+// Only the keys present in params are written; keys absent from params are left
+// unchanged so that updating one dimension does not reset the others. Callers
+// reach this only when at least one cgroup QoS key is present, gated by
+// cgroupQoSHandler.HasParams.
 func (rv *rbdVolume) saveCgroupQoS(ctx context.Context, params map[string]string) error {
-	// Check if we need to remove existing QoS (when VAC is removed or keys not present).
-	if !hasCgroupQoSParams(params) {
-		// Remove all cgroup QoS metadata.
-		for _, metadataKey := range qosParamToMetadataKey {
-			err := rv.RemoveMetadata(metadataKey)
-			if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-				return fmt.Errorf("failed to remove cgroup QoS metadata %s: %w", metadataKey, err)
-			}
-			log.DebugLog(ctx, "removed cgroup QoS metadata %s", metadataKey)
-		}
-
-		return nil
-	}
-
 	err := validateCgroupQoSParams(params)
 	if err != nil {
 		return err
 	}
 
-	// Save or update cgroup QoS parameters.
+	// Save only the cgroup QoS keys present in the request. Keys absent from the
+	// request are intentionally left untouched: the CSI mutable_parameters
+	// contract allows only specified keys to modify the volume, so setting one
+	// dimension must not reset the others. To drop a limit, the CO sets that key
+	// explicitly to "max".
 	for param, metadataKey := range qosParamToMetadataKey {
-		if val, ok := params[param]; ok && val != "" {
-			err := rv.SetMetadata(metadataKey, val)
-			if err != nil {
-				return fmt.Errorf("failed to save cgroup QoS %s: %s, %w", param, val, err)
-			}
-			log.DebugLog(ctx, "saved cgroup QoS metadata %s: %s", metadataKey, val)
-		} else {
-			// Remove metadata if parameter not provided (allows partial updates).
-			err := rv.RemoveMetadata(metadataKey)
-			if err != nil && !errors.Is(err, librbd.ErrNotExist) {
-				return fmt.Errorf("failed to remove cgroup QoS metadata %s: %w", metadataKey, err)
-			}
-			log.DebugLog(ctx, "removed cgroup QoS metadata %s (not in request)", metadataKey)
+		val, ok := params[param]
+		if !ok || val == "" {
+			continue
 		}
+
+		err := rv.SetMetadata(metadataKey, val)
+		if err != nil {
+			return fmt.Errorf("failed to save cgroup QoS %s: %s, %w", param, val, err)
+		}
+		log.DebugLog(ctx, "saved cgroup QoS metadata %s: %s", metadataKey, val)
 	}
 
 	return nil
