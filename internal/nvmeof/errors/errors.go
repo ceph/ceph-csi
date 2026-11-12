@@ -35,6 +35,9 @@ var (
 	// ErrSubsystemHasNamespaces is returned when the user tries to delete a subsystem that
 	// still has namespaces.
 	ErrSubsystemHasNamespaces = errors.New("subsystem has namespaces")
+	// ErrNoListeners is returned when ListListener GRPc call (from controller to NVMe-oF GW)
+	// return empty list.
+	ErrNoListeners = errors.New("listeners not available")
 )
 
 // errorToGRPCCode maps custom errors to gRPC status codes.
@@ -42,6 +45,7 @@ var errorToGRPCCode = map[error]codes.Code{
 	ErrMetadataNotFound:  codes.NotFound,
 	ErrMetadataCorrupted: codes.Internal,
 	ErrRbdQoSExists:      codes.InvalidArgument,
+	ErrNoListeners:       codes.Aborted,
 }
 
 // ToGRPCError converts a custom error to a gRPC status error.
