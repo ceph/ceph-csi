@@ -279,6 +279,12 @@ func (ns *NodeServer) populateRbdVol(
 
 	rv.LogDir = defaultIfEmpty(req.GetVolumeContext()["cephLogDir"], defaultLogDir)
 	rv.LogStrategy = defaultIfEmpty(req.GetVolumeContext()["cephLogStrategy"], defaultLogStrategy)
+	// TODO(debug): temporarily force the rbd-nbd client log to be preserved so the
+	// NodePublishVolume device-wait failure path can dump it regardless of the
+	// StorageClass cephLogStrategy. Remove this override after debugging.
+	if rv.LogStrategy != "preserve" {
+		rv.LogStrategy = "preserve"
+	}
 
 	return rv, err
 }
@@ -938,7 +944,7 @@ func (ns *NodeServer) NodePublishVolume(
 		// A missing/unreadable stash is surfaced by the mount path below; do not
 		// introduce a new failure mode here, especially for krbd volumes.
 		log.WarningLog(ctx,
-			"failed to lookup image metadata stash for volume %s,skipping rbd-nbd device check: %v",
+			"failed to lookup image metadata stash for volume %s, skipping rbd-nbd device check: %v",
 			volID,
 			err)
 	} else if imgInfo.NbdAccess {
@@ -946,6 +952,15 @@ func (ns *NodeServer) NodePublishVolume(
 			ctx, imgInfo.Pool, imgInfo.RadosNamespace, imgInfo.ImageName, nbdDeviceWaitAttempts, true,
 		); !found {
 			log.ErrorLog(ctx, "rbd-nbd device for volume %s (%s) not found in rbd-nbd list-mapped", volID, imgInfo.String())
+
+			// TODO(debug): dump the rbd-nbd client log to help diagnose why the
+			// device never appeared. Remove once the device-wait path is proven.
+			logFile := getCephClientLogFileName(volID, imgInfo.LogDir, "rbd-nbd")
+			if contents, readErr := os.ReadFile(logFile); readErr != nil {
+				log.ErrorLog(ctx, "failed to read rbd-nbd log file %q for volume %s: %v", logFile, volID, readErr)
+			} else {
+				log.ErrorLog(ctx, "rbd-nbd log file %q for volume %s:\n%s", logFile, volID, string(contents))
+			}
 
 			return nil, status.Errorf(codes.Internal, "rbd-nbd device for volume %s is not mapped", volID)
 		}
