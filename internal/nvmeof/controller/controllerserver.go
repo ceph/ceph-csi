@@ -310,6 +310,10 @@ func (cs *Server) ControllerPublishVolume(
 	// Publish NVMe-oF resources (add host, get listeners)
 	result, err := cs.publishResources(ctx, req)
 	if err != nil {
+		if status.Code(err) == codes.Aborted {
+			return nil, err
+		}
+
 		return nil, status.Errorf(codes.Internal, "failed to publish resources: %v", err)
 	}
 
@@ -1079,6 +1083,12 @@ func (cs *Server) publishResources(
 	// Reconcile listeners
 	listeners, err := cs.reconcileListeners(ctx, gateway, subsystemNQN)
 	if err != nil {
+		// With networkMask the gateway creates the listeners and the monitor may not report them yet.
+		// There are no stored listeners to fall back to, so abort and let the publish be retried.
+		if volumeContext[vcNetworkMask] != "" {
+			return nil, status.Errorf(codes.Aborted, "listeners not available yet for subsystem %s: %v",
+				subsystemNQN, err)
+		}
 		// Log warning but don't fail - use listeners from volumeContext as fallback
 		log.WarningLog(ctx, "Failed to reconcile listeners (continuing with stored listeners): %v", err)
 		// Parse stored listeners from volumeContext
@@ -1181,6 +1191,9 @@ const (
 
 	// Multiple listeners stored as JSON.
 	vcListeners = "listeners"
+
+	// Network mask used by the gateway to auto-create listeners (StorageClass parameter copied by the RBD backend).
+	vcNetworkMask = "networkMask"
 
 	// Gateway management info.
 	vcGatewayAddress = "GatewayAddress"
