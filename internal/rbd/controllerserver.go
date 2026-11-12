@@ -699,8 +699,9 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		return nil, err
 	}
 
-	// Apply QoS parameters from VolumeAttributesClass if present
-	// or else remove the QoS metadata from the image.
+	// Apply QoS parameters from the VolumeAttributesClass when present. When no
+	// QoS parameters are supplied, any existing QoS on the image is left
+	// unchanged (QoS is never cleared based on the absence of keys).
 	// This handles both traditional NBD QoS and cgroup v2 QoS.
 	// Use the existing image size (refreshed by Exists) for capacity-based QoS,
 	// so replaying CreateVolume with the original request size does not shrink an
@@ -964,8 +965,9 @@ func (cs *ControllerServer) createBackingImage(
 		return nil
 	}
 
-	// Apply QoS parameters from VolumeAttributesClass if present
-	// or else remove the QoS metadata from the image.
+	// Apply QoS parameters from the VolumeAttributesClass when present. When no
+	// QoS parameters are supplied, any existing QoS on the image is left
+	// unchanged (QoS is never cleared based on the absence of keys).
 	// This handles both traditional NBD QoS and cgroup v2 QoS.
 	// Set RequestedVolSize for QoS capacity-based calculations.
 	rbdVol.RequestedVolSize = rbdVol.VolSize
