@@ -6917,16 +6917,21 @@ var _ = Describe("RBD", func() {
 				logAndFail("failed to create PVC: %v", err)
 			}
 
-			// Modify to partial VAC (only IOPS, no BPS)
+			// Modify to a VAC that specifies only IOPS and omits BPS.
 			err = modifyPVCVolumeAttributesClass(f.ClientSet, pvc, partialVACName)
 			if err != nil {
 				logAndFail("failed to modify to partial VAC: %v", err)
 			}
 
-			// Validate only IOPS parameters present
+			// Per the CSI mutable_parameters contract, only the keys specified in
+			// the VAC are modified. The IOPS limits are updated to 750, while the
+			// BPS limits set by the medium VAC are left untouched: their absence
+			// from the partial VAC must not clear them.
 			wantsPartial := map[string]string{
 				"maxReadIops":  "750",
 				"maxWriteIops": "750",
+				"maxReadBps":   "104857600",
+				"maxWriteBps":  "104857600",
 			}
 			err = validateCgroupQoS(f, pvc, wantsPartial)
 			if err != nil {
