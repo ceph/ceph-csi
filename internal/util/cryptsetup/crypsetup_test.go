@@ -353,6 +353,49 @@ func TestParseLuksStatus(t *testing.T) {
 	}
 }
 
+func TestSetAllowDiscards(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		testName    string
+		value       string
+		expected    bool
+		expectedErr bool
+	}{
+		{
+			testName:    "true",
+			value:       "true",
+			expected:    true,
+			expectedErr: false,
+		},
+		{
+			testName:    "false",
+			value:       "false",
+			expected:    false,
+			expectedErr: false,
+		},
+		{
+			testName:    "invalid",
+			value:       "notabool",
+			expected:    false,
+			expectedErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+			opts := EncryptionOptions{}
+			err := opts.SetAllowDiscards(tt.value)
+			if tt.expectedErr {
+				require.Error(t, err)
+
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, opts.AllowDiscards())
+		})
+	}
+}
+
 func setError(requirement *require.Assertions, set func(string) error, argument string, hasError bool) {
 	err := set(argument)
 	if hasError {

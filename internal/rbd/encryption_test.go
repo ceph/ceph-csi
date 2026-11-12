@@ -104,13 +104,14 @@ func TestParseEncryptionOpts(t *testing.T) {
 func TestParseCipherOptions(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		testName           string
-		volOptions         map[string]string
-		expectedCipher     *string
-		expectedIntegrity  *string
-		expectedKeySize    *string
-		expectedSectorSize *string
-		expectedErr        bool
+		testName              string
+		volOptions            map[string]string
+		expectedCipher        *string
+		expectedIntegrity     *string
+		expectedKeySize       *string
+		expectedSectorSize    *string
+		expectedAllowDiscards bool
+		expectedErr           bool
 	}{
 		{
 			testName: "No Encryption Option",
@@ -172,6 +173,59 @@ func TestParseCipherOptions(t *testing.T) {
 			expectedSectorSize: valueToPointer("4096"),
 			expectedErr:        false,
 		},
+		{
+			testName: "Allow discards without cipher",
+			volOptions: map[string]string{
+				"encryptionAllowDiscards": "true",
+			},
+			expectedCipher:        nil,
+			expectedIntegrity:     nil,
+			expectedKeySize:       nil,
+			expectedAllowDiscards: true,
+			expectedErr:           false,
+		},
+		{
+			testName: "Allow discards with cipher",
+			volOptions: map[string]string{
+				"encryptionCipher":        "aes-xts-plain64",
+				"encryptionAllowDiscards": "true",
+			},
+			expectedCipher:        valueToPointer("aes-xts-plain64"),
+			expectedIntegrity:     nil,
+			expectedKeySize:       nil,
+			expectedAllowDiscards: true,
+			expectedErr:           false,
+		},
+		{
+			testName: "Allow discards disabled with cipher",
+			volOptions: map[string]string{
+				"encryptionCipher":        "aes-xts-plain64",
+				"encryptionAllowDiscards": "false",
+			},
+			expectedCipher:        valueToPointer("aes-xts-plain64"),
+			expectedIntegrity:     nil,
+			expectedKeySize:       nil,
+			expectedAllowDiscards: false,
+			expectedErr:           false,
+		},
+		{
+			testName: "Allow discards with invalid value",
+			volOptions: map[string]string{
+				"encryptionAllowDiscards": "notabool",
+			},
+			expectedCipher: nil,
+			expectedErr:    true,
+		},
+		{
+			testName: "Allow discards rejected with integrity mode",
+			volOptions: map[string]string{
+				"encryptionCipher":        "aes-xts-plain64",
+				"integrityMode":           "hmac-sha256",
+				"encryptionAllowDiscards": "true",
+			},
+			expectedCipher: nil,
+			expectedErr:    true,
+		},
 		// test case key size or integrity mode set
 		// will result in no encryption
 	}
@@ -192,27 +246,39 @@ func TestParseCipherOptions(t *testing.T) {
 					return
 				}
 				requirement.NoError(actualErr)
-				if tt.expectedCipher == nil {
+				if tt.expectedCipher == nil && !tt.expectedAllowDiscards {
 					assertion.Nil(actualEncOptions)
 
 					return
 				}
-				expectedEncOption := cryptsetup.EncryptionOptions{}
-				err := expectedEncOption.SetCipher(*tt.expectedCipher)
-				requirement.NoError(err)
-				if tt.expectedKeySize != nil {
-					err := expectedEncOption.SetKeySize(*tt.expectedKeySize)
+				requirement.NotNil(actualEncOptions)
+				if tt.expectedCipher != nil {
+					expectedEncOption := cryptsetup.EncryptionOptions{}
+					err := expectedEncOption.SetCipher(*tt.expectedCipher)
 					requirement.NoError(err)
+					if tt.expectedKeySize != nil {
+						err := expectedEncOption.SetKeySize(*tt.expectedKeySize)
+						requirement.NoError(err)
+					}
+					if tt.expectedIntegrity != nil {
+						err := expectedEncOption.SetIntegrityMode(*tt.expectedIntegrity)
+						requirement.NoError(err)
+					}
+					if tt.expectedSectorSize != nil {
+						err := expectedEncOption.SetSectorSize(*tt.expectedSectorSize)
+						requirement.NoError(err)
+					}
+					if tt.expectedAllowDiscards {
+						err := expectedEncOption.SetAllowDiscards("true")
+						requirement.NoError(err)
+					}
+					assertion.Equal(expectedEncOption, *actualEncOptions)
+
+					return
 				}
-				if tt.expectedIntegrity != nil {
-					err := expectedEncOption.SetIntegrityMode(*tt.expectedIntegrity)
-					requirement.NoError(err)
-				}
-				if tt.expectedSectorSize != nil {
-					err := expectedEncOption.SetSectorSize(*tt.expectedSectorSize)
-					requirement.NoError(err)
-				}
-				assertion.Equal(expectedEncOption, *actualEncOptions)
+				// allow discards only, without a cipher
+				assertion.Equal(tt.expectedAllowDiscards, actualEncOptions.AllowDiscards())
+				assertion.Empty(actualEncOptions.Cipher())
 			},
 		)
 	}
