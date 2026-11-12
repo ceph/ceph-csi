@@ -2786,17 +2786,12 @@ func (rv *rbdVolume) modifyVolumeAttributes(
 		}
 	}
 
-	// No QoS parameters provided - clear any existing QoS of all types.
-	// This happens when VolumeAttributesClass is removed from the PVC.
-	log.DebugLog(ctx, "no QoS parameters in request, clearing existing QoS for volume %s", rv.VolID)
-
-	for _, handler := range handlers {
-		if err := handler.Clear(ctx); err != nil {
-			log.ErrorLog(ctx, "failed to clear QoS for volume %s: %v", rv.VolID, err)
-
-			return err
-		}
-	}
+	// No QoS parameters in the request: leave any existing QoS untouched. The CSI
+	// mutable_parameters contract forbids modifying a volume based on the absence
+	// of keys, so QoS is never cleared implicitly here. To remove a limit, the CO
+	// specifies that key explicitly: "max" for cgroup v2 QoS (krbd) or "0" for
+	// traditional NBD QoS (rbd-nbd).
+	log.DebugLog(ctx, "no QoS parameters in request, leaving existing QoS unchanged for volume %s", rv.VolID)
 
 	return nil
 }
