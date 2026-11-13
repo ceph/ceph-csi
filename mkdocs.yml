@@ -9,6 +9,7 @@ repo_url: https://github.com/ceph/ceph-csi
 
 theme:
   name: material
+  favicon: assets/favicon.ico
   features:
     - navigation.tabs
     - navigation.sections
@@ -44,6 +45,7 @@ nav:
       - Static PVC: static-pvc.md
       - Volume Attributes Class: volumeattributesclass.md
       - Metrics: metrics.md
+      - Encrypted Volumes: encrypted-volumes.md
   - Deployment:
       - RBD:
           - Deploy: rbd/deploy.md
