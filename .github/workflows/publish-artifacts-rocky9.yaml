@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - devel
   workflow_dispatch:
     inputs:
       tag:
@@ -16,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
@@ -25,13 +27,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'ceph/ceph-csi'
     env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
       CONTAINER_CMD: docker
     steps:
       # yamllint disable-line rule:line-length
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: refs/tags/${{ env.RELEASE_TAG }}
+          # only override the checked-out ref for a manual
+          # workflow_dispatch. Using .ref here instead of
+          # ref_name as it is fully-qualified name (with path)
+          # yamllint disable-line rule:line-length
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
 
       - name: Patch build.env for Rocky Linux 9 build
         run: |
