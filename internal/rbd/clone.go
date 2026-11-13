@@ -68,6 +68,14 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 				return false, err
 			}
 
+			// The clone inherits the parent's NBD QoS image-meta copied by rbd
+			// clone. Clear it so the clone does not keep the parent's QoS; its own
+			// VolumeAttributesClass is applied later by modifyVolumeAttributes.
+			err = rv.unsetAllMetadata(nbdQoSMetadataKeys())
+			if err != nil {
+				return false, err
+			}
+
 			return true, nil
 
 		case errors.Is(err, rbderrors.ErrImageNotFound):
@@ -100,6 +108,14 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		log.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
 		err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %w", rv.RbdImageName, snap.RbdSnapName, err)
 
+		return false, err
+	}
+
+	// The clone inherits the parent's NBD QoS image-meta copied by rbd clone.
+	// Clear it so the clone does not keep the parent's QoS; its own
+	// VolumeAttributesClass is applied later by modifyVolumeAttributes.
+	err = rv.unsetAllMetadata(nbdQoSMetadataKeys())
+	if err != nil {
 		return false, err
 	}
 
@@ -181,14 +197,9 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		return err
 	}
 
-	// adjust rbd qos after resize volume.
-	err = rv.AdjustQOS(ctx)
-	if err != nil {
-		log.ErrorLog(ctx, "failed adjust QOS for rbd image")
-
-		return err
-	}
-
+	// QoS is applied by the caller (createBackingImage) via
+	// modifyVolumeAttributes, so the clone gets its own VolumeAttributesClass
+	// QoS rather than whatever was propagated from the parent image.
 	return nil
 }
 
@@ -240,6 +251,18 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 	err = tempClone.unsetAllMetadata(k8s.GetVolumeMetadataKeys())
 	if err != nil {
 		log.ErrorLog(ctx, "failed to unset volume metadata on temp clone image %q: %v", tempClone, err)
+
+		return err
+	}
+
+	// The temp clone inherits the parent image's metadata, including any NBD QoS
+	// image-meta (conf_rbd_qos_*, capacity-based rbd_base_qos_*/per-GiB) copied by
+	// rbd clone. Clear it so the final clone created from this image does not
+	// inherit the parent's QoS; the clone's own VolumeAttributesClass is applied
+	// later by modifyVolumeAttributes.
+	err = tempClone.unsetAllMetadata(nbdQoSMetadataKeys())
+	if err != nil {
+		log.ErrorLog(ctx, "failed to unset QoS metadata on temp clone image %q: %v", tempClone, err)
 
 		return err
 	}

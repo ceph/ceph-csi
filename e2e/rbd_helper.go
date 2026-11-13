@@ -204,6 +204,14 @@ func createRBDStorageClass(
 	})
 }
 
+// rbdControllerContainerName is the ceph-csi internal controller container in
+// the provisioner deployment. It reconciles PersistentVolumes and, among other
+// things, restores cgroup v2 QoS from the VolumeAttributesClass. Tests that need
+// to observe what CreateVolume/ControllerModifyVolume set on their own remove it
+// with removeDeploymentContainer first, otherwise this controller re-applies the
+// QoS and masks any gap in those paths.
+const rbdControllerContainerName = "csi-rbdplugin-controller"
+
 // createKRBDStorageClassWithModifySecret creates a StorageClass configured for
 // krbd mounter (default) with controller-modify-secret for VolumeAttributesClass support.
 // This is required for testing cgroup v2 QoS with VAC modification.
@@ -409,6 +417,18 @@ func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string,
 	}
 
 	return strings.TrimSpace(stdOut), nil
+}
+
+// getImageMetaRaw runs `rbd image-meta get` for a single key and returns the
+// trimmed stdout together with the raw stderr and execution error. Unlike
+// getImageMeta it does not fold stderr into the returned error, so callers can
+// pass both to checkGetKeyError to distinguish a genuinely missing key from a
+// toolbox execution failure or other Ceph error.
+func getImageMetaRaw(rbdImageSpec, metaKey string, f *framework.Framework) (string, string, error) {
+	cmd := fmt.Sprintf("rbd image-meta get %s %s", rbdImageSpec, metaKey)
+	stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+
+	return strings.TrimSpace(stdOut), stdErr, err
 }
 
 // validateImageOwner checks the "csi.volume.owner" key on the image journal
@@ -1522,6 +1542,59 @@ func validateQOS(f *framework.Framework,
 	return nil
 }
 
+// nbdQoSImageMetaKeys returns every rbd image-meta key used for traditional NBD
+// QoS: the conf_rbd_qos_* overrides applied to the image and the capacity-based
+// QoS metadata (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit,
+// rbd_base_qos_vol_size). It is used to assert that a clone or restored volume did
+// not inherit the parent's NBD QoS.
+func nbdQoSImageMetaKeys() []string {
+	return []string{
+		// conf_ overrides applied to the image
+		"conf_rbd_qos_iops_limit",
+		"conf_rbd_qos_read_iops_limit",
+		"conf_rbd_qos_write_iops_limit",
+		"conf_rbd_qos_bps_limit",
+		"conf_rbd_qos_read_bps_limit",
+		"conf_rbd_qos_write_bps_limit",
+		// capacity-based QoS metadata
+		"rbd_base_qos_iops_limit", "rbd_max_qos_iops_limit",
+		"rbd_base_qos_read_iops_limit", "rbd_max_qos_read_iops_limit",
+		"rbd_base_qos_write_iops_limit", "rbd_max_qos_write_iops_limit",
+		"rbd_base_qos_bps_limit", "rbd_max_qos_bps_limit",
+		"rbd_base_qos_read_bps_limit", "rbd_max_qos_read_bps_limit",
+		"rbd_base_qos_write_bps_limit", "rbd_max_qos_write_bps_limit",
+		"rbd_iops_per_gib_limit", "rbd_read_iops_per_gib_limit", "rbd_write_iops_per_gib_limit",
+		"rbd_bps_per_gib_limit", "rbd_read_bps_per_gib_limit", "rbd_write_bps_per_gib_limit",
+		"rbd_base_qos_vol_size",
+	}
+}
+
+// validateQOSAbsent verifies that none of the given rbd image-meta keys are set
+// on the image backing the PVC. A key is accepted as absent only when the read
+// returns the explicit missing-key response (checkGetKeyError). A successful
+// read is treated as present even when the value is empty, and toolbox execution
+// failures or other Ceph errors are not treated as proof of absence.
+func validateQOSAbsent(f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	keys []string,
+) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+	for _, k := range keys {
+		val, stdErr, execErr := getImageMetaRaw(rbdImageSpec, k, f)
+		if checkGetKeyError(execErr, stdErr) {
+			return fmt.Errorf("QoS metadata %q should be absent but the key is present "+
+				"(value=%q, err=%v, stdErr=%q)", k, val, execErr, stdErr)
+		}
+	}
+
+	return nil
+}
+
 // validateCgroupQoS validates cgroup v2 QoS parameters stored in RBD image metadata.
 // The wants map uses VolumeAttributesClass parameter names as keys:
 //   - "maxReadIops", "maxWriteIops"
@@ -1550,16 +1623,26 @@ func validateCgroupQoS(f *framework.Framework,
 	for param, metadataKey := range paramToMetadataKey {
 		expectedValue, shouldExist := wants[param]
 
+		if !shouldExist {
+			// Accept the key as absent only for the explicit missing-key
+			// response. A successful read (even of an empty value) means the key
+			// is present, and toolbox execution failures or other Ceph errors are
+			// not proof of absence.
+			val, stdErr, execErr := getImageMetaRaw(rbdImageSpec, metadataKey, f)
+			if checkGetKeyError(execErr, stdErr) {
+				return fmt.Errorf("%s should be absent but the key is present "+
+					"(value=%q, err=%v, stdErr=%q)", param, val, execErr, stdErr)
+			}
+
+			continue
+		}
+
 		actualValue, err := getImageMeta(rbdImageSpec, metadataKey, f)
-		if shouldExist {
-			if err != nil {
-				return fmt.Errorf("failed to get %s: %w", metadataKey, err)
-			}
-			if actualValue != expectedValue {
-				return fmt.Errorf("%s: got %q, want %q", param, actualValue, expectedValue)
-			}
-		} else if err == nil {
-			return fmt.Errorf("%s should be absent but found value %q", param, actualValue)
+		if err != nil {
+			return fmt.Errorf("failed to get %s: %w", metadataKey, err)
+		}
+		if actualValue != expectedValue {
+			return fmt.Errorf("%s: got %q, want %q", param, actualValue, expectedValue)
 		}
 	}
 

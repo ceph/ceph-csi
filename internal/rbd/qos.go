@@ -163,12 +163,54 @@ func (h *nbdQoSHandler) Apply(ctx context.Context, params map[string]string) err
 	return h.volume.SaveQOS(ctx, params)
 }
 
-// Clear removes all traditional NBD QoS settings.
-func (h *nbdQoSHandler) Clear(ctx context.Context) error {
-	// Pass empty params to clear QoS settings.
-	emptyParams := map[string]string{}
+// nbdQoSMetadataKeys returns every image-metadata key used for traditional NBD
+// QoS: the rbd config overrides (conf_rbd_qos_*) set by ApplyQOS and the
+// capacity-based QoS metadata (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit,
+// rbd_base_qos_vol_size) saved by SaveQOS. Clearing these keys drops both the
+// applied limits and the inputs used to recalculate them on expansion.
+func nbdQoSMetadataKeys() []string {
+	return []string{
+		// rbd config overrides set by ApplyQOS.
+		metadataConfPrefix + iopsLimit,
+		metadataConfPrefix + readIopsLimit,
+		metadataConfPrefix + writeIopsLimit,
+		metadataConfPrefix + bpsLimit,
+		metadataConfPrefix + readBpsLimit,
+		metadataConfPrefix + writeBpsLimit,
+		// capacity-based QoS metadata saved by SaveQOS.
+		baseQosIopsLimit, maxQosIopsLimit,
+		baseQosReadIopsLimit, maxQosReadIopsLimit,
+		baseQosWriteIopsLimit, maxQosWriteIopsLimit,
+		baseQosBpsLimit, maxQosBpsLimit,
+		baseQosReadBpsLimit, maxQosReadBpsLimit,
+		baseQosWriteBpsLimit, maxQosWriteBpsLimit,
+		iopsPerGiBLimit, readIopsPerGiBLimit, writeIopsPerGiBLimit,
+		bpsPerGiBLimit, readBpsPerGiBLimit, writeBpsPerGiBLimit,
+		baseQosVolSize,
+	}
+}
 
-	return h.Apply(ctx, emptyParams)
+// removeQOS removes every traditional NBD QoS key from the image: the rbd config
+// overrides (conf_rbd_qos_*) set by ApplyQOS and the capacity-based QoS metadata
+// (rbd_base_qos_*, rbd_max_qos_*, rbd_*_per_gib_limit, rbd_base_qos_vol_size)
+// saved by SaveQOS.
+func (rv *rbdVolume) removeQOS(ctx context.Context) error {
+	image, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close() //nolint:errcheck // not a critical failure
+
+	for _, k := range nbdQoSMetadataKeys() {
+		err := image.RemoveMetadata(k)
+		if err != nil && !errors.Is(err, librbd.ErrNotExist) {
+			log.ErrorLog(ctx, "failed to remove QoS metadata %s: %v", k, err)
+
+			return fmt.Errorf("failed to remove QoS metadata %s: %w", k, err)
+		}
+	}
+
+	return nil
 }
 
 func parseQosParams(
