@@ -98,6 +98,12 @@ nodeplugin:
   priorityClassName: system-node-critical
   # if you are using rbd-nbd client set this value to OnDelete
   updateStrategy: RollingUpdate
+  # Set to true when using netNamespaceFilePath (deprecated). Required when
+  # externallyManagedConfigmap is true and the external ConfigMap sets
+  # rbd.netNamespaceFilePath, because the chart cannot detect that from
+  # csiConfig. Also set automatically when csiConfig includes
+  # rbd.netNamespaceFilePath.
+  hostPID: false
 
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
