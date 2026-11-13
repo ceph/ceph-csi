@@ -35,6 +35,7 @@ import (
 	utilexec "k8s.io/utils/exec"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/filesystems"
 	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	rbderrors "github.com/ceph/ceph-csi/internal/rbd/errors"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -102,7 +103,6 @@ const (
 	staticVol        = "staticVolume"
 	volHealerCtx     = "volumeHealerContext"
 	tryOtherMounters = "tryOtherMounters"
-	xfsFilesystem    = "xfs"
 )
 
 var (
@@ -127,10 +127,6 @@ var (
 			Distribution: ".el8",
 			Backport:     true,
 		}, // RHEL 8.2
-	}
-
-	mountDefaultOpts = map[string][]string{
-		xfsFilesystem: {"nouuid"},
 	}
 )
 
@@ -1106,10 +1102,18 @@ func (ns *NodeServer) mountVolumeToStagePath(
 		return err
 	}
 
-	opt := mountDefaultOpts[fsType]
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	opt := []string{}
+	if !isBlock {
+		// FormatAndMount() mounts the volume as ext4 when no fsType is set
+		mountFsType := fsType
+		if mountFsType == "" {
+			mountFsType = filesystems.Ext4
+		}
+		opt = filesystems.DefaultMountOptions(mountFsType, req.GetVolumeCapability().GetMount().GetMountFlags())
+	}
 	opt = append(opt, "_netdev")
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	readOnly := csicommon.IsReaderOnly([]*csi.VolumeCapability{req.GetVolumeCapability()})
 
 	if existingFormat == "" && !staticVol && !readOnly && !isBlock {
@@ -1127,11 +1131,11 @@ func (ns *NodeServer) mountVolumeToStagePath(
 		// add extra arguments depending on the filesystem
 		mkfs := "mkfs." + fsType
 		switch fsType {
-		case "ext4":
+		case filesystems.Ext4:
 			if fileEncryption {
 				args = append(args, "-Oencrypt")
 			}
-		case xfsFilesystem:
+		case filesystems.XFS:
 			// always disable reflink
 			// TODO: make enabling an option, see ceph/ceph-csi#1256
 			if ns.xfsSupportsReflink() {
@@ -1975,13 +1979,13 @@ func getDeviceSize(ctx context.Context, devicePath string) (uint64, error) {
 // type is provided, a warning is logged and empty options are returned.
 func (ns *NodeServer) getMkfsArgs(fsType string) []string {
 	switch fsType {
-	case "ext4":
+	case filesystems.Ext4:
 		if ns.ext4SupportsPrezeroed() {
 			return []string{"-m0", "-Enodiscard,assume_storage_prezeroed=1"}
 		}
 
 		return []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1"}
-	case xfsFilesystem:
+	case filesystems.XFS:
 		return []string{"-K"}
 	default:
 		log.WarningLogMsg("unknown fsType: %q, using default mkfs options", fsType)
