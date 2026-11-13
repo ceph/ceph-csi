@@ -33,6 +33,12 @@
 1. Added an optional `--config` command line argument to set the path of the
    Ceph-CSI config file, defaults to: `/etc/ceph-csi-config/config.json`.
 
+1. RBD: added an optional `encryptionAllowDiscards` StorageClass parameter
+   for encrypted volumes. When set to `"true"`, discard (TRIM) requests are
+   forwarded through the dm-crypt device to the underlying RBD image so
+   unused blocks can be reclaimed. Disabled by default; enabling it may
+   leak discard patterns. Cannot be combined with `integrityMode`.
+
 ## NOTE
 
 - The `--setmetadata` flag has been removed. The flag was deprecated in
