@@ -197,6 +197,18 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 
 			return err
 		}
+
+		repair, err := r.storageClassSupportsDiffIterate(ctx, pv)
+		if err != nil {
+			return err
+		}
+		if repair {
+			err = rbdVol.EnsureFastDiffFeatures(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to reconcile DiffIterate for PV %s: %w", pv.Name, err)
+			}
+			log.DebugLog(ctx, "fast diff feature enabled and object map rebuild for PV %s", pv.Name)
+		}
 	}
 
 	return nil
