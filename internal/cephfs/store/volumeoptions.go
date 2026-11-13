@@ -605,17 +605,69 @@ func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 	vo.Features = parentBackingSnapVolOpts.Features
 	vo.Size = parentBackingSnapVolOpts.Size
 
-	// For case (a) (o.ProvisionVolume==true is assumed), snapshot root path
-	// can be built out of subvolume root path, which is in following format:
+	// For case (a) (o.ProvisionVolume==true is assumed), resolve the snapshot
+	// path via Ceph's fs subvolume snapshot getpath. Fall back to manual
+	// construction from the subvolume root path only when getpath is not
+	// implemented:
 	//
 	//   /volumes/<volume group>/<subvolume>/<subvolume UUID>
 
 	subvolRoot, subvolUUID := path.Split(parentBackingSnapVolOpts.RootPath)
 
 	vo.RootPath = subvolRoot
-	vo.BackingSnapshotRoot = path.Join(".snap", snapID.FsSnapshotName, subvolUUID)
+
+	// Use Ceph's snapshot getpath; fall back to manual construction.
+	snapClient := core.NewSnapshot(
+		parentBackingSnapVolOpts.conn,
+		snapID.FsSnapshotName,
+		parentBackingSnapVolOpts.ClusterID,
+		clusterName,
+		&parentBackingSnapVolOpts.SubVolume,
+	)
+	absPath, err := snapClient.GetSnapshotPath(ctx)
+	switch {
+	case err == nil:
+		relPath, ok := extractSnapshotRelativePath(absPath, subvolRoot)
+		if !ok {
+			return fmt.Errorf("unexpected snapshot path %q for backing snapshot %s", absPath, vo.BackingSnapshotID)
+		}
+		vo.BackingSnapshotRoot = relPath
+	case errors.Is(err, cerrors.ErrNotImplemented):
+		log.DebugLog(ctx, "SubVolumeSnapshotPath not supported by Ceph cluster, using manual construction")
+		vo.BackingSnapshotRoot = path.Join(".snap", snapID.FsSnapshotName, subvolUUID)
+	default:
+		return fmt.Errorf("failed to get path for backing snapshot %s: %w", vo.BackingSnapshotID, err)
+	}
+
+	log.DebugLog(ctx, "backing snapshot root path: %s", vo.BackingSnapshotRoot)
 
 	return nil
+}
+
+// extractSnapshotRelativePath extracts the relative snapshot path from an absolute CephFS path.
+// For example, given:
+//
+//	absPath: /volumes/group/subvol/.snap/snapshot/uuid
+//	subvolRoot: /volumes/group/subvol/
+//
+// Returns: .snap/snapshot/uuid
+// ok is false if absPath is outside subvolRoot or has no usable .snap component.
+func extractSnapshotRelativePath(absPath, subvolRoot string) (string, bool) {
+	// Normalize trailing slashes so getpath vs RootPath formatting differences
+	// do not reject a path that is still under the same subvolume root.
+	root := strings.TrimSuffix(subvolRoot, "/") + "/"
+
+	rel, found := strings.CutPrefix(absPath, root)
+	if !found {
+		return "", false
+	}
+
+	rel = strings.TrimPrefix(rel, "/")
+	if !strings.HasPrefix(rel, ".snap/") {
+		return "", false
+	}
+
+	return rel, true
 }
 
 // NewVolumeOptionsFromMonitorList generates a new instance of VolumeOptions and

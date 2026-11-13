@@ -49,6 +49,8 @@ type SnapshotClient interface {
 	UnsetAllSnapshotMetadata(keys []string) error
 	// ListSnapshotMetadata lists all the metadata on subvolume snapshot.
 	ListSnapshotMetadata() (map[string]string, error)
+	// GetSnapshotPath returns the absolute CephFS path of the subvolume snapshot.
+	GetSnapshotPath(ctx context.Context) (string, error)
 }
 
 // snapshotClient is the implementation of SnapshotClient interface.
@@ -161,6 +163,39 @@ func (s *snapshotClient) GetSnapshotInfo(ctx context.Context) (SnapshotInfo, err
 	return snap, nil
 }
 
+// GetSnapshotPath returns the absolute CephFS path of the subvolume snapshot.
+//
+// Similar To:
+//
+//	ceph fs subvolume snapshot getpath <volume> --group-name=<group> <subvolume> <snapshot>
+func (s *snapshotClient) GetSnapshotPath(ctx context.Context) (string, error) {
+	if !s.supportsSubVolSnapshotPath() {
+		return "", cerrors.ErrNotImplemented
+	}
+
+	fsa, err := s.conn.GetFSAdmin()
+	if err != nil {
+		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
+		return "", err
+	}
+
+	snapPath, err := fsa.SubVolumeSnapshotPath(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get path for subvolume snapshot %s %s in fs %s: %s",
+			s.VolID, s.SnapshotID, s.FsName, err)
+		if s.isSubVolSnapshotPathNotImplemented(err) {
+			return "", cerrors.ErrNotImplemented
+		}
+
+		return "", err
+	}
+
+	clusterAdditionalInfo[s.clusterID].subVolSnapshotPathState = supported
+
+	return snapPath, nil
+}
+
 // CloneSnapshot clones the snapshot of the subvolume.
 func (s *snapshotClient) CloneSnapshot(
 	ctx context.Context,
@@ -207,4 +242,19 @@ func (s *snapshotClient) CloneSnapshot(
 	}
 
 	return nil
+}
+
+func (s *snapshotClient) supportsSubVolSnapshotPath() bool {
+	newLocalClusterState(s.clusterID)
+
+	return clusterAdditionalInfo[s.clusterID].subVolSnapshotPathState != unsupported
+}
+
+func (s *snapshotClient) isSubVolSnapshotPathNotImplemented(err error) bool {
+	_, ok := errors.AsType[admin.NotImplementedError](err)
+	if ok {
+		clusterAdditionalInfo[s.clusterID].subVolSnapshotPathState = unsupported
+	}
+
+	return ok
 }
