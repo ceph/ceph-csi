@@ -32,6 +32,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util/file"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -81,7 +82,9 @@ Example JSON structure in the KMS config is,
 are Kubernetes Secret names in the CSI pod namespace. The CA cert is read from
 the "cert" field of the named Secret; the client cert from the "cert" field and
 the client key from the "key" field of their respective Secrets (cert and key
-may be in the same Secret or different Secrets).
+may be in the same Secret or different Secrets). Both client options must be set
+together. For backward compatibility, "vaultCAFromSecret" is first looked up as a
+key in the CSI request secrets; this legacy lookup is deprecated.
 */
 
 type vaultConnection struct {
@@ -306,78 +309,65 @@ func (vc *vaultConnection) initConnection(config map[string]any) error {
 // initCertificates sets VAULT_* environment variables in the vc.vaultConfig map,
 // these settings will be used when connecting to the Vault service with
 // vc.connectVault().
-func (vc *vaultConnection) initCertificates(config map[string]any, secrets map[string]string) error {
-	vaultConfig := make(map[string]any)
-	csiNamespace := os.Getenv("POD_NAMESPACE")
-
-	// Merge vaultConfig into vc.vaultConfig eagerly on return so that any temp
-	// files created before a partial failure are tracked and cleaned up by Destroy().
-	defer func() {
-		maps.Copy(vc.vaultConfig, vaultConfig)
-	}()
-
-	vaultCAFromSecret := "" // optional
-	err := setConfigString(&vaultCAFromSecret, config, "vaultCAFromSecret")
-	if errors.Is(err, errConfigOptionInvalid) {
-		return err
+func (vc *vaultConnection) initCertificates(
+	config map[string]any,
+	secrets map[string]string,
+	getSecret func(string, string) (map[string]string, error),
+) error {
+	certs := []struct {
+		option string
+		name   string
+		field  string
+		env    string
+		prefix string
+	}{
+		{option: "vaultCAFromSecret", field: "cert", env: api.EnvVaultCACert, prefix: "vault-ca-cert"},
+		{option: "vaultClientCertFromSecret", field: "cert", env: api.EnvVaultClientCert, prefix: "vault-client-cert"},
+		{option: "vaultClientCertKeyFromSecret", field: "key", env: api.EnvVaultClientKey, prefix: "vault-client-cert-key"},
 	}
-	// ignore errConfigOptionMissing, no default was set
-	if vaultCAFromSecret != "" {
-		cert, err := k8s.GetSecret(vaultCAFromSecret, csiNamespace)
-		if err != nil {
-			return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, err)
+	for i := range certs {
+		err := setConfigString(&certs[i].name, config, certs[i].option)
+		if errors.Is(err, errConfigOptionInvalid) {
+			return err
 		}
-		caPEM, ok := cert["cert"]
-		if !ok {
-			return fmt.Errorf("missing \"cert\" field in secret %s", vaultCAFromSecret)
-		}
-		tf, err := file.CreateTempFile("vault-ca-cert", caPEM)
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
-		}
-		vaultConfig[api.EnvVaultCACert] = tf.Name()
+	}
+	if (certs[1].name == "") != (certs[2].name == "") {
+		return fmt.Errorf("%w: vaultClientCertFromSecret and vaultClientCertKeyFromSecret must both be set",
+			errConfigOptionInvalid)
 	}
 
-	vaultClientCertFromSecret := "" // optional
-	err = setConfigString(&vaultClientCertFromSecret, config, "vaultClientCertFromSecret")
-	if errors.Is(err, errConfigOptionInvalid) {
-		return err
-	}
-	if vaultClientCertFromSecret != "" {
-		certSecret, err := k8s.GetSecret(vaultClientCertFromSecret, csiNamespace)
+	// Cache only during initialization so a combined Secret is fetched once,
+	// without retaining credentials or hiding rotations on later connections.
+	secretCache := make(map[string]map[string]string)
+	for _, cert := range certs {
+		if cert.name == "" {
+			continue
+		}
+		pem, legacyCA := secrets[cert.name]
+		if cert.env != api.EnvVaultCACert || !legacyCA {
+			data, ok := secretCache[cert.name]
+			if !ok {
+				ns, err := getPodNamespace()
+				if err != nil {
+					return err
+				}
+				data, err = getSecret(cert.name, ns)
+				if err != nil {
+					return fmt.Errorf("failed to get %s from secret %s: %w", cert.option, cert.name, err)
+				}
+				secretCache[cert.name] = data
+			}
+			pem, ok = data[cert.field]
+			if !ok || pem == "" {
+				return fmt.Errorf("missing or empty %q field in secret %s", cert.field, cert.name)
+			}
+		}
+		tf, err := file.CreateTempFile(cert.prefix, pem)
 		if err != nil {
-			return fmt.Errorf("failed to get client certificate from secret %s: %w", vaultClientCertFromSecret, err)
+			return fmt.Errorf("failed to create temporary file for %s: %w", cert.option, err)
 		}
-		certPEM, ok := certSecret["cert"]
-		if !ok {
-			return fmt.Errorf("missing \"cert\" field in secret %s", vaultClientCertFromSecret)
-		}
-		tf, err := file.CreateTempFile("vault-client-cert", certPEM)
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for Vault client certificate: %w", err)
-		}
-		vaultConfig[api.EnvVaultClientCert] = tf.Name()
-	}
-
-	vaultClientCertKeyFromSecret := "" // optional
-	err = setConfigString(&vaultClientCertKeyFromSecret, config, "vaultClientCertKeyFromSecret")
-	if errors.Is(err, errConfigOptionInvalid) {
-		return err
-	}
-	if vaultClientCertKeyFromSecret != "" {
-		keySecret, err := k8s.GetSecret(vaultClientCertKeyFromSecret, csiNamespace)
-		if err != nil {
-			return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultClientCertKeyFromSecret, err)
-		}
-		keyPEM, ok := keySecret["key"]
-		if !ok {
-			return fmt.Errorf("missing \"key\" field in secret %s", vaultClientCertKeyFromSecret)
-		}
-		tf, err := file.CreateTempFile("vault-client-cert-key", keyPEM)
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for Vault client certificate key: %w", err)
-		}
-		vaultConfig[api.EnvVaultClientKey] = tf.Name()
+		// Track each file immediately, including when a later step fails.
+		vc.vaultConfig[cert.env] = tf.Name()
 	}
 
 	return nil
@@ -420,14 +410,27 @@ var _ = RegisterProvider(Provider{
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
 func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	kms := &vaultKMS{}
+	initialized := false
+	defer func() {
+		if !initialized {
+			kms.Destroy()
+		}
+	}()
 	err := kms.initConnection(args.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
 
-	err = kms.initCertificates(args.Config, args.Secrets)
+	err = kms.initCertificates(args.Config, args.Secrets, k8s.GetSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault certificates: %w", err)
+	}
+
+	if name, ok := args.Config["vaultCAFromSecret"].(string); ok && name != "" {
+		if _, ok = args.Secrets[name]; ok {
+			log.WarningLogMsg("vaultCAFromSecret lookup in CSI request secrets is deprecated; " +
+				"use a Kubernetes Secret in the CSI pod namespace with the CA PEM in its cert field")
+		}
 	}
 
 	vaultAuthPath := vaultDefaultAuthPath
@@ -476,6 +479,8 @@ func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	initialized = true
 
 	return kms, nil
 }

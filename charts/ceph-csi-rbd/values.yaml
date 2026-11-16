@@ -60,6 +60,8 @@ csiMapping: []
 #     # Optional mTLS: all three values are Kubernetes Secret names in the
 #     # CSI pod namespace. The CA cert is read from the "cert" field of the
 #     # named Secret; the client cert from "cert" and the key from "key".
+#     # Both client options must be set together. For backward compatibility,
+#     # the CA is first looked up in CSI request secrets (deprecated).
 #     vaultCAFromSecret: vault-ca-secret
 #     vaultClientCertFromSecret: vault-client-tls-secret
 #     vaultClientCertKeyFromSecret: vault-client-tls-secret
