@@ -137,3 +137,21 @@ func filesystemSupported(fs string) bool {
 	// supports CephFS.
 	return strings.Contains(string(data), "\t"+fs+"\n")
 }
+
+// IsKernelMounter identifies the kernel implementation, rather than its
+// interface, which is also implemented by FuseMounter.
+func IsKernelMounter(m VolumeMounter) bool {
+	_, kernel := m.(*kernelMounter)
+
+	return kernel
+}
+
+// IsRecoverable reports whether Publish can restore a missing kernel staging
+// mount by replaying Stage. m must be the VolumeMounter chosen by New, because
+// VolumeOptions.Mounter only holds the optional user preference before node
+// fallback. This path restores a single CephFS mount: encrypted volumes also
+// need an fscrypt unlock, snapshot-backed volumes need a bind mount of the
+// snapshot root, and FUSE has a separate unmount/remount procedure.
+func IsRecoverable(m VolumeMounter, volOptions *store.VolumeOptions) bool {
+	return volOptions != nil && IsKernelMounter(m) && !volOptions.IsEncrypted() && !volOptions.BackingSnapshot
+}

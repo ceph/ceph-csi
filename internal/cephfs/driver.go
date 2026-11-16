@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/moby/sys/mountinfo"
 
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
@@ -88,6 +89,7 @@ func NewNodeServer(
 		kernelMountOptions: kernelMountOptions,
 		fuseMountOptions:   fuseMountOptions,
 		healthChecker:      hc.NewHealthCheckManager(),
+		getMounts:          mountinfo.GetMounts,
 	}
 
 	return ns

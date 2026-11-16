@@ -29,6 +29,7 @@ require (
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/kubernetes-csi/csi-lib-utils v0.25.0
 	github.com/libopenstorage/secrets v0.0.0-20231011182615-5f4b25ceede1
+	github.com/moby/sys/mountinfo v0.7.2
 	github.com/pkg/xattr v0.4.12
 	github.com/prometheus/client_golang v1.25.0
 	github.com/stretchr/testify v1.12.1
@@ -130,7 +131,6 @@ require (
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

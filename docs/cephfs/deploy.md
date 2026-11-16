@@ -405,3 +405,31 @@ associated with the class, and re-applies it when the class is changed.
 ```bash
 kubectl create -f ../examples/cephfs/volumeattributesclass.yaml
 ```
+
+## Recovering a lost kernel staging mount
+
+For ordinary, unencrypted kernel CephFS volumes without a backing snapshot,
+a successful new NodeStageVolume call records the Stage capability, volume
+context, credentials and staging path in `/csi/mountinfo`. This directory must
+be mounted persistently, as it is for FUSE recovery in the supplied node-plugin
+manifest. Records contain credentials and are written with mode `0600`.
+
+When NodePublishVolume finds that the staging mount is missing and the requested
+Pod target is not mounted, it can restore staging from this record before
+publishing the volume. Stage, Unstage and kernel Publish operations on the same
+volume are serialized. Recovery does not unmount existing Pod targets or corrupt
+staging mounts. A conflicting filesystem at the staging path is rejected.
+No kubelet change or CSIDriver annotation is required.
+
+Volumes staged before this feature was installed have no kernel recovery record.
+They need a normal Unstage/Stage lifecycle before recovery becomes available;
+upgrading the node plugin alone does not populate these records. If recording
+fails, staging still succeeds, but automatic recovery is unavailable. Recovery
+uses the recorded credentials; revoked or rotated credentials can prevent it.
+A successful Stage refreshes the record with the supplied credentials only when
+it creates a new staging mount.
+
+This mechanism restores a missing staging mount for a new publication. It does
+not repair a hung kernel client, replace an incorrect mount, or reconnect
+previously broken application mounts. Missing or incompatible records fail the
+Publish request without modifying existing mounts.
