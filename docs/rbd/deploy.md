@@ -409,7 +409,8 @@ environment variable).
 | `vaultClientCertFromSecret` | Name of a Kubernetes Secret containing the client certificate in the `cert` field |
 | `vaultClientCertKeyFromSecret` | Name of a Kubernetes Secret containing the client private key in the `key` field |
 
-The client cert and key may be in the same Secret or in separate Secrets.
+Both client options must be set together. The client cert and key may be in the
+same Secret or in separate Secrets; a shared Secret is fetched only once.
 
 Example Secret for the CA certificate:
 
@@ -438,13 +439,17 @@ data:
   key: <base64-encoded client key PEM>
 ```
 
-> **Note:** `vaultCAFromSecret` behaviour changed in ceph-csi v3.14. Previously
-> the value was treated as a field name within the node-stage secret map
-> (the Secret referenced by `spec.csi.nodeStageSecretRef` on the PV).
-> It is now a Kubernetes Secret name, consistent with `vaulttokens`.
-> **Migration:** create a standalone Kubernetes Secret in the CSI pod namespace
-> with the CA PEM under the `cert` key, and set `vaultCAFromSecret` to that
-> Secret's name.
+> **Note:** Starting with ceph-csi v3.19, `vaultCAFromSecret` also supports
+> Kubernetes Secret names. For backward compatibility, the value is first
+> looked up as a field name in the CSI request secrets (for example, the Secret
+> referenced by `spec.csi.nodeStageSecretRef` on the PV). When that field is
+> absent, the CA is read from the `cert` field of the named Kubernetes Secret
+> in the CSI pod namespace.
+> The legacy lookup remains supported but emits a deprecation warning.
+> To migrate, create a Kubernetes Secret in the CSI pod namespace with the CA
+> PEM under `cert`, and set `vaultCAFromSecret` to its name. Ensure that name
+> is not also a field in the CSI request secrets, since the legacy lookup takes
+> precedence.
 
 #### Configuring Hashicorp Vault with a ServiceAccount per Tenant
 

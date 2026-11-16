@@ -44,6 +44,9 @@
 1. Added an optional `--config` command line argument to set the path of the
    Ceph-CSI config file, defaults to: `/etc/ceph-csi-config/config.json`.
 
+1. Add mTLS support for the Vault KMS provider with client certificate and key
+   Secrets in the CSI pod namespace.
+
 ## NOTE
 
 - The `--setmetadata` flag has been removed. The flag was deprecated in
@@ -56,6 +59,9 @@
   its own `VolumeAttributesClass`. QoS is never changed based on the absence of
   keys. To drop a limit, set that key explicitly: `"max"` for cgroup v2 QoS
   (krbd) or `"0"` for traditional NBD QoS (rbd-nbd).
+- The Vault KMS provider now also accepts Kubernetes Secret names for
+  `vaultCAFromSecret`. The existing lookup in CSI request secrets takes
+  precedence and remains supported, but emits a deprecation warning.
 
 ## Deprecations
 
