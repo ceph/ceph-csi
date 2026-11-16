@@ -137,3 +137,11 @@ func filesystemSupported(fs string) bool {
 	// supports CephFS.
 	return strings.Contains(string(data), "\t"+fs+"\n")
 }
+
+// IsKernelMounter identifies the kernel implementation, rather than its
+// interface, which is also implemented by FuseMounter.
+func IsKernelMounter(m VolumeMounter) bool {
+	_, kernel := m.(*kernelMounter)
+
+	return kernel
+}

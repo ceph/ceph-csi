@@ -11,6 +11,11 @@
 
 ## Features
 
+1. CephFS can restore a missing kernel staging mount during a new Publish
+   using persisted Stage inputs, without restarting kubelet. Recovery is
+   limited to unencrypted volumes without backing snapshots and does not
+   unmount existing consumers.
+
 1. Added an optional `TLS_MIN_VERSION` setting to the `kmip` KMS provider,
    which sets the minimum TLS version the provider may use. That minimum was
    previously hardcoded to TLS 1.2, and TLS 1.3 was used whenever the KMIP
