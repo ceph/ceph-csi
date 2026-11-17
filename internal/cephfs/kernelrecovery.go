@@ -19,6 +19,7 @@ package cephfs
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/proto"
@@ -42,13 +43,17 @@ func (ns *cephfsNodeServer) kernelStagingMissing(path string) (bool, error) {
 	if !mounted {
 		return true, nil
 	}
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return false, status.Errorf(codes.Internal, "cannot resolve kernel staging path: %v", err)
+	}
 	mounts, err := ns.Mounter.List()
 	if err != nil {
 		return false, status.Errorf(codes.Internal, "cannot inspect staging filesystem: %v", err)
 	}
 	found := false
 	for _, mount := range mounts {
-		if mount.Path == path {
+		if mount.Path == resolvedPath {
 			if mount.Type != "ceph" {
 				return false, status.Error(codes.FailedPrecondition, "staging path contains a conflicting filesystem")
 			}

@@ -76,6 +76,47 @@ func TestKernelStagingMissing(t *testing.T) {
 	}
 }
 
+func TestKernelStagingMissingEquivalentPaths(t *testing.T) {
+	t.Parallel()
+	for _, form := range []string{"trailing slash", "symlink"} {
+		for _, fs := range []string{"ceph", "xfs"} {
+			t.Run(form+"/"+fs, func(t *testing.T) {
+				t.Parallel()
+				dir, err := filepath.EvalSymlinks(t.TempDir())
+				if err != nil {
+					t.Fatal(err)
+				}
+				path := filepath.Join(dir, "stage")
+				if err = os.Mkdir(path, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				requestPath := path + "/"
+				if form == "symlink" {
+					requestPath = filepath.Join(dir, "alias")
+					if err = os.Symlink(path, requestPath); err != nil {
+						t.Fatal(err)
+					}
+				}
+				fm := mount.NewFakeMounter([]mount.MountPoint{{Path: path, Type: fs}})
+				ns := &cephfsNodeServer{DefaultNodeServer: &csicommon.DefaultNodeServer{Mounter: fm}}
+				missing, err := ns.kernelStagingMissing(requestPath)
+				if missing {
+					t.Fatal("existing mount reported missing")
+				}
+				if fs == "ceph" && err != nil {
+					t.Fatalf("healthy staging rejected: %v", err)
+				}
+				if fs == "xfs" && status.Code(err) != codes.FailedPrecondition {
+					t.Fatalf("conflicting filesystem accepted: %v", err)
+				}
+				if len(fm.GetLog()) != 0 {
+					t.Fatal("inspection changed mounts")
+				}
+			})
+		}
+	}
+}
+
 type recoveryMountInspection struct {
 	mount.Interface
 	mounts []mount.MountPoint
