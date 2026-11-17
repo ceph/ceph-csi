@@ -51,6 +51,7 @@ var (
 
 	errNameTooLong = getError(-C.ENAMETOOLONG)
 	errRange       = getError(-C.ERANGE)
+	errInvalidArgs = getError(-C.EINVAL)
 )
 
 func getError(errno C.int) error {
