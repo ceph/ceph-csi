@@ -127,6 +127,42 @@ func (m recoveryMountInspection) List() ([]mount.MountPoint, error) {
 	return m.mounts, m.err
 }
 
+func TestKernelStagingMissingEscapedMountPaths(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, path, tablePath string
+	}{
+		{"space", "stage dir", `stage\040dir`},
+		{"backslash", `stage\040dir`, `stage\134040dir`},
+		{"tab and newline", "stage\tdir\n", `stage\011dir\012`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, tc.path)
+			if err = os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			mounts := []mount.MountPoint{{Path: filepath.Join(dir, tc.tablePath), Type: "ceph"}}
+			fm := mount.NewFakeMounter([]mount.MountPoint{{Path: path, Type: "ceph"}})
+			ns := &cephfsNodeServer{DefaultNodeServer: &csicommon.DefaultNodeServer{
+				Mounter: recoveryMountInspection{Interface: fm, mounts: mounts},
+			}}
+			if missing, err := ns.kernelStagingMissing(path); missing || err != nil {
+				t.Fatalf("healthy staging rejected: missing=%v err=%v", missing, err)
+			}
+			mounts[0].Type = "xfs"
+			if _, err := ns.kernelStagingMissing(path); status.Code(err) != codes.FailedPrecondition ||
+				status.Convert(err).Message() != "staging path contains a conflicting filesystem" {
+				t.Fatalf("expected filesystem conflict, got %v", err)
+			}
+		})
+	}
+}
+
 func TestKernelRecoveryMountInspectionFailsClosed(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -309,7 +345,7 @@ func TestKernelRecoveryAllowsPodContext(t *testing.T) {
 	req, _ := recoveryInputs("/stage", "/target")
 	_, info := recoveryInputs("/stage", "/target")
 	for _, key := range []string{
-		"pod.name", "pod.namespace", "pod.uid", "serviceAccount.name", "ephemeral",
+		"pod.name", "pod.namespace", "pod.uid", "serviceAccount.name", "ephemeral", "serviceAccount.tokens",
 	} {
 		req.GetVolumeContext()["csi.storage.k8s.io/"+key] = "new-pod-value"
 	}

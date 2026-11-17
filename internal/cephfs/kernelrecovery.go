@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/proto"
@@ -29,6 +30,9 @@ import (
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
 )
+
+// List returns paths with the escapes used by /proc/mounts.
+var mountTablePathEscaper = strings.NewReplacer("\\", `\134`, " ", `\040`, "\t", `\011`, "\n", `\012`)
 
 // kernelStagingMissing only authorizes recovery of an absent mount. Corrupt
 // mounts and conflicting filesystems require separate remediation.
@@ -51,9 +55,10 @@ func (ns *cephfsNodeServer) kernelStagingMissing(path string) (bool, error) {
 	if err != nil {
 		return false, status.Errorf(codes.Internal, "cannot inspect staging filesystem: %v", err)
 	}
+	tablePath := mountTablePathEscaper.Replace(resolvedPath)
 	found := false
 	for _, mount := range mounts {
-		if mount.Path == resolvedPath {
+		if mount.Path == tablePath {
 			if mount.Type != "ceph" {
 				return false, status.Error(codes.FailedPrecondition, "staging path contains a conflicting filesystem")
 			}
@@ -86,7 +91,8 @@ func kernelRecoveryRequest(
 	for key, value := range req.GetVolumeContext() {
 		switch key {
 		case "csi.storage.k8s.io/pod.name", "csi.storage.k8s.io/pod.namespace", "csi.storage.k8s.io/pod.uid",
-			"csi.storage.k8s.io/serviceAccount.name", "csi.storage.k8s.io/ephemeral":
+			"csi.storage.k8s.io/serviceAccount.name", "csi.storage.k8s.io/serviceAccount.tokens",
+			"csi.storage.k8s.io/ephemeral":
 			continue
 		}
 		if saved, found := info.VolumeContext[key]; !found || saved != value {

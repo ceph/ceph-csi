@@ -426,7 +426,8 @@ They need a normal Unstage/Stage lifecycle before recovery becomes available;
 upgrading the node plugin alone does not populate these records. If recording
 fails, staging still succeeds, but automatic recovery is unavailable. Recovery
 uses the recorded credentials; revoked or rotated credentials can prevent it.
-A subsequent successful new Stage records the credentials supplied at that time.
+A successful Stage refreshes the record with the supplied credentials only when
+it creates a new staging mount.
 
 This mechanism restores a missing staging mount for a new publication. It does
 not repair a hung kernel client, replace an incorrect mount, or reconnect
