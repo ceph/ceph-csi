@@ -6,19 +6,8 @@ set -xeEo pipefail
 # Adapted from rook/ceph-csi-operator helpers.
 find_extra_block_dev() {
   sudo lsblk >&2
-  local exclude="loop"
-  local boot_dev
-  boot_dev="$(sudo lsblk --noheading --list --output MOUNTPOINT,PKNAME | grep boot | awk '{print $2}' | sort -u | tr '\n' '|' | sed 's/|$//')"
-  if [ -n "${boot_dev}" ]; then
-    exclude+="|${boot_dev}"
-  fi
-  local root_dev
-  root_dev="$(sudo lsblk --noheading --list --output MOUNTPOINT,PKNAME | awk '$1=="/" {print $2}' | sort -u | tr '\n' '|' | sed 's/|$//')"
-  if [ -n "${root_dev}" ]; then
-    exclude+="|${root_dev}"
-  fi
   local extra_dev
-  extra_dev="$(sudo lsblk --noheading --list --nodeps --output KNAME,TYPE | awk '$2=="disk" {print $1}' | grep -Ev "(${exclude})" | head -1)"
+  extra_dev="$(find_unused_disk)"
   if [ -z "${extra_dev}" ]; then
     echo "No extra block device found" >&2
     echo "Creating iSCSI target disk" >&2
@@ -40,13 +29,40 @@ find_extra_block_dev() {
       -t sendtargets -p 127.0.0.1 >&2
     sudo iscsiadm -m node --login >&2
     sleep 3
-    extra_dev="$(sudo lsblk --noheading --list \
-      --nodeps --output KNAME,TYPE \
-      | awk '$2=="disk" {print $1}' \
-      | grep -Ev "(${exclude})" | head -1)"
+    extra_dev="$(find_unused_disk)"
     echo "iSCSI device: ${extra_dev}" >&2
   fi
   echo "${extra_dev}"
+}
+
+# find_unused_disk prints the first disk that can hold an OSD, or nothing when
+# no usable disk is present.
+#
+# Only disks without a mounted partition or device-mapper layer are considered:
+# the runner can expose the root filesystem on an extra disk (for example a
+# dm-linear mapping on top of one), which must never be wiped. Memory-backed
+# devices are skipped because ceph-volume rejects devices smaller than 5 GiB,
+# which a zram swap device usually is.
+find_unused_disk() {
+  local min_size=$((5 * 1024 * 1024 * 1024))
+  local kname size
+  while read -r kname; do
+    case "${kname}" in
+      loop*|ram*|zram*) continue ;;
+    esac
+    size="$(sudo lsblk --noheading --nodeps --bytes --output SIZE "/dev/${kname}")"
+    if [ -z "${size}" ] || [ "${size}" -lt "${min_size}" ]; then
+      continue
+    fi
+    # a non-empty mountpoint anywhere below the disk means it is in use
+    if sudo lsblk --noheading --list --output MOUNTPOINTS "/dev/${kname}" | grep -q .; then
+      continue
+    fi
+    echo "${kname}"
+
+    return 0
+  done < <(sudo lsblk --noheading --list --nodeps --output KNAME,TYPE |
+    awk '$2=="disk" {print $1}')
 }
 
 prepare_disk() {
