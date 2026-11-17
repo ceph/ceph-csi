@@ -176,8 +176,13 @@ func (ioctx *IOContext) WriteFull(oid string, data []byte) error {
 	coid := C.CString(oid)
 	defer C.free(unsafe.Pointer(coid))
 
+	var buf *C.char
+	if len(data) > 0 {
+		buf = (*C.char)(unsafe.Pointer(&data[0]))
+	}
+
 	ret := C.rados_write_full(ioctx.ioctx, coid,
-		(*C.char)(unsafe.Pointer(&data[0])),
+		buf,
 		(C.size_t)(len(data)))
 	return getError(ret)
 }
@@ -189,8 +194,13 @@ func (ioctx *IOContext) Append(oid string, data []byte) error {
 	coid := C.CString(oid)
 	defer C.free(unsafe.Pointer(coid))
 
+	var buf *C.char
+	if len(data) > 0 {
+		buf = (*C.char)(unsafe.Pointer(&data[0]))
+	}
+
 	ret := C.rados_append(ioctx.ioctx, coid,
-		(*C.char)(unsafe.Pointer(&data[0])),
+		buf,
 		(C.size_t)(len(data)))
 	return getError(ret)
 }
@@ -381,11 +391,16 @@ func (ioctx *IOContext) GetXattr(object string, name string, data []byte) (int, 
 	defer C.free(unsafe.Pointer(cObject))
 	defer C.free(unsafe.Pointer(cName))
 
+	var buf *C.char
+	if len(data) > 0 {
+		buf = (*C.char)(unsafe.Pointer(&data[0]))
+	}
+
 	ret := C.rados_getxattr(
 		ioctx.ioctx,
 		cObject,
 		cName,
-		(*C.char)(unsafe.Pointer(&data[0])),
+		buf,
 		(C.size_t)(len(data)))
 
 	if ret >= 0 {
@@ -401,11 +416,16 @@ func (ioctx *IOContext) SetXattr(object string, name string, data []byte) error 
 	defer C.free(unsafe.Pointer(cObject))
 	defer C.free(unsafe.Pointer(cName))
 
+	var buf *C.char
+	if len(data) > 0 {
+		buf = (*C.char)(unsafe.Pointer(&data[0]))
+	}
+
 	ret := C.rados_setxattr(
 		ioctx.ioctx,
 		cObject,
 		cName,
-		(*C.char)(unsafe.Pointer(&data[0])),
+		buf,
 		(C.size_t)(len(data)))
 
 	return getError(ret)
