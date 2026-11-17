@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -300,6 +301,10 @@ type snapInfo struct {
 	Name      string `json:"name"`
 	Size      int64  `json:"size"`
 	Protected string `json:"protected"`
+	// Namespace is only reported when snapshots of all namespaces are listed.
+	Namespace struct {
+		Type string `json:"type"`
+	} `json:"namespace"`
 }
 
 func (s snapInfo) String() string {
@@ -894,9 +899,14 @@ func librbdSupportsVolumeGroupSnapshot(f *framework.Framework) (bool, error) {
 	return strings.TrimSpace(stdout) == "0", nil
 }
 
-func listRBDSnapshots(f *framework.Framework, pool, image string) ([]snapInfo, error) {
+// listRBDSnapshots lists the snapshots of the image. Snapshots that are not in
+// the user namespace (like trashed snapshots) are only included when all is set.
+func listRBDSnapshots(f *framework.Framework, pool, image string, all bool) ([]snapInfo, error) {
 	var snapInfos []snapInfo
 	command := fmt.Sprintf("rbd snap ls --format=json %s %s", rbdOptions(pool), image)
+	if all {
+		command += " --all"
+	}
 	stdout, stdErr, err := execCommandInToolBoxPod(f, command, rookNamespace)
 	if err != nil {
 		return snapInfos, err
@@ -1409,12 +1419,67 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 
 // imageInfo strongly typed JSON spec for image info.
 type imageInfo struct {
-	Name        string   `json:"name"`
-	StripeUnit  int      `json:"stripe_unit"`
-	StripeCount int      `json:"stripe_count"`
-	ObjectSize  int      `json:"object_size"`
-	DataPool    string   `json:"data_pool"`
-	Features    []string `json:"features"`
+	Name        string       `json:"name"`
+	ID          string       `json:"id"`
+	StripeUnit  int          `json:"stripe_unit"`
+	StripeCount int          `json:"stripe_count"`
+	ObjectSize  int          `json:"object_size"`
+	DataPool    string       `json:"data_pool"`
+	Features    []string     `json:"features"`
+	Flags       []string     `json:"flags"`
+	Parent      *imageParent `json:"parent"`
+}
+
+// imageParent is the parent image and snapshot a cloned image refers to.
+type imageParent struct {
+	Pool     string `json:"pool"`
+	Image    string `json:"image"`
+	ID       string `json:"id"`
+	Snapshot string `json:"snapshot"`
+	Trash    bool   `json:"trash"`
+}
+
+// missingFeatures returns the features from want that are not enabled.
+func (i imageInfo) missingFeatures(want []string) []string {
+	var missing []string
+	for _, feature := range want {
+		if !slices.Contains(i.Features, feature) {
+			missing = append(missing, feature)
+		}
+	}
+
+	return missing
+}
+
+// invalidFastDiffFlags returns the flags that mark the object-map or
+// fast-diff of the image (or snapshot) as invalid.
+func (i imageInfo) invalidFastDiffFlags() []string {
+	var invalid []string
+	for _, flag := range i.Flags {
+		if slices.Contains(fastDiffInvalidFlags, flag) {
+			invalid = append(invalid, flag)
+		}
+	}
+
+	return invalid
+}
+
+// getRBDImageInfo returns the parsed `rbd info` of the given image or
+// snapshot.
+func getRBDImageInfo(f *framework.Framework, imageName, poolName string) (imageInfo, error) {
+	var imgInfo imageInfo
+
+	imgInfoStr, err := getImageInfo(f, imageName, poolName)
+	if err != nil {
+		return imgInfo, err
+	}
+
+	err = json.Unmarshal([]byte(imgInfoStr), &imgInfo)
+	if err != nil {
+		return imgInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, imgInfoStr)
+	}
+
+	return imgInfo, nil
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -1500,28 +1565,287 @@ func validateImageFeatures(
 	imageName, pool string,
 	expectedFeatures []string,
 ) error {
-	var imgInfo imageInfo
-
-	imgInfoStr, err := getImageInfo(f, imageName, pool)
+	imgInfo, err := getRBDImageInfo(f, imageName, pool)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal([]byte(imgInfoStr), &imgInfo)
+	missing := imgInfo.missingFeatures(expectedFeatures)
+	if len(missing) != 0 {
+		return fmt.Errorf("image %s missing expected features %v, got features: %v",
+			imageName, missing, imgInfo.Features)
+	}
+
+	return nil
+}
+
+var (
+	// fastDiffFeatures are the image features required for efficient
+	// DiffIterate operations.
+	fastDiffFeatures = []string{"exclusive-lock", "object-map", "fast-diff"}
+	// fastDiffInvalidFlags are the image flags that prevent the object-map
+	// from being used for DiffIterate operations.
+	fastDiffInvalidFlags = []string{"object map invalid", "fast diff invalid"}
+)
+
+// rbdImageChain is the state of a cloned image, its immediate parent image
+// and the parent snapshot the image is cloned from.
+type rbdImageChain struct {
+	pool            string
+	image           imageInfo
+	parent          imageInfo
+	parentSnapID    int
+	parentSnapFlags []string
+	// parentSnapSpec is empty when the parent snapshot is not in the user
+	// namespace (trashed), such snapshots can only be accessed by ID.
+	parentSnapSpec string
+}
+
+func (rc rbdImageChain) String() string {
+	return fmt.Sprintf("image %s (id: %s, features: %v, flags: %v), "+
+		"parent %s (id: %s, features: %v, flags: %v), parent snapshot %s (id: %d, flags: %v)",
+		rc.image.Name, rc.image.ID, rc.image.Features, rc.image.Flags,
+		rc.parent.Name, rc.parent.ID, rc.parent.Features, rc.parent.Flags,
+		rc.image.Parent.Snapshot, rc.parentSnapID, rc.parentSnapFlags)
+}
+
+// getRBDImageChain inspects the image, its immediate parent image and the
+// parent snapshot it is cloned from. An image without parent is an error.
+func getRBDImageChain(f *framework.Framework, pool, imageName string) (rbdImageChain, error) {
+	chain := rbdImageChain{pool: pool}
+
+	var err error
+	chain.image, err = getRBDImageInfo(f, imageName, pool)
 	if err != nil {
-		return fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, imgInfoStr)
+		return chain, err
+	}
+	parent := chain.image.Parent
+	if parent == nil {
+		return chain, fmt.Errorf("image %s has no parent", imageName)
+	}
+	if parent.Trash {
+		return chain, fmt.Errorf("parent %s of image %s is in trash", parent.Image, imageName)
 	}
 
-	actualSet := make(map[string]bool, len(imgInfo.Features))
-	for _, feat := range imgInfo.Features {
-		actualSet[feat] = true
+	chain.parent, err = getRBDImageInfo(f, parent.Image, parent.Pool)
+	if err != nil {
+		return chain, err
 	}
 
-	for _, want := range expectedFeatures {
-		if !actualSet[want] {
-			return fmt.Errorf("image %s missing expected feature %q, got features: %v",
-				imageName, want, imgInfo.Features)
+	// the parent snapshot is usually trashed, list all snapshots to get its ID
+	snaps, err := listRBDSnapshots(f, parent.Pool, parent.Image, true)
+	if err != nil {
+		return chain, fmt.Errorf("failed to list snapshots of %s: %w", parent.Image, err)
+	}
+	idx := slices.IndexFunc(snaps, func(s snapInfo) bool { return s.Name == parent.Snapshot })
+	if idx == -1 {
+		return chain, fmt.Errorf("parent snapshot %s not found on image %s, got snapshots: %v",
+			parent.Snapshot, parent.Image, snaps)
+	}
+	chain.parentSnapID = snaps[idx].ID
+	if snaps[idx].Namespace.Type == "user" {
+		chain.parentSnapSpec = parent.Image + "@" + parent.Snapshot
+	}
+
+	chain.parentSnapFlags, err = getRBDSnapshotFlags(f, parent.Pool, parent.Image, chain.parentSnapID)
+	if err != nil {
+		return chain, err
+	}
+
+	return chain, nil
+}
+
+// getRBDSnapshotFlags returns the flags of the snapshot with the given ID.
+// The rbd command can not address trashed snapshots, as these do not have a
+// name in the user namespace, so the flags are read with the Python bindings.
+func getRBDSnapshotFlags(f *framework.Framework, pool, image string, snapID int) ([]string, error) {
+	script := fmt.Sprintf(`import rados, rbd; `+
+		`cluster = rados.Rados(conffile="/etc/ceph/ceph.conf"); cluster.connect(); `+
+		`ioctx = cluster.open_ioctx(%q); ioctx.set_namespace(%q); `+
+		`image = rbd.Image(ioctx, %q, read_only=True); image.set_snap_by_id(%d); print(image.flags())`,
+		pool, radosNamespace, image, snapID)
+	stdOut, stdErr, err := execCommandInToolBoxPod(f, fmt.Sprintf("python3 -c '%s'", script), rookNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get flags of snapshot %d on image %s: %w ; stderr: %s",
+			snapID, image, err, stdErr)
+	}
+	bits, err := strconv.ParseUint(strings.TrimSpace(stdOut), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse flags %q of snapshot %d on image %s: %w ; stderr: %s",
+			stdOut, snapID, image, err, stdErr)
+	}
+
+	// RBD_FLAG_OBJECT_MAP_INVALID and RBD_FLAG_FAST_DIFF_INVALID
+	flags := []string{}
+	for bit, flag := range fastDiffInvalidFlags {
+		if bits&(1<<bit) != 0 {
+			flags = append(flags, flag)
 		}
+	}
+
+	return flags, nil
+}
+
+// validateFastDiffEnabled checks that the image and its immediate parent have
+// the fastDiffFeatures enabled, and that the object-map of the image, the
+// parent HEAD and the parent snapshot are valid.
+func (rc rbdImageChain) validateFastDiffEnabled() error {
+	for _, img := range []imageInfo{rc.image, rc.parent} {
+		missing := img.missingFeatures(fastDiffFeatures)
+		if len(missing) != 0 {
+			return fmt.Errorf("image %s is missing features %v, got features: %v", img.Name, missing, img.Features)
+		}
+	}
+
+	for name, invalid := range map[string][]string{
+		rc.image.Name:  rc.image.invalidFastDiffFlags(),
+		rc.parent.Name: rc.parent.invalidFastDiffFlags(),
+		fmt.Sprintf("%s (snap-id %d)", rc.parent.Name, rc.parentSnapID): rc.parentSnapFlags,
+	} {
+		if len(invalid) != 0 {
+			return fmt.Errorf("image %s has invalid flags %v", name, invalid)
+		}
+	}
+
+	return nil
+}
+
+// validateUnchanged checks that the image IDs and the parent relationship
+// are the same as in the old chain, and that no image lost any features.
+func (rc rbdImageChain) validateUnchanged(old rbdImageChain) error {
+	if rc.image.ID != old.image.ID {
+		return fmt.Errorf("ID of image %s changed from %s to %s", rc.image.Name, old.image.ID, rc.image.ID)
+	}
+	if *rc.image.Parent != *old.image.Parent {
+		return fmt.Errorf("parent of image %s changed from %+v to %+v",
+			rc.image.Name, *old.image.Parent, *rc.image.Parent)
+	}
+	if rc.parent.ID != old.parent.ID {
+		return fmt.Errorf("ID of parent image %s changed from %s to %s",
+			rc.parent.Name, old.parent.ID, rc.parent.ID)
+	}
+	if rc.parentSnapID != old.parentSnapID {
+		return fmt.Errorf("ID of parent snapshot %s@%s changed from %d to %d",
+			rc.parent.Name, rc.image.Parent.Snapshot, old.parentSnapID, rc.parentSnapID)
+	}
+
+	for _, img := range []struct{ now, old imageInfo }{{rc.image, old.image}, {rc.parent, old.parent}} {
+		missing := img.now.missingFeatures(img.old.Features)
+		if len(missing) != 0 {
+			return fmt.Errorf("image %s lost features %v, got features: %v", img.now.Name, missing, img.now.Features)
+		}
+	}
+
+	return nil
+}
+
+// checkObjectMaps runs `rbd object-map check` on the image, the parent HEAD
+// and the parent snapshot, and verifies that no object-map got invalidated.
+func (rc rbdImageChain) checkObjectMaps(f *framework.Framework) error {
+	parentPool := rc.image.Parent.Pool
+	specs := map[string]string{
+		rc.image.Name:  rc.pool,
+		rc.parent.Name: parentPool,
+	}
+	if rc.parentSnapSpec != "" {
+		specs[rc.parentSnapSpec] = parentPool
+	} else {
+		// `rbd object-map check` can not address snapshots by ID
+		framework.Logf("parent snapshot %s (id: %d) of image %s is trashed, validating only its flags",
+			rc.image.Parent.Snapshot, rc.parentSnapID, rc.parent.Name)
+	}
+
+	for spec, pool := range specs {
+		_, stdErr, err := execCommandInToolBoxPod(
+			f,
+			fmt.Sprintf("rbd object-map check --no-progress %s %s", rbdOptions(pool), spec),
+			rookNamespace)
+		if err != nil {
+			return fmt.Errorf("failed to check object-map of %s: %w", spec, err)
+		}
+		if stdErr != "" {
+			return fmt.Errorf("failed to check object-map of %s: %v", spec, stdErr)
+		}
+	}
+
+	// a failed check marks the object-map as invalid
+	checked, err := getRBDImageChain(f, rc.pool, rc.image.Name)
+	if err != nil {
+		return err
+	}
+
+	return checked.validateFastDiffEnabled()
+}
+
+// enableFastDiffFeatures enables the features required for DiffIterate on the
+// image and rebuilds its object map. The image must not be mapped by a client.
+func enableFastDiffFeatures(f *framework.Framework, pool, imageName string) error {
+	spec := fmt.Sprintf("%s %s", rbdOptions(pool), imageName)
+	commands := []string{
+		fmt.Sprintf("rbd feature enable --no-progress %s %s", spec, strings.Join(fastDiffFeatures, " ")),
+		fmt.Sprintf("rbd object-map rebuild --no-progress %s", spec),
+	}
+	for _, command := range commands {
+		stdOut, stdErr, err := execCommandInToolBoxPod(f, command, rookNamespace)
+		if err != nil {
+			return fmt.Errorf("failed to run %q: %w ; stderr: %s", command, err, stdErr)
+		}
+		if stdErr != "" {
+			return fmt.Errorf("failed to run %q: %s", command, stdErr)
+		}
+		framework.Logf("ran %q: %s", command, stdOut)
+	}
+
+	return nil
+}
+
+// waitForFastDiffEnabled waits until the PV controller enabled the
+// fastDiffFeatures on the image and its immediate parent.
+func waitForFastDiffEnabled(f *framework.Framework, pool, imageName string, t int) (rbdImageChain, error) {
+	var (
+		chain     rbdImageChain
+		errReason error
+	)
+	timeout := time.Duration(t) * time.Minute
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
+		var err error
+		chain, err = getRBDImageChain(f, pool, imageName)
+		if err != nil {
+			return false, err
+		}
+		errReason = chain.validateFastDiffEnabled()
+		if errReason != nil {
+			framework.Logf("fast-diff features not yet enabled: %v", errReason)
+
+			return false, nil
+		}
+
+		return true, nil
+	})
+	if wait.Interrupted(err) {
+		err = errReason
+	}
+
+	return chain, err
+}
+
+// writeRandomDataInPod writes 4MiB of random data at the offset (in MiB) of
+// the file in the pod, and flushes it to the volume.
+func writeRandomDataInPod(
+	f *framework.Framework,
+	app *v1.Pod,
+	filePath string,
+	offset int,
+	opt *metav1.ListOptions,
+) error {
+	cmd := fmt.Sprintf("dd if=/dev/urandom of=%s bs=1M count=4 seek=%d conv=fsync status=none && sync",
+		filePath, offset)
+	_, stdErr, err := execCommandInPod(f, cmd, app.Namespace, opt)
+	if err != nil {
+		return fmt.Errorf("failed to write data to %s: %w ; stderr: %s", filePath, err, stdErr)
+	}
+	if stdErr != "" {
+		return fmt.Errorf("failed to write data to %s: %v", filePath, stdErr)
 	}
 
 	return nil

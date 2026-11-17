@@ -32,6 +32,9 @@ import (
 
 	"github.com/kubernetes-csi/external-snapshot-metadata/pkg/api"
 	. "github.com/onsi/gomega"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	grpcMetadata "google.golang.org/grpc/metadata"
 	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -45,9 +48,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	grpcMetadata "google.golang.org/grpc/metadata"
 )
 
 const (
@@ -177,7 +177,8 @@ func setupSnapshotMetadataInfra(
 	}
 
 	// 5. Verify sidecar running
-	if err := verifySidecarRunning(clientSet, operatorRBDDeploymentName, operatorNamespace); err != nil {
+	err = verifySidecarRunning(clientSet, operatorRBDDeploymentName, operatorNamespace, smsContainerName)
+	if err != nil {
 		return nil, fmt.Errorf("sidecar verification failed: %w", err)
 	}
 	framework.Logf("Sidecar container verified running")
@@ -272,8 +273,8 @@ func unpatchOperatorConfigTLS(namespace string) error {
 	return retryKubectlArgs(namespace, kubectlPatch, deployTimeout, args...)
 }
 
-// verifySidecarRunning checks ctrlplugin pods have the sidecar container running.
-func verifySidecarRunning(clientSet kubernetes.Interface, deploymentName, namespace string) error {
+// verifySidecarRunning checks ctrlplugin pods have the given sidecar container running.
+func verifySidecarRunning(clientSet kubernetes.Interface, deploymentName, namespace, container string) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
 
 	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
@@ -303,7 +304,7 @@ func verifySidecarRunning(clientSet kubernetes.Interface, deploymentName, namesp
 			found := false
 			for j := range pods.Items[i].Status.ContainerStatuses {
 				cs := &pods.Items[i].Status.ContainerStatuses[j]
-				if cs.Name == smsContainerName {
+				if cs.Name == container {
 					found = true
 					if !cs.Ready || cs.State.Running == nil {
 						return false, nil

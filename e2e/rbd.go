@@ -124,6 +124,12 @@ type RBDDeployment struct {
 	DriverInfo
 }
 
+func (r *RBDDeployment) setGenerateOMapInfo(enable bool) error {
+	// No-op as the csi-omap-generator container is part of the yaml files.
+	// Required implementation in OperatorDeployment.
+	return nil
+}
+
 func deployRBDPlugin() {
 	// delete objects deployed by rook
 	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
@@ -200,7 +206,7 @@ func createORDeleteRbdResources(action kubectlAction) {
 }
 
 func validateRBDSnapshotCount(f *framework.Framework, count int, pool, image string) error {
-	snapshotList, err := listRBDSnapshots(f, pool, image)
+	snapshotList, err := listRBDSnapshots(f, pool, image, false)
 	if err != nil {
 		return fmt.Errorf("failed to list RBD snapshots: %w", err)
 	}
@@ -2003,6 +2009,365 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0, defaultRBDPool)
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
+
+		It("enable fast-diff image features on existing clone and restore image chains", Label("acceptance"), func() {
+			if !operatorDeployment {
+				Skip("generateOMapInfo can only be toggled in an operator deployment")
+			}
+			if !kernel.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+				Skip("kernel does not support fast-diff, skipping fast-diff image features test")
+			}
+
+			testSCName := "csi-rbd-sc-fast-diff"
+			legacyFeatures := "layering,deep-flatten"
+			mountPath := ""
+			pvcNames := []string{}
+			chainNames := []string{}
+			apps := map[string]*v1.Pod{}
+			opts := map[string]*metav1.ListOptions{}
+			// checksums of the preserved files, per PVC
+			checksums := map[string]map[string]string{}
+			volumeHandles := map[string]string{}
+			chains := map[string]rbdImageChain{}
+
+			// calculate the checksum of a file on the PVC
+			checksum := func(pvcName, file string) string {
+				sum, cErr := calculateSHA512sum(f, apps[pvcName], mountPath+"/"+file, opts[pvcName])
+				if cErr != nil {
+					logAndFail("failed to calculate checksum of %s on PVC %s: %v", file, pvcName, cErr)
+				}
+
+				return sum
+			}
+			// write data at an offset (in MiB) of a file on the PVC and record its checksum
+			writeData := func(pvcName, file string, offset int) {
+				wErr := writeRandomDataInPod(f, apps[pvcName], mountPath+"/"+file, offset, opts[pvcName])
+				if wErr != nil {
+					logAndFail("failed to write %s on PVC %s: %v", file, pvcName, wErr)
+				}
+				checksums[pvcName][file] = checksum(pvcName, file)
+			}
+			// enableVolumeFeatures enables the features on the volume's own
+			// image, like a volume created by a release that had the features
+			// while the intermediate parent image did not (before imageFeatures
+			// were inherited by temporary clones and snapshot images).
+			enableVolumeFeatures := func(ns, name string) {
+				imageData, lErr := getImageInfoFromPVC(ns, name, f)
+				if lErr != nil {
+					logAndFail("failed to get image info from PVC %s: %v", name, lErr)
+				}
+				lErr = enableFastDiffFeatures(f, defaultRBDPool, imageData.imageName)
+				if lErr != nil {
+					logAndFail("failed to enable features on the image of PVC %s: %v", name, lErr)
+				}
+			}
+			// mount the PVC in a workload, validate the data of the source PVC
+			// and record the state of the image chain
+			createWorkload := func(pvcToMount *v1.PersistentVolumeClaim, sourceSum string) {
+				name := pvcToMount.Name
+				workload, lErr := loadApp(appPath)
+				if lErr != nil {
+					logAndFail("failed to load application: %v", lErr)
+				}
+				workload.Name = name
+				workload.Namespace = f.UniqueName
+				workload.Labels = map[string]string{"app": name}
+				workload.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+				lErr = createApp(f.ClientSet, workload, deployTimeout)
+				if lErr != nil {
+					logAndFail("failed to create application %s: %v", name, lErr)
+				}
+				// get the created Pod, its UID is used to detect a recreated workload
+				workload, lErr = getPod(f.ClientSet, f.UniqueName, name)
+				if lErr != nil {
+					logAndFail("failed to get application %s: %v", name, lErr)
+				}
+				pvcNames = append(pvcNames, name)
+				chainNames = append(chainNames, name)
+				apps[name] = workload
+				opts[name] = &metav1.ListOptions{LabelSelector: "app=" + name}
+				checksums[name] = map[string]string{"source-data": sourceSum}
+				if sum := checksum(name, "source-data"); sum != sourceSum {
+					logAndFail("checksum of source data on PVC %s does not match: got %s, expected %s",
+						name, sum, sourceSum)
+				}
+
+				imageData, lErr := getImageInfoFromPVC(pvcToMount.Namespace, name, f)
+				if lErr != nil {
+					logAndFail("failed to get image info from PVC %s: %v", name, lErr)
+				}
+				volumeHandles[name] = imageData.csiVolumeHandle
+				chain, lErr := getRBDImageChain(f, defaultRBDPool, imageData.imageName)
+				if lErr != nil {
+					logAndFail("failed to get image chain of PVC %s: %v", name, lErr)
+				}
+				framework.Logf("image chain of PVC %s before reconciling: %s", name, chain)
+				// the volume has the features, but the intermediate parent
+				// image created by an older release does not
+				missing := chain.image.missingFeatures(fastDiffFeatures)
+				if len(missing) != 0 {
+					logAndFail("image %s of PVC %s should have %v, got features: %v",
+						chain.image.Name, name, fastDiffFeatures, chain.image.Features)
+				}
+				missing = chain.parent.missingFeatures(fastDiffFeatures)
+				if len(missing) != len(fastDiffFeatures) {
+					logAndFail("parent %s of PVC %s should not have any of %v, got features: %v",
+						chain.parent.Name, name, fastDiffFeatures, chain.parent.Features)
+				}
+				chains[name] = chain
+			}
+
+			By("removing the default image features for the provisioner")
+			cephUser := "client." + keyringRBDProvisionerUsername
+			defaultFeatures, stdErr, err := execCommandInToolBoxPod(
+				f,
+				fmt.Sprintf("ceph config get %s rbd_default_features", cephUser),
+				rookNamespace)
+			defaultFeatures = strings.TrimSpace(defaultFeatures)
+			if err != nil || stdErr != "" || defaultFeatures == "" {
+				logAndFail("failed to get rbd_default_features for %s: err %v, stdErr %q", cephUser, err, stdErr)
+			}
+			_, stdErr, err = execCommandInToolBoxPod(
+				f,
+				fmt.Sprintf("ceph config set %s rbd_default_features %s", cephUser, legacyFeatures),
+				rookNamespace)
+			if err != nil || stdErr != "" {
+				logAndFail("failed to set rbd_default_features for %s: err %v, stdErr %q", cephUser, err, stdErr)
+			}
+			defer func() {
+				_, stdErr, err = execCommandInToolBoxPod(
+					f,
+					fmt.Sprintf("ceph config set %s rbd_default_features %s", cephUser, defaultFeatures),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					logAndFail("failed to restore rbd_default_features for %s: err %v, stdErr %q", cephUser, err, stdErr)
+				}
+			}()
+
+			By("disabling generateOMapInfo in the OperatorConfig")
+			err = rbdDeployment.setGenerateOMapInfo(false)
+			if err != nil {
+				logAndFail("failed to disable generateOMapInfo: %v", err)
+			}
+			defer func() {
+				err = rbdDeployment.setGenerateOMapInfo(true)
+				if err != nil {
+					logAndFail("failed to enable generateOMapInfo: %v", err)
+				}
+			}()
+
+			By("creating the source PVC with known data")
+			pvc, err := loadPVC(pvcPath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvc.Namespace = f.UniqueName
+			app, err := loadApp(appPath)
+			if err != nil {
+				logAndFail("failed to load application: %v", err)
+			}
+			app.Namespace = f.UniqueName
+			app.Name = pvc.Name
+			app.Labels = map[string]string{"app": pvc.Name}
+			optApp := metav1.ListOptions{LabelSelector: "app=" + pvc.Name}
+			mountPath = app.Spec.Containers[0].VolumeMounts[0].MountPath
+			err = createPVCAndApp("", f, pvc, app, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create PVC and application: %v", err)
+			}
+			err = writeRandomDataInPod(f, app, mountPath+"/source-data", 0, &optApp)
+			if err != nil {
+				logAndFail("failed to write data on source PVC: %v", err)
+			}
+			sourceSum, err := calculateSHA512sum(f, app, mountPath+"/source-data", &optApp)
+			if err != nil {
+				logAndFail("failed to calculate checksum of source data: %v", err)
+			}
+			apps[pvc.Name] = app
+			opts[pvc.Name] = &optApp
+			checksums[pvc.Name] = map[string]string{"source-data": sourceSum}
+			pvcNames = append(pvcNames, pvc.Name)
+
+			By("creating a StorageClass without exclusive-lock, object-map and fast-diff")
+			err = createRBDStorageClass(
+				f.ClientSet,
+				f,
+				testSCName,
+				nil,
+				map[string]string{
+					"imageFeatures": legacyFeatures,
+				},
+				deletePolicy)
+			if err != nil {
+				logAndFail("failed to create storageclass %s: %v", testSCName, err)
+			}
+			defer func() {
+				err = c.StorageV1().StorageClasses().Delete(context.TODO(), testSCName, metav1.DeleteOptions{})
+				if err != nil {
+					logAndFail("failed to delete storageclass %s: %v", testSCName, err)
+				}
+			}()
+
+			By("creating a PVC-PVC clone whose volume has the features, unlike its temporary parent")
+			pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvcSmartClone.Namespace = f.UniqueName
+			pvcSmartClone.Spec.StorageClassName = &testSCName
+			pvcSmartClone.Spec.DataSource.Name = pvc.Name
+			err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create cloned PVC: %v", err)
+			}
+			enableVolumeFeatures(pvcSmartClone.Namespace, pvcSmartClone.Name)
+			createWorkload(pvcSmartClone, sourceSum)
+			writeData(pvcSmartClone.Name, "clone-data", 8)
+
+			By("restoring a snapshot to a PVC whose volume has the features, unlike its snapshot image")
+			err = createRBDSnapshotClass(f)
+			if err != nil {
+				logAndFail("failed to create snapshotclass: %v", err)
+			}
+			defer func() {
+				err = deleteRBDSnapshotClass()
+				if err != nil {
+					logAndFail("failed to delete snapshotclass: %v", err)
+				}
+			}()
+			snap := getSnapshot(snapshotPath)
+			snap.Namespace = f.UniqueName
+			snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+			err = createSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create snapshot: %v", err)
+			}
+			pvcClone, err := loadPVC(pvcClonePath)
+			if err != nil {
+				logAndFail("failed to load PVC: %v", err)
+			}
+			pvcClone.Namespace = f.UniqueName
+			pvcClone.Spec.StorageClassName = &testSCName
+			pvcClone.Spec.DataSource.Name = snap.Name
+			err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+			if err != nil {
+				logAndFail("failed to create restored PVC: %v", err)
+			}
+			enableVolumeFeatures(pvcClone.Namespace, pvcClone.Name)
+			createWorkload(pvcClone, sourceSum)
+			writeData(pvcClone.Name, "restore-data", 8)
+
+			// The PV controller only enables the features on volumes with a
+			// StorageClass that has them, recreate it like an admin would do.
+			By("recreating the StorageClass with exclusive-lock, object-map and fast-diff")
+			err = c.StorageV1().StorageClasses().Delete(context.TODO(), testSCName, metav1.DeleteOptions{})
+			if err != nil {
+				logAndFail("failed to delete storageclass %s: %v", testSCName, err)
+			}
+			err = createRBDStorageClass(
+				f.ClientSet,
+				f,
+				testSCName,
+				nil,
+				map[string]string{
+					"imageFeatures": legacyFeatures + "," + strings.Join(fastDiffFeatures, ","),
+				},
+				deletePolicy)
+			if err != nil {
+				logAndFail("failed to recreate storageclass %s: %v", testSCName, err)
+			}
+
+			By("enabling generateOMapInfo in the OperatorConfig")
+			err = rbdDeployment.setGenerateOMapInfo(true)
+			if err != nil {
+				logAndFail("failed to enable generateOMapInfo: %v", err)
+			}
+			err = verifySidecarRunning(
+				f.ClientSet, rbdDeployment.getDeploymentName(), cephCSINamespace, omapGeneratorContainerName)
+			if err != nil {
+				logAndFail("%s is not running: %v", omapGeneratorContainerName, err)
+			}
+
+			By("verifying the fast-diff features are enabled on the image chains")
+			for _, name := range chainNames {
+				chain, wErr := waitForFastDiffEnabled(f, defaultRBDPool, chains[name].image.Name, deployTimeout)
+				if wErr != nil {
+					logAndFail("fast-diff features are not enabled for PVC %s: %v", name, wErr)
+				}
+				framework.Logf("image chain of PVC %s after reconciling: %s", name, chain)
+
+				imageData, wErr := getImageInfoFromPVC(f.UniqueName, name, f)
+				if wErr != nil {
+					logAndFail("failed to get image info from PVC %s: %v", name, wErr)
+				}
+				if imageData.csiVolumeHandle != volumeHandles[name] {
+					logAndFail("volume handle of PVC %s changed from %s to %s",
+						name, volumeHandles[name], imageData.csiVolumeHandle)
+				}
+			}
+
+			By("verifying application continuity and data integrity")
+			for _, name := range pvcNames {
+				for file, sum := range checksums[name] {
+					if newSum := checksum(name, file); newSum != sum {
+						logAndFail("checksum of %s on PVC %s does not match: got %s, expected %s",
+							file, name, newSum, sum)
+					}
+				}
+				writeData(name, "new-data", 16)
+
+				pod, pErr := getPod(f.ClientSet, f.UniqueName, name)
+				if pErr != nil {
+					logAndFail("failed to get application %s: %v", name, pErr)
+				}
+				if pod.UID != apps[name].UID {
+					logAndFail("application %s was recreated", name)
+				}
+				for i := range pod.Status.ContainerStatuses {
+					if pod.Status.ContainerStatuses[i].RestartCount != 0 {
+						logAndFail("container %s of application %s restarted %d times",
+							pod.Status.ContainerStatuses[i].Name, name, pod.Status.ContainerStatuses[i].RestartCount)
+					}
+				}
+			}
+
+			// validate the images after the workloads wrote data, the
+			// object-maps have to be maintained for the running workloads
+			for _, name := range chainNames {
+				chain, cErr := getRBDImageChain(f, defaultRBDPool, chains[name].image.Name)
+				if cErr != nil {
+					logAndFail("failed to get image chain of PVC %s: %v", name, cErr)
+				}
+				cErr = chain.validateUnchanged(chains[name])
+				if cErr != nil {
+					logAndFail("image chain of PVC %s changed: %v", name, cErr)
+				}
+				cErr = chain.checkObjectMaps(f)
+				if cErr != nil {
+					logAndFail("object-map validation failed for PVC %s: %v", name, cErr)
+				}
+			}
+
+			// clean up workloads, clone, restore, snapshot and source
+			for _, clone := range []*v1.PersistentVolumeClaim{pvcSmartClone, pvcClone} {
+				err = deletePVCAndApp("", f, clone, apps[clone.Name])
+				if err != nil {
+					logAndFail("failed to delete PVC %s and application: %v", clone.Name, err)
+				}
+			}
+			err = deleteSnapshot(&snap, deployTimeout)
+			if err != nil {
+				logAndFail("failed to delete snapshot: %v", err)
+			}
+			err = deletePVCAndApp("", f, pvc, app)
+			if err != nil {
+				logAndFail("failed to delete PVC and application: %v", err)
+			}
+
+			validateRBDImageCount(f, 0, defaultRBDPool)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
+		})
 
 		It("verify block volume stats work without object-map feature",
 			Label("acceptance"), func() {
