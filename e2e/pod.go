@@ -558,11 +558,25 @@ func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, op
 	if stdErr != "" {
 		return "", fmt.Errorf("error: sha512sum could not be calculated %v", stdErr)
 	}
-	// extract checksum from sha512sum output.
-	checkSum := strings.Split(sha512sumOut, "")[0]
+
+	checkSum, err := parseSHA512sum(sha512sumOut)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse sha512sum of %s: %w", filePath, err)
+	}
 	framework.Logf("Calculated checksum  %s", checkSum)
 
 	return checkSum, nil
+}
+
+// parseSHA512sum extracts the checksum from the output of the sha512sum
+// command, which is formatted as "<checksum>  <file>".
+func parseSHA512sum(sha512sumOut string) (string, error) {
+	fields := strings.Fields(sha512sumOut)
+	if len(fields) == 0 {
+		return "", errors.New("empty sha512sum output")
+	}
+
+	return fields[0], nil
 }
 
 func appendToFileInContainer(
