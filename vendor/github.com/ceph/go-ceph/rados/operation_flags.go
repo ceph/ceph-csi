@@ -34,4 +34,7 @@ const (
 	OperationIgnoreRedirect = OperationFlags(C.LIBRADOS_OPERATION_IGNORE_REDIRECT)
 	// OperationOrderSnap TODO
 	OperationOrderSnap = OperationFlags(C.LIBRADOS_OPERATION_ORDERSNAP)
+	// OperationReturnVec preserves positive overall results and per-action
+	// output data for successful non-empty write transactions.
+	OperationReturnVec = OperationFlags(C.LIBRADOS_OPERATION_RETURNVEC)
 )
