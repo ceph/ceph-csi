@@ -2549,8 +2549,8 @@ var _ = Describe(cephfsType, func() {
 					cloneFileSum)
 			}
 
-			// Now try to write to the PVC as its a RWX PVC
-			err = appendToFileInContainer(f, app, appCloneTestFilePath, "testing", &optApp)
+			// Now try to write to the RWX clone PVC through its own pod.
+			err = appendToFileInContainer(f, appClone, appCloneTestFilePath, "testing", &optAppClone)
 			if err != nil {
 				logAndFail("failed to append data: %v", err)
 			}
