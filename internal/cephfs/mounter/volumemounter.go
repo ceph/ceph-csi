@@ -91,6 +91,14 @@ func LoadAvailableMounters(conf *util.Config) error {
 	} else {
 		log.DefaultLog("loaded mounter: %s", volumeMounterFuse)
 		availableMounters = append(availableMounters, volumeMounterFuse)
+
+		if conf.EnableFuseSystemdScope {
+			if err = probeSystemdScope(); err != nil {
+				return err
+			}
+			fuseSystemdScope = true
+			log.DefaultLog("ceph-fuse daemons will run in their own systemd scope")
+		}
 	}
 
 	if len(availableMounters) == 0 {

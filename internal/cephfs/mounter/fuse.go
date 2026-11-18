@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,6 +29,8 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
+
+	mount "k8s.io/mount-utils"
 )
 
 const (
@@ -43,7 +46,25 @@ var (
 	fusePidMapMtx sync.Mutex
 
 	fusePidRx = regexp.MustCompile(`(?m)^ceph-fuse\[(.+)\]: starting fuse$`)
+
+	// fuseSystemdScope moves ceph-fuse out of the node plugin's cgroup, which
+	// the container runtime kills on restart, into a host systemd scope.
+	fuseSystemdScope bool
 )
+
+// probeSystemdScope checks that systemd-run can create a scope, which needs
+// the host's systemd as PID 1 and its /run/systemd in the container.
+func probeSystemdScope() error {
+	// #nosec:G204, fixed arguments.
+	out, err := exec.Command("systemd-run", "--description=ceph-csi systemd scope probe", "--scope", "true").
+		CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("enable-fuse-systemd-scope is set but systemd-run cannot create a scope"+
+			" (is the host's /run/systemd mounted and hostPID enabled?): %w: %s", err, strings.TrimSpace(string(out)))
+	}
+
+	return nil
+}
 
 type FuseMounter struct{}
 
@@ -72,10 +93,15 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 		err    error
 	)
 
+	program := "ceph-fuse"
+	if fuseSystemdScope {
+		program, args = mount.AddSystemdScope("systemd-run", mountPoint, program, args)
+	}
+
 	if volOptions.NetNamespaceFilePath != "" {
-		_, stderr, err = util.ExecuteCommandWithNSEnter(ctx, volOptions.NetNamespaceFilePath, "ceph-fuse", args[:]...)
+		_, stderr, err = util.ExecuteCommandWithNSEnter(ctx, volOptions.NetNamespaceFilePath, program, args...)
 	} else {
-		_, stderr, err = util.ExecCommand(ctx, "ceph-fuse", args[:]...)
+		_, stderr, err = util.ExecCommand(ctx, program, args...)
 	}
 
 	if err != nil {
