@@ -65,6 +65,9 @@ spec:
 {{- end }}
             - "--kernelmountoptions={{ .Values.nodeplugin.kernelmountoptions }}"
             - "--fusemountoptions={{ .Values.nodeplugin.fusemountoptions }}"
+{{- if .Values.nodeplugin.fuseSystemdScope }}
+            - "--enable-fuse-systemd-scope=true"
+{{- end }}
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
@@ -120,6 +123,10 @@ spec:
               name: host-dev
             - mountPath: /run/mount
               name: host-mount
+{{- if .Values.nodeplugin.fuseSystemdScope }}
+            - mountPath: /run/systemd
+              name: host-run-systemd
+{{- end }}
             - mountPath: /sys
               name: host-sys
 {{- if .Values.selinuxMount }}
@@ -225,6 +232,12 @@ spec:
         - name: host-mount
           hostPath:
             path: /run/mount
+{{- if .Values.nodeplugin.fuseSystemdScope }}
+        - name: host-run-systemd
+          hostPath:
+            path: /run/systemd
+            type: Directory
+{{- end }}
         - name: lib-modules
           hostPath:
             path: /lib/modules
