@@ -1137,22 +1137,22 @@ func (cs *Server) unpublishResources(ctx context.Context,
 		return nil
 	}
 
-	// Remove host from subsystem
-	if err := gateway.RemoveHost(ctx, subsystemNQN, hostNQN); err != nil {
-		return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
-			hostNQN, subsystemNQN, err)
-	}
-	log.DebugLog(ctx, "Host %s removed from subsystem %s", hostNQN, subsystemNQN)
+	// // Remove host from subsystem
+	// if err := gateway.RemoveHost(ctx, subsystemNQN, hostNQN); err != nil {
+	// 	return fmt.Errorf("failed to remove host %s from subsystem %s: %w",
+	// 		hostNQN, subsystemNQN, err)
+	// }
+	// log.DebugLog(ctx, "Host %s removed from subsystem %s", hostNQN, subsystemNQN)
 
-	// Cleanup DH-CHAP keys if any
-	if data.Security.DhchapMode == nvmeof.DHCHAPModeUniDirectional ||
-		data.Security.DhchapMode == nvmeof.DHCHAPModeBiDirectional {
-		err = cs.cleanupDHCHAPKeys(ctx, secrets, nodeID, volumeID, subsystemNQN,
-			data.Security.DhchapMode, data.Security.AuthenticationKMSID)
-		if err != nil {
-			return fmt.Errorf("failed to cleanup DH-CHAP keys for host %s: %w", hostNQN, err)
-		}
-	}
+	// // Cleanup DH-CHAP keys if any
+	// if data.Security.DhchapMode == nvmeof.DHCHAPModeUniDirectional ||
+	// 	data.Security.DhchapMode == nvmeof.DHCHAPModeBiDirectional {
+	// 	err = cs.cleanupDHCHAPKeys(ctx, secrets, nodeID, volumeID, subsystemNQN,
+	// 		data.Security.DhchapMode, data.Security.AuthenticationKMSID)
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to cleanup DH-CHAP keys for host %s: %w", hostNQN, err)
+	// 	}
+	// }
 
 	return nil
 }
