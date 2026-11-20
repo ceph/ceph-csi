@@ -216,6 +216,7 @@ type localClusterState struct {
 	// unsupported as per the state of the cluster.
 	subVolMetadataState         operationState
 	subVolSnapshotMetadataState operationState
+	subVolSnapshotPathState     operationState
 }
 
 func newLocalClusterState(clusterID string) {

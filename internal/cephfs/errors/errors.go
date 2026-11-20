@@ -56,6 +56,14 @@ var (
 	// ErrInvalidCommand is returned when a command is not known to the cluster.
 	ErrInvalidCommand = coreError.New("invalid command")
 
+	// ErrNotImplemented is returned when a Ceph API/command is not implemented
+	// on the target cluster.
+	ErrNotImplemented = coreError.New("API call not implemented")
+
+	// ErrSnapshotPathLookupFailed is returned when SubVolumeSnapshotPath fails
+	// for a reason other than the command not being implemented.
+	ErrSnapshotPathLookupFailed = coreError.New("snapshot path lookup failed")
+
 	// ErrVolumeHasSnapshots is returned when a subvolume has snapshots.
 	ErrVolumeHasSnapshots = coreError.New("volume has snapshots")
 
