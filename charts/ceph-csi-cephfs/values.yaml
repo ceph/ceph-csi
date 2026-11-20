@@ -163,6 +163,11 @@ nodeplugin:
   kernelmountoptions: ""
   fusemountoptions: ""
 
+  # run each ceph-fuse daemon in its own systemd scope on the host, so that
+  # FUSE mounts survive a restart of the nodeplugin; mounts the host's
+  # /run/systemd into the plugin container and requires systemd as PID 1
+  fuseSystemdScope: false
+
   # enable fencing
   fencing: false
 

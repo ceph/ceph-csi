@@ -33,6 +33,14 @@
 1. Added an optional `--config` command line argument to set the path of the
    Ceph-CSI config file, defaults to: `/etc/ceph-csi-config/config.json`.
 
+1. CephFS: added an optional `--enable-fuse-systemd-scope` command line
+   argument (`nodeplugin.fuseSystemdScope` in the Helm chart) that starts each
+   ceph-fuse daemon in its own systemd scope on the host. FUSE mounts of
+   running workloads then survive a restart or upgrade of the nodeplugin,
+   which previously killed every ceph-fuse daemon on the node and left those
+   mounts returning `Transport endpoint is not connected`. It requires the
+   host's `/run/systemd` in the plugin container and is off by default.
+
 ## NOTE
 
 - The `--setmetadata` flag has been removed. The flag was deprecated in

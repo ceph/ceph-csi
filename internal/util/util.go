@@ -163,6 +163,8 @@ type Config struct {
 	// cephfs related flags
 	ForceKernelCephFS    bool   // force to use the ceph kernel client even if the kernel is < 4.17
 	RadosNamespaceCephFS string // RadosNamespace used to store CSI specific objects and keys
+	// start ceph-fuse in its own host systemd scope, so that it survives a restart of the node plugin
+	EnableFuseSystemdScope bool
 
 	// Read affinity related options
 	EnableReadAffinity  bool   // enable OSD read affinity.
