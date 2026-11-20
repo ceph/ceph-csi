@@ -1,0 +1,2017 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Container Storage Interface (CSI) drivers for Ceph storage">
+      
+      
+        <meta name="author" content="Ceph-CSI Contributors">
+      
+      
+        <link rel="canonical" href="https://ceph.github.io/ceph-csi/csi-addons/disaster-recovery/">
+      
+      
+        <link rel="prev" href="../../releases/">
+      
+      
+        <link rel="next" href="../../development-guide/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Disaster Recovery - Ceph-CSI Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#failover-and-failback-in-disaster-recovery" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Ceph-CSI Documentation" class="md-header__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ceph-CSI Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Disaster Recovery
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../capabilities/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../rbd/deploy/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ceph-csi-upgrade/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  CSI Addons
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development-guide/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Ceph-CSI Documentation" class="md-nav__button md-logo" aria-label="Ceph-CSI Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ceph-CSI Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ceph/ceph-csi" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ceph/ceph-csi
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../snap-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Snapshots and Clones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../expand-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Expansion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../static-pvc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static PVC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../volumeattributesclass/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Volume Attributes Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RBD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rbd/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CephFS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CephFS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cephfs/deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ceph-csi-upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../intree-migrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In-tree Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../resource-cleanup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CSI Addons
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CSI Addons
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disaster Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enable-csi-addons-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable CSI-Addons Sidecar
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enable CSI-Addons Sidecar">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#add-rbac-rules-for-csi-addons-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add RBAC rules for CSI-Addons Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#volumereplicationclass-and-volumereplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VolumeReplicationClass and VolumeReplication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VolumeReplicationClass and VolumeReplication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#volumereplicationclass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VolumeReplicationClass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volumereplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VolumeReplication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Planned Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#failover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failback
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disaster-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Disaster Recovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Disaster Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#failover-abrupt-shutdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failover (abrupt shutdown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failback-post-disaster-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failback (post-disaster recovery)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coding Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enable-csi-addons-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable CSI-Addons Sidecar
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enable CSI-Addons Sidecar">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#add-rbac-rules-for-csi-addons-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add RBAC rules for CSI-Addons Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#volumereplicationclass-and-volumereplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VolumeReplicationClass and VolumeReplication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VolumeReplicationClass and VolumeReplication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#volumereplicationclass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VolumeReplicationClass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volumereplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VolumeReplication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Planned Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#failover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failback
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disaster-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Disaster Recovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Disaster Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#failover-abrupt-shutdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failover (abrupt shutdown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failback-post-disaster-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failback (post-disaster recovery)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="failover-and-failback-in-disaster-recovery">Failover and Failback In Disaster Recovery<a class="headerlink" href="#failover-and-failback-in-disaster-recovery" title="Permanent link">&para;</a></h1>
+<p><a href="https://docs.ceph.com/en/latest/rbd/rbd-mirroring/">RBD mirroring</a>
+ is an asynchronous replication of RBD images between multiple Ceph clusters.
+ This capability is available in two modes:</p>
+<ul>
+<li>Journal-based: Every write to the RBD image is first recorded
+ to the associated journal before modifying the actual image.
+ The remote cluster will read from this associated journal and
+ replay the updates to its local image.</li>
+<li>Snapshot-based: This mode uses periodically scheduled or
+ manually created RBD image mirror-snapshots to replicate
+ crash-consistent RBD images between clusters.</li>
+</ul>
+<p>This documentation assumes that <code>rbd mirroring</code> is set up between
+ two clusters.
+For more information on how to set up rbd mirroring, refer to
+ <a href="https://docs.ceph.com/en/latest/rbd/rbd-mirroring/">ceph documentation</a>.</p>
+<h2 id="enable-csi-addons-sidecar">Enable CSI-Addons Sidecar<a class="headerlink" href="#enable-csi-addons-sidecar" title="Permanent link">&para;</a></h2>
+<p>CSI-Addons supports the Volume Replication feature that provides common
+and reusable APIs for storage disaster recovery.
+It is based on <a href="https://github.com/csi-addons/spec">csi-addons/spec</a> specification
+and can be used by any storage provider.</p>
+<p>Deploy the CSI-Addons controller</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/csi-addons/kubernetes-csi-addons/v0.10.0/deploy/controller/setup-controller.yaml
+</code></pre></div>
+<p>Deploy the CSI-Addons CRD to create all related crds for volumereplication</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">  </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/csi-addons/kubernetes-csi-addons/v0.10.0/deploy/controller/crds.yaml
+</code></pre></div>
+<p>The following crds gets created</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>volumereplicationclasses.replication.storage.openshift.io
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>volumereplications.replication.storage.openshift.io<span class="w">  </span>
+</code></pre></div>
+<p>The VolumeReplicationClass and VolumeReplication CRDs are now created.</p>
+<blockquote>
+<p><img alt="💡" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4a1.svg" title=":bulb:" /> <strong>Note:</strong> Use the latest available release for CSI Addons Operator.
+See <a href="https://github.com/csi-addons/kubernetes-csi-addons/releases">releases</a>
+for more information.</p>
+</blockquote>
+<h3 id="add-rbac-rules-for-csi-addons-operator">Add RBAC rules for CSI-Addons Operator<a class="headerlink" href="#add-rbac-rules-for-csi-addons-operator" title="Permanent link">&para;</a></h3>
+<p>Add RBAC rules to enable the csi-addons operator which contains
+all related rbac rules to anable the volume replication feature</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/csi-addons/kubernetes-csi-addons/v0.10.0/deploy/controller/rbac.yaml
+</code></pre></div>
+<h2 id="volumereplicationclass-and-volumereplication">VolumeReplicationClass and VolumeReplication<a class="headerlink" href="#volumereplicationclass-and-volumereplication" title="Permanent link">&para;</a></h2>
+<h3 id="volumereplicationclass">VolumeReplicationClass<a class="headerlink" href="#volumereplicationclass" title="Permanent link">&para;</a></h3>
+<p><em>VolumeReplicationClass</em> is a cluster scoped resource that contains
+ driver related configuration parameters. It holds the storage admin
+ information required for the volume replication operator.</p>
+<h3 id="volumereplication">VolumeReplication<a class="headerlink" href="#volumereplication" title="Permanent link">&para;</a></h3>
+<p><em>VolumeReplication</em> is a namespaced resource that contains references
+ to storage object to be replicated and VolumeReplicationClass
+ corresponding to the driver providing replication.</p>
+<p>Let's say we have a <em>PVC</em> (rbd-pvc) in BOUND state; created using
+ <em>StorageClass</em> with <code>Retain</code> reclaimPolicy.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pvc<span class="w"> </span>--context<span class="o">=</span>cluster-1
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w"> </span>NAME<span class="w">      </span>STATUS<span class="w">   </span>VOLUME<span class="w">                                     </span>CAPACITY<span class="w">   </span>ACCESS<span class="w"> </span>MODES<span class="w">   </span>STORAGECLASS<span class="w">      </span>AGE
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w"> </span>rbd-pvc<span class="w">   </span>Bound<span class="w">    </span>pvc-65dc0aac-5e15-4474-90f4-7a3532c621ec<span class="w">   </span>1Gi<span class="w">        </span>RWO<span class="w">            </span>csi-rbd-sc<span class="w">   </span>44s
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w"> </span><span class="sb">```</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>*<span class="w"> </span>Create<span class="w"> </span>Volume<span class="w"> </span>Replication<span class="w"> </span>Class<span class="w"> </span>on<span class="w"> </span>cluster-1
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="sb">```</span>yaml
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nv">$cat</span><span class="w"> </span><span class="s">&lt;&lt;EOF | kubectl --context=cluster1 apply -f -</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="s">    apiVersion: replication.storage.openshift.io/v1alpha1</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="s">    kind: VolumeReplicationClass</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="s">    metadata:</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="s">      name: rbd-volumereplicationclass</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="s">    spec:</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="s">      provisioner: rbd.csi.ceph.com</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="s">      parameters:</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="s">        mirroringMode: snapshot</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="s">        schedulingInterval: "12m"</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="s">        schedulingStartTime: "16:18:43"</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="s">        replication.storage.openshift.io/replication-secret-name: csi-rbd-secret</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="s">        replication.storage.openshift.io/replication-secret-namespace: default</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="s">    EOF</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">    </span><span class="sb">```</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>&gt;:bulb:<span class="w"> </span>**Note:**<span class="w"> </span>The<span class="w"> </span><span class="sb">`</span>schedulingInterval<span class="sb">`</span><span class="w"> </span>can<span class="w"> </span>be<span class="w"> </span>specified<span class="w"> </span><span class="k">in</span><span class="w"> </span>formats<span class="w"> </span>of
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>&gt;<span class="w"> </span>minutes,<span class="w"> </span>hours<span class="w"> </span>or<span class="w"> </span>days<span class="w"> </span>using<span class="w"> </span>suffix<span class="w"> </span><span class="sb">`</span>m<span class="sb">`</span>,<span class="sb">`</span>h<span class="sb">`</span><span class="w"> </span>and<span class="w"> </span><span class="sb">`</span>d<span class="sb">`</span><span class="w"> </span>respectively.
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>&gt;<span class="w"> </span>The<span class="w"> </span>optional<span class="w"> </span>schedulingStartTime<span class="w"> </span>can<span class="w"> </span>be<span class="w"> </span>specified<span class="w"> </span>using<span class="w"> </span>the<span class="w"> </span>ISO<span class="w"> </span><span class="m">8601</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>&gt;<span class="w"> </span><span class="nb">time</span><span class="w"> </span>format.
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>*<span class="w"> </span>Once<span class="w"> </span>VolumeReplicationClass<span class="w"> </span>is<span class="w"> </span>created,create<span class="w"> </span>a<span class="w"> </span>Volume<span class="w"> </span>Replication<span class="w"> </span><span class="k">for</span>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="w"> </span>the<span class="w"> </span>PVC<span class="w"> </span>which<span class="w"> </span>we<span class="w"> </span>intend<span class="w"> </span>to<span class="w"> </span>replicate<span class="w"> </span>to<span class="w"> </span>secondary<span class="w"> </span>cluster.
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="w">    </span><span class="sb">```</span>yaml
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="w">    </span><span class="nv">$cat</span><span class="w"> </span><span class="s">&lt;&lt;EOF | kubectl --context=cluster-1 apply -f -</span>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="s">    apiVersion: replication.storage.openshift.io/v1alpha1</span>
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="s">    kind: VolumeReplication</span>
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a><span class="s">    metadata:</span>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a><span class="s">      name: pvc-volumereplication</span>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a><span class="s">    spec:</span>
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a><span class="s">      volumeReplicationClass: rbd-volumereplicationclass</span>
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a><span class="s">      replicationState: primary</span>
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a><span class="s">      dataSource:</span>
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a><span class="s">        apiGroup: ""</span>
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a><span class="s">        kind: PersistentVolumeClaim</span>
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a><span class="s">        name: rbd-pvc # Name of the PVC to which mirroring to be enabled.</span>
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a><span class="s">    EOF</span>
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a><span class="w">    </span><span class="sb">```</span>
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>&gt;:memo:<span class="w"> </span>*VolumeReplication*<span class="w"> </span>is<span class="w"> </span>a<span class="w"> </span>namespace<span class="w"> </span>scoped<span class="w"> </span>object.<span class="w"> </span>Thus,
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>&gt;<span class="w"> </span>it<span class="w"> </span>should<span class="w"> </span>be<span class="w"> </span>created<span class="w"> </span><span class="k">in</span><span class="w"> </span>the<span class="w"> </span>same<span class="w"> </span>namespace<span class="w"> </span>as<span class="w"> </span>of<span class="w"> </span>PVC.
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a><span class="sb">`</span>replicationState<span class="sb">`</span><span class="w"> </span>is<span class="w"> </span>the<span class="w"> </span>state<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>volume<span class="w"> </span>being<span class="w"> </span>referenced.
+<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a><span class="w"> </span>Possible<span class="w"> </span>values<span class="w"> </span>are<span class="w"> </span>primary,<span class="w"> </span>secondary,<span class="w"> </span>and<span class="w"> </span>resync.
+<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>
+<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>*<span class="w"> </span><span class="sb">`</span>primary<span class="sb">`</span><span class="w"> </span>denotes<span class="w"> </span>that<span class="w"> </span>the<span class="w"> </span>volume<span class="w"> </span>is<span class="w"> </span>primary.
+<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>*<span class="w"> </span><span class="sb">`</span>secondary<span class="sb">`</span><span class="w"> </span>denotes<span class="w"> </span>that<span class="w"> </span>the<span class="w"> </span>volume<span class="w"> </span>is<span class="w"> </span>secondary.
+<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>*<span class="w"> </span><span class="sb">`</span>resync<span class="sb">`</span><span class="w"> </span>denotes<span class="w"> </span>that<span class="w"> </span>the<span class="w"> </span>volume<span class="w"> </span>needs<span class="w"> </span>to<span class="w"> </span>be<span class="w"> </span>resynced.
+<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>
+<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>To<span class="w"> </span>check<span class="w"> </span>VolumeReplication<span class="w"> </span>CR<span class="w"> </span>status:
+<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>
+<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a><span class="sb">```</span>yaml
+<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>kubectl<span class="w"> </span>get<span class="w"> </span>volumereplication<span class="w"> </span>pvc-volumereplication<span class="w">  </span>--context<span class="o">=</span>cluster-1<span class="w"> </span>-oyaml
+<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a>
+<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>...
+<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a>spec:
+<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a><span class="w"> </span>dataSource:
+<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a><span class="w">   </span>apiGroup:<span class="w"> </span><span class="s2">""</span>
+<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a><span class="w">   </span>kind:<span class="w"> </span>PersistentVolumeClaim
+<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a><span class="w">   </span>name:<span class="w"> </span>rbd-pvc
+<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a><span class="w"> </span>replicationState:<span class="w"> </span>primary
+<a id="__codelineno-4-72" name="__codelineno-4-72" href="#__codelineno-4-72"></a><span class="w"> </span>volumeReplicationClass:<span class="w"> </span>rbd-volumereplicationclass
+<a id="__codelineno-4-73" name="__codelineno-4-73" href="#__codelineno-4-73"></a>status:
+<a id="__codelineno-4-74" name="__codelineno-4-74" href="#__codelineno-4-74"></a><span class="w"> </span>conditions:
+<a id="__codelineno-4-75" name="__codelineno-4-75" href="#__codelineno-4-75"></a><span class="w"> </span>-<span class="w"> </span>lastTransitionTime:<span class="w"> </span><span class="s2">"2021-05-04T07:39:00Z"</span>
+<a id="__codelineno-4-76" name="__codelineno-4-76" href="#__codelineno-4-76"></a><span class="w">   </span>message:<span class="w"> </span><span class="s2">""</span>
+<a id="__codelineno-4-77" name="__codelineno-4-77" href="#__codelineno-4-77"></a><span class="w">   </span>observedGeneration:<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-4-78" name="__codelineno-4-78" href="#__codelineno-4-78"></a><span class="w">   </span>reason:<span class="w"> </span>Promoted
+<a id="__codelineno-4-79" name="__codelineno-4-79" href="#__codelineno-4-79"></a><span class="w">   </span>status:<span class="w"> </span><span class="s2">"True"</span>
+<a id="__codelineno-4-80" name="__codelineno-4-80" href="#__codelineno-4-80"></a><span class="w">   </span>type:<span class="w"> </span>Completed
+<a id="__codelineno-4-81" name="__codelineno-4-81" href="#__codelineno-4-81"></a><span class="w"> </span>-<span class="w"> </span>lastTransitionTime:<span class="w"> </span><span class="s2">"2021-05-04T07:39:00Z"</span>
+<a id="__codelineno-4-82" name="__codelineno-4-82" href="#__codelineno-4-82"></a><span class="w">   </span>message:<span class="w"> </span><span class="s2">""</span>
+<a id="__codelineno-4-83" name="__codelineno-4-83" href="#__codelineno-4-83"></a><span class="w">   </span>observedGeneration:<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-4-84" name="__codelineno-4-84" href="#__codelineno-4-84"></a><span class="w">   </span>reason:<span class="w"> </span>Healthy
+<a id="__codelineno-4-85" name="__codelineno-4-85" href="#__codelineno-4-85"></a><span class="w">   </span>status:<span class="w"> </span><span class="s2">"False"</span>
+<a id="__codelineno-4-86" name="__codelineno-4-86" href="#__codelineno-4-86"></a><span class="w">   </span>type:<span class="w"> </span>Degraded
+<a id="__codelineno-4-87" name="__codelineno-4-87" href="#__codelineno-4-87"></a><span class="w"> </span>-<span class="w"> </span>lastTransitionTime:<span class="w"> </span><span class="s2">"2021-05-04T07:39:00Z"</span>
+<a id="__codelineno-4-88" name="__codelineno-4-88" href="#__codelineno-4-88"></a><span class="w">   </span>message:<span class="w"> </span><span class="s2">""</span>
+<a id="__codelineno-4-89" name="__codelineno-4-89" href="#__codelineno-4-89"></a><span class="w">   </span>observedGeneration:<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-4-90" name="__codelineno-4-90" href="#__codelineno-4-90"></a><span class="w">   </span>reason:<span class="w"> </span>NotResyncing
+<a id="__codelineno-4-91" name="__codelineno-4-91" href="#__codelineno-4-91"></a><span class="w">   </span>status:<span class="w"> </span><span class="s2">"False"</span>
+<a id="__codelineno-4-92" name="__codelineno-4-92" href="#__codelineno-4-92"></a><span class="w">   </span>type:<span class="w"> </span>Resyncing
+<a id="__codelineno-4-93" name="__codelineno-4-93" href="#__codelineno-4-93"></a><span class="w"> </span>lastCompletionTime:<span class="w"> </span><span class="s2">"2021-05-04T07:39:00Z"</span>
+<a id="__codelineno-4-94" name="__codelineno-4-94" href="#__codelineno-4-94"></a><span class="w"> </span>lastStartTime:<span class="w"> </span><span class="s2">"2021-05-04T07:38:59Z"</span>
+<a id="__codelineno-4-95" name="__codelineno-4-95" href="#__codelineno-4-95"></a><span class="w"> </span>message:<span class="w"> </span>volume<span class="w"> </span>is<span class="w"> </span>marked<span class="w"> </span>primary
+<a id="__codelineno-4-96" name="__codelineno-4-96" href="#__codelineno-4-96"></a><span class="w"> </span>observedGeneration:<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-4-97" name="__codelineno-4-97" href="#__codelineno-4-97"></a><span class="w"> </span>state:<span class="w"> </span>Primary
+</code></pre></div>
+<ul>
+<li>
+<p>Take a backup of PVC and PV object on primary cluster(cluster-1)</p>
+</li>
+<li>
+<p>Take backup of the PVC <code>rbd-pvc</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pvc<span class="w"> </span>rbd-pvc<span class="w"> </span>-oyaml<span class="w"> </span>&gt;pvc-backup.yaml
+</code></pre></div>
+</li>
+<li>
+<p>Take a backup of the PV, corresponding to the PVC</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pv/pvc-65dc0aac-5e15-4474-90f4-7a3532c621ec<span class="w"> </span>-oyaml<span class="w"> </span>&gt;pv_backup.yaml
+</code></pre></div>
+</li>
+</ul>
+<blockquote>
+<p><img alt="💡" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4a1.svg" title=":bulb:" /> We can also take backup using external tools like <strong>Velero</strong>.
+Refer <a href="https://velero.io/docs/main/">velero documentation</a> for more information.</p>
+</blockquote>
+<ul>
+<li>
+<p>Restoring on the secondary cluster(cluster-2)</p>
+</li>
+<li>
+<p>Create storageclass on the secondary cluster</p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="w">  </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/ceph/ceph-csi/devel/examples/rbd/storageclass.yaml<span class="w"> </span>--context<span class="o">=</span>cluster-2
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w"> </span>storageclass.storage.k8s.io/csi-rbd-sc<span class="w"> </span>created
+</code></pre></div>
+<ul>
+<li>Create VolumeReplicationClass on the secondary cluster</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="w">      </span>cat<span class="w"> </span><span class="s">&lt;&lt;EOF | kubectl --context=cluster-2 apply -f -</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="s">      apiVersion: replication.storage.openshift.io/v1alpha1</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="s">      kind: VolumeReplicationClass</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="s">      metadata:</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="s">        name: rbd-volumereplicationclass</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="s">      spec:</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="s">        provisioner: rbd.csi.ceph.com</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="s">        parameters:</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="s">          mirroringMode: snapshot</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="s">          replication.storage.openshift.io/replication-secret-name: csi-rbd-secret</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="s">          replication.storage.openshift.io/replication-secret-namespace: default</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="s">      EOF</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>volumereplicationclass.replication.storage.openshift.io/rbd-volumereplicationclass<span class="w"> </span>created
+</code></pre></div>
+<ul>
+<li>If Persistent Volumes and Claims are created manually
+   on the secondary cluster, remove the <code>claimRef</code> on the
+   backed up PV objects in yaml files; so that the PV can
+   get bound to the new claim on the secondary cluster.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">      </span><span class="nt">accessModes</span><span class="p">:</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteOnce</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">      </span><span class="nt">capacity</span><span class="p">:</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">        </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1Gi</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">      </span><span class="nt">claimRef</span><span class="p">:</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">        </span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">        </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rbd-pvc</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">        </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">        </span><span class="nt">resourceVersion</span><span class="p">:</span><span class="w"> </span><span class="s">"64252"</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">        </span><span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">65dc0aac-5e15-4474-90f4-7a3532c621ec</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">      </span><span class="nt">csi</span><span class="p">:</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</code></pre></div>
+<ul>
+<li>Apply the Persistent Volume backup from the primary cluster</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="w">    </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>pv-backup.yaml<span class="w"> </span>--context<span class="o">=</span>cluster-2
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w"> </span>persistentvolume/pvc-65dc0aac-5e15-4474-90f4-7a3532c621ec<span class="w"> </span>created
+</code></pre></div>
+<ul>
+<li>Apply the Persistent Volume claim from the restored backup</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="w">    </span>kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>pvc-backup.yaml<span class="w"> </span>--context<span class="o">=</span>cluster-2
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w"> </span>persistentvolumeclaim/rbd-pvc<span class="w"> </span>created
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="w">  </span>kubectl<span class="w"> </span>get<span class="w"> </span>pvc<span class="w"> </span>--context<span class="o">=</span>cluster-2
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w"> </span>NAME<span class="w">      </span>STATUS<span class="w">   </span>VOLUME<span class="w">                                     </span>CAPACITY<span class="w">   </span>ACCESS<span class="w"> </span>MODES<span class="w">   </span>STORAGECLASS<span class="w">      </span>AGE
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w"> </span>rbd-pvc<span class="w">   </span>Bound<span class="w">    </span>pvc-65dc0aac-5e15-4474-90f4-7a3532c621ec<span class="w">   </span>1Gi<span class="w">        </span>RWO<span class="w">            </span>csi-rbd-sc<span class="w">   </span>44s
+</code></pre></div>
+<h2 id="planned-migration">Planned Migration<a class="headerlink" href="#planned-migration" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Use cases: Datacenter maintenance, Technology refresh, Disaster avoidance, etc.</p>
+</blockquote>
+<h3 id="failover">Failover<a class="headerlink" href="#failover" title="Permanent link">&para;</a></h3>
+<p>The failover operation is the process of switching production to a
+ backup facility (normally your recovery site). In the case of Failover,
+ access to the image on the primary site should be stopped.
+The image should now be made <em>primary</em> on the secondary cluster so that
+ the access can be resumed there.</p>
+<p><img alt="📝" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4dd.svg" title=":memo:" /> As mentioned in the pre-requisites, periodic or one time backup of
+ the application should be available for restore on the secondary site (cluster-b).</p>
+<p>Follow the below steps for planned migration of workload from primary
+ cluster to secondary cluster:</p>
+<ul>
+<li>Scale down all the application pods which are using the
+ mirrored PVC on the Primary Cluster</li>
+<li>Take a back up of PVC and PV object from the primary cluster.
+ This can be done using some backup tools like
+ <a href="https://velero.io/docs/main/">velero</a>.</li>
+<li>Update <code>replicationState</code> to <code>secondary</code> in VolumeReplication CR at Primary Site.
+ When the operator sees this change, it will pass the information down to the
+  driver via GRPC request to mark the dataSource as <code>secondary</code>.</li>
+<li>If you are manually recreating the PVC and PV on the secondary cluster,
+ remove the <code>claimRef</code> section in the PV objects.</li>
+<li>Recreate the storageclass, PVC, and PV objects on the secondary site.</li>
+<li>As you are creating the static binding between PVC and PV, a new PV won’t
+ be created here, the PVC will get bind to the existing PV.</li>
+<li>Create the VolumeReplicationClass on the secondary site.</li>
+<li>Create the VolumeReplications for all the PVC’s for which mirroring
+ is enabled</li>
+<li><code>replicationState</code> should be <code>primary</code> for all the PVC’s on
+   the secondary site.</li>
+<li>Check whether the image is marked <code>primary</code> on the secondary site
+ by verifying it in VolumeReplication CR status.</li>
+<li>Once the Image is marked as <code>primary</code>, the PVC is now ready
+ to be used. Now, we can scale up the applications to use the PVC.</li>
+</ul>
+<blockquote>
+<p><img alt="📝" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4dd.svg" title=":memo:" /> <strong>WARNING</strong>: In Async Disaster recovery use case, we don't
+get the complete data. We will only get the crash-consistent data
+based on the snapshot interval time.</p>
+</blockquote>
+<h3 id="failback">Failback<a class="headerlink" href="#failback" title="Permanent link">&para;</a></h3>
+<p>To perform a failback operation to primary cluster in case of planned migration
+, just repeat the Failback steps in vice-versa.</p>
+<blockquote>
+<p><img alt="📝" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4dd.svg" title=":memo:" /> <strong>Remember</strong>: We can skip the backup-restore operations
+in case of failback if the required yamls are already present on
+the primary cluster. Any new PVCs will still need to be restored on the
+primary site.</p>
+</blockquote>
+<h2 id="disaster-recovery">Disaster Recovery<a class="headerlink" href="#disaster-recovery" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Use cases: Natural disasters, Power failures, System failures, and crashes, etc.</p>
+</blockquote>
+<h3 id="failover-abrupt-shutdown">Failover (abrupt shutdown)<a class="headerlink" href="#failover-abrupt-shutdown" title="Permanent link">&para;</a></h3>
+<p>In case of Disaster recovery, create VolumeReplication CR at the Secondary Site.
+ Since the connection to the Primary Site is lost, the operator automatically
+  sends a GRPC request down to the driver to forcefully mark the dataSource as <code>primary</code>.</p>
+<ul>
+<li>If you are manually creating the PVC and PV on the secondary cluster, remove
+ the claimRef section in the PV objects.</li>
+<li>Create the storageclass, PVC, and PV objects on the secondary site.</li>
+<li>As you are creating the static binding between PVC and PV, a new PV won’t be
+ created here, the PVC will get bind to the existing PV.</li>
+<li>Create the VolumeReplicationClass and VolumeReplication CR on the secondary site.</li>
+<li>Check whether the image is <code>primary</code> on secondary site, by verifying in
+ the VolumeReplication CR status.</li>
+<li>Once the Image is marked as <code>primary</code>, the PVC is now ready to be used. Now,
+ we can scale up the applications to use the PVC.</li>
+</ul>
+<h3 id="failback-post-disaster-recovery">Failback (post-disaster recovery)<a class="headerlink" href="#failback-post-disaster-recovery" title="Permanent link">&para;</a></h3>
+<p>Once the failed cluster is recovered on the primary site and you want to failback
+ from secondary site, follow the below steps:</p>
+<ul>
+<li>Update the VolumeReplication CR replicationState
+ from <code>primary</code> to <code>secondary</code> on the primary site.</li>
+<li>Scale down the applications on the secondary site.</li>
+<li>Update the VolumeReplication CR replicationState from <code>primary</code> to
+ <code>secondary</code> in secondary site.</li>
+<li>On the primary site, verify that the VolumeReplication status is marked as
+ volume ready to use</li>
+<li>Once the volume is marked to ready to use, change the replicationState state
+ from <code>secondary</code> to <code>primary</code> in primary site.</li>
+<li>Scale up the applications again on the primary site.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
