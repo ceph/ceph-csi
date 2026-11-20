@@ -17,12 +17,21 @@ limitations under the License.
 package nodeserver
 
 import (
+	"context"
 	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/require"
+	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
+
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 )
 
 // fakeCmd returns a canned result from CombinedOutput(), the only method
@@ -117,6 +126,101 @@ func TestResizeStagePath(t *testing.T) {
 
 			if got := tt.exec.called("resize2fs"); got != tt.wantResize {
 				t.Errorf("resize2fs called = %v, want %v", got, tt.wantResize)
+			}
+		})
+	}
+}
+
+// TestMountVolumeToStagePathExt4Options verifies that the ext4 mount options
+// that are passed to the mounter when staging a volume contain the default of
+// errors=remount-ro, unless the volume capability sets an errors= option.
+func TestMountVolumeToStagePathExt4Options(t *testing.T) {
+	t.Parallel()
+
+	// SafeFormatAndMount runs blkid and mkfs.ext4 on the (image) file
+	for _, tool := range []string{"blkid", "mkfs.ext4"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s is not available: %v", tool, err)
+		}
+	}
+
+	tests := []struct {
+		name       string
+		fsType     string
+		mountFlags []string
+		want       []string
+		notWant    []string
+	}{
+		{
+			name:   "default",
+			fsType: "ext4",
+			want:   []string{"errors=remount-ro", "_netdev"},
+		},
+		{
+			name:   "no fsType defaults to ext4",
+			fsType: "",
+			want:   []string{"errors=remount-ro", "_netdev"},
+		},
+		{
+			name:       "errors=continue set in the StorageClass",
+			fsType:     "ext4",
+			mountFlags: []string{"errors=continue"},
+			want:       []string{"errors=continue", "_netdev"},
+			notWant:    []string{"errors=remount-ro"},
+		},
+		{
+			name:       "errors=continue in comma grouped mount flags",
+			fsType:     "ext4",
+			mountFlags: []string{"discard,errors=continue"},
+			want:       []string{"discard,errors=continue", "_netdev"},
+			notWant:    []string{"errors=remount-ro"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			devicePath := filepath.Join(dir, "image")
+			stagingPath := filepath.Join(dir, "staging")
+
+			img, err := os.Create(devicePath)
+			require.NoError(t, err)
+			require.NoError(t, img.Truncate(16<<20))
+			require.NoError(t, img.Close())
+			require.NoError(t, os.Mkdir(stagingPath, 0o750))
+
+			mounter := mount.NewFakeMounter(nil)
+			ns := &NodeServer{
+				DefaultNodeServer: csicommon.DefaultNodeServer{Mounter: mounter},
+			}
+			req := &csi.NodeStageVolumeRequest{
+				VolumeId:          "vol-id",
+				StagingTargetPath: stagingPath,
+				VolumeCapability: &csi.VolumeCapability{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{
+							FsType:     tt.fsType,
+							MountFlags: tt.mountFlags,
+						},
+					},
+				},
+			}
+
+			err = ns.mountVolumeToStagePath(context.Background(), req, stagingPath, devicePath)
+			require.NoError(t, err)
+
+			mounts, err := mounter.List()
+			require.NoError(t, err)
+			require.Len(t, mounts, 1)
+			require.Equal(t, devicePath, mounts[0].Device)
+			require.Equal(t, "ext4", mounts[0].Type)
+			for _, opt := range tt.want {
+				require.Contains(t, mounts[0].Opts, opt)
+			}
+			for _, opt := range tt.notWant {
+				require.NotContains(t, mounts[0].Opts, opt)
 			}
 		})
 	}

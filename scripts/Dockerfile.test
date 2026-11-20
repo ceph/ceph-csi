@@ -49,6 +49,7 @@ RUN set -x \
 	diffutils \
 	python3-prettytable \
 	pylint \
+	e2fsprogs \
     && dnf -y update \
     && dnf -y clean all \
     && gem install mdl -v 0.15.0 \

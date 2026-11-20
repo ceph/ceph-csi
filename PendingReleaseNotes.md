@@ -8,6 +8,17 @@
   only read the legacy unsharded object and cannot see mappings written to
   shard oids after the upgrade. Downgrading after new entries have been written
   in the upgraded version can break idempotent lookups for those entries.
+- RBD and NVMe-oF: Ceph-CSI now explicitly adds `errors=remount-ro` to the
+  mount options of ext4 filesystems, instead of relying on the ext4 kernel
+  default of `errors=continue`. When ext4 detects an error in the filesystem,
+  for example a directory block that fails its checksum, the filesystem is
+  remounted read-only so that the workload does not keep writing to a damaged
+  filesystem. The new default applies to new and existing volumes the next
+  time they are staged on a node. Workloads that need the previous behavior
+  can set `errors=continue` in the `mountOptions` of the StorageClass for new
+  PVs, and in the `spec.mountOptions` of existing PVs, because the
+  `mountOptions` of a StorageClass are only copied into PVs when they are
+  created.
 
 ## Features
 
