@@ -36,3 +36,23 @@ func TestFilesystemSupported(t *testing.T) {
 	// "nonefs" is a made-up name, and does not exist
 	require.False(t, filesystemSupported("nonefs"))
 }
+
+func TestIsKernelMounter(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		mnt  VolumeMounter
+		want bool
+	}{
+		{"kernel", &kernelMounter{}, true},
+		{"FUSE", &FuseMounter{}, false},
+		{"nil", nil, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := IsKernelMounter(tc.mnt); got != tc.want {
+				t.Fatalf("IsKernelMounter(%T) = %v, want %v", tc.mnt, got, tc.want)
+			}
+		})
+	}
+}

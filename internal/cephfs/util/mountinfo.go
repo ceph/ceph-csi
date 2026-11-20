@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/proto"
@@ -28,7 +30,7 @@ import (
 )
 
 // This file provides functionality to store various mount information
-// in a file. It's currently used to restore ceph-fuse mounts.
+// in a file. It is used to restore CephFS staging mounts.
 // Mount info is stored in `/csi/mountinfo`.
 
 const (
@@ -43,6 +45,8 @@ type nodeStageMountinfoRecord struct {
 	VolumeCapabilityProtoJSON string            `json:",omitempty"`
 	MountOptions              []string          `json:",omitempty"`
 	Secrets                   map[string]string `json:",omitempty"`
+	StagingTargetPath         string            `json:",omitempty"`
+	VolumeContext             map[string]string `json:",omitempty"`
 }
 
 // NodeStageMountinfo describes mountinfo of a volume.
@@ -50,6 +54,9 @@ type NodeStageMountinfo struct {
 	VolumeCapability *csi.VolumeCapability
 	Secrets          map[string]string
 	MountOptions     []string
+	// StagingTargetPath and VolumeContext identify a kernel recovery record.
+	StagingTargetPath string
+	VolumeContext     map[string]string
 }
 
 func fmtNodeStageMountinfoFilename(volID VolumeID) string {
@@ -66,6 +73,8 @@ func (mi *NodeStageMountinfo) toNodeStageMountinfoRecord() (*nodeStageMountinfoR
 		VolumeCapabilityProtoJSON: string(bs),
 		MountOptions:              mi.MountOptions,
 		Secrets:                   mi.Secrets,
+		StagingTargetPath:         mi.StagingTargetPath,
+		VolumeContext:             mi.VolumeContext,
 	}, nil
 }
 
@@ -76,9 +85,11 @@ func (r *nodeStageMountinfoRecord) toNodeStageMountinfo() (*NodeStageMountinfo, 
 	}
 
 	return &NodeStageMountinfo{
-		VolumeCapability: volCapability,
-		MountOptions:     r.MountOptions,
-		Secrets:          r.Secrets,
+		VolumeCapability:  volCapability,
+		MountOptions:      r.MountOptions,
+		Secrets:           r.Secrets,
+		StagingTargetPath: r.StagingTargetPath,
+		VolumeContext:     r.VolumeContext,
 	}, nil
 }
 
@@ -96,10 +107,9 @@ func WriteNodeStageMountinfo(volID VolumeID, mi *NodeStageMountinfo) error {
 		return err
 	}
 
-	// Write the byte slice into file.
-
-	err = os.WriteFile(fmtNodeStageMountinfoFilename(volID), bs, 0o600)
-	if os.IsNotExist(err) {
+	err = writeMountinfo(fmtNodeStageMountinfoFilename(volID), bs)
+	if os.IsNotExist(err) && mi.StagingTargetPath == "" {
+		// Preserve optional mountinfo directory handling for legacy FUSE records.
 		return nil
 	}
 
@@ -138,11 +148,48 @@ func GetNodeStageMountinfo(volID VolumeID) (*NodeStageMountinfo, error) {
 // RemoveNodeStageMountinfo tries to remove NodeStageMountinfo for `volID`.
 // If no such record exists for `volID`, it's considered success too.
 func RemoveNodeStageMountinfo(volID VolumeID) error {
-	if err := os.Remove(fmtNodeStageMountinfoFilename(volID)); err != nil {
+	return removeMountinfo(fmtNodeStageMountinfoFilename(volID))
+}
+
+func removeMountinfo(filename string) error {
+	entries, err := os.ReadDir(filepath.Dir(filename))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	// A process crash can leave a temporary file containing credentials.
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "."+filepath.Base(filename)+".tmp-") {
+			if err = os.Remove(filepath.Join(filepath.Dir(filename), entry.Name())); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+	if err = os.Remove(filename); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// writeMountinfo replaces a record without exposing partially written credentials.
+func writeMountinfo(filename string, data []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(filename), "."+filepath.Base(filename)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name()) //nolint:errcheck // Unstage also cleans up abandoned temporary files.
+	defer f.Close()           //nolint:errcheck // The close before rename is checked; also close after failed writes.
+	if _, err = f.Write(data); err != nil {
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(f.Name(), filename)
 }
