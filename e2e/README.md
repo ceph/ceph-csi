@@ -133,11 +133,11 @@ GitHub Actions (`.github/workflows/e2e-minikube-acceptance.yaml`). It deploys
 ceph-csi on a minikube cluster with Rook Ceph and runs only specs labeled
 `Label("acceptance")`.
 
-**Scope (12 specs):**
+**Scope:**
 
 | Driver | Specs |
 |--------|-------|
-| RBD    | PVC→app, snapshot→clone, PVC-PVC clone, block PVC |
+| RBD    | PVC→app, snapshot→clone, PVC-PVC clone, block PVC, child flattening across pools and namespaces |
 | CephFS | health check, PVC→app, snapshot→clone, PVC-PVC clone |
 | NFS    | health check, PVC→app, snapshot→clone, PVC-PVC clone |
 
@@ -160,6 +160,13 @@ cd e2e && ../e2e.test -test.v -ginkgo.v \
   --operator-deployment \
   --skip-vault=true
 ```
+
+Use `--ginkgo.focus='flatten a child'` to run the flattening regression cases.
+They create children directly in Ceph and trigger flattening through a CSI
+snapshot request. They use one Ceph cluster and clean up their test resources.
+For faster runs, set the test driver's `minsnapshotsonimage` to `2` and
+`maxsnapshotsonimage` to `3`; otherwise they create enough empty snapshots to
+exceed the configured soft limit. Equal soft and hard limits skip these cases.
 
 ### Adding specs to acceptance
 
