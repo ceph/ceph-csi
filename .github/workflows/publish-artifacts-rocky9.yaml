@@ -48,7 +48,7 @@ jobs:
 
       - name: Login to Quay
         # yamllint disable-line rule:line-length
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772  # v3.4.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_IO_USERNAME }}
