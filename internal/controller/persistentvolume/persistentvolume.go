@@ -159,44 +159,58 @@ func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime
 
 			return err
 		}
-	} else {
-		// The cgroup v2 QoS metadata is intentionally not propagated during
-		// clone/snapshot/mirroring, so it is lost once the omap is regenerated.
-		// Restore it from the PV's VolumeAttributesClass, reusing the connected
-		// volume returned by RegenerateJournal.
-		vacParams, err := r.getVolumeAttributesClassParameters(ctx, pv)
+
+		return nil
+	}
+
+	// The cgroup v2 QoS metadata is intentionally not propagated during
+	// clone/snapshot/mirroring, so it is lost once the omap is regenerated.
+	// Restore it from the PV's VolumeAttributesClass, reusing the connected
+	// volume returned by RegenerateJournal.
+	vacParams, err := r.getVolumeAttributesClassParameters(ctx, pv)
+	if err != nil {
+		log.ErrorLogMsg("failed to get VolumeAttributesClass parameters %v", err)
+
+		return err
+	}
+
+	rbdVol, err := rbd.RegenerateJournal(
+		pv.Spec.CSI.VolumeAttributes,
+		pv.Spec.ClaimRef.Name,
+		volumeHandler,
+		requestName,
+		pvcNamespace,
+		r.config.ClusterName,
+		r.config.InstanceID,
+		cr)
+	if err != nil {
+		log.ErrorLogMsg("failed to regenerate journal %s", err)
+
+		return err
+	}
+	defer rbdVol.Destroy(ctx)
+
+	if rbdVol.VolID != volumeHandler {
+		log.DebugLog(ctx, "volumeHandler changed from %s to %s", volumeHandler, rbdVol.VolID)
+	}
+
+	err = rbdVol.RegenerateCgroupQoS(ctx, vacParams)
+	if err != nil {
+		log.ErrorLogMsg("failed to regenerate cgroup QoS %s", err)
+
+		return err
+	}
+
+	repair, err := r.storageClassSupportsDiffIterate(ctx, pv)
+	if err != nil {
+		return err
+	}
+	if repair {
+		err = rbdVol.EnsureFastDiffFeatures(ctx)
 		if err != nil {
-			log.ErrorLogMsg("failed to get VolumeAttributesClass parameters %v", err)
-
-			return err
+			return fmt.Errorf("failed to reconcile DiffIterate for PV %s: %w", pv.Name, err)
 		}
-
-		rbdVol, err := rbd.RegenerateJournal(
-			pv.Spec.CSI.VolumeAttributes,
-			pv.Spec.ClaimRef.Name,
-			volumeHandler,
-			requestName,
-			pvcNamespace,
-			r.config.ClusterName,
-			r.config.InstanceID,
-			cr)
-		if err != nil {
-			log.ErrorLogMsg("failed to regenerate journal %s", err)
-
-			return err
-		}
-		defer rbdVol.Destroy(ctx)
-
-		if rbdVol.VolID != volumeHandler {
-			log.DebugLog(ctx, "volumeHandler changed from %s to %s", volumeHandler, rbdVol.VolID)
-		}
-
-		err = rbdVol.RegenerateCgroupQoS(ctx, vacParams)
-		if err != nil {
-			log.ErrorLogMsg("failed to regenerate cgroup QoS %s", err)
-
-			return err
-		}
+		log.DebugLog(ctx, "fast diff features reconciled for PV %s", pv.Name)
 	}
 
 	return nil

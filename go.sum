@@ -489,8 +489,8 @@ github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
 github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260706125253-734ddd0a44b2 h1:3320KYuBfjdm/PDOy9KPgQMIVuIaU7AWHB9ZOKayX80=
 github.com/ceph/ceph-nvmeof/lib/go/nvmeof v0.0.0-20260706125253-734ddd0a44b2/go.mod h1:5dz0xWrM9f/BURZBDuTLXr463mEXhSoIAG88LG1IkJw=
-github.com/ceph/go-ceph v0.42.1 h1:qiMqi2KG2DjwfSU0tm5oLlKNRvl1LACK1tNiYfzX+ps=
-github.com/ceph/go-ceph v0.42.1/go.mod h1:xe6n9CPg/RXsSMgvKV/GYrY1US0y0hRWPKusU5VON/4=
+github.com/ceph/go-ceph v0.42.1-0.20261107023207-7cb387b9fcb1 h1:xHaBJHMZHKCTK/M9kShEMrHPIl8Jq7Pun6UWuJhbKcY=
+github.com/ceph/go-ceph v0.42.1-0.20261107023207-7cb387b9fcb1/go.mod h1:7c9mX2Wjx8h9xpKd8YE4xX9WO9cQYcLRBMo9icWVtb8=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=

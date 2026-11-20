@@ -81,31 +81,31 @@ const (
 
 var (
 	// cli flags.
-	deployTimeout      int
-	deployCephFS       bool
-	deployRBD          bool
-	deployNFS          bool
-	deployNVMeoF       bool
-	testCephFS         bool
-	testCephFSFscrypt  bool
-	testRBD            bool
-	testRBDFSCrypt     bool
-	testNBD            bool
-	testNFS            bool
-	testNVMeoF         bool
-	upgradeTesting     bool
-	upgradeVersion     string
-	cephCSINamespace   string
-	rookNamespace      string
-	radosNamespace     string
-	poll               = 2 * time.Second
-	isOpenShift        bool
-	clusterID          string
-	nfsDriverName      string
-	operatorDeployment bool
-	skipVault          bool
+	deployTimeout       int
+	deployCephFS        bool
+	deployRBD           bool
+	deployNFS           bool
+	deployNVMeoF        bool
+	testCephFS          bool
+	testCephFSFscrypt   bool
+	testRBD             bool
+	testRBDFSCrypt      bool
+	testNBD             bool
+	testNFS             bool
+	testNVMeoF          bool
+	upgradeTesting      bool
+	upgradeVersion      string
+	cephCSINamespace    string
+	rookNamespace       string
+	radosNamespace      string
+	poll                = 2 * time.Second
+	isOpenShift         bool
+	clusterID           string
+	nfsDriverName       string
+	operatorDeployment  bool
+	skipVault           bool
 	kmsConfigMapCreated bool
-	monsCache          = make(map[string][]string)
+	monsCache           = make(map[string][]string)
 )
 
 type cephfsFilesystem struct {
@@ -121,6 +121,7 @@ type DeploymentMethod interface {
 }
 type RBDDeploymentMethod interface {
 	DeploymentMethod
+	setGenerateOMapInfo(enable bool) error
 }
 type CephFSDeploymentMethod interface {
 	DeploymentMethod
