@@ -17,13 +17,48 @@ limitations under the License.
 package nvmeof
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 
 	pb "github.com/ceph/ceph-nvmeof/lib/go/nvmeof"
 	"github.com/google/uuid"
+
+	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
+
+// LogNetworkDiagnostics logs the host firewall/network state that is relevant
+// when the kernel nvme-tcp reconnect fails (-ETIMEDOUT). It is best effort:
+// every failure is only logged. gatewayAddr is optional; when set, the route
+// used to reach it is logged as well.
+func LogNetworkDiagnostics(ctx context.Context, gatewayAddr string) {
+	cmds := [][]string{
+		{"iptables", "--version"},
+		{"firewall-cmd", "--state"},
+		{"nft", "--version"},
+		{"ip", "-br", "addr"},
+	}
+	if gatewayAddr != "" {
+		cmds = append(cmds, []string{"ip", "route", "get", gatewayAddr})
+	}
+
+	for _, c := range cmds {
+		stdout, stderr, err := util.ExecCommand(context.TODO(), c[0], c[1:]...)
+		log.DebugLog(ctx, "network diagnostics %v: stdout=%q stderr=%q err=%v",
+			c, strings.TrimSpace(stdout), strings.TrimSpace(stderr), err)
+	}
+
+	// The nvme-tcp reconnect runs in a kernel worker (init netns), the
+	// initial connect runs in the netns of this process. Different inodes
+	// mean the gateway address must be reachable from the host netns.
+	self, errSelf := os.Readlink("/proc/self/ns/net")
+	initNS, errInit := os.Readlink("/proc/1/ns/net")
+	log.DebugLog(ctx, "network diagnostics netns: self=%q (err=%v) pid1=%q (err=%v)",
+		self, errSelf, initNS, errInit)
+}
 
 // formatUUID is a helper to format UUID with dashes.
 // Any dashes are removed from the passed rawUUID, and a UUID with dashes in

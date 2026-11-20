@@ -366,11 +366,11 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	stagingTargetPath := getStagingTargetPath(req)
 
-	devPath, exists := ns.mountCache.GetDevice(stagingTargetPath)
+	_, exists := ns.mountCache.GetDevice(stagingTargetPath)
 	if !exists {
 		log.WarningLog(ctx, "device not in cache for %s, querying system", stagingTargetPath)
 		// Fallback to findmnt if not in cache
-		devPath, err = nvmeutil.GetDeviceFromMountpoint(ctx, stagingTargetPath)
+		_, err = nvmeutil.GetDeviceFromMountpoint(ctx, stagingTargetPath)
 		if err != nil {
 			log.WarningLog(ctx, "failed to get device from mountpoint for %s: %v", stagingTargetPath, err)
 		}
@@ -408,19 +408,20 @@ func (ns *NodeServer) NodeUnstageVolume(
 	}
 	log.DebugLog(ctx, "successfully removed staging path (%s)", stagingTargetPath)
 
-	// Disconnect controllers if this was the last mounted namespace on each controller.
-	// Non-fatal - a failed disconnect just means the connection lingers until the
-	// kernel's ctrl_loss_tmo expires or the next reconnect cycle.
-	if devPath != "" {
-		// Remove from cache
-		ns.mountCache.RemoveByDevice(devPath)
+	// // Disconnect controllers if this was the last mounted namespace on each controller.
+	// // Non-fatal - a failed disconnect just means the connection lingers until the
+	// // kernel's ctrl_loss_tmo expires or the next reconnect cycle.
+	// if devPath != "" {
+	// 	// Remove from cache
+	// 	ns.mountCache.RemoveByDevice(devPath)
 
-		// Get remaining devices
-		remainingDevices := ns.mountCache.GetCopyAllDevices()
-		if err := ns.initiator.DisconnectIfLastMount(ctx, devPath, remainingDevices); err != nil {
-			log.WarningLog(ctx, "failed to disconnect controller for device %s: %v", devPath, err)
-		}
-	}
+	// 	// Get remaining devices
+	// 	remainingDevices := ns.mountCache.GetCopyAllDevices()
+	// 	if err := ns.initiator.DisconnectIfLastMount(ctx, devPath, remainingDevices); err != nil {
+	// 		log.WarningLog(ctx, "failed to disconnect controller for device %s: %v", devPath, err)
+	// 	}
+	// }
+	log.DebugLog(ctx, "commented the DisconnectIfLastMount")
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
@@ -591,15 +592,16 @@ func (ns *NodeServer) undoStagingTransaction(
 	// try to remove from cache if we created the staging path - idempotent.
 	ns.mountCache.RemoveByMountPoint(stagingTargetPath)
 
-	// if devicePath is not empty, it means we connected to the subsystem,
-	// so we should try to disconnect if this was the last mount
-	if transaction.devicePath != "" {
-		mountedDevices := ns.mountCache.GetCopyAllDevices()
-		if err := ns.initiator.DisconnectIfLastMount(ctx, transaction.devicePath, mountedDevices); err != nil {
-			log.WarningLog(ctx, "failed to disconnect during rollback for device %s: %v",
-				transaction.devicePath, err)
-		}
-	}
+	// // if devicePath is not empty, it means we connected to the subsystem,
+	// // so we should try to disconnect if this was the last mount
+	// if transaction.devicePath != "" {
+	// 	mountedDevices := ns.mountCache.GetCopyAllDevices()
+	// 	if err := ns.initiator.DisconnectIfLastMount(ctx, transaction.devicePath, mountedDevices); err != nil {
+	// 		log.WarningLog(ctx, "failed to disconnect during rollback for device %s: %v",
+	// 			transaction.devicePath, err)
+	// 	}
+	// }
+	log.DebugLog(ctx, "commented the DisconnectIfLastMount")
 }
 
 // createTargetMountPath check if the mountPath already has something mounted
@@ -761,9 +763,19 @@ func (ns *NodeServer) connectToSubsystem(
 	}
 
 	connectReq.Listeners = validListeners
+
+	// TODO: temporary debugging for the minikube reconnect (-110) issue, remove when resolved.
+	gatewayAddr := ""
+	if len(validListeners) > 0 {
+		gatewayAddr = validListeners[0].Address
+	}
+	nvmeof.LogNetworkDiagnostics(ctx, gatewayAddr)
+
 	// Connect to subsystem
 	_, err = ns.initiator.ConnectSubsystem(ctx, connectReq)
 	if err != nil {
+		nvmeof.LogNetworkDiagnostics(ctx, gatewayAddr)
+
 		return "", fmt.Errorf("failed to connect to subsystem: %w", err)
 	}
 
@@ -771,6 +783,7 @@ func (ns *NodeServer) connectToSubsystem(
 	devicePath, err := ns.initiator.GetNamespaceDeviceByUUID(ctx, info.NamespaceUUID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get namespace uuid %s: %v", info.NamespaceUUID, err)
+		nvmeof.LogNetworkDiagnostics(ctx, gatewayAddr)
 
 		return "", fmt.Errorf("failed to get namespace device: %w", err)
 	}
