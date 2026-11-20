@@ -24,6 +24,7 @@ import (
 	"crypto/cipher"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -265,8 +266,31 @@ func (kms *kmipKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 
-func (kms *kmipKMS) GetSecret(ctx context.Context, volumeID string) (string, error) {
-	return "", ErrGetSecretUnsupported
+// GetSecret returns the key material of the KMIP key, base64 encoded with the
+// standard encoding. It only works when USE_CRYPTO_RPC is set to false.
+func (kms *kmipKMS) GetSecret(_ context.Context, _ string) (string, error) {
+	if kms.useCryptoRPC {
+		return "", fmt.Errorf("%w: fscrypt requires the key material, set %q to false",
+			ErrGetSecretUnsupported, kmipUseCryptoRPC)
+	}
+
+	key, err := kms.getKey(kms.uniqueIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("failed to get key %q: %w", kms.uniqueIdentifier, err)
+	}
+
+	if len(key) == 0 {
+		return "", fmt.Errorf("key %q has no key material", kms.uniqueIdentifier)
+	}
+
+	return base64.StdEncoding.EncodeToString(key), nil
+}
+
+// IsKMIP returns true when the EncryptionKMS uses the kmip provider.
+func IsKMIP(ekms EncryptionKMS) bool {
+	_, ok := ekms.(*kmipKMS)
+
+	return ok
 }
 
 // encryptDEKUsingEncryptRPC uses the KMIP encrypt operation to encrypt the DEK.
