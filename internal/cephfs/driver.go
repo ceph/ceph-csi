@@ -211,8 +211,6 @@ func (fs *cephfsDriver) Run(conf *util.Config) {
 
 	if conf.EnableProfiling {
 		go util.StartMetricsServer(conf)
-		log.DebugLogMsg("Registering profiling handler")
-		go util.EnableProfiling()
 	}
 	server.Wait()
 }
