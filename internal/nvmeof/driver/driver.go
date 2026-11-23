@@ -122,7 +122,6 @@ func (d *nvmeofDriver) Run(conf *util.Config) {
 
 	if conf.EnableProfiling {
 		go util.StartMetricsServer(conf)
-		go util.EnableProfiling()
 	}
 
 	server.Wait()
