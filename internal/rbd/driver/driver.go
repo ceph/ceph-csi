@@ -278,7 +278,5 @@ func (r *rbdDriver) setupCSIAddonsServer(conf *util.Config) error {
 func (r *rbdDriver) startProfiling(conf *util.Config) {
 	if conf.EnableProfiling {
 		go util.StartMetricsServer(conf)
-		log.DebugLogMsg("Registering profiling handler")
-		go util.EnableProfiling()
 	}
 }
