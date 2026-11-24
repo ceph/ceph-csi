@@ -37,6 +37,8 @@ import (
 
 const (
 	OperatorConfigName = "ceph-csi-operator-config"
+
+	omapGeneratorContainerName = "csi-omap-generator"
 )
 
 type OperatorDeployment struct {
@@ -217,6 +219,64 @@ func (r OperatorDeployment) waitForDriverArgs(clusterName string, enableFencing 
 
 		return true, nil
 	})
+}
+
+// setGenerateOMapInfo adds or removes the csi-omap-generator container of the
+// controller plugin by toggling generateOMapInfo in the OperatorConfig, and
+// waits for the resulting rollout.
+func (r OperatorDeployment) setGenerateOMapInfo(enable bool) error {
+	command := []string{
+		"operatorconfigs.csi.ceph.io",
+		OperatorConfigName,
+		"--type=merge",
+		"-p",
+		fmt.Sprintf(`{"spec": {"driverSpecDefaults": {"generateOMapInfo": %t}}}`, enable),
+	}
+	err := retryKubectlArgs(cephCSINamespace, kubectlPatch, deployTimeout, command...)
+	if err != nil {
+		return fmt.Errorf("failed to set generateOMapInfo: %w", err)
+	}
+
+	// Checking the workload template instead of the OperatorConfig makes sure
+	// the operator has reconciled this driver before waiting for the rollout.
+	timeout := time.Duration(deployTimeout) * time.Minute
+	err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		deploy, err := r.clientSet.AppsV1().Deployments(cephCSINamespace).Get(ctx, r.deploymentName, metav1.GetOptions{})
+		if err != nil {
+			if isRetryableAPIError(err) || apierrs.IsNotFound(err) {
+				return false, nil
+			}
+
+			return false, err
+		}
+
+		found := slices.ContainsFunc(deploy.Spec.Template.Spec.Containers, func(c v1.Container) bool {
+			return c.Name == omapGeneratorContainerName
+		})
+		if found != enable {
+			framework.Logf("deployment %s/%s: container %s present=%t, expected %t, waiting",
+				cephCSINamespace, r.deploymentName, omapGeneratorContainerName, found, enable)
+
+			return false, nil
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed waiting for generateOMapInfo=%t on deployment %s: %w", enable, r.deploymentName, err)
+	}
+
+	err = waitForCSI(r.clientSet, r.deploymentName, r.daemonsetName, cephCSINamespace, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed waiting for CSI rollout: %w", err)
+	}
+
+	err = waitForLeaderLeaseTransfer(r.clientSet, cephCSINamespace)
+	if err != nil {
+		return fmt.Errorf("failed waiting for leader lease transfer after rollout: %w", err)
+	}
+
+	return nil
 }
 
 func missingContainerArgs(containers []v1.Container, wantArgs []string) []string {
