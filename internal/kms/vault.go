@@ -31,6 +31,8 @@ import (
 	"github.com/libopenstorage/secrets/vault"
 
 	"github.com/ceph/ceph-csi/internal/util/file"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -69,10 +71,20 @@ Example JSON structure in the KMS config is,
 		"vaultPassphraseRoot": "/v1/secret",
 		"vaultPassphrasePath": "",
 		"vaultCAVerify": true,
-		"vaultCAFromSecret": "vault-ca"
+		"vaultCAFromSecret": "vault-ca-secret",
+		"vaultClientCertFromSecret": "vault-client-cert-secret",
+		"vaultClientCertKeyFromSecret": "vault-client-cert-secret"
 	},
 	...
 }.
+
+"vaultCAFromSecret", "vaultClientCertFromSecret", and "vaultClientCertKeyFromSecret"
+are Kubernetes Secret names in the CSI pod namespace. The CA cert is read from
+the "cert" field of the named Secret; the client cert from the "cert" field and
+the client key from the "key" field of their respective Secrets (cert and key
+may be in the same Secret or different Secrets). Both client options must be set
+together. For backward compatibility, "vaultCAFromSecret" is first looked up as a
+key in the CSI request secrets; this legacy lookup is deprecated.
 */
 
 type vaultConnection struct {
@@ -156,10 +168,11 @@ func setConfigBoolean(option *bool, config map[string]any, key string) error {
 // Destroy frees allocated resources. For a vaultConnection that means removing
 // the created temporary files.
 func (vc *vaultConnection) Destroy() {
-	if vc.vaultConfig != nil {
-		tmpFile, ok := vc.vaultConfig[api.EnvVaultCACert]
-		if ok {
-			// ignore error on failure to remove tmpfile (gosec complains)
+	if vc.vaultConfig == nil {
+		return
+	}
+	for _, key := range []string{api.EnvVaultCACert, api.EnvVaultClientCert, api.EnvVaultClientKey} {
+		if tmpFile, ok := vc.vaultConfig[key]; ok {
 			//nolint:forcetypeassert,errcheck // ignore error on failure to remove tmpfile
 			_ = os.Remove(tmpFile.(string))
 		}
@@ -296,29 +309,65 @@ func (vc *vaultConnection) initConnection(config map[string]any) error {
 // initCertificates sets VAULT_* environment variables in the vc.vaultConfig map,
 // these settings will be used when connecting to the Vault service with
 // vc.connectVault().
-func (vc *vaultConnection) initCertificates(config map[string]any, secrets map[string]string) error {
-	vaultConfig := make(map[string]any)
-
-	vaultCAFromSecret := "" // optional
-	err := setConfigString(&vaultCAFromSecret, config, "vaultCAFromSecret")
-	if errors.Is(err, errConfigOptionInvalid) {
-		return err
+func (vc *vaultConnection) initCertificates(
+	config map[string]any,
+	secrets map[string]string,
+	getSecret func(string, string) (map[string]string, error),
+) error {
+	certs := []struct {
+		option string
+		name   string
+		field  string
+		env    string
+		prefix string
+	}{
+		{option: "vaultCAFromSecret", field: "cert", env: api.EnvVaultCACert, prefix: "vault-ca-cert"},
+		{option: "vaultClientCertFromSecret", field: "cert", env: api.EnvVaultClientCert, prefix: "vault-client-cert"},
+		{option: "vaultClientCertKeyFromSecret", field: "key", env: api.EnvVaultClientKey, prefix: "vault-client-cert-key"},
 	}
-	// ignore errConfigOptionMissing, no default was set
-	if vaultCAFromSecret != "" {
-		caPEM, ok := secrets[vaultCAFromSecret]
-		if !ok {
-			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
+	for i := range certs {
+		err := setConfigString(&certs[i].name, config, certs[i].option)
+		if errors.Is(err, errConfigOptionInvalid) {
+			return err
 		}
+	}
+	if (certs[1].name == "") != (certs[2].name == "") {
+		return fmt.Errorf("%w: vaultClientCertFromSecret and vaultClientCertKeyFromSecret must both be set",
+			errConfigOptionInvalid)
+	}
 
-		tf, err := file.CreateTempFile("vault-ca-cert", caPEM)
+	// Cache only during initialization so a combined Secret is fetched once,
+	// without retaining credentials or hiding rotations on later connections.
+	secretCache := make(map[string]map[string]string)
+	for _, cert := range certs {
+		if cert.name == "" {
+			continue
+		}
+		pem, legacyCA := secrets[cert.name]
+		if cert.env != api.EnvVaultCACert || !legacyCA {
+			data, ok := secretCache[cert.name]
+			if !ok {
+				ns, err := getPodNamespace()
+				if err != nil {
+					return err
+				}
+				data, err = getSecret(cert.name, ns)
+				if err != nil {
+					return fmt.Errorf("failed to get %s from secret %s: %w", cert.option, cert.name, err)
+				}
+				secretCache[cert.name] = data
+			}
+			pem, ok = data[cert.field]
+			if !ok || pem == "" {
+				return fmt.Errorf("missing or empty %q field in secret %s", cert.field, cert.name)
+			}
+		}
+		tf, err := file.CreateTempFile(cert.prefix, pem)
 		if err != nil {
-			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
+			return fmt.Errorf("failed to create temporary file for %s: %w", cert.option, err)
 		}
-		vaultConfig[api.EnvVaultCACert] = tf.Name()
-
-		// update the existing config
-		maps.Copy(vc.vaultConfig, vaultConfig)
+		// Track each file immediately, including when a later step fails.
+		vc.vaultConfig[cert.env] = tf.Name()
 	}
 
 	return nil
@@ -361,14 +410,27 @@ var _ = RegisterProvider(Provider{
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
 func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	kms := &vaultKMS{}
+	initialized := false
+	defer func() {
+		if !initialized {
+			kms.Destroy()
+		}
+	}()
 	err := kms.initConnection(args.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
 
-	err = kms.initCertificates(args.Config, args.Secrets)
+	err = kms.initCertificates(args.Config, args.Secrets, k8s.GetSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault certificates: %w", err)
+	}
+
+	if name, ok := args.Config["vaultCAFromSecret"].(string); ok && name != "" {
+		if _, ok = args.Secrets[name]; ok {
+			log.WarningLogMsg("vaultCAFromSecret lookup in CSI request secrets is deprecated; " +
+				"use a Kubernetes Secret in the CSI pod namespace with the CA PEM in its cert field")
+		}
 	}
 
 	vaultAuthPath := vaultDefaultAuthPath
@@ -417,6 +479,8 @@ func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	initialized = true
 
 	return kms, nil
 }
