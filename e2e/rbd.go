@@ -4699,6 +4699,19 @@ var _ = Describe("RBD", func() {
 			},
 		)
 
+		It("repair fast-diff features of intermediate parent images, including in trash", Label("acceptance"), func() {
+			// krbd maps the parent of a clone too, and refuses parents with
+			// features it does not support
+			if !kernel.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+				Skip("kernel does not support fast-diff, skipping parent fast-diff repair test")
+			}
+			op, ok := rbdDeployment.(*OperatorDeployment)
+			if !ok {
+				Skip("the omap generator can only be disabled in an operator deployment")
+			}
+			validateParentFastDiffRepair(f, op)
+		})
+
 		It(
 			"validate PVC mounting if snapshot and parent PVC are deleted chained with depth 2",
 			func() {
