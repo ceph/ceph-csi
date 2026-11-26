@@ -238,10 +238,9 @@ func undoSnapshotCloning(
 // - name of the new rbd-image backing the snapshot
 // - id of the rbd-snapshot to clone
 //
-// FIXME: When resolving the Snapshot, the RbdImageName will be set to the name
-// of the parent image. This is can cause issues when not accounting for that
-// and the Snapshot is deleted; instead of deleting the snapshot image, the
-// parent image is removed.
+// NOTE: When resolving the Snapshot by its ID, RbdImageName is set to the name
+// of the parent (source) image, like for any other snapshot. Use RbdSnapName
+// (or toVolume()) to operate on the image backing the snapshot.
 //
 //nolint:gocyclo,cyclop // TODO: reduce complexity.
 func (rv *rbdVolume) NewSnapshotByID(
@@ -276,10 +275,9 @@ func (rv *rbdVolume) NewSnapshotByID(
 
 	// A new snapshot image will be created, and needs to have a unique
 	// name.
-	// FIXME: the journal contains rv.RbdImageName as SourceName. When
-	// resolving the snapshot image, snap.RbdImageName will be set to the
-	// original RbdImageName/SourceName (incorrect). This is fixed-up in
-	// rbdManager.GetSnapshotByID(), this needs to be done cleaner.
+	// NOTE: the journal contains rv.RbdImageName as SourceName. When
+	// resolving the snapshot by its ID, snap.RbdImageName will be set to the
+	// source image again, the same as for regular snapshots.
 	snap.RbdImageName = snap.RbdSnapName
 
 	err = rv.Connect(cr)
