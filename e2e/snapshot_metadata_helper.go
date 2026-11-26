@@ -31,7 +31,12 @@ import (
 	"time"
 
 	"github.com/kubernetes-csi/external-snapshot-metadata/pkg/api"
+	groupsnapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1"
+	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	. "github.com/onsi/gomega"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	grpcMetadata "google.golang.org/grpc/metadata"
 	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -39,15 +44,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	grpcMetadata "google.golang.org/grpc/metadata"
 )
 
 const (
@@ -60,7 +64,16 @@ const (
 	smsLocalPort     = 9443
 	smsSidecarPort   = 50051
 	smsContainerName = "csi-snapshot-metadata"
-	smsCRDManifest   = "vendor/k8s.io/kubernetes/test/e2e/testing-manifests/" +
+	smsVGSClassName  = "sms-e2e-groupsnapclass"
+
+	// smsDefaultSnapClassAnnotation marks a VolumeSnapshotClass as the
+	// default class of its driver.
+	smsDefaultSnapClassAnnotation = "snapshot.storage.kubernetes.io/is-default-class"
+
+	smsSnapshotterSecretName      = "csi.storage.k8s.io/snapshotter-secret-name"
+	smsSnapshotterSecretNamespace = "csi.storage.k8s.io/snapshotter-secret-namespace"
+
+	smsCRDManifest = "vendor/k8s.io/kubernetes/test/e2e/testing-manifests/" +
 		"storage-csi/external-snapshot-metadata/cbt.storage.k8s.io_snapshotmetadataservices.yaml"
 )
 
@@ -750,4 +763,231 @@ func verifyBlockMetadata(blocks []*api.BlockMetadata, expectedOffsets []int64, b
 		Expect(block.GetSizeBytes()).To(Equal(blockSize),
 			"block %d: size mismatch", i)
 	}
+}
+
+// getGroupSnapshotMembers waits until the VolumeGroupSnapshot has a ready
+// member VolumeSnapshot for each of the given PVCs, and returns the names of
+// the member VolumeSnapshots keyed by their source PVC name.
+//
+// The VolumeGroupSnapshot can become ready before the status of its member
+// VolumeSnapshots is updated, so members are matched by their owner reference
+// and polled until they are bound and ready to use.
+func getGroupSnapshotMembers(
+	namespace string,
+	vgs *groupsnapapi.VolumeGroupSnapshot,
+	pvcNames []string,
+) (map[string]string, error) {
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return nil, err
+	}
+
+	var members map[string]string
+	timeout := time.Duration(deployTimeout) * time.Minute
+	err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		snaps, err := sclient.VolumeSnapshots(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to list VolumeSnapshots in %s: %w", namespace, err)
+		}
+
+		members = map[string]string{}
+		for i := range snaps.Items {
+			snap := &snaps.Items[i]
+			if !isOwnedBy(snap.OwnerReferences, vgs.UID) {
+				continue
+			}
+			if snap.Status == nil || snap.Status.BoundVolumeSnapshotContentName == nil ||
+				snap.Status.ReadyToUse == nil || !*snap.Status.ReadyToUse {
+				continue
+			}
+			if snap.Spec.Source.PersistentVolumeClaimName == nil {
+				return false, fmt.Errorf("VolumeSnapshot %s has no source PVC", snap.Name)
+			}
+			members[*snap.Spec.Source.PersistentVolumeClaimName] = snap.Name
+		}
+
+		for _, name := range pvcNames {
+			if _, ok := members[name]; !ok {
+				framework.Logf("waiting for a ready member snapshot of PVC %s in VolumeGroupSnapshot %s",
+					name, vgs.Name)
+
+				return false, nil
+			}
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get member snapshots of VolumeGroupSnapshot %s: %w", vgs.Name, err)
+	}
+
+	return members, nil
+}
+
+// isOwnedBy returns true if one of the owner references has the given UID.
+func isOwnedBy(refs []metav1.OwnerReference, uid types.UID) bool {
+	for _, ref := range refs {
+		if ref.UID == uid {
+			return true
+		}
+	}
+
+	return false
+}
+
+// listDefaultSnapshotClasses returns the VolumeSnapshotClasses of the driver
+// that are annotated as the default class.
+func listDefaultSnapshotClasses(driver string) ([]snapapi.VolumeSnapshotClass, error) {
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return nil, err
+	}
+
+	classes, err := sclient.VolumeSnapshotClasses().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list VolumeSnapshotClasses: %w", err)
+	}
+
+	var defaults []snapapi.VolumeSnapshotClass
+	for _, class := range classes.Items {
+		if class.Driver == driver && class.Annotations[smsDefaultSnapClassAnnotation] == "true" {
+			defaults = append(defaults, class)
+		}
+	}
+
+	return defaults, nil
+}
+
+// checkDefaultSnapshotClasses returns a reason to skip the VolumeGroupSnapshot
+// tests when the existing default VolumeSnapshotClasses of the driver can not
+// be used for them, or an empty string when they can.
+//
+// VolumeGroupSnapshot member snapshots have no VolumeSnapshotClass name set,
+// the snapshot-metadata sidecar falls back to the default class of the driver
+// to find the snapshotter secrets. It rejects the request when there is more
+// than one default class.
+func checkDefaultSnapshotClasses(defaults []snapapi.VolumeSnapshotClass) string {
+	switch len(defaults) {
+	case 0:
+		return ""
+	case 1:
+	default:
+		names := make([]string, 0, len(defaults))
+		for _, class := range defaults {
+			names = append(names, class.Name)
+		}
+
+		return fmt.Sprintf("multiple default VolumeSnapshotClasses exist for driver %s: %v", smsDriverName, names)
+	}
+
+	class := defaults[0]
+	secretNamespace := class.Parameters[smsSnapshotterSecretNamespace]
+	secretName := class.Parameters[smsSnapshotterSecretName]
+	if secretNamespace != cephCSINamespace || secretName != rbdProvisionerSecretName {
+		return fmt.Sprintf("default VolumeSnapshotClass %s uses snapshotter secret %s/%s instead of %s/%s",
+			class.Name, secretNamespace, secretName, cephCSINamespace, rbdProvisionerSecretName)
+	}
+
+	framework.Logf("using the existing default VolumeSnapshotClass %s for VolumeGroupSnapshot members", class.Name)
+
+	return ""
+}
+
+// groupSnapshotAPIAvailable returns true when the VolumeGroupSnapshot API is
+// served by the cluster.
+func groupSnapshotAPIAvailable(clientSet kubernetes.Interface) (bool, error) {
+	resources, err := clientSet.Discovery().ServerResourcesForGroupVersion(
+		groupsnapapi.SchemeGroupVersion.String())
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to discover %s: %w", groupsnapapi.SchemeGroupVersion, err)
+	}
+
+	served := map[string]bool{}
+	for _, res := range resources.APIResources {
+		served[res.Name] = true
+	}
+
+	return served["volumegroupsnapshotclasses"] &&
+		served["volumegroupsnapshots"] &&
+		served["volumegroupsnapshotcontents"], nil
+}
+
+// setupGroupSnapshotClass checks the prerequisites for the VolumeGroupSnapshot
+// tests and creates a VolumeGroupSnapshotClass with a unique name for them.
+// It returns the helper and the name of the created class, or a reason to skip
+// the VolumeGroupSnapshot tests. The class name is only returned when the
+// class was created, so that only a class created here gets cleaned up.
+func setupGroupSnapshotClass(
+	f *framework.Framework,
+	clientSet kubernetes.Interface,
+	namespace, storageClass string,
+) (*rbdVolumeGroupSnapshot, string, string) {
+	available, err := groupSnapshotAPIAvailable(clientSet)
+	if err != nil {
+		return nil, "", err.Error()
+	}
+	if !available {
+		return nil, "", "VolumeGroupSnapshot API is not available"
+	}
+
+	// librbdSupportsVolumeGroupSnapshot() uses the global rbdDeployment,
+	// which is only set by the RBD suite in rbd.go. Set it here too, as
+	// this suite can run on its own or first.
+	rbdDeployment = NewRBDOperatorDeployment(clientSet)
+	supported, err := librbdSupportsVolumeGroupSnapshot(f)
+	if err != nil {
+		return nil, "", fmt.Sprintf("failed to check for VolumeGroupSnapshot support: %v", err)
+	}
+	if !supported {
+		return nil, "", "librbd does not support VolumeGroupSnapshot"
+	}
+
+	base, err := newVolumeGroupSnapshotBase(f, namespace, storageClass, true, deployTimeout, 0, 0)
+	if err != nil {
+		return nil, "", fmt.Sprintf("failed to create VolumeGroupSnapshot helper: %v", err)
+	}
+	helper := &rbdVolumeGroupSnapshot{volumeGroupSnapshotterBase: base}
+
+	vgsc, err := helper.GetVolumeGroupSnapshotClass()
+	if err != nil {
+		return nil, "", fmt.Sprintf("failed to get VolumeGroupSnapshotClass: %v", err)
+	}
+	vgsc.Name = fmt.Sprintf("%s-%s", smsVGSClassName, utilrand.String(5))
+	err = helper.CreateVolumeGroupSnapshotClass(vgsc)
+	if err != nil {
+		return nil, "", fmt.Sprintf("failed to create VolumeGroupSnapshotClass: %v", err)
+	}
+
+	return helper, vgsc.Name, ""
+}
+
+// blockChecksum returns the sha512sum of the block at the given offset of the
+// device in the pod.
+func blockChecksum(
+	f *framework.Framework,
+	podName, namespace, devicePath string,
+	blockSizeMB, offset int,
+) (string, error) {
+	cmd := fmt.Sprintf("dd if=%s bs=%dM count=1 skip=%d iflag=direct 2>/dev/null | sha512sum",
+		devicePath, blockSizeMB, offset)
+	opt := metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("metadata.name=%s", podName),
+	}
+	stdout, stderr, err := execCommandInPod(f, cmd, namespace, &opt)
+	if err != nil {
+		return "", fmt.Errorf("failed to read block at offset %d in pod %s: %w", offset, podName, err)
+	}
+	if stderr != "" {
+		return "", fmt.Errorf("failed to read block at offset %d in pod %s: %s", offset, podName, stderr)
+	}
+
+	return parseSHA512sum(stdout)
 }

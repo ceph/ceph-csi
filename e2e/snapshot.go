@@ -152,8 +152,20 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 }
 
 func createRBDSnapshotClass(f *framework.Framework) error {
+	return createRBDSnapshotClassWithDefault(f, false)
+}
+
+// createRBDSnapshotClassWithDefault creates the RBD VolumeSnapshotClass. When
+// isDefault is true, the class is annotated as the default VolumeSnapshotClass
+// for the RBD driver.
+func createRBDSnapshotClassWithDefault(f *framework.Framework, isDefault bool) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
+	if isDefault {
+		sc.Annotations = map[string]string{
+			"snapshot.storage.kubernetes.io/is-default-class": "true",
+		}
+	}
 
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = rbdProvisionerSecretName
