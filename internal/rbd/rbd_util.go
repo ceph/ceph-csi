@@ -1305,11 +1305,6 @@ func genSnapFromSnapID(
 
 	if imageAttributes.GroupID != "" {
 		rbdSnap.groupID = imageAttributes.GroupID
-		// FIXME: The snapshot will have RbdImageName set to the image
-		// that was used as source. This is not correct for group
-		// snapshots images, and need to be fixed. See
-		// rbdVolume.NewSnapshotByID() for more details.
-		rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 	}
 
 	err = rbdSnap.Connect(cr)
@@ -1346,8 +1341,8 @@ func genSnapFromSnapID(
 	return rbdSnap, err
 }
 
-// updateSnapshotDetails will copy the details from the rbdVolume to the
-// rbdSnapshot. example copying size from rbdVolume to rbdSnapshot.
+// updateSnapshotDetails will copy the details from the image backing the
+// snapshot to the rbdSnapshot, like the size and the creation time.
 func updateSnapshotDetails(ctx context.Context, rbdSnap *rbdSnapshot) error {
 	vol := rbdSnap.toVolume()
 	err := vol.Connect(rbdSnap.conn.Creds)
@@ -1361,6 +1356,10 @@ func updateSnapshotDetails(ctx context.Context, rbdSnap *rbdSnapshot) error {
 		return err
 	}
 	rbdSnap.VolSize = vol.VolSize
+	// The creation time of the snapshot is the creation time of the image
+	// backing it. Set it here, as rbdSnap.RbdImageName refers to the source
+	// image, which GetCreationTime() would otherwise use.
+	rbdSnap.CreatedAt = vol.CreatedAt
 
 	return nil
 }
