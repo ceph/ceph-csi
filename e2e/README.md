@@ -133,7 +133,7 @@ GitHub Actions (`.github/workflows/e2e-minikube-acceptance.yaml`). It deploys
 ceph-csi on a minikube cluster with Rook Ceph and runs only specs labeled
 `Label("acceptance")`.
 
-**Scope (12 specs):**
+**Scope:**
 
 | Driver | Specs |
 |--------|-------|

@@ -734,7 +734,8 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 
 		return status.Error(codes.Internal, err.Error())
 	}
-	children := make([]string, 0)
+	children := make([]librbd.ImageSpec, 0,
+		len(snapAndChildrenInfo.TempCloneChildren)+len(snapAndChildrenInfo.VolumeSnapshotChildren))
 	// order the temp clone images first followed by the volume snapshot
 	// images so that the temp clone images are flattened first.
 	// This is done in order to:
@@ -766,10 +767,8 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 		err = flattenClonedRbdImages(
 			ctx,
 			children,
-			rbdVol.Pool,
 			rbdVol.Monitors,
-			rbdVol.RadosNamespace,
-			rbdVol.RbdImageName,
+			rbdVol.ClusterID,
 			cr)
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
@@ -802,10 +801,8 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 		err = flattenClonedRbdImages(
 			ctx,
 			children,
-			rbdVol.Pool,
 			rbdVol.Monitors,
-			rbdVol.RadosNamespace,
-			rbdVol.RbdImageName,
+			rbdVol.ClusterID,
 			cr)
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
