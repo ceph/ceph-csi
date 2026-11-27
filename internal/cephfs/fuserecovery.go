@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
@@ -118,6 +119,9 @@ func (ns *cephfsNodeServer) tryRestoreFuseMountsInNodePublish(
 		log.WarningLog(ctx, "cephfs: cannot proceed with mount recovery because NodeStageMountinfo record is missing")
 
 		return nil
+	}
+	if nsMountinfo.IsKernel() {
+		return errors.New("cannot use a kernel staging record for FUSE recovery")
 	}
 
 	// Check that the existing stage and publish mounts for this volume are

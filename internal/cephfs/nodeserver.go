@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/moby/sys/mountinfo"
 	"github.com/pkg/xattr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -54,6 +55,7 @@ type cephfsNodeServer struct {
 	kernelMountOptions string
 	fuseMountOptions   string
 	healthChecker      hc.Manager
+	getMounts          func(mountinfo.FilterFunc) ([]*mountinfo.Info, error)
 }
 
 // Assert required implementation of CSI interfaces.
@@ -285,8 +287,6 @@ func maybeInitializeFileEncryption(
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
-//
-//nolint:gocyclo,cyclop // TODO: reduce complexity
 func (ns *cephfsNodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
@@ -297,7 +297,6 @@ func (ns *cephfsNodeServer) NodeStageVolume(
 
 	// Configuration
 
-	stagingTargetPath := req.GetStagingTargetPath()
 	volID := fsutil.VolumeID(req.GetVolumeId())
 
 	if acquired := ns.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
@@ -306,6 +305,20 @@ func (ns *cephfsNodeServer) NodeStageVolume(
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
 	}
 	defer ns.VolumeLocks.Release(req.GetVolumeId())
+
+	return ns.nodeStageVolume(ctx, req, false)
+}
+
+// nodeStageVolume requires the caller to hold the volume ID lock.
+//
+//nolint:gocyclo,cyclop // TODO: reduce complexity
+func (ns *cephfsNodeServer) nodeStageVolume(
+	ctx context.Context,
+	req *csi.NodeStageVolumeRequest,
+	recovering bool,
+) (*csi.NodeStageVolumeResponse, error) {
+	stagingTargetPath := req.GetStagingTargetPath()
+	volID := fsutil.VolumeID(req.GetVolumeId())
 
 	volOptions, err := ns.getVolumeOptions(ctx, volID, req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
@@ -340,6 +353,11 @@ func (ns *cephfsNodeServer) NodeStageVolume(
 		log.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
 
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if recovering && !mounter.IsRecoverable(mnt, volOptions) {
+		return nil, status.Error(codes.FailedPrecondition,
+			"staging recovery requires an unencrypted kernel volume without a backing snapshot")
 	}
 
 	err = maybeInitializeFileEncryption(ctx, mnt, volOptions)
@@ -383,6 +401,14 @@ func (ns *cephfsNodeServer) NodeStageVolume(
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
+	// Invalidate any previous kernel recovery record before a fresh Stage.
+	// A failed replacement must not leave stale parameters available to Publish.
+	if mounter.IsKernelMounter(mnt) && !recovering {
+		if err = fsutil.RemoveNodeStageMountinfo(volID); err != nil {
+			return nil, status.Errorf(codes.Internal, "cannot invalidate kernel recovery record: %v", err)
+		}
+	}
+
 	// It's not, mount now
 	if err = ns.mount(
 		ctx,
@@ -418,6 +444,19 @@ func (ns *cephfsNodeServer) NodeStageVolume(
 			}
 
 			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
+	if !recovering && mounter.IsRecoverable(mnt, volOptions) {
+		if err = fsutil.WriteNodeStageMountinfo(volID, &fsutil.NodeStageMountinfo{
+			VolumeCapability:  req.GetVolumeCapability(),
+			Secrets:           req.GetSecrets(),
+			StagingTargetPath: stagingTargetPath,
+			VolumeContext:     req.GetVolumeContext(),
+		}); err != nil {
+			// A successful mount may already have consumers. Never unmount it
+			// merely because its recovery record could not be saved.
+			log.WarningLog(ctx, "could not save kernel staging recovery record for %s: %v", volID, err)
 		}
 	}
 
@@ -702,6 +741,8 @@ func getBackingSnapshotRoot(
 
 // NodePublishVolume mounts the volume mounted to the staging path to the target
 // path.
+//
+//nolint:gocyclo,cyclop // TODO: reduce complexity
 func (ns *cephfsNodeServer) NodePublishVolume(
 	ctx context.Context,
 	req *csi.NodePublishVolumeRequest,
@@ -742,6 +783,16 @@ func (ns *cephfsNodeServer) NodePublishVolume(
 		return nil, status.Errorf(codes.Internal, "failed to create mounter for volume %s: %v", volID, err.Error())
 	}
 
+	// Kernel Publish must exclude Unstage from staging inspection through the
+	// target bind. FUSE uses its own unmount/remount recovery below.
+	isKernel := mounter.IsKernelMounter(volMounter)
+	if isKernel {
+		if !ns.VolumeLocks.TryAcquire(req.GetVolumeId()) {
+			return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
+		}
+		defer ns.VolumeLocks.Release(req.GetVolumeId())
+	}
+
 	if err = util.CreateMountPoint(targetPath); err != nil {
 		log.ErrorLog(ctx, "failed to create mount point at %s: %v", targetPath, err)
 
@@ -757,6 +808,15 @@ func (ns *cephfsNodeServer) NodePublishVolume(
 			req.GetVolumeContext(),
 		); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
+		}
+	}
+
+	if isKernel {
+		stageVolume := func(ctx context.Context, stage *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+			return ns.nodeStageVolume(ctx, stage, true)
+		}
+		if err = ns.tryRestoreKernelMountInNodePublish(ctx, req, stageVolume); err != nil {
+			return nil, err
 		}
 	}
 
