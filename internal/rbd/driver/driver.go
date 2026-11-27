@@ -150,8 +150,8 @@ func (r *rbdDriver) Run(conf *util.Config) {
 		}
 	}
 
-	if k8s.RunsOnKubernetes() && conf.IsNodeServer {
-		nodeLabels, err = k8s.GetNodeLabels(conf.NodeID)
+	if conf.IsNodeServer {
+		nodeLabels, err = util.GetNodeLabels(conf.NodeID, conf.TopologyLabels)
 		if err != nil {
 			log.FatalLogMsg("%v", err.Error())
 		}
@@ -165,7 +165,8 @@ func (r *rbdDriver) Run(conf *util.Config) {
 	r.ids = NewIdentityServer(r.cd)
 
 	if conf.IsNodeServer {
-		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
+		topology, err = util.GetTopologyFromDomainLabels(
+			conf.DomainLabels, conf.NodeID, conf.DriverName, conf.TopologyLabels)
 		if err != nil {
 			log.FatalLogMsg("%v", err.Error())
 		}
