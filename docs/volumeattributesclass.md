@@ -332,5 +332,9 @@ persistentvolumeclaim/rbd-pvc-cgroup-qos created
 1. During `NodePublishVolume`, Ceph-CSI retrieves the QoS metadata
 1. The device major:minor number is determined from the mapped RBD device
 1. io.max limits are applied to the pod's cgroup
-1. QoS limits can be dynamically modified by updating the VolumeAttributesClass
-1. Pod need to be restart to get the new QoS limits applied.
+1. To change the QoS limits of a volume, set the PersistentVolumeClaim's
+  `volumeAttributesClassName` to a different VolumeAttributesClass. Editing
+  the VolumeAttributesClass itself does not change existing volumes. The new
+  limits are stored in the image metadata right away, but a running pod keeps
+  its old `io.max` until it is restarted, because the limits are only applied
+  during `NodePublishVolume`.

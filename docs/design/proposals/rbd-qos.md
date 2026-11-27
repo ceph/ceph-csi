@@ -275,9 +275,16 @@ The secret lookup order:
 #### Advantages of this Approach
 
 1. **No Restore/Clone operation required** - QoS can be changed on existing
-   PVCs via VolumeAttributesClass.
+   PVCs via VolumeAttributesClass. The new limits apply to a pod when it is
+   restarted.
 1. **Flexible secret management** - Supports both StorageClass-level and
    cluster-level default secrets.
+
+#### Limitations
+
+1. QoS limits are applied only during NodePublishVolume. Changing the
+   VolumeAttributesClass of a PVC does not change the `io.max` of pods that
+   are already running; the new limits apply when the pod is restarted.
 
 ### References
 
