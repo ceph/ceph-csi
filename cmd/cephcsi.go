@@ -114,6 +114,12 @@ func init() {
 		"fusemountoptions",
 		"",
 		"Comma separated string of mount options accepted by ceph-fuse mounter")
+	flag.BoolVar(
+		&conf.EnableFuseSystemdScope,
+		"enable-fuse-systemd-scope",
+		false,
+		"start ceph-fuse in its own systemd scope through systemd-run, so that FUSE mounts survive a restart"+
+			" of the node plugin; requires the host's /run/systemd in the container")
 
 	// liveness/profile metrics related flags
 	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/profile metrics requests")
